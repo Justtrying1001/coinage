@@ -7,7 +7,8 @@ import { generateGalaxyLayout } from '@/domain/world/generate-galaxy-layout';
 import { generatePlanetVisualProfile } from '@/domain/world/generate-planet-visual-profile';
 import type { PlanetVisualProfile } from '@/domain/world/planet-visual.types';
 import { deriveSeed } from '@/domain/world/seeded-rng';
-import { mapProfileToRenderStyle } from '@/ui/galaxy/render/map-profile-to-render';
+import { createPlanetRenderInstance } from '@/rendering/planet/create-planet-render-instance';
+import type { PlanetRenderInstance } from '@/rendering/planet/types';
 
 interface GalaxyViewProps {
   worldSeed: string;
@@ -24,33 +25,6 @@ interface PlanetRenderData {
 const FIELD_RADIUS = 70;
 const CAMERA_Z = 34;
 const MOVE_SPEED = 24;
-
-function createGeometryVariants(): THREE.IcosahedronGeometry[] {
-  const variants: THREE.IcosahedronGeometry[] = [];
-
-  for (let i = 0; i < 8; i += 1) {
-    const geometry = new THREE.IcosahedronGeometry(1, 4);
-    const positions = geometry.attributes.position;
-
-    for (let j = 0; j < positions.count; j += 1) {
-      const vertex = new THREE.Vector3(positions.getX(j), positions.getY(j), positions.getZ(j));
-      const n = vertex.clone().normalize();
-
-      const macro = Math.sin(n.x * (1.5 + i * 0.2) + n.y * 1.2 + n.z * 0.8 + i * 13.17);
-      const micro = Math.sin(n.x * 3.7 + n.y * 4.1 + n.z * 5.3 + i * 7.7);
-
-      const scale = 1 + macro * 0.08 + micro * 0.02;
-      vertex.multiplyScalar(scale);
-      positions.setXYZ(j, vertex.x, vertex.y, vertex.z);
-    }
-
-    geometry.computeVertexNormals();
-    positions.needsUpdate = true;
-    variants.push(geometry);
-  }
-
-  return variants;
-}
 
 function createStarField(seed: string): THREE.Points {
   const count = 2400;
@@ -146,48 +120,18 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     fillLight.position.set(-20, -18, 20);
     scene.add(fillLight);
 
-    const geometryVariants = createGeometryVariants();
     const planetGroup = new THREE.Group();
-    const atmosphereGeometry = new THREE.SphereGeometry(1, 24, 24);
-
-    const disposables: THREE.Material[] = [];
+    const instances: PlanetRenderInstance[] = [];
 
     for (const planet of planetData) {
-      const style = mapProfileToRenderStyle(planet.profile);
-      const variantIndex = deriveSeed(planet.profile.seeds.planetSeed, 'geo') % geometryVariants.length;
-      const geometry = geometryVariants[variantIndex] ?? geometryVariants[0];
-
-      const material = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(style.baseColor),
-        roughness: style.roughness,
-        metalness: style.metalness,
-        emissive: new THREE.Color(style.emissiveColor),
-        emissiveIntensity: style.emissiveIntensity,
+      const instance = createPlanetRenderInstance({
+        profile: planet.profile,
+        x: planet.x,
+        y: planet.y,
+        z: planet.z,
       });
-
-      disposables.push(material);
-
-      const mesh = new THREE.Mesh(geometry, material);
-      const sizeScale = planet.profile.shape.radius * 0.8;
-      mesh.scale.setScalar(sizeScale);
-      mesh.position.set(planet.x, planet.y, planet.z);
-      planetGroup.add(mesh);
-
-      if (planet.profile.atmosphere.enabled && planet.profile.atmosphere.intensity > 0.2) {
-        const atmoMaterial = new THREE.MeshBasicMaterial({
-          color: new THREE.Color(style.atmosphereColor),
-          transparent: true,
-          opacity: Math.min(0.2, planet.profile.atmosphere.intensity * 0.26),
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-        });
-        disposables.push(atmoMaterial);
-
-        const atmo = new THREE.Mesh(atmosphereGeometry, atmoMaterial);
-        atmo.scale.setScalar(sizeScale * 1.16);
-        atmo.position.copy(mesh.position);
-        planetGroup.add(atmo);
-      }
+      instances.push(instance);
+      planetGroup.add(instance.object);
     }
 
     scene.add(planetGroup);
@@ -309,13 +253,8 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       window.removeEventListener('resize', onResize);
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
 
-      atmosphereGeometry.dispose();
-      for (const geometry of geometryVariants) {
-        geometry.dispose();
-      }
-
-      for (const material of disposables) {
-        material.dispose();
+      for (const instance of instances) {
+        instance.dispose();
       }
 
       const starsGeometry = stars.geometry;
