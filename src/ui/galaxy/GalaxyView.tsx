@@ -62,15 +62,18 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
     mount.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight('#9fc5ff', 0.45));
+    scene.add(new THREE.AmbientLight('#9fc5ff', 1.1));
 
-    const keyLight = new THREE.DirectionalLight('#ffffff', 1.05);
+    const keyLight = new THREE.DirectionalLight('#ffffff', 1.35);
     keyLight.position.set(20, 26, 44);
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight('#90b5ff', 0.26);
+    const fillLight = new THREE.DirectionalLight('#90b5ff', 0.68);
     fillLight.position.set(-24, -12, 32);
     scene.add(fillLight);
 
