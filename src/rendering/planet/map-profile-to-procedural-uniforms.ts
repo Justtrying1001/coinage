@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 import type { PlanetVisualProfile } from '@/domain/world/planet-visual.types';
 
-import type { ProceduralPlanetUniforms, TerrainProfileKind } from './types';
+import type { ProceduralPlanetUniforms, SurfaceCategoryKind, TerrainProfileKind } from './types';
 
 function clamp(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) {
@@ -81,6 +81,93 @@ interface TerrainProfileSettings {
   ridgedScale: number;
 }
 
+function pickSurfaceCategory(profile: PlanetVisualProfile, climate: { dry: number; lush: number; mineral: number }): SurfaceCategoryKind {
+  if (profile.materialFamily === 'icy') {
+    return 'ice';
+  }
+
+  if (profile.materialFamily === 'metallic') {
+    return climate.dry > 0.6 ? 'volcanic' : 'mineral';
+  }
+
+  if (profile.materialFamily === 'dusty') {
+    return climate.lush > 0.55 ? 'lush' : 'desert';
+  }
+
+  if (profile.color.accentMix > 0.72 && climate.lush > 0.5) {
+    return 'ocean';
+  }
+
+  if (climate.lush > 0.66) {
+    return 'lush';
+  }
+
+  if (climate.dry > 0.68) {
+    return 'desert';
+  }
+
+  return climate.mineral > 0.62 ? 'mineral' : 'ocean';
+}
+
+function categoryPalette(category: SurfaceCategoryKind): {
+  water: string;
+  shallow: string;
+  land: string;
+  mountain: string;
+  ice: string;
+} {
+  switch (category) {
+    case 'ocean':
+      return {
+        water: '#2d63b8',
+        shallow: '#5ea6d8',
+        land: '#3d7352',
+        mountain: '#8ea38d',
+        ice: '#ddefff',
+      };
+    case 'desert':
+      return {
+        water: '#315f87',
+        shallow: '#5f8ea8',
+        land: '#bf8f4c',
+        mountain: '#8a6743',
+        ice: '#d8d2be',
+      };
+    case 'ice':
+      return {
+        water: '#5f81af',
+        shallow: '#88b4d1',
+        land: '#b4c7d6',
+        mountain: '#d6e3ef',
+        ice: '#f3fbff',
+      };
+    case 'volcanic':
+      return {
+        water: '#2f394f',
+        shallow: '#535a72',
+        land: '#5b3a35',
+        mountain: '#3c2a2a',
+        ice: '#b7a99e',
+      };
+    case 'lush':
+      return {
+        water: '#2f76ab',
+        shallow: '#62b9c1',
+        land: '#4f8d4c',
+        mountain: '#7d8f63',
+        ice: '#ddebdc',
+      };
+    case 'mineral':
+      return {
+        water: '#3c5f88',
+        shallow: '#69879f',
+        land: '#7f735f',
+        mountain: '#a39684',
+        ice: '#ddd4c7',
+      };
+  }
+}
+
 function pickTerrainProfile(profile: PlanetVisualProfile): TerrainProfileSettings {
   const ruggedness =
     profile.relief.macroStrength * 0.55 + profile.relief.microStrength * 0.35 + profile.shape.ridgeWarp * 0.28;
@@ -136,9 +223,15 @@ function pickTerrainProfile(profile: PlanetVisualProfile): TerrainProfileSetting
 }
 
 export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): ProceduralPlanetUniforms {
-  const landBase = new THREE.Color(pickLandColor(profile.paletteFamily));
-  const oceanBase = new THREE.Color(pickWaterColor(profile.paletteFamily));
   const climate = paletteClimateBias(profile.paletteFamily);
+  const surfaceCategory = pickSurfaceCategory(profile, climate);
+  const categoryColors = categoryPalette(surfaceCategory);
+
+  const landBase = new THREE.Color(pickLandColor(profile.paletteFamily)).lerp(new THREE.Color(categoryColors.land), 0.72);
+  const oceanBase = new THREE.Color(pickWaterColor(profile.paletteFamily)).lerp(new THREE.Color(categoryColors.water), 0.78);
+  const categoryMountain = new THREE.Color(categoryColors.mountain);
+  const categoryIce = new THREE.Color(categoryColors.ice);
+  const categoryShallow = new THREE.Color(categoryColors.shallow);
 
   const hsl = { h: 0, s: 0, l: 0 };
   landBase.getHSL(hsl);
@@ -159,8 +252,8 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
   );
   const mountainColor = new THREE.Color().setHSL(
     (hue + climate.mineral * 0.025 + 1) % 1,
-    clamp(saturation * (0.26 + climate.mineral * 0.18), 0.08, 0.58),
-    clamp(lightness * (1.06 + climate.mineral * 0.24), 0.34, 0.92),
+    clamp(saturation * (0.24 + climate.mineral * 0.17), 0.08, 0.58),
+    clamp(lightness * (1.04 + climate.mineral * 0.21), 0.34, 0.9),
   );
   const iceColor = new THREE.Color().setHSL(
     (hue + 0.015 + climate.mineral * 0.02) % 1,
@@ -180,31 +273,85 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
   const isRocky = profile.materialFamily === 'rocky';
   const terrainProfile = pickTerrainProfile(profile);
 
+  const categoryOceanLevel: Record<SurfaceCategoryKind, number> = {
+    ocean: 0.6,
+    desert: 0.28,
+    ice: 0.5,
+    volcanic: 0.26,
+    lush: 0.46,
+    mineral: 0.34,
+  };
+  const categoryMountainLevel: Record<SurfaceCategoryKind, number> = {
+    ocean: 0.74,
+    desert: 0.66,
+    ice: 0.7,
+    volcanic: 0.64,
+    lush: 0.72,
+    mineral: 0.68,
+  };
+  const categorySimpleScale: Record<SurfaceCategoryKind, number> = {
+    ocean: 0.82,
+    desert: 0.78,
+    ice: 0.7,
+    volcanic: 0.86,
+    lush: 0.8,
+    mineral: 0.76,
+  };
+  const categoryRidgedScale: Record<SurfaceCategoryKind, number> = {
+    ocean: 0.62,
+    desert: 0.58,
+    ice: 0.54,
+    volcanic: 0.72,
+    lush: 0.6,
+    mineral: 0.64,
+  };
+
+  const landSurfaceColor = landColor.clone().lerp(new THREE.Color(categoryColors.land), 0.72).lerp(coastalColor, 0.15);
+  const mountainSurfaceColor = mountainColor.clone().lerp(categoryMountain, 0.82);
+  const iceSurfaceColor = iceColor.clone().lerp(categoryIce, 0.86);
+  const shallowSurfaceColor = shallowWaterColor.clone().lerp(categoryShallow, 0.8);
+
   return {
     shapeSeed: profile.derivedSubSeeds.shapeSeed >>> 0,
     reliefSeed: profile.derivedSubSeeds.reliefSeed >>> 0,
     baseColor: colorToTuple(oceanColor),
-    shallowWaterColor: colorToTuple(shallowWaterColor),
-    landColor: colorToTuple(landColor.lerp(coastalColor, 0.26)),
-    mountainColor: colorToTuple(mountainColor),
-    iceColor: colorToTuple(iceColor),
+    shallowWaterColor: colorToTuple(shallowSurfaceColor),
+    landColor: colorToTuple(landSurfaceColor),
+    mountainColor: colorToTuple(mountainSurfaceColor),
+    iceColor: colorToTuple(iceSurfaceColor),
     radius: clamp(profile.shape.radius * 0.97, 1.1, 4.6),
     meshResolution: Math.round(clamp(15 + profile.shape.radius * 3.6 + profile.relief.macroStrength * 7, 16, 24)),
-    oceanLevel: clamp(0.36 + (0.5 - profile.color.accentMix) * 0.15 + (isIcy ? 0.09 : 0) + climate.dry * 0.05, 0.24, 0.64),
-    mountainLevel: clamp(0.68 + profile.relief.macroStrength * 0.14 + (isRocky ? 0.035 : 0) + climate.mineral * 0.04, 0.64, 0.9),
+    oceanLevel: clamp(
+      categoryOceanLevel[surfaceCategory] +
+        (0.5 - profile.color.accentMix) * 0.08 +
+        (isIcy ? 0.03 : 0) -
+        climate.dry * 0.03,
+      0.24,
+      0.64,
+    ),
+    mountainLevel: clamp(
+      categoryMountainLevel[surfaceCategory] + profile.relief.macroStrength * 0.1 + (isRocky ? 0.02 : 0) + climate.mineral * 0.02,
+      0.64,
+      0.9,
+    ),
     simpleFrequency: clamp(profile.shape.wobbleFrequency * 0.9 + 0.55, 0.8, 4.2),
     simpleStrength: clamp(
-      (profile.relief.macroStrength * 0.72 + profile.shape.wobbleAmplitude * 0.45) * terrainProfile.macroScale,
+      (profile.relief.macroStrength * 0.62 + profile.shape.wobbleAmplitude * 0.35) *
+        terrainProfile.macroScale *
+        categorySimpleScale[surfaceCategory],
       0.08,
       0.7,
     ),
     ridgedFrequency: clamp(profile.shape.wobbleFrequency * 2.0 + 1.4, 1.8, 8.2),
     ridgedStrength: clamp(
-      (profile.relief.microStrength * 1.12 + profile.shape.ridgeWarp * 0.22) * terrainProfile.ridgedScale,
+      (profile.relief.microStrength * 0.9 + profile.shape.ridgeWarp * 0.14) *
+        terrainProfile.ridgedScale *
+        categoryRidgedScale[surfaceCategory],
       0.04,
       0.62,
     ),
     maskStrength: clamp(0.45 + profile.shape.ridgeWarp * 0.4 + profile.relief.craterDensity * 0.1, 0.3, 0.95),
+    surfaceCategory,
     terrainProfile: terrainProfile.type,
     elevationCap: terrainProfile.elevationCap,
     terrainSmoothing: terrainProfile.terrainSmoothing,

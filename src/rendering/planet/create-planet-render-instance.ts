@@ -20,16 +20,46 @@ interface CachedMaterialEntry {
 
 const SURFACE_MATERIAL_CACHE = new Map<string, CachedMaterialEntry>();
 
+interface CachedAtmosphereMaterialEntry {
+  material: THREE.ShaderMaterial;
+  refs: number;
+}
+
+const ATMOSPHERE_MATERIAL_CACHE = new Map<string, CachedAtmosphereMaterialEntry>();
+
 function quantize(value: number, step: number): number {
   return Math.round(value / step) * step;
 }
 
 function buildGeometryKey(params: ReturnType<typeof mapProfileToProceduralUniforms>): string {
+  const colorSignature = [
+    ...params.baseColor,
+    ...params.shallowWaterColor,
+    ...params.landColor,
+    ...params.mountainColor,
+    ...params.iceColor,
+  ]
+    .map((channel) => quantize(channel, 0.002).toFixed(3))
+    .join(',');
+
   return [
+    `shape:${params.shapeSeed >>> 0}`,
+    `relief:${params.reliefSeed >>> 0}`,
+    `cat:${params.surfaceCategory}`,
     params.terrainProfile,
-    `r:${quantize(params.radius, 0.5).toFixed(1)}`,
-    `res:${Math.round(quantize(params.meshResolution, 4))}`,
-    `rug:${quantize(params.simpleStrength + params.ridgedStrength, 0.16).toFixed(2)}`,
+    `r:${quantize(params.radius, 0.02).toFixed(2)}`,
+    `res:${Math.round(params.meshResolution)}`,
+    `o:${quantize(params.oceanLevel, 0.01).toFixed(2)}`,
+    `m:${quantize(params.mountainLevel, 0.01).toFixed(2)}`,
+    `sf:${quantize(params.simpleFrequency, 0.04).toFixed(2)}`,
+    `ss:${quantize(params.simpleStrength, 0.02).toFixed(2)}`,
+    `rf:${quantize(params.ridgedFrequency, 0.06).toFixed(2)}`,
+    `rs:${quantize(params.ridgedStrength, 0.02).toFixed(2)}`,
+    `ec:${quantize(params.elevationCap, 0.01).toFixed(2)}`,
+    `sm:${quantize(params.terrainSmoothing, 0.01).toFixed(2)}`,
+    `ra:${quantize(params.ridgeAttenuation, 0.01).toFixed(2)}`,
+    `da:${quantize(params.detailAttenuation, 0.01).toFixed(2)}`,
+    `c:${colorSignature}`,
   ].join('|');
 }
 
@@ -40,7 +70,7 @@ function buildSurfaceMaterialKey(params: ReturnType<typeof mapProfileToProcedura
   ].join('|');
 }
 
-function applyPlanetRenderLod(
+export function applyPlanetRenderLod(
   params: ProceduralPlanetUniforms,
   lod: PlanetRendererOptions['lod'],
 ): ProceduralPlanetUniforms {
@@ -48,10 +78,16 @@ function applyPlanetRenderLod(
     return params;
   }
 
+  const radius = params.radius;
+  const targetResolution = radius < 1.7 ? 11 : radius < 2.8 ? 14 : 18;
+  const reducedResolution = Math.max(10, Math.min(params.meshResolution, targetResolution));
+
   return {
     ...params,
-    meshResolution: Math.max(24, Math.round(params.meshResolution * 0.7)),
-    detailAttenuation: params.detailAttenuation * 0.8,
+    meshResolution: reducedResolution,
+    ridgedStrength: params.ridgedStrength * 0.82,
+    elevationCap: params.elevationCap * 0.9,
+    detailAttenuation: params.detailAttenuation * 0.74,
   };
 }
 
@@ -180,6 +216,66 @@ function getOrCreateAtmosphereGeometry(radius: number, thickness: number, segmen
   };
 }
 
+function buildAtmosphereMaterialKey(params: ReturnType<typeof mapProfileToProceduralUniforms>): string {
+  return [
+    `c:${params.atmosphereColor.map((channel) => quantize(channel, 0.01).toFixed(2)).join(',')}`,
+    `i:${quantize(params.atmosphereIntensity, 0.02).toFixed(2)}`,
+    `t:${quantize(params.atmosphereThickness, 0.01).toFixed(2)}`,
+  ].join('|');
+}
+
+function getOrCreateAtmosphereMaterial(params: ReturnType<typeof mapProfileToProceduralUniforms>): {
+  material: THREE.ShaderMaterial;
+  release: () => void;
+} {
+  const key = buildAtmosphereMaterialKey(params);
+  const cached = ATMOSPHERE_MATERIAL_CACHE.get(key);
+  if (cached) {
+    cached.refs += 1;
+    return {
+      material: cached.material,
+      release: () => {
+        const current = ATMOSPHERE_MATERIAL_CACHE.get(key);
+        if (!current) return;
+        current.refs -= 1;
+        if (current.refs <= 0) {
+          current.material.dispose();
+          ATMOSPHERE_MATERIAL_CACHE.delete(key);
+        }
+      },
+    };
+  }
+
+  const material = new THREE.ShaderMaterial({
+    vertexShader: ATMOSPHERE_VERTEX_SHADER,
+    fragmentShader: ATMOSPHERE_FRAGMENT_SHADER,
+    uniforms: {
+      uAtmosphereColor: { value: new THREE.Color(...params.atmosphereColor) },
+      uIntensity: { value: Math.min(0.58, params.atmosphereIntensity * 0.24 + 0.05) },
+      uDensity: { value: Math.min(1, 0.5 + params.atmosphereThickness * 3.2) },
+      uLightDirection: { value: new THREE.Vector3(0.38, 0.54, 0.75).normalize() },
+    },
+    blending: THREE.AdditiveBlending,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.BackSide,
+  });
+
+  ATMOSPHERE_MATERIAL_CACHE.set(key, { material, refs: 1 });
+  return {
+    material,
+    release: () => {
+      const current = ATMOSPHERE_MATERIAL_CACHE.get(key);
+      if (!current) return;
+      current.refs -= 1;
+      if (current.refs <= 0) {
+        current.material.dispose();
+        ATMOSPHERE_MATERIAL_CACHE.delete(key);
+      }
+    },
+  };
+}
+
 export function createPlanetRenderInstance({ profile, x, y, z, options }: PlanetRenderInput): PlanetRenderInstance {
   const baseParams = mapProfileToProceduralUniforms(profile);
   const params = applyPlanetRenderLod(baseParams, options?.lod);
@@ -191,16 +287,20 @@ export function createPlanetRenderInstance({ profile, x, y, z, options }: Planet
 
   const { material, release: releaseMaterial } = getOrCreateSurfaceMaterial(params);
 
-  material.onBeforeCompile = (shader) => {
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <roughnessmap_fragment>',
-      `#include <roughnessmap_fragment>
-      float waterMask = smoothstep(0.08, 0.24, vColor.b - max(vColor.r, vColor.g));
-      float highlandMask = smoothstep(0.5, 0.85, vColor.r * 0.35 + vColor.g * 0.5 + vColor.b * 0.15);
-      roughnessFactor = mix(roughnessFactor, 0.08, waterMask * 0.92);
-      roughnessFactor = mix(roughnessFactor, clamp(roughnessFactor * 1.26 + 0.08, 0.0, 1.0), highlandMask * (1.0 - waterMask));`,
-    );
-  };
+  if (material.userData.coinageRoughnessPatch !== true) {
+    material.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <roughnessmap_fragment>',
+        `#include <roughnessmap_fragment>
+        float waterMask = smoothstep(0.08, 0.24, vColor.b - max(vColor.r, vColor.g));
+        float highlandMask = smoothstep(0.5, 0.85, vColor.r * 0.35 + vColor.g * 0.5 + vColor.b * 0.15);
+        roughnessFactor = mix(roughnessFactor, 0.08, waterMask * 0.92);
+        roughnessFactor = mix(roughnessFactor, clamp(roughnessFactor * 1.26 + 0.08, 0.0, 1.0), highlandMask * (1.0 - waterMask));`,
+      );
+    };
+    material.userData.coinageRoughnessPatch = true;
+    material.needsUpdate = true;
+  }
 
   const planetMesh = new THREE.Mesh(geometry, material);
   group.add(planetMesh);
@@ -208,25 +308,16 @@ export function createPlanetRenderInstance({ profile, x, y, z, options }: Planet
   let atmosphereGeometry: THREE.BufferGeometry | null = null;
   let releaseAtmosphereGeometry: (() => void) | null = null;
   let atmosphereMaterial: THREE.ShaderMaterial | null = null;
+  let releaseAtmosphereMaterial: (() => void) | null = null;
 
   if (params.atmosphereEnabled && params.atmosphereIntensity > 0.01) {
     const atmoSegments = options?.lod === 'galaxy' ? 14 : 24;
     const cachedAtmosphere = getOrCreateAtmosphereGeometry(params.radius, params.atmosphereThickness, atmoSegments);
     atmosphereGeometry = cachedAtmosphere.geometry;
     releaseAtmosphereGeometry = cachedAtmosphere.release;
-
-    atmosphereMaterial = new THREE.ShaderMaterial({
-      vertexShader: ATMOSPHERE_VERTEX_SHADER,
-      fragmentShader: ATMOSPHERE_FRAGMENT_SHADER,
-      uniforms: {
-        uAtmosphereColor: { value: new THREE.Color(...params.atmosphereColor) },
-        uIntensity: { value: Math.min(1, params.atmosphereIntensity * 0.42 + 0.06) },
-      },
-      blending: THREE.AdditiveBlending,
-      transparent: true,
-      depthWrite: false,
-      side: THREE.BackSide,
-    });
+    const cachedAtmosphereMaterial = getOrCreateAtmosphereMaterial(params);
+    atmosphereMaterial = cachedAtmosphereMaterial.material;
+    releaseAtmosphereMaterial = cachedAtmosphereMaterial.release;
 
     const atmosphereMesh = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
     group.add(atmosphereMesh);
@@ -238,7 +329,7 @@ export function createPlanetRenderInstance({ profile, x, y, z, options }: Planet
       release();
       releaseMaterial();
       releaseAtmosphereGeometry?.();
-      atmosphereMaterial?.dispose();
+      releaseAtmosphereMaterial?.();
     },
   };
 }
