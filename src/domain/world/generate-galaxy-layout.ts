@@ -22,9 +22,9 @@ export interface GalaxyLayoutConfig {
 type GalaxyLayoutBaseConfig = Omit<GalaxyLayoutConfig, 'planetRadii'>;
 
 export const DEFAULT_GALAXY_LAYOUT_CONFIG: Required<GalaxyLayoutBaseConfig> = {
-  planetCount: 140,
-  fieldRadius: 74,
-  minSpacing: 6.2,
+  planetCount: 180,
+  fieldRadius: 120,
+  minSpacing: 7.2,
 };
 
 const ANGULAR_BUCKET_COUNT = 24;
@@ -84,7 +84,7 @@ export function generateGalaxyLayout(
   const innerThreshold = merged.fieldRadius * 0.33;
   let innerCount = 0;
   const candidateChecks = Math.max(24, Math.round(Math.sqrt(merged.planetCount) * 2.4));
-  const maxAttempts = merged.planetCount * 160;
+  const maxAttempts = merged.planetCount * 220;
 
   let attempts = 0;
   while (points.length < merged.planetCount && attempts < maxAttempts) {
@@ -147,7 +147,7 @@ export function generateGalaxyLayout(
 
     const fillRatio = points.length / Math.max(1, merged.planetCount);
     const candidateRadius = merged.planetRadii?.[points.length] ?? 0;
-    const spacingFactor = 1.28 - fillRatio * 0.38 + rng() * 0.06;
+    const spacingFactor = 1.36 - fillRatio * 0.3 + rng() * 0.08;
     const dynamicMinSpacing = Math.max(merged.minSpacing, merged.minSpacing * spacingFactor);
     if (!isFarEnough(bestCandidate.x, bestCandidate.y, candidateRadius, points, placedRadii, dynamicMinSpacing)) {
       continue;
@@ -169,7 +169,7 @@ export function generateGalaxyLayout(
   }
 
   let fallbackAttempts = 0;
-  const fallbackLimit = merged.planetCount * 80;
+  const fallbackLimit = merged.planetCount * 120;
   while (points.length < merged.planetCount && fallbackAttempts < fallbackLimit) {
     fallbackAttempts += 1;
     const angle = rng() * Math.PI * 2;
@@ -179,7 +179,7 @@ export function generateGalaxyLayout(
     const x = Math.cos(angle) * radialDistance;
     const y = Math.sin(angle) * radialDistance;
     const candidateRadius = merged.planetRadii?.[points.length] ?? 0;
-    const relaxedSpacing = merged.planetRadii ? merged.minSpacing * 0.62 : merged.minSpacing;
+    const relaxedSpacing = merged.planetRadii ? merged.minSpacing * 0.76 : merged.minSpacing;
 
     if (!isFarEnough(x, y, candidateRadius, points, placedRadii, relaxedSpacing)) {
       continue;

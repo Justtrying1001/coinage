@@ -21,6 +21,7 @@ test('deterministic: same inputs produce identical profile', () => {
 test('variation: different planet seeds produce distinct signatures', () => {
   const signatures = new Set<string>();
   const archetypes = new Set<string>();
+  const macroStyles = new Set<string>();
 
   for (let i = 0; i < 40; i += 1) {
     const profile = generatePlanetVisualProfile({
@@ -29,10 +30,12 @@ test('variation: different planet seeds produce distinct signatures', () => {
     });
     signatures.add(profileSignature(profile));
     archetypes.add(profile.archetype);
+    macroStyles.add(profile.macroStyle);
   }
 
   assert.ok(signatures.size >= 25, `Expected at least 25 unique signatures, got ${signatures.size}`);
   assert.ok(archetypes.size >= 8, `Expected at least 8 archetypes, got ${archetypes.size}`);
+  assert.ok(macroStyles.size >= 4, `Expected at least 4 macro styles, got ${macroStyles.size}`);
 });
 
 test('boundedness: profile values always remain within allowed ranges', () => {

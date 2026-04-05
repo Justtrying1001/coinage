@@ -32,6 +32,14 @@ export type PlanetArchetype =
   | 'fragmented'
   | 'superterran';
 
+export type PlanetMacroStyle =
+  | 'supercontinent'
+  | 'archipelago'
+  | 'island-chain'
+  | 'fractured'
+  | 'dual-hemisphere'
+  | 'basin';
+
 export interface SeedInputs {
   worldSeed: string;
   planetSeed: string;
@@ -43,6 +51,7 @@ export interface DerivedSubSeeds {
   reliefSeed: number;
   colorSeed: number;
   atmoSeed: number;
+  hydroSeed: number;
 }
 
 export interface ShapeParameters {
@@ -73,15 +82,23 @@ export interface AtmosphereParameters {
   tintShift: number;
 }
 
+export interface HydrologyParameters {
+  oceanBias: number;
+  minLandRatio: number;
+  maxOceanRatio: number;
+}
+
 export interface PlanetVisualProfile {
   id: string;
   visualGenVersion: number;
   seeds: SeedInputs;
   derivedSubSeeds: DerivedSubSeeds;
   archetype: PlanetArchetype;
+  macroStyle: PlanetMacroStyle;
   sizeCategory: PlanetSizeCategory;
   materialFamily: MaterialFamily;
   paletteFamily: PaletteFamily;
+  hydrology: HydrologyParameters;
   shape: ShapeParameters;
   relief: ReliefParameters;
   color: ColorParameters;

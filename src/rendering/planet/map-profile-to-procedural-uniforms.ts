@@ -131,23 +131,77 @@ interface TerrainProfileSettings {
 function minimumLandRatioForCategory(category: SurfaceCategoryKind): number {
   switch (category) {
     case 'ocean':
-      return 0.34;
+      return 0.4;
     case 'ice':
-      return 0.36;
+      return 0.42;
     case 'toxic':
-      return 0.38;
-    case 'abyssal':
-      return 0.37;
-    case 'lush':
       return 0.44;
-    case 'desert':
-      return 0.45;
-    case 'volcanic':
-      return 0.46;
-    case 'mineral':
-      return 0.45;
-    case 'barren':
+    case 'abyssal':
       return 0.43;
+    case 'lush':
+      return 0.5;
+    case 'desert':
+      return 0.54;
+    case 'volcanic':
+      return 0.58;
+    case 'mineral':
+      return 0.54;
+    case 'barren':
+      return 0.5;
+  }
+}
+
+function applyMacroStyleToTerrain(
+  terrain: TerrainProfileSettings,
+  macroStyle: PlanetVisualProfile['macroStyle'],
+): TerrainProfileSettings {
+  switch (macroStyle) {
+    case 'supercontinent':
+      return {
+        ...terrain,
+        type: terrain.type === 'fragmented' ? 'continental' : terrain.type,
+        continentThreshold: clamp(terrain.continentThreshold - 0.06, 0.36, 0.68),
+        continentSharpness: clamp(terrain.continentSharpness + 0.05, 0.1, 0.34),
+        continentDrift: clamp(terrain.continentDrift - 0.08, 0.02, 0.36),
+        trenchDepth: clamp(terrain.trenchDepth + 0.02, 0.06, 0.24),
+      };
+    case 'archipelago':
+      return {
+        ...terrain,
+        continentThreshold: clamp(terrain.continentThreshold + 0.08, 0.42, 0.72),
+        continentSharpness: clamp(terrain.continentSharpness + 0.03, 0.1, 0.36),
+        continentDrift: clamp(terrain.continentDrift + 0.11, 0.02, 0.44),
+      };
+    case 'island-chain':
+      return {
+        ...terrain,
+        continentThreshold: clamp(terrain.continentThreshold + 0.04, 0.42, 0.72),
+        continentSharpness: clamp(terrain.continentSharpness + 0.08, 0.1, 0.36),
+        continentDrift: clamp(terrain.continentDrift + 0.14, 0.02, 0.44),
+        ridgeAttenuation: clamp(terrain.ridgeAttenuation + 0.04, 0.2, 0.82),
+      };
+    case 'fractured':
+      return {
+        ...terrain,
+        type: 'fragmented',
+        terrainSmoothing: clamp(terrain.terrainSmoothing - 0.08, 0.46, 0.9),
+        continentThreshold: clamp(terrain.continentThreshold + 0.09, 0.42, 0.76),
+        continentDrift: clamp(terrain.continentDrift + 0.18, 0.04, 0.48),
+        detailAttenuation: clamp(terrain.detailAttenuation + 0.05, 0.16, 0.58),
+      };
+    case 'dual-hemisphere':
+      return {
+        ...terrain,
+        continentThreshold: clamp(terrain.continentThreshold - 0.02, 0.36, 0.68),
+        continentSharpness: clamp(terrain.continentSharpness + 0.03, 0.1, 0.36),
+        continentDrift: clamp(terrain.continentDrift + 0.04, 0.02, 0.44),
+      };
+    case 'basin':
+      return {
+        ...terrain,
+        trenchDepth: clamp(terrain.trenchDepth + 0.05, 0.08, 0.26),
+        continentThreshold: clamp(terrain.continentThreshold + 0.02, 0.4, 0.72),
+      };
   }
 }
 
@@ -601,7 +655,7 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
 
   const isIcy = profile.materialFamily === 'icy';
   const isRocky = profile.materialFamily === 'rocky';
-  const terrainProfile = pickTerrainProfile(profile);
+  const terrainProfile = applyMacroStyleToTerrain(pickTerrainProfile(profile), profile.macroStyle);
 
   const categoryOceanLevel: Record<SurfaceCategoryKind, number> = {
     ocean: 0.56,
@@ -688,13 +742,14 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
   const rawOceanLevel = clamp(
     categoryOceanLevel[surfaceCategory] +
       archetypeOceanOffset[profile.archetype] +
+      (profile.hydrology.oceanBias - 0.5) * 0.18 +
       (0.5 - profile.color.accentMix) * 0.08 +
       (isIcy ? 0.03 : 0) -
       climate.dry * 0.03,
-    0.08,
-    0.64,
+    0.06,
+    0.68,
   );
-  const minLandRatio = minimumLandRatioForCategory(surfaceCategory);
+  const minLandRatio = Math.max(minimumLandRatioForCategory(surfaceCategory), profile.hydrology.minLandRatio);
   const estimatedLandRatio = estimateLandRatio(
     rawOceanLevel,
     profile.relief.macroStrength,
@@ -702,8 +757,9 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     0.45 + profile.shape.ridgeWarp * 0.4 + profile.relief.craterDensity * 0.1,
     terrainProfile.type,
   );
-  const guardedOceanLevel = rawOceanLevel - Math.max(0, minLandRatio - estimatedLandRatio) * 0.9;
-  const finalOceanLevel = clamp(guardedOceanLevel, 0.08, Math.min(0.64, rawMountainLevel - 0.14));
+  const guardedOceanLevel = rawOceanLevel - Math.max(0, minLandRatio - estimatedLandRatio) * 1.18;
+  const maxOceanLevelFromHydrology = clamp(profile.hydrology.maxOceanRatio, 0.2, 0.68);
+  const finalOceanLevel = clamp(guardedOceanLevel, 0.06, Math.min(maxOceanLevelFromHydrology, rawMountainLevel - 0.16));
 
   const landSurfaceColor = landColor.clone().lerp(new THREE.Color(categoryColors.land), 0.38).lerp(coastalColor, 0.14);
   const mountainSurfaceColor = mountainColor.clone().lerp(categoryMountain, 0.56);
@@ -718,7 +774,7 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     landColor: colorToTuple(landSurfaceColor),
     mountainColor: colorToTuple(mountainSurfaceColor),
     iceColor: colorToTuple(iceSurfaceColor),
-    radius: clamp(profile.shape.radius * 0.97, 1.45, 4.8),
+    radius: clamp(profile.shape.radius * 0.98, 1.86, 5.1),
     meshResolution: Math.round(clamp(15 + profile.shape.radius * 3.6 + profile.relief.macroStrength * 7, 16, 25)),
     oceanLevel: finalOceanLevel,
     mountainLevel: rawMountainLevel,
