@@ -32,7 +32,6 @@ test('galaxy layout has stable spacing and bounds', () => {
     planetCount: 90,
     fieldRadius: 65,
     minSpacing: 6.5,
-    depthRange: 9,
   });
 
   assert.equal(layout.length, 90);
@@ -43,6 +42,43 @@ test('galaxy layout has stable spacing and bounds', () => {
   for (const planet of layout) {
     const radial = Math.hypot(planet.x, planet.y);
     assert.ok(radial <= 65.0001, `Planet out of radial bound: ${radial}`);
-    assert.ok(planet.z >= -9 && planet.z <= 9, `Planet z out of bounds: ${planet.z}`);
+    assert.equal(planet.z, 0, `Planet z should remain fixed at 0 in 2D layout: ${planet.z}`);
   }
+});
+
+test('galaxy layout has broad radial and angular coverage for macro readability', () => {
+  const fieldRadius = 88;
+  const layout = generateGalaxyLayout('coinage-mvp-seed', {
+    planetCount: 158,
+    fieldRadius,
+    minSpacing: 4.4,
+  });
+
+  assert.equal(layout.length, 158);
+
+  const innerThreshold = fieldRadius * 0.33;
+  const outerThreshold = fieldRadius * 0.66;
+
+  let innerCount = 0;
+  let outerCount = 0;
+  const sectorCounts = new Array<number>(8).fill(0);
+
+  for (const planet of layout) {
+    const radial = Math.hypot(planet.x, planet.y);
+    if (radial <= innerThreshold) innerCount += 1;
+    if (radial >= outerThreshold) outerCount += 1;
+
+    const angle = Math.atan2(planet.y, planet.x);
+    const normalized = (angle + Math.PI) / (Math.PI * 2);
+    const sector = Math.min(7, Math.floor(normalized * 8));
+    sectorCounts[sector] += 1;
+  }
+
+  assert.ok(innerCount >= 20, `Expected at least 20 planets in inner third, got ${innerCount}`);
+  assert.ok(outerCount >= 45, `Expected at least 45 planets in outer third, got ${outerCount}`);
+
+  const minSector = Math.min(...sectorCounts);
+  const maxSector = Math.max(...sectorCounts);
+  assert.ok(minSector >= 12, `Expected all sectors to have at least 12 planets, got ${minSector}`);
+  assert.ok(maxSector - minSector <= 10, `Expected angular balance spread <= 10, got ${maxSector - minSector}`);
 });

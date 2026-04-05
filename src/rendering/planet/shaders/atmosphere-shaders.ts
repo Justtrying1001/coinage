@@ -20,7 +20,7 @@ export const ATMOSPHERE_FRAGMENT_SHADER = `
 
   void main() {
     vec3 V = normalize(cameraPosition - vPositionW);
-    float fresnel = pow(1.0 - max(dot(normalize(vNormalW), V), 0.0), 2.4);
+    float fresnel = pow(1.0 - max(dot(normalize(vNormalW), V), 0.0), 3.1);
     float alpha = fresnel * uIntensity;
     gl_FragColor = vec4(uAtmosphereColor, alpha);
   }
