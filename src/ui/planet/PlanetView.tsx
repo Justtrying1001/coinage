@@ -31,27 +31,30 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color('#030712');
 
-    const camera = new THREE.PerspectiveCamera(42, mount.clientWidth / Math.max(1, mount.clientHeight), 0.1, 1200);
-    camera.position.set(0, 0, 5.4);
+    const camera = new THREE.PerspectiveCamera(34, mount.clientWidth / Math.max(1, mount.clientHeight), 0.1, 1200);
+    camera.position.set(0, 0.22, 4.8);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
     mount.appendChild(renderer.domElement);
 
-    const ambient = new THREE.AmbientLight('#90b8ff', 0.56);
-    scene.add(ambient);
+    const hemiLight = new THREE.HemisphereLight('#bcd6ff', '#182131', 0.34);
+    scene.add(hemiLight);
 
-    const keyLight = new THREE.DirectionalLight('#ffffff', 1.12);
-    keyLight.position.set(3.5, 2.8, 5.4);
+    const keyLight = new THREE.DirectionalLight('#fff5de', 1.58);
+    keyLight.position.set(4.4, 2.6, 5.8);
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight('#7ba0ff', 0.34);
-    fillLight.position.set(-4.2, -1.4, 2.4);
+    const fillLight = new THREE.DirectionalLight('#7ea6ff', 0.46);
+    fillLight.position.set(-3.6, -0.9, 2.6);
     scene.add(fillLight);
 
-    const rimLight = new THREE.DirectionalLight('#9ec0ff', 0.28);
-    rimLight.position.set(-3.2, 3.2, -4.8);
+    const rimLight = new THREE.DirectionalLight('#8db6ff', 0.58);
+    rimLight.position.set(-3.4, 2.8, -4.8);
     scene.add(rimLight);
 
     const planetInstance = createPlanetRenderInstance({
@@ -59,6 +62,7 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
       x: 0,
       y: 0,
       z: 0,
+      options: { lod: 'planet' },
     });
 
     scene.add(planetInstance.object);
@@ -66,9 +70,13 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enablePan = false;
     controls.enableDamping = true;
-    controls.dampingFactor = 0.08;
-    controls.minDistance = 3.2;
-    controls.maxDistance = 8;
+    controls.dampingFactor = 0.06;
+    controls.minDistance = 2.8;
+    controls.maxDistance = 7.8;
+    controls.minPolarAngle = Math.PI * 0.15;
+    controls.maxPolarAngle = Math.PI * 0.85;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.35;
 
     const onResize = () => {
       if (!mountRef.current) {

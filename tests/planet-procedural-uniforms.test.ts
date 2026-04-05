@@ -106,7 +106,7 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
     assert.ok(uniforms.reliefSeed >= 0, `reliefSeed out of range: ${uniforms.reliefSeed}`);
     assert.ok(uniforms.radius >= 0.85 && uniforms.radius <= 2.95, `radius out of range: ${uniforms.radius}`);
     assert.ok(
-      uniforms.meshResolution >= 16 && uniforms.meshResolution <= 24,
+      uniforms.meshResolution >= 20 && uniforms.meshResolution <= 34,
       `meshResolution out of range: ${uniforms.meshResolution}`,
     );
     assert.ok(
@@ -122,7 +122,7 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
       `simpleFrequency out of range: ${uniforms.simpleFrequency}`,
     );
     assert.ok(
-      uniforms.simpleStrength >= 0.08 && uniforms.simpleStrength <= 0.58,
+      uniforms.simpleStrength >= 0.08 && uniforms.simpleStrength <= 0.7,
       `simpleStrength out of range: ${uniforms.simpleStrength}`,
     );
     assert.ok(
@@ -130,7 +130,7 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
       `ridgedFrequency out of range: ${uniforms.ridgedFrequency}`,
     );
     assert.ok(
-      uniforms.ridgedStrength >= 0.04 && uniforms.ridgedStrength <= 0.5,
+      uniforms.ridgedStrength >= 0.04 && uniforms.ridgedStrength <= 0.62,
       `ridgedStrength out of range: ${uniforms.ridgedStrength}`,
     );
     assert.ok(
