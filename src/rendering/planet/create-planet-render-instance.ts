@@ -25,11 +25,33 @@ function quantize(value: number, step: number): number {
 }
 
 function buildGeometryKey(params: ReturnType<typeof mapProfileToProceduralUniforms>): string {
+  const colorSignature = [
+    ...params.baseColor,
+    ...params.shallowWaterColor,
+    ...params.landColor,
+    ...params.mountainColor,
+    ...params.iceColor,
+  ]
+    .map((channel) => quantize(channel, 0.002).toFixed(3))
+    .join(',');
+
   return [
+    `shape:${params.shapeSeed >>> 0}`,
+    `relief:${params.reliefSeed >>> 0}`,
     params.terrainProfile,
-    `r:${quantize(params.radius, 0.5).toFixed(1)}`,
-    `res:${Math.round(quantize(params.meshResolution, 4))}`,
-    `rug:${quantize(params.simpleStrength + params.ridgedStrength, 0.16).toFixed(2)}`,
+    `r:${quantize(params.radius, 0.02).toFixed(2)}`,
+    `res:${Math.round(params.meshResolution)}`,
+    `o:${quantize(params.oceanLevel, 0.01).toFixed(2)}`,
+    `m:${quantize(params.mountainLevel, 0.01).toFixed(2)}`,
+    `sf:${quantize(params.simpleFrequency, 0.04).toFixed(2)}`,
+    `ss:${quantize(params.simpleStrength, 0.02).toFixed(2)}`,
+    `rf:${quantize(params.ridgedFrequency, 0.06).toFixed(2)}`,
+    `rs:${quantize(params.ridgedStrength, 0.02).toFixed(2)}`,
+    `ec:${quantize(params.elevationCap, 0.01).toFixed(2)}`,
+    `sm:${quantize(params.terrainSmoothing, 0.01).toFixed(2)}`,
+    `ra:${quantize(params.ridgeAttenuation, 0.01).toFixed(2)}`,
+    `da:${quantize(params.detailAttenuation, 0.01).toFixed(2)}`,
+    `c:${colorSignature}`,
   ].join('|');
 }
 
@@ -48,10 +70,16 @@ export function applyPlanetRenderLod(
     return params;
   }
 
+  const radius = params.radius;
+  const targetResolution = radius < 1.7 ? 11 : radius < 2.8 ? 14 : 18;
+  const reducedResolution = Math.max(10, Math.min(params.meshResolution, targetResolution));
+
   return {
     ...params,
-    meshResolution: Math.max(24, Math.round(params.meshResolution * 0.7)),
-    detailAttenuation: params.detailAttenuation * 0.8,
+    meshResolution: reducedResolution,
+    ridgedStrength: params.ridgedStrength * 0.82,
+    elevationCap: params.elevationCap * 0.9,
+    detailAttenuation: params.detailAttenuation * 0.74,
   };
 }
 
