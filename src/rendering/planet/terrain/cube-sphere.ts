@@ -55,15 +55,18 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     3,
   ) * 2 - 1;
 
-  const rawElevation =
-    -oceanBasin * (0.07 + params.simpleStrength * 0.16) +
-    continentMask * (0.08 + params.simpleStrength * 0.3) +
-    macro * params.simpleStrength * 0.14 +
-    Math.max(0, ridged - 0.42) * params.ridgedStrength * params.ridgeAttenuation * (0.12 + continentMask * 0.3) +
-    detail * params.ridgedStrength * params.detailAttenuation * 0.015 +
-    plateau;
+  const oceanFloor = (1 - continentMask) * (0.07 + params.simpleStrength * 0.16);
+  const continentBase = continentMask * (0.08 + params.simpleStrength * 0.3);
+  const uplands = inlandMask * Math.max(0, continentSignal - 0.5) * params.simpleStrength * 0.14;
+  const midLayer =
+    Math.max(0, ridgeRelief - 0.42) *
+    params.ridgedStrength *
+    params.ridgeAttenuation *
+    (0.12 + continentMask * 0.3);
+  const microLayer = microRelief * params.ridgedStrength * params.detailAttenuation * 0.015;
+  const plateau = Math.max(0, midRelief) * inlandMask * 0.05;
 
-  const rawElevation = oceanFloor + continentBase + uplands + midLayer + microLayer;
+  const rawElevation = -oceanFloor + continentBase + uplands + midLayer + microLayer + plateau;
   const normalized = clamp((rawElevation + 0.16) / 0.42, 0, 1);
   const smoothed = smoothstep(
     0.08 + (1 - params.terrainSmoothing) * 0.18,
@@ -77,6 +80,27 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
   const elevation = centered * amplitude;
 
   return clamp(elevation, -0.2, params.elevationCap);
+}
+
+function applyMicroNormalDetail(geometry: THREE.BufferGeometry, params: ProceduralPlanetUniforms): void {
+  const normal = geometry.getAttribute('normal');
+  const position = geometry.getAttribute('position');
+  if (!normal || !position) return;
+
+  const sample = new THREE.Vector3();
+  for (let i = 0; i < normal.count; i += 1) {
+    sample.fromBufferAttribute(position, i).normalize();
+    const grain = fbm(
+      sample.clone().multiplyScalar(params.ridgedFrequency * 3.1).addScalar(params.reliefSeed * 0.000013),
+      params.reliefSeed ^ 0x7f4a7c15,
+      2,
+    );
+    const jitter = (grain - 0.5) * params.detailAttenuation * 0.035;
+    normal.setXYZ(i, normal.getX(i) + jitter, normal.getY(i) + jitter * 0.7, normal.getZ(i) + jitter);
+  }
+
+  normal.needsUpdate = true;
+  geometry.normalizeNormals();
 }
 
 export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE.BufferGeometry {

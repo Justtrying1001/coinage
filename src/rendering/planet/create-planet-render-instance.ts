@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { mapProfileToProceduralUniforms } from './map-profile-to-procedural-uniforms';
 import { ATMOSPHERE_FRAGMENT_SHADER, ATMOSPHERE_VERTEX_SHADER } from './shaders/atmosphere-shaders';
 import { createCubeSphereTerrain } from './terrain/cube-sphere';
-import type { PlanetRenderInput, PlanetRenderInstance, ProceduralPlanetUniforms } from './types';
+import type { PlanetRenderInput, PlanetRenderInstance, PlanetRendererOptions, ProceduralPlanetUniforms } from './types';
 
 interface CachedGeometryEntry {
   geometry: THREE.BufferGeometry;
@@ -38,6 +38,21 @@ function buildSurfaceMaterialKey(params: ReturnType<typeof mapProfileToProcedura
     `rough:${quantize(params.roughness, 0.04).toFixed(2)}`,
     `metal:${quantize(params.metalness, 0.04).toFixed(2)}`,
   ].join('|');
+}
+
+function applyPlanetRenderLod(
+  params: ProceduralPlanetUniforms,
+  lod: PlanetRendererOptions['lod'],
+): ProceduralPlanetUniforms {
+  if (lod !== 'galaxy') {
+    return params;
+  }
+
+  return {
+    ...params,
+    meshResolution: Math.max(24, Math.round(params.meshResolution * 0.7)),
+    detailAttenuation: params.detailAttenuation * 0.8,
+  };
 }
 
 function getOrCreateGeometry(params: ReturnType<typeof mapProfileToProceduralUniforms>): {
