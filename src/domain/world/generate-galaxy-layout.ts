@@ -1,4 +1,4 @@
-import { createSeededRng, deriveSeed, range } from '@/domain/world/seeded-rng';
+import { createSeededRng, deriveSeed } from '@/domain/world/seeded-rng';
 
 export interface GalaxyPlanetLayout {
   id: string;
@@ -12,6 +12,10 @@ export interface GalaxyLayoutConfig {
   planetCount?: number;
   fieldRadius?: number;
   minSpacing?: number;
+  /**
+   * @deprecated Galaxy layout composition is now strictly 2D.
+   * This field is kept only for backward compatibility and is ignored.
+   */
   depthRange?: number;
 }
 
@@ -19,7 +23,7 @@ const DEFAULT_CONFIG: Required<GalaxyLayoutConfig> = {
   planetCount: 120,
   fieldRadius: 70,
   minSpacing: 6.8,
-  depthRange: 12,
+  depthRange: 0,
 };
 
 function isFarEnough(
@@ -75,7 +79,7 @@ export function generateGalaxyLayout(
       planetSeed: `planet-${points.length}`,
       x,
       y,
-      z: range(rng, -merged.depthRange, merged.depthRange),
+      z: 0,
     });
   }
 

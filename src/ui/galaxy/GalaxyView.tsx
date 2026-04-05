@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
+import Link from 'next/link';
 import * as THREE from 'three';
 
 import { generateGalaxyLayout } from '@/domain/world/generate-galaxy-layout';
@@ -18,16 +19,17 @@ interface PlanetRenderData {
   id: string;
   x: number;
   y: number;
-  z: number;
   profile: PlanetVisualProfile;
 }
 
 const FIELD_RADIUS = 70;
-const CAMERA_Z = 34;
 const MOVE_SPEED = 24;
+const BASE_VIEW_HEIGHT = 52;
+const GALAXY_BACKGROUND_Z = -180;
 
-function createStarField(seed: string): THREE.Points {
-  const count = 2400;
+function createStarField(seed: string): THREE.Group {
+  const group = new THREE.Group();
+  const count = 1600;
   const geometry = new THREE.BufferGeometry();
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
@@ -41,36 +43,114 @@ function createStarField(seed: string): THREE.Points {
   };
 
   for (let i = 0; i < count; i += 1) {
-    const radius = Math.pow(random(), 0.65) * 240 + 15;
+    const radius = Math.pow(random(), 0.78) * 230 + 20;
     const theta = random() * Math.PI * 2;
-    const phi = Math.acos(2 * random() - 1);
+    const phi = Math.acos((random() * 2 - 1) * 0.6);
 
     const x = radius * Math.sin(phi) * Math.cos(theta);
     const y = radius * Math.sin(phi) * Math.sin(theta);
-    const z = radius * Math.cos(phi) - 85;
+    const z = radius * Math.cos(phi) - 120;
 
     positions[i * 3] = x;
     positions[i * 3 + 1] = y;
     positions[i * 3 + 2] = z;
 
-    const brightness = 0.6 + random() * 0.4;
+    const warmth = random();
+    const brightness = 0.52 + random() * 0.42;
     colors[i * 3] = brightness;
-    colors[i * 3 + 1] = brightness;
-    colors[i * 3 + 2] = Math.min(1, brightness + 0.08);
+    colors[i * 3 + 1] = brightness * (warmth > 0.72 ? 0.92 : 0.98);
+    colors[i * 3 + 2] = Math.min(1, brightness + 0.12);
   }
 
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
   const material = new THREE.PointsMaterial({
-    size: 0.7,
+    size: 0.5,
     sizeAttenuation: true,
     vertexColors: true,
     transparent: true,
-    opacity: 0.9,
+    opacity: 0.82,
   });
 
-  return new THREE.Points(geometry, material);
+  const primary = new THREE.Points(geometry, material);
+  group.add(primary);
+
+  const accentGeometry = new THREE.BufferGeometry();
+  const accentCount = 280;
+  const accentPositions = new Float32Array(accentCount * 3);
+  for (let i = 0; i < accentCount; i += 1) {
+    const angle = random() * Math.PI * 2;
+    const distance = 45 + Math.pow(random(), 0.45) * 210;
+    accentPositions[i * 3] = Math.cos(angle) * distance;
+    accentPositions[i * 3 + 1] = Math.sin(angle) * distance * 0.72;
+    accentPositions[i * 3 + 2] = -130 + random() * 36;
+  }
+  accentGeometry.setAttribute('position', new THREE.BufferAttribute(accentPositions, 3));
+  const accentMaterial = new THREE.PointsMaterial({
+    color: '#cfe8ff',
+    size: 1.1,
+    transparent: true,
+    opacity: 0.35,
+    depthWrite: false,
+  });
+  group.add(new THREE.Points(accentGeometry, accentMaterial));
+
+  return group;
+}
+
+function createBackdrop(seed: string): THREE.Mesh {
+  const textureSize = 768;
+  const canvas = document.createElement('canvas');
+  canvas.width = textureSize;
+  canvas.height = textureSize;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return new THREE.Mesh();
+  }
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, textureSize);
+  gradient.addColorStop(0, '#02050f');
+  gradient.addColorStop(0.45, '#050b1f');
+  gradient.addColorStop(1, '#02040d');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, textureSize, textureSize);
+
+  let state = deriveSeed(seed, 'nebulae');
+  const random = () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+    return ((t ^ (t >>> 14)) >>> 0) / 0x100000000;
+  };
+
+  for (let i = 0; i < 10; i += 1) {
+    const cx = random() * textureSize;
+    const cy = random() * textureSize;
+    const radius = 90 + random() * 210;
+    const nebula = ctx.createRadialGradient(cx, cy, radius * 0.1, cx, cy, radius);
+    const hue = 212 + Math.floor(random() * 28);
+    const alpha = 0.03 + random() * 0.04;
+    nebula.addColorStop(0, `hsla(${hue}, 80%, 64%, ${alpha})`);
+    nebula.addColorStop(1, `hsla(${hue}, 80%, 64%, 0)`);
+    ctx.fillStyle = nebula;
+    ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+
+  const geometry = new THREE.PlaneGeometry(520, 340);
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: true,
+    depthWrite: false,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.z = GALAXY_BACKGROUND_Z;
+  return mesh;
 }
 
 export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
@@ -81,9 +161,10 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       planetCount: 110,
       fieldRadius: FIELD_RADIUS,
       minSpacing: 7.4,
-      depthRange: 10,
     }).map((planet) => ({
-      ...planet,
+      id: planet.id,
+      x: planet.x,
+      y: planet.y,
       profile: generatePlanetVisualProfile({ worldSeed, planetSeed: planet.planetSeed }),
     }));
   }, [worldSeed]);
@@ -96,28 +177,42 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     }
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#020617');
-    scene.fog = new THREE.FogExp2('#030712', 0.016);
-
-    const camera = new THREE.PerspectiveCamera(54, mount.clientWidth / mount.clientHeight, 0.1, 600);
-    camera.position.set(0, 0, CAMERA_Z);
+    scene.background = new THREE.Color('#01030b');
+    const width = mount.clientWidth;
+    const height = mount.clientHeight;
+    const aspect = width / Math.max(1, height);
+    const viewHeight = BASE_VIEW_HEIGHT;
+    const viewWidth = viewHeight * aspect;
+    const camera = new THREE.OrthographicCamera(
+      -viewWidth / 2,
+      viewWidth / 2,
+      viewHeight / 2,
+      -viewHeight / 2,
+      0.1,
+      600,
+    );
+    camera.position.set(0, 0, 60);
+    camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     mount.appendChild(renderer.domElement);
 
+    const backdrop = createBackdrop(worldSeed);
+    scene.add(backdrop);
+
     const stars = createStarField(worldSeed);
     scene.add(stars);
 
-    scene.add(new THREE.AmbientLight('#93c5fd', 0.36));
+    scene.add(new THREE.AmbientLight('#9fc5ff', 0.45));
 
-    const keyLight = new THREE.DirectionalLight('#ffffff', 1.15);
-    keyLight.position.set(24, 28, 40);
+    const keyLight = new THREE.DirectionalLight('#ffffff', 1.05);
+    keyLight.position.set(20, 26, 44);
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight('#67e8f9', 0.3);
-    fillLight.position.set(-20, -18, 20);
+    const fillLight = new THREE.DirectionalLight('#90b5ff', 0.26);
+    fillLight.position.set(-24, -12, 32);
     scene.add(fillLight);
 
     const planetGroup = new THREE.Group();
@@ -128,7 +223,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         profile: planet.profile,
         x: planet.x,
         y: planet.y,
-        z: planet.z,
+        z: 0,
       });
       instances.push(instance);
       planetGroup.add(instance.object);
@@ -194,7 +289,13 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
 
       const width = mountRef.current.clientWidth;
       const height = mountRef.current.clientHeight;
-      camera.aspect = width / height;
+      const aspect = width / Math.max(1, height);
+      const frustumHalfHeight = BASE_VIEW_HEIGHT / 2;
+      const frustumHalfWidth = frustumHalfHeight * aspect;
+      camera.left = -frustumHalfWidth;
+      camera.right = frustumHalfWidth;
+      camera.top = frustumHalfHeight;
+      camera.bottom = -frustumHalfHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
     };
@@ -205,8 +306,8 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     window.addEventListener('pointerup', onPointerUp);
     window.addEventListener('resize', onResize);
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
-    renderer.domElement.addEventListener('contextmenu', (event) => event.preventDefault());
-    renderer.domElement.addEventListener('wheel', (event) => event.preventDefault(), { passive: false });
+    renderer.domElement.addEventListener('contextmenu', (event: MouseEvent) => event.preventDefault());
+    renderer.domElement.addEventListener('wheel', (event: WheelEvent) => event.preventDefault(), { passive: false });
 
     let previousTime = performance.now();
     let frame = 0;
@@ -232,8 +333,8 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       camera.position.x = Math.max(-FIELD_RADIUS, Math.min(FIELD_RADIUS, camera.position.x));
       camera.position.y = Math.max(-FIELD_RADIUS, Math.min(FIELD_RADIUS, camera.position.y));
 
-      if (frame % 2 === 0) {
-        stars.rotation.z += 0.00008;
+      if (frame % 3 === 0) {
+        stars.rotation.z += 0.00004;
       }
       frame += 1;
 
@@ -257,10 +358,31 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         instance.dispose();
       }
 
-      const starsGeometry = stars.geometry;
-      const starsMaterial = stars.material;
-      starsGeometry.dispose();
-      (starsMaterial as THREE.Material).dispose();
+      stars.traverse((node: THREE.Object3D) => {
+        if (node instanceof THREE.Points) {
+          node.geometry.dispose();
+          if (Array.isArray(node.material)) {
+            for (const mat of node.material) {
+              mat.dispose();
+            }
+          } else {
+            node.material.dispose();
+          }
+        }
+      });
+
+      const backdropMaterial = backdrop.material;
+      if (!Array.isArray(backdropMaterial)) {
+        (backdropMaterial as THREE.MeshBasicMaterial).map?.dispose();
+      }
+      if (Array.isArray(backdropMaterial)) {
+        for (const mat of backdropMaterial) {
+          mat.dispose();
+        }
+      } else {
+        backdropMaterial.dispose();
+      }
+      backdrop.geometry.dispose();
 
       renderer.dispose();
       if (mount.contains(renderer.domElement)) {
@@ -270,14 +392,22 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
   }, [planetData, worldSeed]);
 
   return (
-    <section className="space-y-3">
-      <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3 text-xs text-slate-300">
-        <p>
-          Controls: <span className="font-semibold text-slate-100">WASD / Arrow Keys</span> to move, drag to pan.
-          Zoom is intentionally disabled for MVP map framing.
+    <section className="relative h-full w-full overflow-hidden">
+      <div className="pointer-events-none absolute left-4 top-4 z-10 max-w-sm rounded-md bg-slate-950/55 px-3 py-2 text-xs text-slate-200 shadow-lg shadow-slate-950/40 backdrop-blur-sm">
+        <p className="text-[11px] uppercase tracking-[0.16em] text-slate-300/90">Coinage Galaxy Map</p>
+        <p className="mt-1 text-slate-100/90">
+          <span className="font-semibold">Pan:</span> WASD / Arrow Keys / drag
         </p>
       </div>
-      <div ref={mountRef} className="h-[72vh] w-full rounded-xl border border-slate-800" />
+      <div className="pointer-events-auto absolute left-4 top-20 z-10">
+        <Link
+          href="/"
+          className="inline-flex items-center rounded-md border border-slate-600/70 bg-slate-900/60 px-3 py-1.5 text-xs font-medium text-slate-100 transition hover:border-slate-400 hover:bg-slate-800/80"
+        >
+          Back
+        </Link>
+      </div>
+      <div ref={mountRef} className="h-full w-full" />
     </section>
   );
 }

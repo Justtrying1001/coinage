@@ -52,15 +52,23 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
   landBase.getHSL(hsl);
 
   const hue = (hsl.h + profile.color.hueShift / 360 + 1) % 1;
-  const saturation = clamp(hsl.s * 0.7 + profile.color.saturation * 0.4, 0.18, 0.92);
-  const lightness = clamp(hsl.l * 0.7 + profile.color.lightness * 0.35, 0.2, 0.82);
+  const saturation = clamp(hsl.s * 0.76 + profile.color.saturation * 0.42, 0.2, 0.95);
+  const lightness = clamp(hsl.l * 0.74 + profile.color.lightness * 0.38, 0.2, 0.8);
 
   const landColor = new THREE.Color().setHSL(hue, saturation, lightness);
-  const mountainColor = new THREE.Color().setHSL(hue, clamp(saturation * 0.35, 0.08, 0.6), clamp(lightness * 1.28, 0.35, 0.92));
-  const iceColor = new THREE.Color().setHSL(hue, clamp(saturation * 0.12, 0.02, 0.2), clamp(lightness * 1.35, 0.62, 0.97));
+  const mountainColor = new THREE.Color().setHSL(
+    hue,
+    clamp(saturation * 0.3 + 0.05, 0.1, 0.55),
+    clamp(lightness * 1.22, 0.34, 0.9),
+  );
+  const iceColor = new THREE.Color().setHSL(
+    hue,
+    clamp(saturation * 0.09, 0.015, 0.18),
+    clamp(lightness * 1.38, 0.66, 0.97),
+  );
 
-  const oceanColor = oceanBase.clone().offsetHSL(profile.color.hueShift / 720, 0, -0.05);
-  const shallowWaterColor = oceanBase.clone().offsetHSL(profile.color.hueShift / 840, 0.04, 0.06);
+  const oceanColor = oceanBase.clone().offsetHSL(profile.color.hueShift / 720, -0.02, -0.07);
+  const shallowWaterColor = oceanBase.clone().offsetHSL(profile.color.hueShift / 840, 0.06, 0.08);
 
   const isIcy = profile.materialFamily === 'icy';
   const isRocky = profile.materialFamily === 'rocky';
