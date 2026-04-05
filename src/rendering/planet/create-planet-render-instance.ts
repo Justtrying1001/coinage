@@ -40,7 +40,7 @@ function buildSurfaceMaterialKey(params: ReturnType<typeof mapProfileToProcedura
   ].join('|');
 }
 
-function applyPlanetRenderLod(
+export function applyPlanetRenderLod(
   params: ProceduralPlanetUniforms,
   lod: PlanetRendererOptions['lod'],
 ): ProceduralPlanetUniforms {
