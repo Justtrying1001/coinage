@@ -24,6 +24,10 @@ function pickWaterColor(palette: PlanetVisualProfile['paletteFamily']): string {
       return '#4f5fa6';
     case 'ember-dust':
       return '#2f5a7e';
+    case 'verdant-umber':
+      return '#3c7f74';
+    case 'rose-quartz':
+      return '#5968a8';
     default:
       return '#2a659a';
   }
@@ -41,6 +45,10 @@ function pickLandColor(palette: PlanetVisualProfile['paletteFamily']): string {
       return '#9e8751';
     case 'violet-ash':
       return '#7b6f86';
+    case 'verdant-umber':
+      return '#667f57';
+    case 'rose-quartz':
+      return '#9b7687';
   }
 }
 
@@ -76,24 +84,24 @@ function pickTerrainProfile(profile: PlanetVisualProfile): TerrainProfileSetting
   if (rareExtremeGate) {
     return {
       type: 'extreme',
-      elevationCap: 0.33,
-      terrainSmoothing: 0.45,
-      ridgeAttenuation: 0.9,
-      detailAttenuation: 0.72,
-      macroScale: 1.08,
-      ridgedScale: 0.88,
+      elevationCap: 0.27,
+      terrainSmoothing: 0.56,
+      ridgeAttenuation: 0.68,
+      detailAttenuation: 0.46,
+      macroScale: 0.96,
+      ridgedScale: 0.62,
     };
   }
 
   if (ruggedness > 0.88 || rarity > 0.86) {
     return {
       type: 'rough',
-      elevationCap: 0.27,
-      terrainSmoothing: 0.58,
-      ridgeAttenuation: 0.66,
-      detailAttenuation: 0.44,
-      macroScale: 0.98,
-      ridgedScale: 0.72,
+      elevationCap: 0.24,
+      terrainSmoothing: 0.64,
+      ridgeAttenuation: 0.54,
+      detailAttenuation: 0.34,
+      macroScale: 0.92,
+      ridgedScale: 0.56,
     };
   }
 
@@ -146,21 +154,21 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     landColor: colorToTuple(landColor),
     mountainColor: colorToTuple(mountainColor),
     iceColor: colorToTuple(iceColor),
-    radius: clamp(profile.shape.radius * 0.84, 0.55, 2.2),
-    meshResolution: Math.round(clamp(20 + profile.shape.radius * 6 + profile.relief.macroStrength * 12, 22, 34)),
+    radius: clamp(profile.shape.radius * 0.96, 0.85, 2.95),
+    meshResolution: Math.round(clamp(15 + profile.shape.radius * 4 + profile.relief.macroStrength * 7, 16, 24)),
     oceanLevel: clamp(0.38 + (0.5 - profile.color.accentMix) * 0.18 + (isIcy ? 0.08 : 0), 0.25, 0.62),
     mountainLevel: clamp(0.7 + profile.relief.macroStrength * 0.18 + (isRocky ? 0.03 : 0), 0.66, 0.92),
     simpleFrequency: clamp(profile.shape.wobbleFrequency * 0.9 + 0.55, 0.8, 4.2),
     simpleStrength: clamp(
       (profile.relief.macroStrength * 0.72 + profile.shape.wobbleAmplitude * 0.45) * terrainProfile.macroScale,
       0.08,
-      0.76,
+      0.58,
     ),
     ridgedFrequency: clamp(profile.shape.wobbleFrequency * 2.0 + 1.4, 1.8, 8.2),
     ridgedStrength: clamp(
       (profile.relief.microStrength * 1.12 + profile.shape.ridgeWarp * 0.22) * terrainProfile.ridgedScale,
       0.04,
-      0.72,
+      0.5,
     ),
     maskStrength: clamp(0.45 + profile.shape.ridgeWarp * 0.4 + profile.relief.craterDensity * 0.1, 0.3, 0.95),
     terrainProfile: terrainProfile.type,

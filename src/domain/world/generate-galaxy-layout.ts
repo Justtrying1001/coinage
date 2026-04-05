@@ -13,13 +13,20 @@ export interface GalaxyLayoutConfig {
   fieldRadius?: number;
   minSpacing?: number;
   /**
+   * Optional per-planet visual radius estimates used for spacing checks.
+   * Values are interpreted in galaxy-world units.
+   */
+  planetRadii?: number[];
+  /**
    * @deprecated Galaxy layout composition is now strictly 2D.
    * This field is kept only for backward compatibility and is ignored.
    */
   depthRange?: number;
 }
 
-const DEFAULT_CONFIG: Required<GalaxyLayoutConfig> = {
+type GalaxyLayoutBaseConfig = Omit<GalaxyLayoutConfig, 'planetRadii'>;
+
+export const DEFAULT_GALAXY_LAYOUT_CONFIG: Required<GalaxyLayoutBaseConfig> = {
   planetCount: 140,
   fieldRadius: 74,
   minSpacing: 6.2,
@@ -29,15 +36,20 @@ const DEFAULT_CONFIG: Required<GalaxyLayoutConfig> = {
 function isFarEnough(
   x: number,
   y: number,
+  radius: number,
   points: GalaxyPlanetLayout[],
+  placedRadii: number[],
   minSpacing: number,
 ): boolean {
-  for (const point of points) {
+  for (let i = 0; i < points.length; i += 1) {
+    const point = points[i];
+    const pointRadius = placedRadii[i] ?? 0;
     const dx = point.x - x;
     const dy = point.y - y;
-    const distanceSq = dx * dx + dy * dy;
+    const distance = Math.hypot(dx, dy);
+    const requiredDistance = minSpacing + radius + pointRadius;
 
-    if (distanceSq < minSpacing * minSpacing) {
+    if (distance < requiredDistance) {
       return false;
     }
   }
@@ -53,12 +65,13 @@ export function generateGalaxyLayout(
     throw new Error('worldSeed is required for galaxy layout generation');
   }
 
-  const merged = { ...DEFAULT_CONFIG, ...config };
+  const merged = { ...DEFAULT_GALAXY_LAYOUT_CONFIG, ...config };
   const rng = createSeededRng(deriveSeed(worldSeed, 'galaxy-layout'));
 
   const points: GalaxyPlanetLayout[] = [];
+  const placedRadii: number[] = [];
   const candidateChecks = Math.max(18, Math.round(merged.planetCount / 4));
-  const maxAttempts = merged.planetCount * 10;
+  const maxAttempts = merged.planetCount * 18;
 
   let attempts = 0;
   while (points.length < merged.planetCount && attempts < maxAttempts) {
@@ -68,8 +81,8 @@ export function generateGalaxyLayout(
 
     for (let i = 0; i < candidateChecks; i += 1) {
       const angle = rng() * Math.PI * 2;
-      const radialBias = Math.pow(rng(), 1.12);
-      const radius = (0.14 + radialBias * 0.86) * merged.fieldRadius;
+      const radialBias = Math.pow(rng(), 0.94);
+      const radius = (0.04 + radialBias * 0.96) * merged.fieldRadius;
 
       const x = Math.cos(angle) * radius;
       const y = Math.sin(angle) * radius;
@@ -89,7 +102,7 @@ export function generateGalaxyLayout(
       }
 
       const edgeFactor = radius / merged.fieldRadius;
-      const score = nearestDistance * (0.9 + edgeFactor * 0.24);
+      const score = nearestDistance * (0.96 + edgeFactor * 0.1);
 
       if (!bestCandidate || score > bestCandidate.nearestDistance) {
         bestCandidate = { x, y, nearestDistance: score };
@@ -100,11 +113,13 @@ export function generateGalaxyLayout(
       continue;
     }
 
-    const dynamicMinSpacing = merged.minSpacing * (0.92 + rng() * 0.18);
-    if (!isFarEnough(bestCandidate.x, bestCandidate.y, points, dynamicMinSpacing)) {
+    const candidateRadius = merged.planetRadii?.[points.length] ?? 0;
+    const dynamicMinSpacing = merged.minSpacing * (0.98 + rng() * 0.08);
+    if (!isFarEnough(bestCandidate.x, bestCandidate.y, candidateRadius, points, placedRadii, dynamicMinSpacing)) {
       continue;
     }
 
+    placedRadii.push(candidateRadius);
     points.push({
       id: `planet-${points.length}`,
       planetSeed: `planet-${points.length}`,

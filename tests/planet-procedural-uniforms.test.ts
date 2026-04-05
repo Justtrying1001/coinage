@@ -104,9 +104,9 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
 
     assert.ok(uniforms.shapeSeed >= 0, `shapeSeed out of range: ${uniforms.shapeSeed}`);
     assert.ok(uniforms.reliefSeed >= 0, `reliefSeed out of range: ${uniforms.reliefSeed}`);
-    assert.ok(uniforms.radius >= 0.55 && uniforms.radius <= 2.2, `radius out of range: ${uniforms.radius}`);
+    assert.ok(uniforms.radius >= 0.85 && uniforms.radius <= 2.95, `radius out of range: ${uniforms.radius}`);
     assert.ok(
-      uniforms.meshResolution >= 22 && uniforms.meshResolution <= 34,
+      uniforms.meshResolution >= 16 && uniforms.meshResolution <= 24,
       `meshResolution out of range: ${uniforms.meshResolution}`,
     );
     assert.ok(
@@ -122,7 +122,7 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
       `simpleFrequency out of range: ${uniforms.simpleFrequency}`,
     );
     assert.ok(
-      uniforms.simpleStrength >= 0.08 && uniforms.simpleStrength <= 0.9,
+      uniforms.simpleStrength >= 0.08 && uniforms.simpleStrength <= 0.58,
       `simpleStrength out of range: ${uniforms.simpleStrength}`,
     );
     assert.ok(
@@ -130,24 +130,24 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
       `ridgedFrequency out of range: ${uniforms.ridgedFrequency}`,
     );
     assert.ok(
-      uniforms.ridgedStrength >= 0.04 && uniforms.ridgedStrength <= 0.72,
+      uniforms.ridgedStrength >= 0.04 && uniforms.ridgedStrength <= 0.5,
       `ridgedStrength out of range: ${uniforms.ridgedStrength}`,
     );
     assert.ok(
       uniforms.maskStrength >= 0.3 && uniforms.maskStrength <= 0.95,
       `maskStrength out of range: ${uniforms.maskStrength}`,
     );
-    assert.ok(uniforms.elevationCap >= 0.19 && uniforms.elevationCap <= 0.33, `elevationCap out of range: ${uniforms.elevationCap}`);
+    assert.ok(uniforms.elevationCap >= 0.19 && uniforms.elevationCap <= 0.27, `elevationCap out of range: ${uniforms.elevationCap}`);
     assert.ok(
-      uniforms.terrainSmoothing >= 0.45 && uniforms.terrainSmoothing <= 0.82,
+      uniforms.terrainSmoothing >= 0.56 && uniforms.terrainSmoothing <= 0.82,
       `terrainSmoothing out of range: ${uniforms.terrainSmoothing}`,
     );
     assert.ok(
-      uniforms.ridgeAttenuation >= 0.32 && uniforms.ridgeAttenuation <= 0.9,
+      uniforms.ridgeAttenuation >= 0.32 && uniforms.ridgeAttenuation <= 0.68,
       `ridgeAttenuation out of range: ${uniforms.ridgeAttenuation}`,
     );
     assert.ok(
-      uniforms.detailAttenuation >= 0.24 && uniforms.detailAttenuation <= 0.72,
+      uniforms.detailAttenuation >= 0.24 && uniforms.detailAttenuation <= 0.46,
       `detailAttenuation out of range: ${uniforms.detailAttenuation}`,
     );
     assert.ok(uniforms.roughness >= 0.2 && uniforms.roughness <= 1, `roughness out of range: ${uniforms.roughness}`);

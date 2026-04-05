@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import * as THREE from 'three';
 
-import { generateGalaxyLayout } from '@/domain/world/generate-galaxy-layout';
+import { DEFAULT_GALAXY_LAYOUT_CONFIG, generateGalaxyLayout } from '@/domain/world/generate-galaxy-layout';
 import { generatePlanetVisualProfile } from '@/domain/world/generate-planet-visual-profile';
 import type { PlanetVisualProfile } from '@/domain/world/planet-visual.types';
 import { deriveSeed } from '@/domain/world/seeded-rng';
@@ -19,13 +19,20 @@ interface PlanetRenderData {
   id: string;
   x: number;
   y: number;
+  radius: number;
   profile: PlanetVisualProfile;
 }
 
-const FIELD_RADIUS = 76;
+const FIELD_RADIUS = 84;
 const MOVE_SPEED = 24;
-const BASE_VIEW_HEIGHT = 52;
+const BASE_VIEW_HEIGHT = 60;
 const GALAXY_BACKGROUND_Z = -180;
+const GALAXY_LAYOUT_RUNTIME_CONFIG = {
+  ...DEFAULT_GALAXY_LAYOUT_CONFIG,
+  planetCount: 176,
+  fieldRadius: FIELD_RADIUS,
+  minSpacing: 3.2,
+} as const;
 
 function createStarField(seed: string): THREE.Group {
   const group = new THREE.Group();
@@ -206,11 +213,13 @@ function createBackdrop(seed: string): THREE.Mesh {
   const geometry = new THREE.PlaneGeometry(520, 340);
   const material = new THREE.MeshBasicMaterial({
     map: texture,
-    transparent: true,
+    transparent: false,
+    depthTest: false,
     depthWrite: false,
   });
   const mesh = new THREE.Mesh(geometry, material);
   mesh.position.z = GALAXY_BACKGROUND_Z;
+  mesh.renderOrder = -100;
   return mesh;
 }
 
@@ -218,15 +227,21 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
 
   const planetData = useMemo<PlanetRenderData[]>(() => {
-    return generateGalaxyLayout(worldSeed, {
-      planetCount: 148,
-      fieldRadius: FIELD_RADIUS,
-      minSpacing: 6.35,
-    }).map((planet) => ({
+    const profiles = Array.from({ length: GALAXY_LAYOUT_RUNTIME_CONFIG.planetCount }, (_, index) =>
+      generatePlanetVisualProfile({ worldSeed, planetSeed: `planet-${index}` }),
+    );
+    const estimatedRadii = profiles.map((profile) => profile.shape.radius * 0.96);
+    const layout = generateGalaxyLayout(worldSeed, {
+      ...GALAXY_LAYOUT_RUNTIME_CONFIG,
+      planetRadii: estimatedRadii,
+    });
+
+    return layout.map((planet, index) => ({
       id: planet.id,
       x: planet.x,
       y: planet.y,
-      profile: generatePlanetVisualProfile({ worldSeed, planetSeed: planet.planetSeed }),
+      radius: estimatedRadii[index] ?? 1,
+      profile: profiles[index]!,
     }));
   }, [worldSeed]);
 
@@ -238,7 +253,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     }
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#01030b');
+    scene.background = null;
     const width = mount.clientWidth;
     const height = mount.clientHeight;
     const aspect = width / Math.max(1, height);
@@ -285,6 +300,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         x: planet.x,
         y: planet.y,
         z: 0,
+        options: { lod: 'galaxy' },
       });
       instances.push(instance);
       planetGroup.add(instance.object);

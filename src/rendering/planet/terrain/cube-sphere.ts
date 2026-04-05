@@ -33,31 +33,31 @@ function faceAxes(localUp: THREE.Vector3): { axisA: THREE.Vector3; axisB: THREE.
 
 function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms): number {
   const continentSeed = params.shapeSeed ^ (params.reliefSeed << 1);
-  const continent = fbm(point.clone().multiplyScalar(params.simpleFrequency * 0.55), continentSeed, 4);
-  const continentMask = smoothstep(0.37, 0.58, continent);
-  const oceanBasin = smoothstep(0.12, 0.42, 1 - continent);
+  const continent = fbm(point.clone().multiplyScalar(params.simpleFrequency * 0.52), continentSeed, 3);
+  const continentMask = smoothstep(0.4, 0.62, continent);
+  const oceanBasin = smoothstep(0.14, 0.44, 1 - continent);
 
   const macro = fbm(
     point.clone().multiplyScalar(params.simpleFrequency * 1.15).addScalar(params.shapeSeed * 0.000041),
     params.shapeSeed,
-    5,
+    4,
   ) * 2 - 1;
   const ridged = ridgedFbm(
-    point.clone().multiplyScalar(params.ridgedFrequency * 0.82).addScalar(params.reliefSeed * 0.000037),
+    point.clone().multiplyScalar(params.ridgedFrequency * 0.74).addScalar(params.reliefSeed * 0.000037),
     params.reliefSeed,
-    5,
+    4,
   );
-  const detail = fbm(point.clone().multiplyScalar(params.ridgedFrequency * 1.42), params.reliefSeed ^ 0x9e3779b9, 3) * 2 - 1;
+  const detail = fbm(point.clone().multiplyScalar(params.ridgedFrequency * 1.22), params.reliefSeed ^ 0x9e3779b9, 2) * 2 - 1;
 
-  const plateauSteps = Math.floor((continentMask * 4 + macro * 1.6 + 2) * 2.4) / 2.4;
-  const plateau = clamp(plateauSteps * 0.12 - 0.18, -0.18, 0.28);
+  const plateauShape = continentMask * 3.1 + macro * 1.15;
+  const plateau = clamp(Math.tanh(plateauShape * 0.45) * 0.13 - 0.06, -0.12, 0.16);
 
   const rawElevation =
     -oceanBasin * (0.07 + params.simpleStrength * 0.16) +
     continentMask * (0.08 + params.simpleStrength * 0.3) +
-    macro * params.simpleStrength * 0.18 +
-    Math.max(0, ridged - 0.36) * params.ridgedStrength * params.ridgeAttenuation * (0.16 + continentMask * 0.42) +
-    detail * params.ridgedStrength * params.detailAttenuation * 0.032 +
+    macro * params.simpleStrength * 0.14 +
+    Math.max(0, ridged - 0.42) * params.ridgedStrength * params.ridgeAttenuation * (0.12 + continentMask * 0.3) +
+    detail * params.ridgedStrength * params.detailAttenuation * 0.022 +
     plateau;
 
   const normalized = clamp((rawElevation + 0.26) / 0.72, 0, 1);
