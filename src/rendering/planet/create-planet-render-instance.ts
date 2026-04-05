@@ -108,11 +108,22 @@ export function createPlanetRenderInstance({ profile, x, y, z, options }: Planet
 
   const material = new THREE.MeshPhysicalMaterial({
     vertexColors: true,
-    roughness: Math.max(0.12, params.roughness * (options?.lod === 'planet' ? 0.9 : 1)),
-    metalness: params.metalness,
-    clearcoat: options?.lod === 'planet' ? 0.16 : 0.04,
-    clearcoatRoughness: options?.lod === 'planet' ? 0.25 : 0.6,
+    roughness: Math.max(0.2, params.roughness * (options?.lod === 'planet' ? 1.05 : 1.1)),
+    metalness: params.metalness * 0.6,
+    clearcoat: options?.lod === 'planet' ? 0.08 : 0.02,
+    clearcoatRoughness: options?.lod === 'planet' ? 0.7 : 0.85,
   });
+
+  material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <roughnessmap_fragment>',
+      `#include <roughnessmap_fragment>
+      float waterMask = smoothstep(0.08, 0.24, vColor.b - max(vColor.r, vColor.g));
+      float highlandMask = smoothstep(0.5, 0.85, vColor.r * 0.35 + vColor.g * 0.5 + vColor.b * 0.15);
+      roughnessFactor = mix(roughnessFactor, 0.08, waterMask * 0.92);
+      roughnessFactor = mix(roughnessFactor, clamp(roughnessFactor * 1.26 + 0.08, 0.0, 1.0), highlandMask * (1.0 - waterMask));`,
+    );
+  };
 
   const planetMesh = new THREE.Mesh(geometry, material);
   group.add(planetMesh);
@@ -123,7 +134,7 @@ export function createPlanetRenderInstance({ profile, x, y, z, options }: Planet
   if (params.atmosphereEnabled && params.atmosphereIntensity > 0.01) {
     const atmoSegments = options?.lod === 'galaxy' ? 20 : options?.lod === 'planet' ? 56 : 34;
     atmosphereGeometry = new THREE.SphereGeometry(
-      params.radius * (1 + params.atmosphereThickness * 1.8),
+      params.radius * (1 + params.atmosphereThickness * 1.15),
       atmoSegments,
       atmoSegments,
     );
