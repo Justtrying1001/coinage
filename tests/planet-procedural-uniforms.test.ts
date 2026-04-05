@@ -56,6 +56,8 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
     moderate: 0,
     rough: 0,
     extreme: 0,
+    fragmented: 0,
+    continental: 0,
   };
   const paletteFamilies = new Set<string>();
   const surfaceCategories = new Set<string>();
@@ -110,20 +112,20 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
     assert.ok(uniforms.reliefSeed >= 0, `reliefSeed out of range: ${uniforms.reliefSeed}`);
     assert.ok(uniforms.radius >= 1.45 && uniforms.radius <= 4.8, `radius out of range: ${uniforms.radius}`);
     assert.ok(
-      uniforms.meshResolution >= 20 && uniforms.meshResolution <= 34,
+      uniforms.meshResolution >= 20 && uniforms.meshResolution <= 35,
       `meshResolution out of range: ${uniforms.meshResolution}`,
     );
     assert.ok(
-      uniforms.oceanLevel >= 0.2 && uniforms.oceanLevel <= 0.58,
+      uniforms.oceanLevel >= 0.08 && uniforms.oceanLevel <= 0.64,
       `oceanLevel out of range: ${uniforms.oceanLevel}`,
     );
     assert.ok(
-      uniforms.mountainLevel >= 0.64 && uniforms.mountainLevel <= 0.9,
+      uniforms.mountainLevel >= 0.6 && uniforms.mountainLevel <= 0.92,
       `mountainLevel out of range: ${uniforms.mountainLevel}`,
     );
     assert.ok(
-      uniforms.mountainLevel - uniforms.oceanLevel >= 0.16,
-      `expected land band gap >= 0.16, got ${uniforms.mountainLevel - uniforms.oceanLevel}`,
+      uniforms.mountainLevel - uniforms.oceanLevel >= 0.14,
+      `expected land band gap >= 0.14, got ${uniforms.mountainLevel - uniforms.oceanLevel}`,
     );
     assert.ok(
       uniforms.simpleFrequency >= 0.8 && uniforms.simpleFrequency <= 4.2,
@@ -145,27 +147,44 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
       uniforms.maskStrength >= 0.3 && uniforms.maskStrength <= 0.95,
       `maskStrength out of range: ${uniforms.maskStrength}`,
     );
-    assert.ok(uniforms.elevationCap >= 0.19 && uniforms.elevationCap <= 0.27, `elevationCap out of range: ${uniforms.elevationCap}`);
+    assert.ok(uniforms.elevationCap >= 0.2 && uniforms.elevationCap <= 0.28, `elevationCap out of range: ${uniforms.elevationCap}`);
     assert.ok(
-      uniforms.terrainSmoothing >= 0.56 && uniforms.terrainSmoothing <= 0.82,
+      uniforms.terrainSmoothing >= 0.54 && uniforms.terrainSmoothing <= 0.86,
       `terrainSmoothing out of range: ${uniforms.terrainSmoothing}`,
     );
     assert.ok(
-      uniforms.ridgeAttenuation >= 0.32 && uniforms.ridgeAttenuation <= 0.68,
+      uniforms.ridgeAttenuation >= 0.28 && uniforms.ridgeAttenuation <= 0.72,
       `ridgeAttenuation out of range: ${uniforms.ridgeAttenuation}`,
     );
     assert.ok(
-      uniforms.detailAttenuation >= 0.24 && uniforms.detailAttenuation <= 0.46,
+      uniforms.detailAttenuation >= 0.2 && uniforms.detailAttenuation <= 0.5,
       `detailAttenuation out of range: ${uniforms.detailAttenuation}`,
+    );
+    assert.ok(
+      uniforms.continentThreshold >= 0.45 && uniforms.continentThreshold <= 0.6,
+      `continentThreshold out of range: ${uniforms.continentThreshold}`,
+    );
+    assert.ok(
+      uniforms.continentSharpness >= 0.11 && uniforms.continentSharpness <= 0.28,
+      `continentSharpness out of range: ${uniforms.continentSharpness}`,
+    );
+    assert.ok(
+      uniforms.continentDrift >= 0.05 && uniforms.continentDrift <= 0.34,
+      `continentDrift out of range: ${uniforms.continentDrift}`,
+    );
+    assert.ok(uniforms.trenchDepth >= 0.08 && uniforms.trenchDepth <= 0.19, `trenchDepth out of range: ${uniforms.trenchDepth}`);
+    assert.ok(
+      uniforms.biomeHarshness >= 0.14 && uniforms.biomeHarshness <= 0.86,
+      `biomeHarshness out of range: ${uniforms.biomeHarshness}`,
     );
     assert.ok(uniforms.roughness >= 0.2 && uniforms.roughness <= 1, `roughness out of range: ${uniforms.roughness}`);
     assert.ok(uniforms.metalness >= 0.05 && uniforms.metalness <= 0.45, `metalness out of range: ${uniforms.metalness}`);
     assert.ok(
-      uniforms.atmosphereIntensity >= 0 && uniforms.atmosphereIntensity <= 0.95,
+      uniforms.atmosphereIntensity >= 0 && uniforms.atmosphereIntensity <= 1,
       `atmosphereIntensity out of range: ${uniforms.atmosphereIntensity}`,
     );
     assert.ok(
-      uniforms.atmosphereThickness >= 0 && uniforms.atmosphereThickness <= 0.12,
+      uniforms.atmosphereThickness >= 0 && uniforms.atmosphereThickness <= 0.14,
       `atmosphereThickness out of range: ${uniforms.atmosphereThickness}`,
     );
 
@@ -173,10 +192,11 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
   }
 
   assert.ok(profileCounts.smooth > 0, 'expected smooth terrain profiles to exist');
-  assert.ok(profileCounts.moderate > 0, 'expected moderate terrain profiles to exist');
   assert.ok(profileCounts.rough > 0, 'expected rough terrain profiles to exist');
   assert.ok(profileCounts.extreme > 0, 'expected rare extreme terrain profiles to exist');
-  assert.ok(profileCounts.extreme <= 15, `expected extreme terrain to remain rare, got ${profileCounts.extreme}`);
+  assert.ok(profileCounts.fragmented > 0, 'expected fragmented terrain profiles to exist');
+  assert.ok(profileCounts.continental > 0, 'expected continental terrain profiles to exist');
+  assert.ok(profileCounts.extreme <= 40, `expected extreme terrain to remain controlled, got ${profileCounts.extreme}`);
   assert.ok(paletteFamilies.size >= 10, `expected at least 10 palette families, got ${paletteFamilies.size}`);
   assert.ok(surfaceCategories.size >= 7, `expected at least 7 surface categories, got ${surfaceCategories.size}`);
 });

@@ -121,6 +121,11 @@ interface TerrainProfileSettings {
   detailAttenuation: number;
   macroScale: number;
   ridgedScale: number;
+  continentThreshold: number;
+  continentSharpness: number;
+  continentDrift: number;
+  trenchDepth: number;
+  biomeHarshness: number;
 }
 
 function minimumLandRatioForCategory(category: SurfaceCategoryKind): number {
@@ -173,6 +178,31 @@ function pickSurfaceCategory(
   profile: PlanetVisualProfile,
   climate: { dry: number; lush: number; mineral: number; cryo: number; oddity: number },
 ): SurfaceCategoryKind {
+  switch (profile.archetype) {
+    case 'oceanic':
+      return 'ocean';
+    case 'icy':
+    case 'clouded':
+      return 'ice';
+    case 'arid':
+      return 'desert';
+    case 'lush':
+    case 'superterran':
+      return 'lush';
+    case 'volcanic':
+      return 'volcanic';
+    case 'dead':
+      return 'barren';
+    case 'toxic':
+      return 'toxic';
+    case 'mineral':
+      return 'mineral';
+    case 'exotic':
+      return climate.oddity > 0.65 ? 'toxic' : 'abyssal';
+    case 'fragmented':
+      return climate.dry > 0.55 ? 'desert' : 'barren';
+  }
+
   if (profile.paletteFamily === 'toxic-neon') {
     return 'toxic';
   }
@@ -308,6 +338,147 @@ function categoryPalette(category: SurfaceCategoryKind): {
 }
 
 function pickTerrainProfile(profile: PlanetVisualProfile): TerrainProfileSettings {
+  switch (profile.archetype) {
+    case 'oceanic':
+      return {
+        type: 'smooth',
+        elevationCap: 0.2,
+        terrainSmoothing: 0.84,
+        ridgeAttenuation: 0.28,
+        detailAttenuation: 0.21,
+        macroScale: 0.74,
+        ridgedScale: 0.44,
+        continentThreshold: 0.6,
+        continentSharpness: 0.11,
+        continentDrift: 0.05,
+        trenchDepth: 0.08,
+        biomeHarshness: 0.14,
+      };
+    case 'icy':
+    case 'clouded':
+      return {
+        type: 'smooth',
+        elevationCap: 0.21,
+        terrainSmoothing: 0.86,
+        ridgeAttenuation: 0.32,
+        detailAttenuation: 0.2,
+        macroScale: 0.78,
+        ridgedScale: 0.46,
+        continentThreshold: 0.56,
+        continentSharpness: 0.12,
+        continentDrift: 0.08,
+        trenchDepth: 0.09,
+        biomeHarshness: 0.2,
+      };
+    case 'arid':
+      return {
+        type: 'rough',
+        elevationCap: 0.25,
+        terrainSmoothing: 0.62,
+        ridgeAttenuation: 0.62,
+        detailAttenuation: 0.38,
+        macroScale: 0.98,
+        ridgedScale: 0.66,
+        continentThreshold: 0.47,
+        continentSharpness: 0.2,
+        continentDrift: 0.2,
+        trenchDepth: 0.12,
+        biomeHarshness: 0.66,
+      };
+    case 'lush':
+    case 'superterran':
+      return {
+        type: 'continental',
+        elevationCap: 0.24,
+        terrainSmoothing: 0.74,
+        ridgeAttenuation: 0.54,
+        detailAttenuation: 0.3,
+        macroScale: 0.9,
+        ridgedScale: 0.57,
+        continentThreshold: 0.52,
+        continentSharpness: 0.16,
+        continentDrift: 0.11,
+        trenchDepth: 0.1,
+        biomeHarshness: 0.28,
+      };
+    case 'volcanic':
+      return {
+        type: 'extreme',
+        elevationCap: 0.28,
+        terrainSmoothing: 0.54,
+        ridgeAttenuation: 0.72,
+        detailAttenuation: 0.5,
+        macroScale: 1.04,
+        ridgedScale: 0.74,
+        continentThreshold: 0.45,
+        continentSharpness: 0.24,
+        continentDrift: 0.22,
+        trenchDepth: 0.18,
+        biomeHarshness: 0.86,
+      };
+    case 'dead':
+      return {
+        type: 'rough',
+        elevationCap: 0.23,
+        terrainSmoothing: 0.64,
+        ridgeAttenuation: 0.56,
+        detailAttenuation: 0.36,
+        macroScale: 0.96,
+        ridgedScale: 0.64,
+        continentThreshold: 0.48,
+        continentSharpness: 0.22,
+        continentDrift: 0.16,
+        trenchDepth: 0.15,
+        biomeHarshness: 0.72,
+      };
+    case 'toxic':
+    case 'exotic':
+      return {
+        type: 'extreme',
+        elevationCap: 0.27,
+        terrainSmoothing: 0.58,
+        ridgeAttenuation: 0.7,
+        detailAttenuation: 0.46,
+        macroScale: 1.02,
+        ridgedScale: 0.68,
+        continentThreshold: 0.5,
+        continentSharpness: 0.23,
+        continentDrift: 0.24,
+        trenchDepth: 0.14,
+        biomeHarshness: 0.78,
+      };
+    case 'mineral':
+      return {
+        type: 'rough',
+        elevationCap: 0.25,
+        terrainSmoothing: 0.62,
+        ridgeAttenuation: 0.65,
+        detailAttenuation: 0.42,
+        macroScale: 1,
+        ridgedScale: 0.7,
+        continentThreshold: 0.5,
+        continentSharpness: 0.2,
+        continentDrift: 0.18,
+        trenchDepth: 0.12,
+        biomeHarshness: 0.63,
+      };
+    case 'fragmented':
+      return {
+        type: 'fragmented',
+        elevationCap: 0.26,
+        terrainSmoothing: 0.6,
+        ridgeAttenuation: 0.66,
+        detailAttenuation: 0.44,
+        macroScale: 1.06,
+        ridgedScale: 0.72,
+        continentThreshold: 0.57,
+        continentSharpness: 0.28,
+        continentDrift: 0.34,
+        trenchDepth: 0.19,
+        biomeHarshness: 0.68,
+      };
+  }
+
   const ruggedness =
     profile.relief.macroStrength * 0.55 + profile.relief.microStrength * 0.35 + profile.shape.ridgeWarp * 0.28;
 
@@ -323,6 +494,11 @@ function pickTerrainProfile(profile: PlanetVisualProfile): TerrainProfileSetting
       detailAttenuation: 0.24,
       macroScale: 0.8,
       ridgedScale: 0.48,
+      continentThreshold: 0.55,
+      continentSharpness: 0.14,
+      continentDrift: 0.1,
+      trenchDepth: 0.1,
+      biomeHarshness: 0.24,
     };
   }
 
@@ -335,6 +511,11 @@ function pickTerrainProfile(profile: PlanetVisualProfile): TerrainProfileSetting
       detailAttenuation: 0.46,
       macroScale: 0.96,
       ridgedScale: 0.62,
+      continentThreshold: 0.5,
+      continentSharpness: 0.24,
+      continentDrift: 0.24,
+      trenchDepth: 0.16,
+      biomeHarshness: 0.74,
     };
   }
 
@@ -347,6 +528,11 @@ function pickTerrainProfile(profile: PlanetVisualProfile): TerrainProfileSetting
       detailAttenuation: 0.34,
       macroScale: 0.92,
       ridgedScale: 0.56,
+      continentThreshold: 0.52,
+      continentSharpness: 0.2,
+      continentDrift: 0.17,
+      trenchDepth: 0.12,
+      biomeHarshness: 0.56,
     };
   }
 
@@ -358,6 +544,11 @@ function pickTerrainProfile(profile: PlanetVisualProfile): TerrainProfileSetting
     detailAttenuation: 0.34,
     macroScale: 0.9,
     ridgedScale: 0.6,
+    continentThreshold: 0.52,
+    continentSharpness: 0.16,
+    continentDrift: 0.12,
+    trenchDepth: 0.11,
+    biomeHarshness: 0.42,
   };
 }
 
@@ -456,18 +647,52 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     toxic: 0.6,
     abyssal: 0.66,
   };
+  const archetypeOceanOffset: Record<PlanetVisualProfile['archetype'], number> = {
+    oceanic: 0.09,
+    icy: 0.04,
+    arid: -0.1,
+    lush: 0.03,
+    volcanic: -0.13,
+    dead: -0.08,
+    toxic: -0.02,
+    mineral: -0.07,
+    clouded: 0.06,
+    exotic: -0.01,
+    fragmented: -0.11,
+    superterran: 0.05,
+  };
+  const archetypeMountainOffset: Record<PlanetVisualProfile['archetype'], number> = {
+    oceanic: -0.03,
+    icy: -0.01,
+    arid: 0.03,
+    lush: 0.01,
+    volcanic: 0.07,
+    dead: 0.04,
+    toxic: 0.03,
+    mineral: 0.05,
+    clouded: -0.02,
+    exotic: 0.02,
+    fragmented: 0.06,
+    superterran: 0.01,
+  };
+
   const rawMountainLevel = clamp(
-    categoryMountainLevel[surfaceCategory] + profile.relief.macroStrength * 0.1 + (isRocky ? 0.02 : 0) + climate.mineral * 0.02,
-    0.64,
-    0.9,
+    categoryMountainLevel[surfaceCategory] +
+      archetypeMountainOffset[profile.archetype] +
+      profile.relief.macroStrength * 0.1 +
+      (isRocky ? 0.02 : 0) +
+      climate.mineral * 0.02,
+    0.6,
+    0.92,
   );
   const rawOceanLevel = clamp(
     categoryOceanLevel[surfaceCategory] +
+      archetypeOceanOffset[profile.archetype] +
       (0.5 - profile.color.accentMix) * 0.08 +
       (isIcy ? 0.03 : 0) -
       climate.dry * 0.03,
-    0.2,
-    0.58,
+    0.08,
+    0.64,
   );
   const minLandRatio = minimumLandRatioForCategory(surfaceCategory);
   const estimatedLandRatio = estimateLandRatio(
@@ -478,7 +703,7 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     terrainProfile.type,
   );
   const guardedOceanLevel = rawOceanLevel - Math.max(0, minLandRatio - estimatedLandRatio) * 0.9;
-  const finalOceanLevel = clamp(guardedOceanLevel, 0.2, Math.min(0.58, rawMountainLevel - 0.16));
+  const finalOceanLevel = clamp(guardedOceanLevel, 0.08, Math.min(0.64, rawMountainLevel - 0.14));
 
   const landSurfaceColor = landColor.clone().lerp(new THREE.Color(categoryColors.land), 0.38).lerp(coastalColor, 0.14);
   const mountainSurfaceColor = mountainColor.clone().lerp(categoryMountain, 0.56);
@@ -494,7 +719,7 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     mountainColor: colorToTuple(mountainSurfaceColor),
     iceColor: colorToTuple(iceSurfaceColor),
     radius: clamp(profile.shape.radius * 0.97, 1.45, 4.8),
-    meshResolution: Math.round(clamp(15 + profile.shape.radius * 3.6 + profile.relief.macroStrength * 7, 16, 24)),
+    meshResolution: Math.round(clamp(15 + profile.shape.radius * 3.6 + profile.relief.macroStrength * 7, 16, 25)),
     oceanLevel: finalOceanLevel,
     mountainLevel: rawMountainLevel,
     simpleFrequency: clamp(profile.shape.wobbleFrequency * 0.9 + 0.55, 0.8, 4.2),
@@ -520,11 +745,16 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     terrainSmoothing: terrainProfile.terrainSmoothing,
     ridgeAttenuation: terrainProfile.ridgeAttenuation,
     detailAttenuation: terrainProfile.detailAttenuation,
+    continentThreshold: terrainProfile.continentThreshold,
+    continentSharpness: terrainProfile.continentSharpness,
+    continentDrift: terrainProfile.continentDrift,
+    trenchDepth: terrainProfile.trenchDepth,
+    biomeHarshness: terrainProfile.biomeHarshness,
     roughness: clamp(profile.relief.roughness * 0.9 + 0.05, 0.2, 1),
     metalness: clamp(profile.materialFamily === 'metallic' ? 0.35 : profile.materialFamily === 'icy' ? 0.18 : 0.08, 0.05, 0.45),
     atmosphereEnabled: profile.atmosphere.enabled,
-    atmosphereIntensity: profile.atmosphere.enabled ? clamp(profile.atmosphere.intensity, 0.16, 0.95) : 0,
-    atmosphereThickness: profile.atmosphere.enabled ? clamp(profile.atmosphere.thickness, 0.02, 0.12) : 0,
+    atmosphereIntensity: profile.atmosphere.enabled ? clamp(profile.atmosphere.intensity * (0.86 + climate.oddity * 0.24), 0.12, 1) : 0,
+    atmosphereThickness: profile.atmosphere.enabled ? clamp(profile.atmosphere.thickness * (0.86 + climate.cryo * 0.24), 0.015, 0.14) : 0,
     atmosphereColor: colorToTuple(
       new THREE.Color().setHSL(
         (hue + profile.atmosphere.tintShift / 360 + 1) % 1,

@@ -1,14 +1,17 @@
 import {
+  type ArchetypeConfig,
   BOUNDS,
   DEFAULT_VISUAL_GEN_VERSION,
   MATERIAL_FAMILIES,
   PALETTE_FAMILIES,
+  PLANET_ARCHETYPES,
   SIZE_CATEGORY_WEIGHTS,
   SIZE_RADIUS_RANGES,
 } from './planet-visual.constants';
 import type {
   MaterialFamily,
   PaletteFamily,
+  PlanetArchetype,
   PlanetSizeCategory,
   PlanetVisualGeneratorConfig,
   PlanetVisualProfile,
@@ -17,17 +20,31 @@ import type {
 import { createSeededRng, deriveSeed, pickWeighted, range } from './seeded-rng';
 
 
-function pickMaterialFamily(rng: () => number): MaterialFamily {
-  return MATERIAL_FAMILIES[Math.floor(rng() * MATERIAL_FAMILIES.length)] ?? 'rocky';
+function pickArchetype(rng: () => number): ArchetypeConfig {
+  return pickWeighted(
+    rng,
+    PLANET_ARCHETYPES.map((archetype) => ({ value: archetype, weight: archetype.weight })),
+  );
 }
 
-function pickPaletteFamily(rng: () => number, materialFamily: MaterialFamily): PaletteFamily {
+function pickMaterialFamily(rng: () => number, archetype: ArchetypeConfig): MaterialFamily {
+  return pickWeighted(
+    rng,
+    MATERIAL_FAMILIES.map((materialFamily) => ({
+      value: materialFamily,
+      weight: archetype.materialWeights[materialFamily],
+    })),
+  );
+}
+
+function pickPaletteFamily(rng: () => number, materialFamily: MaterialFamily, archetype: ArchetypeConfig): PaletteFamily {
   const weighted = PALETTE_FAMILIES.map((palette) => {
     const compatibilityWeight = palette.materialBias.includes(materialFamily) ? 1.35 : 0.52;
     const diversityJitter = 0.72 + rng() * 0.9;
+    const archetypeBias = archetype.paletteBias[palette.name] ?? 1;
     return {
       value: palette.name,
-      weight: palette.weight * compatibilityWeight * diversityJitter,
+      weight: palette.weight * compatibilityWeight * diversityJitter * archetypeBias,
     };
   });
 
@@ -46,6 +63,18 @@ function normalizeSeedInputs({ worldSeed, planetSeed }: SeedInputs): SeedInputs 
     worldSeed: worldSeed.trim(),
     planetSeed: planetSeed.trim(),
   };
+}
+
+function sampleBiasedRange(
+  rng: () => number,
+  globalBounds: { min: number; max: number },
+  archetypeBounds: { min: number; max: number },
+): number {
+  return range(
+    rng,
+    Math.max(globalBounds.min, archetypeBounds.min),
+    Math.min(globalBounds.max, archetypeBounds.max),
+  );
 }
 
 export function generatePlanetVisualProfile(
@@ -69,14 +98,17 @@ export function generatePlanetVisualProfile(
   const reliefRng = createSeededRng(reliefSeed);
   const colorRng = createSeededRng(colorSeed);
   const atmoRng = createSeededRng(atmoSeed);
+  const baseRng = createSeededRng(baseSeed);
+
+  const archetype = pickArchetype(baseRng);
 
   const sizeCategory = pickSizeCategory(shapeRng);
   const radiusRange = SIZE_RADIUS_RANGES[sizeCategory];
 
-  const materialFamily = pickMaterialFamily(colorRng);
-  const paletteFamily = pickPaletteFamily(colorRng, materialFamily);
+  const materialFamily = pickMaterialFamily(colorRng, archetype);
+  const paletteFamily = pickPaletteFamily(colorRng, materialFamily, archetype);
 
-  const atmosphereEnabled = atmoRng() > 0.35;
+  const atmosphereEnabled = atmoRng() < archetype.atmosphereChance;
 
   return {
     id: `${seeds.worldSeed}:${seeds.planetSeed}:v${config.visualGenVersion ?? DEFAULT_VISUAL_GEN_VERSION}`,
@@ -89,26 +121,27 @@ export function generatePlanetVisualProfile(
       colorSeed,
       atmoSeed,
     },
+    archetype: archetype.name,
     sizeCategory,
     materialFamily,
     paletteFamily,
     shape: {
       radius: range(shapeRng, radiusRange.min, radiusRange.max),
-      wobbleFrequency: range(shapeRng, BOUNDS.wobbleFrequency.min, BOUNDS.wobbleFrequency.max),
-      wobbleAmplitude: range(shapeRng, BOUNDS.wobbleAmplitude.min, BOUNDS.wobbleAmplitude.max),
-      ridgeWarp: range(shapeRng, BOUNDS.ridgeWarp.min, BOUNDS.ridgeWarp.max),
+      wobbleFrequency: sampleBiasedRange(shapeRng, BOUNDS.wobbleFrequency, archetype.shapeBias.wobbleFrequency),
+      wobbleAmplitude: sampleBiasedRange(shapeRng, BOUNDS.wobbleAmplitude, archetype.shapeBias.wobbleAmplitude),
+      ridgeWarp: sampleBiasedRange(shapeRng, BOUNDS.ridgeWarp, archetype.shapeBias.ridgeWarp),
     },
     relief: {
-      macroStrength: range(reliefRng, BOUNDS.macroStrength.min, BOUNDS.macroStrength.max),
-      microStrength: range(reliefRng, BOUNDS.microStrength.min, BOUNDS.microStrength.max),
-      roughness: range(reliefRng, BOUNDS.roughness.min, BOUNDS.roughness.max),
-      craterDensity: range(reliefRng, BOUNDS.craterDensity.min, BOUNDS.craterDensity.max),
+      macroStrength: sampleBiasedRange(reliefRng, BOUNDS.macroStrength, archetype.reliefBias.macroStrength),
+      microStrength: sampleBiasedRange(reliefRng, BOUNDS.microStrength, archetype.reliefBias.microStrength),
+      roughness: sampleBiasedRange(reliefRng, BOUNDS.roughness, archetype.reliefBias.roughness),
+      craterDensity: sampleBiasedRange(reliefRng, BOUNDS.craterDensity, archetype.reliefBias.craterDensity),
     },
     color: {
       hueShift: range(colorRng, BOUNDS.hueShift.min, BOUNDS.hueShift.max),
-      saturation: range(colorRng, BOUNDS.saturation.min, BOUNDS.saturation.max),
-      lightness: range(colorRng, BOUNDS.lightness.min, BOUNDS.lightness.max),
-      accentMix: range(colorRng, BOUNDS.accentMix.min, BOUNDS.accentMix.max),
+      saturation: sampleBiasedRange(colorRng, BOUNDS.saturation, archetype.colorBias.saturation),
+      lightness: sampleBiasedRange(colorRng, BOUNDS.lightness, archetype.colorBias.lightness),
+      accentMix: sampleBiasedRange(colorRng, BOUNDS.accentMix, archetype.colorBias.accentMix),
     },
     atmosphere: {
       enabled: atmosphereEnabled,
@@ -168,6 +201,7 @@ export function isPlanetVisualProfileInBounds(profile: PlanetVisualProfile): boo
 
 export function profileSignature(profile: PlanetVisualProfile): string {
   return [
+    profile.archetype,
     profile.sizeCategory,
     profile.materialFamily,
     profile.paletteFamily,
