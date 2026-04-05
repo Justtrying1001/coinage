@@ -63,8 +63,8 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     params.ridgedStrength *
     params.ridgeAttenuation *
     (0.12 + continentMask * 0.3);
-  const microLayer = microRelief * params.ridgedStrength * params.detailAttenuation * 0.015;
-  const plateau = Math.max(0, midRelief) * inlandMask * 0.05;
+  const microLayer = microRelief * params.ridgedStrength * params.detailAttenuation * 0.008;
+  const plateau = Math.max(0, midRelief) * inlandMask * 0.07;
 
   const rawElevation = -oceanFloor + continentBase + uplands + midLayer + microLayer + plateau;
   const normalized = clamp((rawElevation + 0.16) / 0.42, 0, 1);
@@ -95,7 +95,7 @@ function applyMicroNormalDetail(geometry: THREE.BufferGeometry, params: Procedur
       params.reliefSeed ^ 0x7f4a7c15,
       2,
     );
-    const jitter = (grain - 0.5) * params.detailAttenuation * 0.035;
+    const jitter = (grain - 0.5) * params.detailAttenuation * 0.018;
     normal.setXYZ(i, normal.getX(i) + jitter, normal.getY(i) + jitter * 0.7, normal.getZ(i) + jitter);
   }
 
@@ -152,6 +152,14 @@ export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE
   }
 
   const elevationSpan = Math.max(0.0001, maxElevation - minElevation);
+  const categoryColorConfig = {
+    ocean: { coastBoost: 0.22, mountainBoost: 0.16, iceBoost: 0.45, landToMountain: 0.45 },
+    desert: { coastBoost: 0.06, mountainBoost: 0.2, iceBoost: 0.2, landToMountain: 0.58 },
+    ice: { coastBoost: 0.08, mountainBoost: 0.2, iceBoost: 0.96, landToMountain: 0.48 },
+    volcanic: { coastBoost: 0.04, mountainBoost: 0.28, iceBoost: 0.14, landToMountain: 0.66 },
+    lush: { coastBoost: 0.18, mountainBoost: 0.18, iceBoost: 0.38, landToMountain: 0.5 },
+    mineral: { coastBoost: 0.08, mountainBoost: 0.24, iceBoost: 0.25, landToMountain: 0.62 },
+  }[params.surfaceCategory];
 
   for (let i = 0; i < elevations.length; i += 1) {
     const elevation = elevations[i];
@@ -162,9 +170,9 @@ export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE
     const latitude = Math.abs(new THREE.Vector3(vx, vy, vz).normalize().y);
 
     const color = new THREE.Color();
-    const coastalBand = smoothstep(params.oceanLevel - 0.025, params.oceanLevel + 0.05, normalized);
-    const foothillBand = smoothstep(params.mountainLevel - 0.2, params.mountainLevel - 0.04, normalized);
-    const mountainBand = smoothstep(params.mountainLevel - 0.04, params.mountainLevel + 0.07, normalized);
+    const coastalBand = smoothstep(params.oceanLevel - 0.02, params.oceanLevel + 0.03, normalized);
+    const foothillBand = smoothstep(params.mountainLevel - 0.18, params.mountainLevel - 0.05, normalized);
+    const mountainBand = smoothstep(params.mountainLevel - 0.03, params.mountainLevel + 0.06, normalized);
     const iceCap = smoothstep(0.74, 0.95, latitude) * smoothstep(params.oceanLevel + 0.12, 0.98, normalized);
 
     if (normalized <= params.oceanLevel) {
@@ -180,7 +188,7 @@ export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE
         0,
         1,
       );
-      const t = clamp(baseT * 0.74 + coastalBand * 0.2 + foothillBand * 0.16, 0, 1);
+      const t = clamp(baseT * categoryColorConfig.landToMountain + foothillBand * 0.24, 0, 1);
       color.setRGB(
         lerp(params.landColor[0], params.mountainColor[0], t),
         lerp(params.landColor[1], params.mountainColor[1], t),
@@ -197,25 +205,25 @@ export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE
 
     if (coastalBand > 0.02) {
       color.setRGB(
-        lerp(color.r, params.shallowWaterColor[0], coastalBand * 0.07),
-        lerp(color.g, params.shallowWaterColor[1], coastalBand * 0.07),
-        lerp(color.b, params.shallowWaterColor[2], coastalBand * 0.07),
+        lerp(color.r, params.shallowWaterColor[0], coastalBand * categoryColorConfig.coastBoost),
+        lerp(color.g, params.shallowWaterColor[1], coastalBand * categoryColorConfig.coastBoost),
+        lerp(color.b, params.shallowWaterColor[2], coastalBand * categoryColorConfig.coastBoost),
       );
     }
 
     if (mountainBand > 0.01) {
       color.setRGB(
-        lerp(color.r, params.mountainColor[0], mountainBand * 0.28),
-        lerp(color.g, params.mountainColor[1], mountainBand * 0.28),
-        lerp(color.b, params.mountainColor[2], mountainBand * 0.28),
+        lerp(color.r, params.mountainColor[0], mountainBand * categoryColorConfig.mountainBoost),
+        lerp(color.g, params.mountainColor[1], mountainBand * categoryColorConfig.mountainBoost),
+        lerp(color.b, params.mountainColor[2], mountainBand * categoryColorConfig.mountainBoost),
       );
     }
 
     if (iceCap > 0.01) {
       color.setRGB(
-        lerp(color.r, params.iceColor[0], iceCap * 0.9),
-        lerp(color.g, params.iceColor[1], iceCap * 0.9),
-        lerp(color.b, params.iceColor[2], iceCap * 0.9),
+        lerp(color.r, params.iceColor[0], iceCap * categoryColorConfig.iceBoost),
+        lerp(color.g, params.iceColor[1], iceCap * categoryColorConfig.iceBoost),
+        lerp(color.b, params.iceColor[2], iceCap * categoryColorConfig.iceBoost),
       );
     }
 

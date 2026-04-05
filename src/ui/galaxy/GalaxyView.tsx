@@ -29,6 +29,7 @@ const FIELD_RADIUS = GALAXY_LAYOUT_RUNTIME_CONFIG.fieldRadius ?? 84;
 const MOVE_SPEED = 24;
 const BASE_VIEW_HEIGHT = 90;
 const GALAXY_BACKGROUND_Z = -180;
+const BACKDROP_TEXTURE_CACHE = new Map<string, THREE.CanvasTexture>();
 
 function createStarField(seed: string): THREE.Group {
   const group = new THREE.Group();
@@ -103,89 +104,78 @@ function createStarField(seed: string): THREE.Group {
 }
 
 function createBackdrop(seed: string): THREE.Mesh {
-  const textureSize = 768;
-  const canvas = document.createElement('canvas');
-  canvas.width = textureSize;
-  canvas.height = textureSize;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    return new THREE.Mesh();
-  }
-
-  const gradient = ctx.createRadialGradient(
-    textureSize * 0.46,
-    textureSize * 0.44,
-    textureSize * 0.12,
-    textureSize * 0.5,
-    textureSize * 0.5,
-    textureSize * 0.82,
-  );
-  gradient.addColorStop(0, '#081327');
-  gradient.addColorStop(0.48, '#050c1b');
-  gradient.addColorStop(1, '#02050d');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, textureSize, textureSize);
-
-  let state = deriveSeed(seed, 'nebulae');
-  const random = () => {
-    state = (state + 0x6d2b79f5) >>> 0;
-    let t = Math.imul(state ^ (state >>> 15), 1 | state);
-    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
-    return ((t ^ (t >>> 14)) >>> 0) / 0x100000000;
-  };
-
-  for (let i = 0; i < 7; i += 1) {
-    const cx = random() * textureSize;
-    const cy = random() * textureSize;
-    const radius = 220 + random() * 240;
-    const nebula = ctx.createRadialGradient(cx, cy, radius * 0.02, cx, cy, radius);
-    const hue = 205 + Math.floor(random() * 32);
-    const alpha = 0.028 + random() * 0.018;
-    nebula.addColorStop(0, `hsla(${hue}, 64%, 62%, ${alpha})`);
-    nebula.addColorStop(0.54, `hsla(${hue + 8}, 58%, 50%, ${alpha * 0.38})`);
-    nebula.addColorStop(1, `hsla(${hue + 12}, 52%, 48%, 0)`);
-    ctx.fillStyle = nebula;
-    ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
-  }
-
-  const grainCanvas = document.createElement('canvas');
-  const grainSize = 128;
-  grainCanvas.width = grainSize;
-  grainCanvas.height = grainSize;
-  const grainCtx = grainCanvas.getContext('2d');
-  if (grainCtx) {
-    const grain = grainCtx.getImageData(0, 0, grainSize, grainSize);
-    for (let i = 0; i < grain.data.length; i += 4) {
-      const value = 16 + Math.floor(random() * 20);
-      grain.data[i] = value;
-      grain.data[i + 1] = value;
-      grain.data[i + 2] = value + 4;
-      grain.data[i + 3] = 10 + Math.floor(random() * 8);
+  let texture = BACKDROP_TEXTURE_CACHE.get(seed);
+  if (!texture) {
+    const textureSize = 896;
+    const canvas = document.createElement('canvas');
+    canvas.width = textureSize;
+    canvas.height = textureSize;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      return new THREE.Mesh();
     }
-    grainCtx.putImageData(grain, 0, 0);
-    const grainPattern = ctx.createPattern(grainCanvas, 'repeat');
-    if (grainPattern) {
-      ctx.globalAlpha = 0.13;
-      ctx.fillStyle = grainPattern;
-      ctx.fillRect(0, 0, textureSize, textureSize);
-      ctx.globalAlpha = 1;
+
+    const gradient = ctx.createRadialGradient(
+      textureSize * 0.5,
+      textureSize * 0.5,
+      textureSize * 0.06,
+      textureSize * 0.5,
+      textureSize * 0.5,
+      textureSize * 0.86,
+    );
+    gradient.addColorStop(0, '#070f1f');
+    gradient.addColorStop(0.45, '#040913');
+    gradient.addColorStop(1, '#010308');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, textureSize, textureSize);
+
+    let state = deriveSeed(seed, 'nebulae');
+    const random = () => {
+      state = (state + 0x6d2b79f5) >>> 0;
+      let t = Math.imul(state ^ (state >>> 15), 1 | state);
+      t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+      return ((t ^ (t >>> 14)) >>> 0) / 0x100000000;
+    };
+
+    for (let i = 0; i < 5; i += 1) {
+      const cx = textureSize * (0.2 + random() * 0.6);
+      const cy = textureSize * (0.22 + random() * 0.56);
+      const radius = textureSize * (0.24 + random() * 0.2);
+      const nebula = ctx.createRadialGradient(cx, cy, radius * 0.03, cx, cy, radius);
+      const hue = 198 + Math.floor(random() * 34);
+      const alpha = 0.02 + random() * 0.016;
+      nebula.addColorStop(0, `hsla(${hue}, 55%, 62%, ${alpha})`);
+      nebula.addColorStop(0.62, `hsla(${hue + 8}, 44%, 49%, ${alpha * 0.42})`);
+      nebula.addColorStop(1, `hsla(${hue + 12}, 38%, 44%, 0)`);
+      ctx.fillStyle = nebula;
+      ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
     }
-  }
 
-  for (let i = 0; i < 1400; i += 1) {
-    const x = random() * textureSize;
-    const y = random() * textureSize;
-    const size = random() < 0.08 ? 1.9 : 0.9;
-    const alpha = random() < 0.1 ? 0.36 + random() * 0.24 : 0.08 + random() * 0.18;
-    const hue = 205 + Math.floor(random() * 35);
-    ctx.fillStyle = `hsla(${hue}, 42%, ${72 + random() * 22}%, ${alpha})`;
-    ctx.fillRect(x, y, size, size);
-  }
+    const dither = ctx.getImageData(0, 0, textureSize, textureSize);
+    for (let i = 0; i < dither.data.length; i += 4) {
+      const noise = Math.floor((random() - 0.5) * 8);
+      dither.data[i] = Math.min(255, Math.max(0, dither.data[i] + noise));
+      dither.data[i + 1] = Math.min(255, Math.max(0, dither.data[i + 1] + noise));
+      dither.data[i + 2] = Math.min(255, Math.max(0, dither.data[i + 2] + noise));
+    }
+    ctx.putImageData(dither, 0, 0);
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.magFilter = THREE.LinearFilter;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
+    for (let i = 0; i < 520; i += 1) {
+      const x = random() * textureSize;
+      const y = random() * textureSize;
+      const size = random() < 0.12 ? 1.6 : 0.8;
+      const alpha = random() < 0.18 ? 0.2 + random() * 0.2 : 0.04 + random() * 0.08;
+      const hue = 200 + Math.floor(random() * 28);
+      ctx.fillStyle = `hsla(${hue}, 32%, ${72 + random() * 18}%, ${alpha})`;
+      ctx.fillRect(x, y, size, size);
+    }
+
+    texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.magFilter = THREE.LinearFilter;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    BACKDROP_TEXTURE_CACHE.set(seed, texture);
+  }
 
   const geometry = new THREE.PlaneGeometry(520, 340);
   const material = new THREE.MeshBasicMaterial({
@@ -452,7 +442,10 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
 
       const backdropMaterial = backdrop.material;
       if (!Array.isArray(backdropMaterial)) {
-        (backdropMaterial as THREE.MeshBasicMaterial).map?.dispose();
+        const mapTexture = (backdropMaterial as THREE.MeshBasicMaterial).map;
+        if (mapTexture && !Array.from(BACKDROP_TEXTURE_CACHE.values()).includes(mapTexture as THREE.CanvasTexture)) {
+          mapTexture.dispose();
+        }
       }
       if (Array.isArray(backdropMaterial)) {
         for (const mat of backdropMaterial) {

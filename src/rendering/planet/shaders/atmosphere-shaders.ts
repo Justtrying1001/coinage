@@ -17,12 +17,19 @@ export const ATMOSPHERE_FRAGMENT_SHADER = `
 
   uniform vec3 uAtmosphereColor;
   uniform float uIntensity;
+  uniform float uDensity;
   uniform vec3 uLightDirection;
 
   void main() {
     vec3 V = normalize(cameraPosition - vPositionW);
-    float fresnel = pow(1.0 - max(dot(normalize(vNormalW), V), 0.0), 3.1);
-    float alpha = fresnel * uIntensity;
+    vec3 N = normalize(vNormalW);
+    vec3 L = normalize(uLightDirection);
+
+    float horizon = pow(1.0 - max(dot(N, V), 0.0), 2.4);
+    float forwardScatter = pow(max(dot(V, -L), 0.0), 2.0) * 0.55 + 0.45;
+    float litEdge = pow(max(dot(N, L), 0.0), 0.8) * 0.22 + 0.78;
+
+    float alpha = horizon * forwardScatter * litEdge * uIntensity * uDensity;
     gl_FragColor = vec4(uAtmosphereColor, alpha);
   }
 `;
