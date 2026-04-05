@@ -92,7 +92,7 @@ Zéro barrière à l'entrée. Le joueur arrive, choisit un pseudo, sélectionne 
 
 **Phase 3 — ****Galaxy View — Carte monde**
 
-- Canvas 2D — identique architecture GitCities
+- Three.js — Galaxy View procédurale générée depuis NEXT_PUBLIC_WORLD_SEED
 
 - Génération procédurale des planètes depuis NEXT_PUBLIC_WORLD_SEED
 
@@ -152,7 +152,7 @@ Deux chemins possibles depuis l'onboarding — le joueur choisit de rejoindre un
 
 **Phase 5 — ****City View — Vue isométrique**
 
-- Canvas isométrique — identique architecture GitCities
+- Three.js isométrique — assets 3D générés via MeshyAI
 
 - Grille métallique sombre (thème Coinage)
 
