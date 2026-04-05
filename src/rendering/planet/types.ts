@@ -2,7 +2,16 @@ import type * as THREE from 'three';
 import type { PlanetVisualProfile } from '@/domain/world/planet-visual.types';
 
 export type TerrainProfileKind = 'smooth' | 'moderate' | 'rough' | 'extreme';
-export type SurfaceCategoryKind = 'ocean' | 'desert' | 'ice' | 'volcanic' | 'lush' | 'mineral';
+export type SurfaceCategoryKind =
+  | 'ocean'
+  | 'desert'
+  | 'ice'
+  | 'volcanic'
+  | 'lush'
+  | 'mineral'
+  | 'barren'
+  | 'toxic'
+  | 'abyssal';
 
 export interface ProceduralPlanetUniforms {
   shapeSeed: number;

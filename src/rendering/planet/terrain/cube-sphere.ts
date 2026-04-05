@@ -169,13 +169,17 @@ export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE
   }
 
   const elevationSpan = Math.max(0.0001, maxElevation - minElevation);
+  const effectiveOceanLevel = Math.min(params.oceanLevel, params.mountainLevel - 0.16);
   const categoryColorConfig = {
-    ocean: { coastBoost: 0.22, mountainBoost: 0.16, iceBoost: 0.45, landToMountain: 0.45 },
-    desert: { coastBoost: 0.06, mountainBoost: 0.2, iceBoost: 0.2, landToMountain: 0.58 },
-    ice: { coastBoost: 0.08, mountainBoost: 0.2, iceBoost: 0.96, landToMountain: 0.48 },
-    volcanic: { coastBoost: 0.04, mountainBoost: 0.28, iceBoost: 0.14, landToMountain: 0.66 },
-    lush: { coastBoost: 0.18, mountainBoost: 0.18, iceBoost: 0.38, landToMountain: 0.5 },
-    mineral: { coastBoost: 0.08, mountainBoost: 0.24, iceBoost: 0.25, landToMountain: 0.62 },
+    ocean: { coastBoost: 0.24, mountainBoost: 0.16, iceBoost: 0.45, landToMountain: 0.42 },
+    desert: { coastBoost: 0.05, mountainBoost: 0.2, iceBoost: 0.18, landToMountain: 0.6 },
+    ice: { coastBoost: 0.06, mountainBoost: 0.18, iceBoost: 0.96, landToMountain: 0.46 },
+    volcanic: { coastBoost: 0.03, mountainBoost: 0.32, iceBoost: 0.12, landToMountain: 0.7 },
+    lush: { coastBoost: 0.2, mountainBoost: 0.16, iceBoost: 0.34, landToMountain: 0.48 },
+    mineral: { coastBoost: 0.08, mountainBoost: 0.26, iceBoost: 0.24, landToMountain: 0.63 },
+    barren: { coastBoost: 0.04, mountainBoost: 0.27, iceBoost: 0.2, landToMountain: 0.68 },
+    toxic: { coastBoost: 0.12, mountainBoost: 0.2, iceBoost: 0.22, landToMountain: 0.52 },
+    abyssal: { coastBoost: 0.02, mountainBoost: 0.24, iceBoost: 0.3, landToMountain: 0.6 },
   }[params.surfaceCategory];
 
   for (let i = 0; i < elevations.length; i += 1) {
@@ -200,19 +204,19 @@ export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE
     );
     const biomeSignal = clamp(macroBiome * 0.72 + microBiome * 0.28, 0, 1);
 
-    const deepOceanBand = smoothstep(0, params.oceanLevel * 0.6, normalized);
-    const shallowBand = smoothstep(params.oceanLevel * 0.68, params.oceanLevel + 0.02, normalized);
-    const coastalBand = smoothstep(params.oceanLevel - 0.015, params.oceanLevel + 0.04, normalized);
-    const plainsBand = smoothstep(params.oceanLevel + 0.01, params.mountainLevel - 0.22, normalized);
+    const deepOceanBand = smoothstep(0, effectiveOceanLevel * 0.6, normalized);
+    const shallowBand = smoothstep(effectiveOceanLevel * 0.68, effectiveOceanLevel + 0.02, normalized);
+    const coastalBand = smoothstep(effectiveOceanLevel - 0.015, effectiveOceanLevel + 0.04, normalized);
+    const plainsBand = smoothstep(effectiveOceanLevel + 0.01, params.mountainLevel - 0.22, normalized);
     const highlandBand = smoothstep(params.mountainLevel - 0.2, params.mountainLevel - 0.03, normalized);
     const mountainBand = smoothstep(params.mountainLevel - 0.03, params.mountainLevel + 0.08, normalized);
     const iceCap =
       smoothstep(0.72, 0.96, latitude) *
-      smoothstep(params.oceanLevel + 0.08, 0.98, normalized) *
+      smoothstep(effectiveOceanLevel + 0.08, 0.98, normalized) *
       (0.75 + biomeSignal * 0.25);
 
-    if (normalized <= params.oceanLevel) {
-      const t = clamp(normalized / Math.max(0.01, params.oceanLevel), 0, 1);
+    if (normalized <= effectiveOceanLevel) {
+      const t = clamp(normalized / Math.max(0.01, effectiveOceanLevel), 0, 1);
       const depthTint = clamp(1 - deepOceanBand * 0.22, 0.75, 1);
       color.setRGB(
         lerp(params.baseColor[0], params.shallowWaterColor[0], shallowBand * t) * depthTint,
@@ -221,7 +225,7 @@ export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE
       );
     } else if (normalized <= params.mountainLevel) {
       const baseT = clamp(
-        (normalized - params.oceanLevel) / Math.max(0.01, params.mountainLevel - params.oceanLevel),
+        (normalized - effectiveOceanLevel) / Math.max(0.01, params.mountainLevel - effectiveOceanLevel),
         0,
         1,
       );

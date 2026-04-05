@@ -23,11 +23,11 @@ function pickMaterialFamily(rng: () => number): MaterialFamily {
 
 function pickPaletteFamily(rng: () => number, materialFamily: MaterialFamily): PaletteFamily {
   const weighted = PALETTE_FAMILIES.map((palette) => {
-    const compatibilityWeight = palette.materialBias.includes(materialFamily) ? 1 : 0.42;
-    const diversityJitter = 0.82 + rng() * 0.5;
+    const compatibilityWeight = palette.materialBias.includes(materialFamily) ? 1.35 : 0.52;
+    const diversityJitter = 0.72 + rng() * 0.9;
     return {
       value: palette.name,
-      weight: compatibilityWeight * diversityJitter,
+      weight: palette.weight * compatibilityWeight * diversityJitter,
     };
   });
 
