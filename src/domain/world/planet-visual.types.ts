@@ -9,7 +9,14 @@ export type PaletteFamily =
   | 'sulfur-stone'
   | 'violet-ash'
   | 'verdant-umber'
-  | 'rose-quartz';
+  | 'rose-quartz'
+  | 'glacier-mint'
+  | 'arid-ochre'
+  | 'obsidian-lava'
+  | 'toxic-neon'
+  | 'amethyst-haze'
+  | 'emerald-sea'
+  | 'charcoal-abyss';
 
 export interface SeedInputs {
   worldSeed: string;

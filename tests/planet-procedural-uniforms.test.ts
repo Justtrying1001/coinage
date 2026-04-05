@@ -57,6 +57,8 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
     rough: 0,
     extreme: 0,
   };
+  const paletteFamilies = new Set<string>();
+  const surfaceCategories = new Set<string>();
 
   for (let i = 0; i < 150; i += 1) {
     const profile = generatePlanetVisualProfile({
@@ -65,6 +67,8 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
     });
 
     const uniforms = mapProfileToProceduralUniforms(profile);
+    paletteFamilies.add(profile.paletteFamily);
+    surfaceCategories.add(uniforms.surfaceCategory);
 
     assertFiniteTuple(uniforms.baseColor, 'baseColor');
     assertFiniteTuple(uniforms.shallowWaterColor, 'shallowWaterColor');
@@ -104,18 +108,22 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
 
     assert.ok(uniforms.shapeSeed >= 0, `shapeSeed out of range: ${uniforms.shapeSeed}`);
     assert.ok(uniforms.reliefSeed >= 0, `reliefSeed out of range: ${uniforms.reliefSeed}`);
-    assert.ok(uniforms.radius >= 1.1 && uniforms.radius <= 4.6, `radius out of range: ${uniforms.radius}`);
+    assert.ok(uniforms.radius >= 1.45 && uniforms.radius <= 4.8, `radius out of range: ${uniforms.radius}`);
     assert.ok(
       uniforms.meshResolution >= 20 && uniforms.meshResolution <= 34,
       `meshResolution out of range: ${uniforms.meshResolution}`,
     );
     assert.ok(
-      uniforms.oceanLevel >= 0.24 && uniforms.oceanLevel <= 0.64,
+      uniforms.oceanLevel >= 0.2 && uniforms.oceanLevel <= 0.58,
       `oceanLevel out of range: ${uniforms.oceanLevel}`,
     );
     assert.ok(
       uniforms.mountainLevel >= 0.64 && uniforms.mountainLevel <= 0.9,
       `mountainLevel out of range: ${uniforms.mountainLevel}`,
+    );
+    assert.ok(
+      uniforms.mountainLevel - uniforms.oceanLevel >= 0.16,
+      `expected land band gap >= 0.16, got ${uniforms.mountainLevel - uniforms.oceanLevel}`,
     );
     assert.ok(
       uniforms.simpleFrequency >= 0.8 && uniforms.simpleFrequency <= 4.2,
@@ -169,4 +177,6 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
   assert.ok(profileCounts.rough > 0, 'expected rough terrain profiles to exist');
   assert.ok(profileCounts.extreme > 0, 'expected rare extreme terrain profiles to exist');
   assert.ok(profileCounts.extreme <= 15, `expected extreme terrain to remain rare, got ${profileCounts.extreme}`);
+  assert.ok(paletteFamilies.size >= 10, `expected at least 10 palette families, got ${paletteFamilies.size}`);
+  assert.ok(surfaceCategories.size >= 7, `expected at least 7 surface categories, got ${surfaceCategories.size}`);
 });

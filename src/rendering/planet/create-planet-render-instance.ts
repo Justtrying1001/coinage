@@ -159,8 +159,8 @@ function getOrCreateSurfaceMaterial(params: ReturnType<typeof mapProfileToProced
     roughness: params.roughness,
     metalness: params.metalness,
     side: THREE.DoubleSide,
-    emissive: new THREE.Color(0x1f2f45),
-    emissiveIntensity: 0.2,
+    emissive: new THREE.Color(0x14161b),
+    emissiveIntensity: 0.1,
     envMapIntensity: 1.05,
   });
   SURFACE_MATERIAL_CACHE.set(key, { material, refs: 1 });
@@ -300,10 +300,10 @@ export function createPlanetRenderInstance({ profile, x, y, z, options }: Planet
         float coinageMountainMaskColor = smoothstep(0.46, 0.86, vColor.r * 0.55 + vColor.g * 0.35);
         float coinageLandMaskColor = clamp(1.0 - coinageWaterMaskColor, 0.0, 1.0);
         vec3 biomeTint = vec3(1.0);
-        biomeTint = mix(biomeTint, vec3(0.95, 1.01, 1.06), coinageWaterMaskColor * 0.85);
-        biomeTint = mix(biomeTint, vec3(1.06, 1.03, 0.98), coinageMountainMaskColor * coinageLandMaskColor * 0.42);
+        biomeTint = mix(biomeTint, vec3(0.98, 1.0, 1.02), coinageWaterMaskColor * 0.45);
+        biomeTint = mix(biomeTint, vec3(1.03, 1.01, 0.99), coinageMountainMaskColor * coinageLandMaskColor * 0.2);
         diffuseColor.rgb *= biomeTint;
-        diffuseColor.rgb = min(diffuseColor.rgb * 1.08, vec3(1.0));`,
+        diffuseColor.rgb = min(diffuseColor.rgb * 1.04, vec3(1.0));`,
       );
       shader.fragmentShader = shader.fragmentShader.replace(
         '#include <roughnessmap_fragment>',
