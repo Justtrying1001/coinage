@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
 import type { PlanetVisualProfile } from '@/domain/world/planet-visual.types';
 
-export type TerrainProfileKind = 'smooth' | 'moderate' | 'rough' | 'extreme';
+export type TerrainProfileKind = 'smooth' | 'moderate' | 'rough' | 'extreme' | 'fragmented' | 'continental';
 export type SurfaceCategoryKind =
   | 'ocean'
   | 'desert'
@@ -36,6 +36,11 @@ export interface ProceduralPlanetUniforms {
   terrainSmoothing: number;
   ridgeAttenuation: number;
   detailAttenuation: number;
+  continentThreshold: number;
+  continentSharpness: number;
+  continentDrift: number;
+  trenchDepth: number;
+  biomeHarshness: number;
   roughness: number;
   metalness: number;
   atmosphereEnabled: boolean;

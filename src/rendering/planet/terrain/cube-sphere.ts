@@ -48,8 +48,16 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
   const macroSecondary = fbm(warpedPoint.clone().multiplyScalar(params.simpleFrequency * 0.21), continentSeed ^ 0x45d9f3b, 4);
   const macroTertiary = fbm(warpedPoint.clone().multiplyScalar(params.simpleFrequency * 0.12), continentSeed ^ 0x7f4a7c15, 3);
   const continentSignal = macroPrimary * 0.58 + macroSecondary * 0.28 + macroTertiary * 0.14;
-  const continentMask = smoothstep(0.38, 0.64, continentSignal);
-  const inlandMask = smoothstep(0.52, 0.82, continentSignal);
+  const continentMask = smoothstep(
+    params.continentThreshold - params.continentSharpness,
+    params.continentThreshold + params.continentSharpness,
+    continentSignal,
+  );
+  const inlandMask = smoothstep(
+    params.continentThreshold + params.continentSharpness * 0.7,
+    Math.min(0.95, params.continentThreshold + 0.33 + params.continentSharpness),
+    continentSignal,
+  );
 
   const midRelief = fbm(
     warpedPoint.clone().multiplyScalar(params.simpleFrequency * 1.34).addScalar(params.shapeSeed * 0.000041),
@@ -71,19 +79,32 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
   ) * 2 - 1;
   const mountainMask = smoothstep(0.56, 0.9, ridgeRelief) * inlandMask;
 
-  const oceanFloor = (1 - continentMask) * (0.045 + params.simpleStrength * 0.08);
+  const trenchSignal = fbm(
+    warpedPoint.clone().multiplyScalar(params.simpleFrequency * (1.16 + params.continentDrift * 0.8)).addScalar(params.shapeSeed * 0.000019),
+    params.shapeSeed ^ 0x51f2b3d,
+    4,
+  );
+  const archipelagoSignal = fbm(
+    warpedPoint.clone().multiplyScalar(params.simpleFrequency * (0.86 + params.continentDrift * 0.9)).addScalar(params.reliefSeed * 0.000023),
+    params.reliefSeed ^ 0x7ac4f39,
+    3,
+  );
+  const driftedFragmentation = smoothstep(0.58 - params.continentDrift * 0.2, 0.82, archipelagoSignal);
+
+  const oceanFloor = (1 - continentMask) * (0.045 + params.simpleStrength * 0.08 + trenchSignal * params.trenchDepth * 0.18);
   const continentBase = continentMask * (0.06 + params.simpleStrength * 0.2);
-  const uplands = inlandMask * Math.max(0, continentSignal - 0.48) * params.simpleStrength * 0.14;
+  const uplands = inlandMask * Math.max(0, continentSignal - 0.48) * params.simpleStrength * (0.14 + params.continentDrift * 0.07);
   const midLayer =
     Math.max(0, ridgeRelief - 0.44) *
     params.ridgedStrength *
     params.ridgeAttenuation *
     (0.08 + continentMask * 0.25);
   const microLayer = microRelief * params.ridgedStrength * params.detailAttenuation * (0.004 + mountainMask * 0.005);
-  const plateau = Math.max(0, midRelief) * inlandMask * 0.05;
+  const plateau = Math.max(0, midRelief) * inlandMask * (0.04 + params.continentDrift * 0.04);
   const mountainLift = mountainMask * params.ridgedStrength * params.ridgeAttenuation * 0.1;
+  const fragmentedIslands = driftedFragmentation * (1 - inlandMask) * params.simpleStrength * params.continentDrift * 0.09;
 
-  const rawElevation = -oceanFloor + continentBase + uplands + midLayer + microLayer + plateau + mountainLift;
+  const rawElevation = -oceanFloor + continentBase + uplands + midLayer + microLayer + plateau + mountainLift + fragmentedIslands;
   const normalized = clamp((rawElevation + 0.12) / 0.34, 0, 1);
   const smoothed = smoothstep(
     0.06 + (1 - params.terrainSmoothing) * 0.15,
@@ -92,7 +113,7 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
   );
   const centered = (smoothed - 0.5) * 2;
   const upwardCap = params.elevationCap;
-  const downwardCap = Math.min(0.12, params.elevationCap * 0.42 + 0.02);
+  const downwardCap = Math.min(0.16, params.elevationCap * 0.42 + 0.02 + params.trenchDepth * 0.07);
   const amplitude = centered >= 0 ? upwardCap : downwardCap;
   const elevation = centered * amplitude;
 
@@ -229,7 +250,7 @@ export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE
         0,
         1,
       );
-      const lushVariation = (biomeSignal - 0.5) * 0.12;
+      const lushVariation = (biomeSignal - 0.5) * (0.14 - params.biomeHarshness * 0.08);
       const t = clamp(baseT * categoryColorConfig.landToMountain + highlandBand * 0.24, 0, 1);
       color.setRGB(
         clamp(lerp(params.landColor[0], params.mountainColor[0], t) + lushVariation * plainsBand, 0, 1),
@@ -250,6 +271,16 @@ export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE
         lerp(color.r, params.shallowWaterColor[0], coastalBand * categoryColorConfig.coastBoost * 1.15),
         lerp(color.g, params.shallowWaterColor[1], coastalBand * categoryColorConfig.coastBoost * 1.15),
         lerp(color.b, params.shallowWaterColor[2], coastalBand * categoryColorConfig.coastBoost * 1.15),
+      );
+    }
+
+    if (params.biomeHarshness > 0.4) {
+      const harshness = params.biomeHarshness - 0.4;
+      const gray = color.r * 0.299 + color.g * 0.587 + color.b * 0.114;
+      color.setRGB(
+        lerp(color.r, gray, harshness * 0.24),
+        lerp(color.g, gray, harshness * 0.2),
+        lerp(color.b, gray, harshness * 0.16),
       );
     }
 

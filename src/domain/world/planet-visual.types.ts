@@ -18,6 +18,20 @@ export type PaletteFamily =
   | 'emerald-sea'
   | 'charcoal-abyss';
 
+export type PlanetArchetype =
+  | 'oceanic'
+  | 'icy'
+  | 'arid'
+  | 'lush'
+  | 'volcanic'
+  | 'dead'
+  | 'toxic'
+  | 'mineral'
+  | 'clouded'
+  | 'exotic'
+  | 'fragmented'
+  | 'superterran';
+
 export interface SeedInputs {
   worldSeed: string;
   planetSeed: string;
@@ -64,6 +78,7 @@ export interface PlanetVisualProfile {
   visualGenVersion: number;
   seeds: SeedInputs;
   derivedSubSeeds: DerivedSubSeeds;
+  archetype: PlanetArchetype;
   sizeCategory: PlanetSizeCategory;
   materialFamily: MaterialFamily;
   paletteFamily: PaletteFamily;

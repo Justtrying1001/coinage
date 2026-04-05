@@ -59,6 +59,11 @@ function buildGeometryKey(params: ReturnType<typeof mapProfileToProceduralUnifor
     `sm:${quantize(params.terrainSmoothing, 0.01).toFixed(2)}`,
     `ra:${quantize(params.ridgeAttenuation, 0.01).toFixed(2)}`,
     `da:${quantize(params.detailAttenuation, 0.01).toFixed(2)}`,
+    `ct:${quantize(params.continentThreshold, 0.01).toFixed(2)}`,
+    `cs:${quantize(params.continentSharpness, 0.01).toFixed(2)}`,
+    `cd:${quantize(params.continentDrift, 0.01).toFixed(2)}`,
+    `td:${quantize(params.trenchDepth, 0.01).toFixed(2)}`,
+    `bh:${quantize(params.biomeHarshness, 0.01).toFixed(2)}`,
     `c:${colorSignature}`,
   ].join('|');
 }
