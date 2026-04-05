@@ -41,11 +41,11 @@ test('variation mapper: different profiles produce meaningfully different unifor
   const b = mapProfileToProceduralUniforms(beta);
 
   const signaturesDiffer =
-    a.seedA !== b.seedA ||
-    a.seedB !== b.seedB ||
-    a.wobbleFrequency !== b.wobbleFrequency ||
-    a.macroStrength !== b.macroStrength ||
-    a.baseColor.join(',') !== b.baseColor.join(',');
+    a.shapeSeed !== b.shapeSeed ||
+    a.reliefSeed !== b.reliefSeed ||
+    a.simpleFrequency !== b.simpleFrequency ||
+    a.ridgedStrength !== b.ridgedStrength ||
+    a.landColor.join(',') !== b.landColor.join(',');
 
   assert.equal(signaturesDiffer, true);
 });
@@ -60,20 +60,26 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
     const uniforms = mapProfileToProceduralUniforms(profile);
 
     assertFiniteTuple(uniforms.baseColor, 'baseColor');
-    assertFiniteTuple(uniforms.accentColor, 'accentColor');
+    assertFiniteTuple(uniforms.shallowWaterColor, 'shallowWaterColor');
+    assertFiniteTuple(uniforms.landColor, 'landColor');
+    assertFiniteTuple(uniforms.mountainColor, 'mountainColor');
+    assertFiniteTuple(uniforms.iceColor, 'iceColor');
     assertFiniteTuple(uniforms.atmosphereColor, 'atmosphereColor');
 
     const numericKeys: Array<keyof typeof uniforms> = [
-      'seedA',
-      'seedB',
+      'shapeSeed',
+      'reliefSeed',
       'radius',
-      'wobbleFrequency',
-      'wobbleAmplitude',
-      'ridgeWarp',
-      'macroStrength',
-      'microStrength',
+      'meshResolution',
+      'oceanLevel',
+      'mountainLevel',
+      'simpleFrequency',
+      'simpleStrength',
+      'ridgedFrequency',
+      'ridgedStrength',
+      'maskStrength',
       'roughness',
-      'craterDensity',
+      'metalness',
       'atmosphereIntensity',
       'atmosphereThickness',
     ];
@@ -85,33 +91,45 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
       assert.equal(Number.isNaN(value as number), false, `${key} is NaN`);
     }
 
-    assert.ok(uniforms.seedA >= 0 && uniforms.seedA <= 1, `seedA out of range: ${uniforms.seedA}`);
-    assert.ok(uniforms.seedB >= 0 && uniforms.seedB <= 1, `seedB out of range: ${uniforms.seedB}`);
+    assert.ok(uniforms.shapeSeed >= 0, `shapeSeed out of range: ${uniforms.shapeSeed}`);
+    assert.ok(uniforms.reliefSeed >= 0, `reliefSeed out of range: ${uniforms.reliefSeed}`);
     assert.ok(uniforms.radius >= 0.55 && uniforms.radius <= 2.2, `radius out of range: ${uniforms.radius}`);
     assert.ok(
-      uniforms.wobbleFrequency >= 0.5 && uniforms.wobbleFrequency <= 4,
-      `wobbleFrequency out of range: ${uniforms.wobbleFrequency}`,
+      uniforms.meshResolution >= 22 && uniforms.meshResolution <= 34,
+      `meshResolution out of range: ${uniforms.meshResolution}`,
     );
     assert.ok(
-      uniforms.wobbleAmplitude >= 0 && uniforms.wobbleAmplitude <= 0.24,
-      `wobbleAmplitude out of range: ${uniforms.wobbleAmplitude}`,
-    );
-    assert.ok(uniforms.ridgeWarp >= 0 && uniforms.ridgeWarp <= 1, `ridgeWarp out of range: ${uniforms.ridgeWarp}`);
-    assert.ok(
-      uniforms.macroStrength >= 0.05 && uniforms.macroStrength <= 0.75,
-      `macroStrength out of range: ${uniforms.macroStrength}`,
+      uniforms.oceanLevel >= 0.25 && uniforms.oceanLevel <= 0.62,
+      `oceanLevel out of range: ${uniforms.oceanLevel}`,
     );
     assert.ok(
-      uniforms.microStrength >= 0.01 && uniforms.microStrength <= 0.45,
-      `microStrength out of range: ${uniforms.microStrength}`,
-    );
-    assert.ok(uniforms.roughness >= 0.15 && uniforms.roughness <= 1, `roughness out of range: ${uniforms.roughness}`);
-    assert.ok(
-      uniforms.craterDensity >= 0 && uniforms.craterDensity <= 1,
-      `craterDensity out of range: ${uniforms.craterDensity}`,
+      uniforms.mountainLevel >= 0.66 && uniforms.mountainLevel <= 0.92,
+      `mountainLevel out of range: ${uniforms.mountainLevel}`,
     );
     assert.ok(
-      uniforms.atmosphereIntensity >= 0 && uniforms.atmosphereIntensity <= 1,
+      uniforms.simpleFrequency >= 0.8 && uniforms.simpleFrequency <= 4.2,
+      `simpleFrequency out of range: ${uniforms.simpleFrequency}`,
+    );
+    assert.ok(
+      uniforms.simpleStrength >= 0.08 && uniforms.simpleStrength <= 0.9,
+      `simpleStrength out of range: ${uniforms.simpleStrength}`,
+    );
+    assert.ok(
+      uniforms.ridgedFrequency >= 1.8 && uniforms.ridgedFrequency <= 8.2,
+      `ridgedFrequency out of range: ${uniforms.ridgedFrequency}`,
+    );
+    assert.ok(
+      uniforms.ridgedStrength >= 0.06 && uniforms.ridgedStrength <= 0.95,
+      `ridgedStrength out of range: ${uniforms.ridgedStrength}`,
+    );
+    assert.ok(
+      uniforms.maskStrength >= 0.3 && uniforms.maskStrength <= 0.95,
+      `maskStrength out of range: ${uniforms.maskStrength}`,
+    );
+    assert.ok(uniforms.roughness >= 0.2 && uniforms.roughness <= 1, `roughness out of range: ${uniforms.roughness}`);
+    assert.ok(uniforms.metalness >= 0.05 && uniforms.metalness <= 0.45, `metalness out of range: ${uniforms.metalness}`);
+    assert.ok(
+      uniforms.atmosphereIntensity >= 0 && uniforms.atmosphereIntensity <= 0.95,
       `atmosphereIntensity out of range: ${uniforms.atmosphereIntensity}`,
     );
     assert.ok(
