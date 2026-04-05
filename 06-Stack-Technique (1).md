@@ -14,39 +14,41 @@ Coinage est construit sur le même stack que GitCities — éprouvé, déployé 
 
 ## Stack principal
 
-| **Composant** | **Technologie** | **Statut vs GitCities** |
-| --- | --- | --- |
-| Frontend | Next.js App Router + TypeScript | Identique |
-| Deployment | Vercel | Identique |
-| Database | Neon PostgreSQL | Identique |
-| ORM | Prisma v5.22.0 — PINNED, jamais upgrader vers v7 | Identique |
-| Auth | Privy (wallet Solana / Phantom) | Différent — GitHub OAuth → Wallet |
-| Queue / Jobs | Upstash QStash — jobs asynchrones | Identique |
-| World rendering | Three.js — Galaxy View | Différent — Canvas 2D → Three.js |
-| City rendering | Three.js — Isométrique | Différent — Canvas 2D → Three.js |
-| Planet generation | Three.js + GPGPU Simplex noise (inspiré de procedural-planets) — planètes procédurales générées depuis WORLD_SEED, textures pré-rendues pour la Galaxy View | Nouveau |
-| Styling | Tailwind CSS v3 | Identique |
-| Token metadata | Jupiter Token API — validation mint address + métadonnées (nom, ticker, logo) dès le MVP | Nouveau |
-| RPC Solana | À définir — Helius / QuickNode / Alchemy | Nouveau |
-| Token datas on-chain | Helius / Birdeye — volume, holders, actifs 30j. Utilisé dès la V1 pour le calcul Signal | Nouveau |
+| **Composant** | **Technologie** | **Statut vs GitCities** | **Version** |
+| --- | --- | --- | --- |
+| Frontend | Next.js App Router + TypeScript | Identique | MVP+ |
+| Deployment | Vercel | Identique | MVP+ |
+| Database | Neon PostgreSQL | Identique | MVP+ |
+| ORM | Prisma v5.22.0 — PINNED, jamais upgrader vers v7 | Identique | MVP+ |
+| Auth | MVP: session cookie + pseudo • V0: NextAuth email/GitHub • V1+: Privy wallet Solana | Versionné | MVP / V0 / V1+ |
+| Queue / Jobs | Upstash QStash — jobs asynchrones | Identique | V0+ |
+| World rendering | Three.js — Galaxy View | Différent — Canvas 2D → Three.js | MVP+ |
+| City rendering | Three.js — Isométrique | Différent — Canvas 2D → Three.js | MVP+ |
+| Planet generation | Three.js + GPGPU Simplex noise (inspiré de procedural-planets) — planètes procédurales générées depuis WORLD_SEED, textures pré-rendues pour la Galaxy View | Nouveau | MVP+ |
+| Styling | Tailwind CSS v3 | Identique | MVP+ |
+| Token metadata | Jupiter Token API — validation mint address + métadonnées (nom, ticker, logo) dès le MVP | Nouveau | MVP+ |
+| RPC Solana | À définir — Helius / QuickNode / Alchemy | Nouveau | V1+ |
+| Token datas on-chain | Helius / Birdeye — volume, holders, actifs 30j. Utilisé dès la V1 pour le calcul Signal | Nouveau | V1+ |
 
 ## Variables d'environnement
 
-| **Variable** | **Requis** | **Description** |
-| --- | --- | --- |
-| AUTH_SECRET | Oui | Secret auth (min 32 chars) |
-| PRIVY_APP_ID | Oui | Privy App ID pour wallet auth |
-| PRIVY_APP_SECRET | Oui | Privy App Secret |
-| POSTGRES_PRISMA_URL | Oui | Neon pgBouncer URL — Prisma runtime |
-| DIRECT_DATABASE_URL | Oui | Direct Neon URL — migrations uniquement |
-| QSTASH_URL | Oui | Upstash QStash endpoint |
-| QSTASH_TOKEN | Oui | Upstash QStash token |
-| QSTASH_CURRENT_SIGNING_KEY | Oui | QStash signature verification |
-| QSTASH_NEXT_SIGNING_KEY | Oui | QStash signature rotation |
-| TOKEN_ENCRYPTION_KEY | Oui | AES-256 key — exactement 64 hex chars |
-| SOLANA_RPC_URL | Oui | Endpoint RPC Solana — à définir au build |
-| NEXT_PUBLIC_WORLD_SEED | Oui | Seed global pour la génération procédurale de toutes les planètes du monde (toutes neutres au départ) |
-| NEXT_PUBLIC_WORLD_PLANET_COUNT | Oui | Nombre total de planètes générées au lancement du monde. Toutes démarrent neutres — elles deviennent planètes mères au fur et à mesure que les tokens arrivent. |
+| **Variable** | **Requis** | **Description** | **Version** |
+| --- | --- | --- | --- |
+| AUTH_SECRET | Oui | Secret auth (min 32 chars) | V0+ |
+| PRIVY_APP_ID | Oui | Privy App ID pour wallet auth | V1+ |
+| PRIVY_APP_SECRET | Oui | Privy App Secret | V1+ |
+| POSTGRES_PRISMA_URL | Oui | Neon pgBouncer URL — Prisma runtime | MVP |
+| DIRECT_DATABASE_URL | Oui | Direct Neon URL — migrations uniquement | MVP |
+| QSTASH_URL | Oui | Upstash QStash endpoint | V0+ |
+| QSTASH_TOKEN | Oui | Upstash QStash token | V0+ |
+| QSTASH_CURRENT_SIGNING_KEY | Oui | QStash signature verification | V0+ |
+| QSTASH_NEXT_SIGNING_KEY | Oui | QStash signature rotation | V0+ |
+| TOKEN_ENCRYPTION_KEY | Oui | AES-256 key — exactement 64 hex chars | V1+ |
+| SOLANA_RPC_URL | Oui | Endpoint RPC Solana — à définir au build | V1+ |
+| NEXT_PUBLIC_WORLD_SEED | Oui | Seed global pour la génération procédurale de toutes les planètes du monde (toutes neutres au départ) | MVP |
+| NEXT_PUBLIC_WORLD_PLANET_COUNT | Oui | Nombre total de planètes générées au lancement du monde. Toutes démarrent neutres — elles deviennent planètes mères au fur et à mesure que les tokens arrivent. | MVP |
+
+MVP minimal : seules les 4 variables MVP sont requises pour faire tourner le MVP.
 
 # Architecture
 
@@ -105,16 +107,16 @@ Extension du schema GitCities. Les modèles existants (City, Building, Construct
 
 | **Modèle** | **Rôle** | **Champs modifiés vs GitCities** |
 | --- | --- | --- |
-| User | Identité joueur | githubId → walletAddress. githubToken → supprimé |
-| City | Ville individuelle | ore/stone/iron/shards au lieu de wood/stone/steel/crystal. Ajout : ironVault, planetId (FK vers Planet) |
-| Building | Bâtiment dans une ville | Identique |
-| ConstructionQueue | Queue de construction | Identique |
-| ResourceLog | Logs de gain de ressources | Adapté aux nouvelles ressources |
-| DailyCap | Caps quotidiens anti-abuse | Simplifié — plus de GitHub event counters |
+| User -- [MVP] | Identité joueur | githubId → walletAddress. githubToken → supprimé |
+| City -- [MVP] | Ville individuelle | ore/stone/iron/shards au lieu de wood/stone/steel/crystal. Ajout : ironVault, planetId (FK vers Planet) |
+| Building -- [MVP] | Bâtiment dans une ville | Identique |
+| ConstructionQueue -- [MVP] | Queue de construction | Identique |
+| ResourceLog -- [MVP] | Logs de gain de ressources | Adapté aux nouvelles ressources |
+| DailyCap -- [MVP] | Caps quotidiens anti-abuse | Simplifié — plus de GitHub event counters |
 
 ## Nouveaux modèles
 
-### Planet
+### Planet -- [MVP]
 
 id                String   @id
 
@@ -142,25 +144,25 @@ posY              Float             -- position carte monde (assignée à l'acti
 
 slotCount         Int               -- slots disponibles
 
-signal            Int      @default(0)  -- trésor Signal accumulé
+signal            Int      @default(0)  -- trésor Signal accumulé -- V1+
 
-treasuryOre       Int      @default(0)  -- trésor planétaire
+treasuryOre       Int      @default(0)  -- trésor planétaire -- V1+
 
-treasuryStone     Int      @default(0)
+treasuryStone     Int      @default(0)  -- V1+
 
-treasuryIron      Int      @default(0)
+treasuryIron      Int      @default(0)  -- V1+
 
-holderCount       Int      @default(0)  -- snapshot on-chain (alimenté dès la V1)
+holderCount       Int      @default(0)  -- snapshot on-chain (alimenté dès la V1) -- V1+
 
-activeWallets30d  Int      @default(0)  -- snapshot on-chain (alimenté dès la V1)
+activeWallets30d  Int      @default(0)  -- snapshot on-chain (alimenté dès la V1) -- V1+
 
-weeklyVolume      Float    @default(0)  -- snapshot on-chain (alimenté dès la V1)
+weeklyVolume      Float    @default(0)  -- snapshot on-chain (alimenté dès la V1) -- V1+
 
-lastSnapshotAt    DateTime?
+lastSnapshotAt    DateTime?  -- V1+
 
-reputation        Int      @default(0)  -- score réputation diplomatique
+reputation        Int      @default(0)  -- score réputation diplomatique -- V2+
 
-### PlanetBranch
+### PlanetBranch -- [V1+]
 
 id         String   @id
 
@@ -172,7 +174,7 @@ level      Int      @default(0)  -- palier actuel (0-20)
 
 isActive   Boolean  @default(false)  -- branche en cours de progression
 
-### Alliance
+### Alliance -- [V2+]
 
 id          String   @id
 
@@ -186,7 +188,7 @@ isSecret    Boolean  @default(false)  -- diplomatie secrète palier 8
 
 secretUntil DateTime?
 
-### AllianceMember
+### AllianceMember -- [V2+]
 
 id         String   @id
 
@@ -198,7 +200,7 @@ joinedAt   DateTime
 
 leftAt     DateTime?
 
-### War
+### War -- [V2+]
 
 id              String    @id
 
@@ -216,7 +218,7 @@ endedAt         DateTime?
 
 endReason       String?   -- PEACE | SURRENDER | CONQUEST | ABANDON
 
-### CouncilMember
+### CouncilMember -- [V2+]
 
 id         String   @id
 
@@ -230,7 +232,7 @@ joinedAt   DateTime
 
 lastActiveAt DateTime
 
-### SpyMission
+### SpyMission -- [V0+]
 
 id              String   @id
 
@@ -250,7 +252,7 @@ arrivalAt       DateTime
 
 createdAt       DateTime
 
-### TroopMovement
+### TroopMovement -- [V0+]
 
 id           String   @id
 
@@ -268,7 +270,7 @@ departedAt   DateTime
 
 arrivalAt    DateTime
 
-### CollectiveArmy
+### CollectiveArmy -- [V2+]
 
 id         String   @id
 
@@ -278,7 +280,7 @@ units      Json     -- { infantry: 500, assault: 200, interceptor: 100, ... }
 
 updatedAt  DateTime
 
-### TradeRoute
+### TradeRoute -- [V3+]
 
 id           String   @id
 
