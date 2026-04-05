@@ -24,7 +24,7 @@ interface PlanetRenderData {
 
 const FIELD_RADIUS = GALAXY_LAYOUT_RUNTIME_CONFIG.fieldRadius ?? 84;
 const MOVE_SPEED = 24;
-const BASE_VIEW_HEIGHT = 72;
+const BASE_VIEW_HEIGHT = Math.min(180, Math.max(72, FIELD_RADIUS * 0.52));
 
 export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -242,8 +242,12 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         camera.position.y += (moveY / length) * MOVE_SPEED * delta;
       }
 
-      camera.position.x = Math.max(-FIELD_RADIUS, Math.min(FIELD_RADIUS, camera.position.x));
-      camera.position.y = Math.max(-FIELD_RADIUS, Math.min(FIELD_RADIUS, camera.position.y));
+      const verticalHalfSpan = (camera.top - camera.bottom) / 2;
+      const horizontalHalfSpan = (camera.right - camera.left) / 2;
+      const clampedXRadius = Math.max(0, FIELD_RADIUS - horizontalHalfSpan * 0.4);
+      const clampedYRadius = Math.max(0, FIELD_RADIUS - verticalHalfSpan * 0.4);
+      camera.position.x = Math.max(-clampedXRadius, Math.min(clampedXRadius, camera.position.x));
+      camera.position.y = Math.max(-clampedYRadius, Math.min(clampedYRadius, camera.position.y));
 
       renderer.render(scene, camera);
       frameId = requestAnimationFrame(animate);
@@ -285,6 +289,9 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         </p>
         <p className="mt-1 text-slate-100/90">
           <span className="font-semibold">Planet View:</span> double-click a planet
+        </p>
+        <p className="mt-1 text-slate-100/90">
+          <span className="font-semibold">Planets:</span> {planetData.length}
         </p>
       </div>
       <div className="pointer-events-auto absolute left-4 top-20 z-10">
