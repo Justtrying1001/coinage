@@ -17,6 +17,7 @@ export const ATMOSPHERE_FRAGMENT_SHADER = `
 
   uniform vec3 uAtmosphereColor;
   uniform float uIntensity;
+  uniform vec3 uLightDirection;
 
   void main() {
     vec3 V = normalize(cameraPosition - vPositionW);

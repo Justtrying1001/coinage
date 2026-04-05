@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { mapProfileToProceduralUniforms } from './map-profile-to-procedural-uniforms';
 import { ATMOSPHERE_FRAGMENT_SHADER, ATMOSPHERE_VERTEX_SHADER } from './shaders/atmosphere-shaders';
 import { createCubeSphereTerrain } from './terrain/cube-sphere';
-import type { PlanetRenderInput, PlanetRenderInstance } from './types';
+import type { PlanetRenderInput, PlanetRenderInstance, ProceduralPlanetUniforms } from './types';
 
 interface CachedGeometryEntry {
   geometry: THREE.BufferGeometry;
@@ -167,12 +167,7 @@ function getOrCreateAtmosphereGeometry(radius: number, thickness: number, segmen
 
 export function createPlanetRenderInstance({ profile, x, y, z, options }: PlanetRenderInput): PlanetRenderInstance {
   const baseParams = mapProfileToProceduralUniforms(profile);
-  const params = options?.lod === 'galaxy'
-    ? {
-      ...baseParams,
-      meshResolution: Math.max(14, Math.min(20, baseParams.meshResolution - 2)),
-    }
-    : baseParams;
+  const params = applyPlanetRenderLod(baseParams, options?.lod);
 
   const group = new THREE.Group();
   group.position.set(x, y, z);
@@ -180,6 +175,17 @@ export function createPlanetRenderInstance({ profile, x, y, z, options }: Planet
   const { geometry, release } = getOrCreateGeometry(params);
 
   const { material, release: releaseMaterial } = getOrCreateSurfaceMaterial(params);
+
+  material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <roughnessmap_fragment>',
+      `#include <roughnessmap_fragment>
+      float waterMask = smoothstep(0.08, 0.24, vColor.b - max(vColor.r, vColor.g));
+      float highlandMask = smoothstep(0.5, 0.85, vColor.r * 0.35 + vColor.g * 0.5 + vColor.b * 0.15);
+      roughnessFactor = mix(roughnessFactor, 0.08, waterMask * 0.92);
+      roughnessFactor = mix(roughnessFactor, clamp(roughnessFactor * 1.26 + 0.08, 0.0, 1.0), highlandMask * (1.0 - waterMask));`,
+    );
+  };
 
   const planetMesh = new THREE.Mesh(geometry, material);
   group.add(planetMesh);

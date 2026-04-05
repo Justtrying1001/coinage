@@ -33,24 +33,27 @@ function faceAxes(localUp: THREE.Vector3): { axisA: THREE.Vector3; axisB: THREE.
 
 function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms): number {
   const continentSeed = params.shapeSeed ^ (params.reliefSeed << 1);
-  const continent = fbm(point.clone().multiplyScalar(params.simpleFrequency * 0.52), continentSeed, 3);
-  const continentMask = smoothstep(0.4, 0.62, continent);
-  const oceanBasin = smoothstep(0.14, 0.44, 1 - continent);
+  const macroPrimary = fbm(point.clone().multiplyScalar(params.simpleFrequency * 0.36), continentSeed, 5);
+  const macroSecondary = fbm(point.clone().multiplyScalar(params.simpleFrequency * 0.22), continentSeed ^ 0x45d9f3b, 4);
+  const continentSignal = macroPrimary * 0.72 + macroSecondary * 0.28;
+  const continentMask = smoothstep(0.42, 0.62, continentSignal);
+  const inlandMask = smoothstep(0.56, 0.84, continentSignal);
 
-  const macro = fbm(
-    point.clone().multiplyScalar(params.simpleFrequency * 1.15).addScalar(params.shapeSeed * 0.000041),
+  const midRelief = fbm(
+    point.clone().multiplyScalar(params.simpleFrequency * 1.26).addScalar(params.shapeSeed * 0.000041),
     params.shapeSeed,
-    4,
+    5,
   ) * 2 - 1;
-  const ridged = ridgedFbm(
-    point.clone().multiplyScalar(params.ridgedFrequency * 0.74).addScalar(params.reliefSeed * 0.000037),
+  const ridgeRelief = ridgedFbm(
+    point.clone().multiplyScalar(params.ridgedFrequency * 0.82).addScalar(params.reliefSeed * 0.000037),
     params.reliefSeed,
-    4,
+    5,
   );
-  const detail = fbm(point.clone().multiplyScalar(params.ridgedFrequency * 1.22), params.reliefSeed ^ 0x9e3779b9, 2) * 2 - 1;
-
-  const plateauShape = continentMask * 3.1 + macro * 1.15;
-  const plateau = clamp(Math.tanh(plateauShape * 0.45) * 0.13 - 0.06, -0.12, 0.16);
+  const microRelief = fbm(
+    point.clone().multiplyScalar(params.ridgedFrequency * 2.35).addScalar((params.shapeSeed ^ params.reliefSeed) * 0.000011),
+    params.reliefSeed ^ 0x9e3779b9,
+    3,
+  ) * 2 - 1;
 
   const rawElevation =
     -oceanBasin * (0.07 + params.simpleStrength * 0.16) +
@@ -60,7 +63,8 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     detail * params.ridgedStrength * params.detailAttenuation * 0.015 +
     plateau;
 
-  const normalized = clamp((rawElevation + 0.26) / 0.72, 0, 1);
+  const rawElevation = oceanFloor + continentBase + uplands + midLayer + microLayer;
+  const normalized = clamp((rawElevation + 0.16) / 0.42, 0, 1);
   const smoothed = smoothstep(
     0.08 + (1 - params.terrainSmoothing) * 0.18,
     0.93 - params.terrainSmoothing * 0.08,
@@ -199,6 +203,7 @@ export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   geometry.computeVertexNormals();
+  applyMicroNormalDetail(geometry, params);
 
   return geometry;
 }

@@ -196,13 +196,13 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     simpleStrength: clamp(
       (profile.relief.macroStrength * 0.72 + profile.shape.wobbleAmplitude * 0.45) * terrainProfile.macroScale,
       0.08,
-      0.58,
+      0.7,
     ),
     ridgedFrequency: clamp(profile.shape.wobbleFrequency * 2.0 + 1.4, 1.8, 8.2),
     ridgedStrength: clamp(
       (profile.relief.microStrength * 1.12 + profile.shape.ridgeWarp * 0.22) * terrainProfile.ridgedScale,
       0.04,
-      0.5,
+      0.62,
     ),
     maskStrength: clamp(0.45 + profile.shape.ridgeWarp * 0.4 + profile.relief.craterDensity * 0.1, 0.3, 0.95),
     terrainProfile: terrainProfile.type,
