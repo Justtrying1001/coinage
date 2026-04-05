@@ -23,8 +23,8 @@ interface PlanetRenderData {
 }
 
 const FIELD_RADIUS = GALAXY_LAYOUT_RUNTIME_CONFIG.fieldRadius ?? 84;
-const MOVE_SPEED = 24;
-const BASE_VIEW_HEIGHT = Math.min(180, Math.max(72, FIELD_RADIUS * 0.52));
+const MOVE_SPEED = Math.max(24, FIELD_RADIUS * 0.18);
+const BASE_VIEW_HEIGHT = Math.min(560, Math.max(120, FIELD_RADIUS * 0.95));
 
 export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);

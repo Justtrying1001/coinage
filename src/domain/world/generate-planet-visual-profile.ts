@@ -10,6 +10,7 @@ import {
 } from './planet-visual.constants';
 import type {
   MaterialFamily,
+  PlanetMacroStyle,
   PaletteFamily,
   PlanetArchetype,
   PlanetSizeCategory,
@@ -51,10 +52,23 @@ function pickPaletteFamily(rng: () => number, materialFamily: MaterialFamily, ar
   return pickWeighted(rng, weighted);
 }
 
-function pickSizeCategory(rng: () => number): PlanetSizeCategory {
+function pickSizeCategory(rng: () => number, archetype: ArchetypeConfig): PlanetSizeCategory {
   return pickWeighted(
     rng,
-    SIZE_CATEGORY_WEIGHTS.map((item) => ({ value: item.category, weight: item.weight })),
+    SIZE_CATEGORY_WEIGHTS.map((item) => ({
+      value: item.category,
+      weight: item.weight * (archetype.sizeWeights[item.category] ?? 1),
+    })),
+  );
+}
+
+function pickMacroStyle(rng: () => number, archetype: ArchetypeConfig): PlanetMacroStyle {
+  return pickWeighted(
+    rng,
+    (Object.entries(archetype.macroStyleWeights) as Array<[PlanetMacroStyle, number]>).map(([value, weight]) => ({
+      value,
+      weight,
+    })),
   );
 }
 
@@ -93,17 +107,20 @@ export function generatePlanetVisualProfile(
   const reliefSeed = deriveSeed(base, 'relief');
   const colorSeed = deriveSeed(base, 'color');
   const atmoSeed = deriveSeed(base, 'atmo');
+  const hydroSeed = deriveSeed(base, 'hydro');
 
   const shapeRng = createSeededRng(shapeSeed);
   const reliefRng = createSeededRng(reliefSeed);
   const colorRng = createSeededRng(colorSeed);
   const atmoRng = createSeededRng(atmoSeed);
+  const hydroRng = createSeededRng(hydroSeed);
   const baseRng = createSeededRng(baseSeed);
 
   const archetype = pickArchetype(baseRng);
 
-  const sizeCategory = pickSizeCategory(shapeRng);
+  const sizeCategory = pickSizeCategory(shapeRng, archetype);
   const radiusRange = SIZE_RADIUS_RANGES[sizeCategory];
+  const macroStyle = pickMacroStyle(baseRng, archetype);
 
   const materialFamily = pickMaterialFamily(colorRng, archetype);
   const paletteFamily = pickPaletteFamily(colorRng, materialFamily, archetype);
@@ -120,11 +137,18 @@ export function generatePlanetVisualProfile(
       reliefSeed,
       colorSeed,
       atmoSeed,
+      hydroSeed,
     },
     archetype: archetype.name,
+    macroStyle,
     sizeCategory,
     materialFamily,
     paletteFamily,
+    hydrology: {
+      oceanBias: sampleBiasedRange(hydroRng, { min: 0, max: 1 }, archetype.hydrology.oceanBias),
+      minLandRatio: sampleBiasedRange(hydroRng, { min: 0.34, max: 0.82 }, archetype.hydrology.minLandRatio),
+      maxOceanRatio: sampleBiasedRange(hydroRng, { min: 0.2, max: 0.74 }, archetype.hydrology.maxOceanRatio),
+    },
     shape: {
       radius: range(shapeRng, radiusRange.min, radiusRange.max),
       wobbleFrequency: sampleBiasedRange(shapeRng, BOUNDS.wobbleFrequency, archetype.shapeBias.wobbleFrequency),
@@ -186,6 +210,12 @@ export function isPlanetVisualProfileInBounds(profile: PlanetVisualProfile): boo
     profile.color.lightness <= BOUNDS.lightness.max &&
     profile.color.accentMix >= BOUNDS.accentMix.min &&
     profile.color.accentMix <= BOUNDS.accentMix.max &&
+    profile.hydrology.oceanBias >= 0 &&
+    profile.hydrology.oceanBias <= 1 &&
+    profile.hydrology.minLandRatio >= 0.34 &&
+    profile.hydrology.minLandRatio <= 0.82 &&
+    profile.hydrology.maxOceanRatio >= 0.2 &&
+    profile.hydrology.maxOceanRatio <= 0.74 &&
     (profile.atmosphere.enabled
       ? profile.atmosphere.intensity >= BOUNDS.atmosphereIntensity.min &&
         profile.atmosphere.intensity <= BOUNDS.atmosphereIntensity.max &&
@@ -202,11 +232,13 @@ export function isPlanetVisualProfileInBounds(profile: PlanetVisualProfile): boo
 export function profileSignature(profile: PlanetVisualProfile): string {
   return [
     profile.archetype,
+    profile.macroStyle,
     profile.sizeCategory,
     profile.materialFamily,
     profile.paletteFamily,
     profile.shape.radius.toFixed(3),
     profile.relief.macroStrength.toFixed(3),
+    profile.hydrology.minLandRatio.toFixed(3),
     profile.color.hueShift.toFixed(2),
     profile.atmosphere.enabled ? 'atmo:on' : 'atmo:off',
   ].join('|');
