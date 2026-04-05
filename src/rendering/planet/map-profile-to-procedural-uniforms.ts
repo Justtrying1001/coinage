@@ -124,14 +124,14 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
   landBase.getHSL(hsl);
 
   const hue = (hsl.h + profile.color.hueShift / 360 + 1) % 1;
-  const saturation = clamp(hsl.s * 0.76 + profile.color.saturation * 0.42, 0.2, 0.95);
-  const lightness = clamp(hsl.l * 0.74 + profile.color.lightness * 0.38, 0.2, 0.8);
+  const saturation = clamp(hsl.s * 0.74 + profile.color.saturation * 0.5, 0.24, 0.95);
+  const lightness = clamp(hsl.l * 0.7 + profile.color.lightness * 0.42, 0.18, 0.82);
 
   const landColor = new THREE.Color().setHSL(hue, saturation, lightness);
   const mountainColor = new THREE.Color().setHSL(
     hue,
-    clamp(saturation * 0.3 + 0.05, 0.1, 0.55),
-    clamp(lightness * 1.22, 0.34, 0.9),
+    clamp(saturation * 0.34 + 0.06, 0.1, 0.58),
+    clamp(lightness * 1.28, 0.36, 0.92),
   );
   const iceColor = new THREE.Color().setHSL(
     hue,
@@ -139,8 +139,8 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     clamp(lightness * 1.38, 0.66, 0.97),
   );
 
-  const oceanColor = oceanBase.clone().offsetHSL(profile.color.hueShift / 720, -0.02, -0.07);
-  const shallowWaterColor = oceanBase.clone().offsetHSL(profile.color.hueShift / 840, 0.06, 0.08);
+  const oceanColor = oceanBase.clone().offsetHSL(profile.color.hueShift / 720, -0.01, -0.11);
+  const shallowWaterColor = oceanBase.clone().offsetHSL(profile.color.hueShift / 840, 0.08, 0.13);
 
   const isIcy = profile.materialFamily === 'icy';
   const isRocky = profile.materialFamily === 'rocky';
@@ -155,20 +155,20 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     mountainColor: colorToTuple(mountainColor),
     iceColor: colorToTuple(iceColor),
     radius: clamp(profile.shape.radius * 0.96, 0.85, 2.95),
-    meshResolution: Math.round(clamp(15 + profile.shape.radius * 4 + profile.relief.macroStrength * 7, 16, 24)),
+    meshResolution: Math.round(clamp(18 + profile.shape.radius * 5 + profile.relief.macroStrength * 10, 20, 34)),
     oceanLevel: clamp(0.38 + (0.5 - profile.color.accentMix) * 0.18 + (isIcy ? 0.08 : 0), 0.25, 0.62),
     mountainLevel: clamp(0.7 + profile.relief.macroStrength * 0.18 + (isRocky ? 0.03 : 0), 0.66, 0.92),
     simpleFrequency: clamp(profile.shape.wobbleFrequency * 0.9 + 0.55, 0.8, 4.2),
     simpleStrength: clamp(
       (profile.relief.macroStrength * 0.72 + profile.shape.wobbleAmplitude * 0.45) * terrainProfile.macroScale,
       0.08,
-      0.58,
+      0.7,
     ),
     ridgedFrequency: clamp(profile.shape.wobbleFrequency * 2.0 + 1.4, 1.8, 8.2),
     ridgedStrength: clamp(
       (profile.relief.microStrength * 1.12 + profile.shape.ridgeWarp * 0.22) * terrainProfile.ridgedScale,
       0.04,
-      0.5,
+      0.62,
     ),
     maskStrength: clamp(0.45 + profile.shape.ridgeWarp * 0.4 + profile.relief.craterDensity * 0.1, 0.3, 0.95),
     terrainProfile: terrainProfile.type,

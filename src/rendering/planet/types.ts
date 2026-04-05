@@ -34,7 +34,7 @@ export interface ProceduralPlanetUniforms {
 }
 
 export interface PlanetRendererOptions {
-  lod?: 'galaxy';
+  lod?: 'galaxy' | 'planet';
 }
 
 export interface PlanetRenderInstance {
