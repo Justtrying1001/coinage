@@ -7,7 +7,9 @@ export type PaletteFamily =
   | 'basalt-moss'
   | 'cobalt-ice'
   | 'sulfur-stone'
-  | 'violet-ash';
+  | 'violet-ash'
+  | 'verdant-umber'
+  | 'rose-quartz';
 
 export interface SeedInputs {
   worldSeed: string;

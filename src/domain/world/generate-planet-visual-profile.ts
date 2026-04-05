@@ -22,10 +22,16 @@ function pickMaterialFamily(rng: () => number): MaterialFamily {
 }
 
 function pickPaletteFamily(rng: () => number, materialFamily: MaterialFamily): PaletteFamily {
-  const filtered = PALETTE_FAMILIES.filter((palette) => palette.materialBias.includes(materialFamily));
-  const source = filtered.length > 0 ? filtered : PALETTE_FAMILIES;
+  const weighted = PALETTE_FAMILIES.map((palette) => {
+    const compatibilityWeight = palette.materialBias.includes(materialFamily) ? 1 : 0.42;
+    const diversityJitter = 0.82 + rng() * 0.5;
+    return {
+      value: palette.name,
+      weight: compatibilityWeight * diversityJitter,
+    };
+  });
 
-  return source[Math.floor(rng() * source.length)]?.name ?? 'basalt-moss';
+  return pickWeighted(rng, weighted);
 }
 
 function pickSizeCategory(rng: () => number): PlanetSizeCategory {

@@ -18,6 +18,8 @@ const PALETTE_BASE_COLORS: Record<PlanetVisualProfile['paletteFamily'], string> 
   'cobalt-ice': '#7fa5d6',
   'sulfur-stone': '#ad9a52',
   'violet-ash': '#8f78a8',
+  'verdant-umber': '#6f8f66',
+  'rose-quartz': '#ba86a6',
 };
 
 function clamp(value: number, min: number, max: number): number {

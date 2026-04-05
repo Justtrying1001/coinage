@@ -3,15 +3,15 @@ import type { MaterialFamily, PaletteFamily, PlanetSizeCategory } from './planet
 export const DEFAULT_VISUAL_GEN_VERSION = 1;
 
 export const SIZE_CATEGORY_WEIGHTS: Array<{ category: PlanetSizeCategory; weight: number }> = [
-  { category: 'small', weight: 0.35 },
-  { category: 'medium', weight: 0.45 },
-  { category: 'large', weight: 0.2 },
+  { category: 'small', weight: 0.28 },
+  { category: 'medium', weight: 0.47 },
+  { category: 'large', weight: 0.25 },
 ];
 
 export const SIZE_RADIUS_RANGES: Record<PlanetSizeCategory, { min: number; max: number }> = {
-  small: { min: 0.8, max: 1.0 },
-  medium: { min: 1.0, max: 1.3 },
-  large: { min: 1.3, max: 1.7 },
+  small: { min: 0.96, max: 1.2 },
+  medium: { min: 1.2, max: 1.65 },
+  large: { min: 1.65, max: 2.35 },
 };
 
 export const MATERIAL_FAMILIES: MaterialFamily[] = ['rocky', 'dusty', 'metallic', 'icy'];
@@ -22,6 +22,8 @@ export const PALETTE_FAMILIES: Array<{ name: PaletteFamily; materialBias: Materi
   { name: 'cobalt-ice', materialBias: ['icy', 'metallic'] },
   { name: 'sulfur-stone', materialBias: ['rocky', 'metallic'] },
   { name: 'violet-ash', materialBias: ['dusty', 'metallic'] },
+  { name: 'verdant-umber', materialBias: ['rocky', 'dusty'] },
+  { name: 'rose-quartz', materialBias: ['icy', 'metallic', 'dusty'] },
 ];
 
 export const BOUNDS = {
@@ -32,8 +34,8 @@ export const BOUNDS = {
   microStrength: { min: 0.02, max: 0.35 },
   roughness: { min: 0.2, max: 1 },
   craterDensity: { min: 0, max: 0.9 },
-  hueShift: { min: -25, max: 25 },
-  saturation: { min: 0.25, max: 0.95 },
+  hueShift: { min: -38, max: 38 },
+  saturation: { min: 0.3, max: 1 },
   lightness: { min: 0.25, max: 0.8 },
   accentMix: { min: 0, max: 1 },
   atmosphereIntensity: { min: 0.15, max: 0.9 },
