@@ -1,5 +1,5 @@
 import type { PlanetVisualProfile } from './planet-visual.types';
-import { buildGalaxyPlanetManifest } from './build-galaxy-planet-manifest';
+import { getGalaxyPlanetManifest } from './build-galaxy-planet-manifest';
 
 export interface ResolvedPlanetIdentity {
   planetId: string;
@@ -8,7 +8,7 @@ export interface ResolvedPlanetIdentity {
 }
 
 export function resolvePlanetIdentity(worldSeed: string, planetId: string): ResolvedPlanetIdentity | null {
-  const matchedPlanet = buildGalaxyPlanetManifest(worldSeed).find((planet) => planet.id === planetId);
+  const matchedPlanet = getGalaxyPlanetManifest(worldSeed).find((planet) => planet.id === planetId);
 
   if (!matchedPlanet) {
     return null;

@@ -12,6 +12,8 @@ export interface GalaxyPlanetManifestItem {
   profile: PlanetVisualProfile;
 }
 
+const MANIFEST_CACHE = new Map<string, GalaxyPlanetManifestItem[]>();
+
 export function buildGalaxyPlanetManifest(worldSeed: string): GalaxyPlanetManifestItem[] {
   const planetCount = GALAXY_LAYOUT_RUNTIME_CONFIG.planetCount ?? 0;
   const profiles = Array.from({ length: planetCount }, (_, index) =>
@@ -31,4 +33,16 @@ export function buildGalaxyPlanetManifest(worldSeed: string): GalaxyPlanetManife
     radius: estimatedRadii[index] ?? 1,
     profile: profiles[index]!,
   }));
+}
+
+export function getGalaxyPlanetManifest(worldSeed: string): GalaxyPlanetManifestItem[] {
+  const normalizedSeed = worldSeed.trim();
+  const cached = MANIFEST_CACHE.get(normalizedSeed);
+  if (cached) {
+    return cached;
+  }
+
+  const manifest = buildGalaxyPlanetManifest(normalizedSeed);
+  MANIFEST_CACHE.set(normalizedSeed, manifest);
+  return manifest;
 }

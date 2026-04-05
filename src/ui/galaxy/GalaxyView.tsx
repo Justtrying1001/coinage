@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as THREE from 'three';
 
-import { buildGalaxyPlanetManifest } from '@/domain/world/build-galaxy-planet-manifest';
+import { getGalaxyPlanetManifest } from '@/domain/world/build-galaxy-planet-manifest';
 import type { PlanetVisualProfile } from '@/domain/world/planet-visual.types';
 import { GALAXY_LAYOUT_RUNTIME_CONFIG } from '@/domain/world/world.constants';
 import { createPlanetRenderInstance } from '@/rendering/planet/create-planet-render-instance';
@@ -17,10 +17,8 @@ interface GalaxyViewProps {
 
 interface PlanetRenderData {
   id: string;
-  planetSeed: string;
   x: number;
   y: number;
-  radius: number;
   profile: PlanetVisualProfile;
 }
 
@@ -33,7 +31,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
   const router = useRouter();
 
   const planetData = useMemo<PlanetRenderData[]>(() => {
-    return buildGalaxyPlanetManifest(worldSeed);
+    return getGalaxyPlanetManifest(worldSeed);
   }, [worldSeed]);
 
   useEffect(() => {
@@ -89,11 +87,9 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         options: { lod: 'galaxy' },
       });
       instance.object.userData.planetId = planet.id;
-      instance.object.userData.planetSeed = planet.planetSeed;
       instance.object.traverse((node) => {
         if (node instanceof THREE.Mesh) {
           node.userData.planetId = planet.id;
-          node.userData.planetSeed = planet.planetSeed;
           interactivePlanetMeshes.push(node);
         }
       });
@@ -154,6 +150,14 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       dragging = false;
     };
 
+    const onContextMenu = (event: MouseEvent) => {
+      event.preventDefault();
+    };
+
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+    };
+
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
 
@@ -206,11 +210,18 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     window.addEventListener('resize', onResize);
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
     renderer.domElement.addEventListener('dblclick', onDoubleClick);
-    renderer.domElement.addEventListener('contextmenu', (event: MouseEvent) => event.preventDefault());
-    renderer.domElement.addEventListener('wheel', (event: WheelEvent) => event.preventDefault(), { passive: false });
+    renderer.domElement.addEventListener('contextmenu', onContextMenu);
+    renderer.domElement.addEventListener('wheel', onWheel, { passive: false });
 
     let previousTime = performance.now();
+    let disposed = false;
+    let frameId = 0;
+
     const animate = (time: number) => {
+      if (disposed) {
+        return;
+      }
+
       const delta = Math.min(0.05, (time - previousTime) / 1000);
       previousTime = time;
 
@@ -232,13 +243,14 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       camera.position.y = Math.max(-FIELD_RADIUS, Math.min(FIELD_RADIUS, camera.position.y));
 
       renderer.render(scene, camera);
-      requestAnimationFrame(animate);
+      frameId = requestAnimationFrame(animate);
     };
 
-    const raf = requestAnimationFrame(animate);
+    frameId = requestAnimationFrame(animate);
 
     return () => {
-      cancelAnimationFrame(raf);
+      disposed = true;
+      cancelAnimationFrame(frameId);
 
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
@@ -247,6 +259,8 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       window.removeEventListener('resize', onResize);
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       renderer.domElement.removeEventListener('dblclick', onDoubleClick);
+      renderer.domElement.removeEventListener('contextmenu', onContextMenu);
+      renderer.domElement.removeEventListener('wheel', onWheel);
 
       for (const instance of instances) {
         instance.dispose();
@@ -257,7 +271,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         mount.removeChild(renderer.domElement);
       }
     };
-  }, [planetData, router, worldSeed]);
+  }, [planetData, router]);
 
   return (
     <section className="relative h-full w-full overflow-hidden">
