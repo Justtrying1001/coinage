@@ -51,6 +51,13 @@ test('variation mapper: different profiles produce meaningfully different unifor
 });
 
 test('procedural uniforms contain no undefined/NaN values and remain in expected bounds', () => {
+  const profileCounts: Record<string, number> = {
+    smooth: 0,
+    moderate: 0,
+    rough: 0,
+    extreme: 0,
+  };
+
   for (let i = 0; i < 150; i += 1) {
     const profile = generatePlanetVisualProfile({
       worldSeed: 'coinage-mvp-seed',
@@ -78,6 +85,10 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
       'ridgedFrequency',
       'ridgedStrength',
       'maskStrength',
+      'elevationCap',
+      'terrainSmoothing',
+      'ridgeAttenuation',
+      'detailAttenuation',
       'roughness',
       'metalness',
       'atmosphereIntensity',
@@ -119,12 +130,25 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
       `ridgedFrequency out of range: ${uniforms.ridgedFrequency}`,
     );
     assert.ok(
-      uniforms.ridgedStrength >= 0.06 && uniforms.ridgedStrength <= 0.95,
+      uniforms.ridgedStrength >= 0.04 && uniforms.ridgedStrength <= 0.72,
       `ridgedStrength out of range: ${uniforms.ridgedStrength}`,
     );
     assert.ok(
       uniforms.maskStrength >= 0.3 && uniforms.maskStrength <= 0.95,
       `maskStrength out of range: ${uniforms.maskStrength}`,
+    );
+    assert.ok(uniforms.elevationCap >= 0.19 && uniforms.elevationCap <= 0.33, `elevationCap out of range: ${uniforms.elevationCap}`);
+    assert.ok(
+      uniforms.terrainSmoothing >= 0.45 && uniforms.terrainSmoothing <= 0.82,
+      `terrainSmoothing out of range: ${uniforms.terrainSmoothing}`,
+    );
+    assert.ok(
+      uniforms.ridgeAttenuation >= 0.32 && uniforms.ridgeAttenuation <= 0.9,
+      `ridgeAttenuation out of range: ${uniforms.ridgeAttenuation}`,
+    );
+    assert.ok(
+      uniforms.detailAttenuation >= 0.24 && uniforms.detailAttenuation <= 0.72,
+      `detailAttenuation out of range: ${uniforms.detailAttenuation}`,
     );
     assert.ok(uniforms.roughness >= 0.2 && uniforms.roughness <= 1, `roughness out of range: ${uniforms.roughness}`);
     assert.ok(uniforms.metalness >= 0.05 && uniforms.metalness <= 0.45, `metalness out of range: ${uniforms.metalness}`);
@@ -136,5 +160,13 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
       uniforms.atmosphereThickness >= 0 && uniforms.atmosphereThickness <= 0.12,
       `atmosphereThickness out of range: ${uniforms.atmosphereThickness}`,
     );
+
+    profileCounts[uniforms.terrainProfile] += 1;
   }
+
+  assert.ok(profileCounts.smooth > 0, 'expected smooth terrain profiles to exist');
+  assert.ok(profileCounts.moderate > 0, 'expected moderate terrain profiles to exist');
+  assert.ok(profileCounts.rough > 0, 'expected rough terrain profiles to exist');
+  assert.ok(profileCounts.extreme > 0, 'expected rare extreme terrain profiles to exist');
+  assert.ok(profileCounts.extreme <= 15, `expected extreme terrain to remain rare, got ${profileCounts.extreme}`);
 });

@@ -22,7 +22,7 @@ interface PlanetRenderData {
   profile: PlanetVisualProfile;
 }
 
-const FIELD_RADIUS = 70;
+const FIELD_RADIUS = 76;
 const MOVE_SPEED = 24;
 const BASE_VIEW_HEIGHT = 52;
 const GALAXY_BACKGROUND_Z = -180;
@@ -100,7 +100,7 @@ function createStarField(seed: string): THREE.Group {
 }
 
 function createBackdrop(seed: string): THREE.Mesh {
-  const textureSize = 768;
+  const textureSize = 1024;
   const canvas = document.createElement('canvas');
   canvas.width = textureSize;
   canvas.height = textureSize;
@@ -110,9 +110,9 @@ function createBackdrop(seed: string): THREE.Mesh {
   }
 
   const gradient = ctx.createLinearGradient(0, 0, 0, textureSize);
-  gradient.addColorStop(0, '#02050f');
-  gradient.addColorStop(0.45, '#050b1f');
-  gradient.addColorStop(1, '#02040d');
+  gradient.addColorStop(0, '#01040d');
+  gradient.addColorStop(0.4, '#040b1e');
+  gradient.addColorStop(1, '#01030a');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, textureSize, textureSize);
 
@@ -124,15 +124,76 @@ function createBackdrop(seed: string): THREE.Mesh {
     return ((t ^ (t >>> 14)) >>> 0) / 0x100000000;
   };
 
-  for (let i = 0; i < 10; i += 1) {
+  const createNoiseGrid = (size: number) => {
+    const grid = new Float32Array(size * size);
+    for (let i = 0; i < grid.length; i += 1) {
+      grid[i] = random();
+    }
+    return grid;
+  };
+
+  const sampleGrid = (grid: Float32Array, size: number, x: number, y: number) => {
+    const maxIndex = size - 1;
+    const x0 = Math.floor(x);
+    const y0 = Math.floor(y);
+    const x1 = Math.min(maxIndex, x0 + 1);
+    const y1 = Math.min(maxIndex, y0 + 1);
+    const tx = x - x0;
+    const ty = y - y0;
+
+    const v00 = grid[Math.max(0, Math.min(maxIndex, y0)) * size + Math.max(0, Math.min(maxIndex, x0))];
+    const v10 = grid[Math.max(0, Math.min(maxIndex, y0)) * size + x1];
+    const v01 = grid[y1 * size + Math.max(0, Math.min(maxIndex, x0))];
+    const v11 = grid[y1 * size + x1];
+
+    const ix0 = v00 + (v10 - v00) * tx;
+    const ix1 = v01 + (v11 - v01) * tx;
+    return ix0 + (ix1 - ix0) * ty;
+  };
+
+  const lowNoise = createNoiseGrid(40);
+  const midNoise = createNoiseGrid(84);
+  const hiNoise = createNoiseGrid(164);
+
+  const image = ctx.getImageData(0, 0, textureSize, textureSize);
+  const data = image.data;
+  for (let y = 0; y < textureSize; y += 1) {
+    for (let x = 0; x < textureSize; x += 1) {
+      const nx = x / textureSize;
+      const ny = y / textureSize;
+
+      const low = sampleGrid(lowNoise, 40, nx * 39, ny * 39);
+      const mid = sampleGrid(midNoise, 84, nx * 83, ny * 83);
+      const hi = sampleGrid(hiNoise, 164, nx * 163, ny * 163);
+
+      const cloud = low * 0.62 + mid * 0.3 + hi * 0.08;
+      const dust = Math.max(0, (hi - 0.8) * 2.2);
+      const dx = nx - 0.5;
+      const dy = ny - 0.5;
+      const vignette = Math.min(1, Math.hypot(dx * 1.15, dy * 1.1) * 1.22);
+      const darkness = 1 - vignette * 0.58;
+
+      const r = 4 + cloud * 6 + dust * 4;
+      const g = 8 + cloud * 10 + dust * 4;
+      const b = 15 + cloud * 20 + dust * 7;
+      const i = (y * textureSize + x) * 4;
+      data[i] = Math.min(255, r * darkness);
+      data[i + 1] = Math.min(255, g * darkness);
+      data[i + 2] = Math.min(255, b * darkness);
+      data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+
+  for (let i = 0; i < 5; i += 1) {
     const cx = random() * textureSize;
     const cy = random() * textureSize;
-    const radius = 90 + random() * 210;
-    const nebula = ctx.createRadialGradient(cx, cy, radius * 0.1, cx, cy, radius);
-    const hue = 212 + Math.floor(random() * 28);
-    const alpha = 0.03 + random() * 0.04;
-    nebula.addColorStop(0, `hsla(${hue}, 80%, 64%, ${alpha})`);
-    nebula.addColorStop(1, `hsla(${hue}, 80%, 64%, 0)`);
+    const radius = 280 + random() * 260;
+    const nebula = ctx.createRadialGradient(cx, cy, radius * 0.06, cx, cy, radius);
+    const hue = 210 + Math.floor(random() * 18);
+    const alpha = 0.02 + random() * 0.015;
+    nebula.addColorStop(0, `hsla(${hue}, 72%, 65%, ${alpha})`);
+    nebula.addColorStop(1, `hsla(${hue}, 72%, 60%, 0)`);
     ctx.fillStyle = nebula;
     ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
   }
@@ -158,9 +219,9 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
 
   const planetData = useMemo<PlanetRenderData[]>(() => {
     return generateGalaxyLayout(worldSeed, {
-      planetCount: 110,
+      planetCount: 148,
       fieldRadius: FIELD_RADIUS,
-      minSpacing: 7.4,
+      minSpacing: 6.35,
     }).map((planet) => ({
       id: planet.id,
       x: planet.x,
