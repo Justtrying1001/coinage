@@ -16,7 +16,6 @@ import type {
 } from './planet-visual.types';
 import { createSeededRng, deriveSeed, pickWeighted, range } from './seeded-rng';
 
-
 function pickMaterialFamily(rng: () => number): MaterialFamily {
   return MATERIAL_FAMILIES[Math.floor(rng() * MATERIAL_FAMILIES.length)] ?? 'rocky';
 }
@@ -58,11 +57,13 @@ export function generatePlanetVisualProfile(
   const reliefSeed = deriveSeed(base, 'relief');
   const colorSeed = deriveSeed(base, 'color');
   const atmoSeed = deriveSeed(base, 'atmo');
+  const surfaceSeed = deriveSeed(base, 'surface');
 
   const shapeRng = createSeededRng(shapeSeed);
   const reliefRng = createSeededRng(reliefSeed);
   const colorRng = createSeededRng(colorSeed);
   const atmoRng = createSeededRng(atmoSeed);
+  const surfaceRng = createSeededRng(surfaceSeed);
 
   const sizeCategory = pickSizeCategory(shapeRng);
   const radiusRange = SIZE_RADIUS_RANGES[sizeCategory];
@@ -82,6 +83,7 @@ export function generatePlanetVisualProfile(
       reliefSeed,
       colorSeed,
       atmoSeed,
+      surfaceSeed,
     },
     sizeCategory,
     materialFamily,
@@ -97,6 +99,13 @@ export function generatePlanetVisualProfile(
       microStrength: range(reliefRng, BOUNDS.microStrength.min, BOUNDS.microStrength.max),
       roughness: range(reliefRng, BOUNDS.roughness.min, BOUNDS.roughness.max),
       craterDensity: range(reliefRng, BOUNDS.craterDensity.min, BOUNDS.craterDensity.max),
+    },
+    surface: {
+      oceanLevel: range(surfaceRng, BOUNDS.oceanLevel.min, BOUNDS.oceanLevel.max),
+      biomeScale: range(surfaceRng, BOUNDS.biomeScale.min, BOUNDS.biomeScale.max),
+      heatBias: range(surfaceRng, BOUNDS.heatBias.min, BOUNDS.heatBias.max),
+      moistureBias: range(surfaceRng, BOUNDS.moistureBias.min, BOUNDS.moistureBias.max),
+      ridgeSharpness: range(surfaceRng, BOUNDS.ridgeSharpness.min, BOUNDS.ridgeSharpness.max),
     },
     color: {
       hueShift: range(colorRng, BOUNDS.hueShift.min, BOUNDS.hueShift.max),
@@ -139,6 +148,16 @@ export function isPlanetVisualProfileInBounds(profile: PlanetVisualProfile): boo
     profile.relief.roughness <= BOUNDS.roughness.max &&
     profile.relief.craterDensity >= BOUNDS.craterDensity.min &&
     profile.relief.craterDensity <= BOUNDS.craterDensity.max &&
+    profile.surface.oceanLevel >= BOUNDS.oceanLevel.min &&
+    profile.surface.oceanLevel <= BOUNDS.oceanLevel.max &&
+    profile.surface.biomeScale >= BOUNDS.biomeScale.min &&
+    profile.surface.biomeScale <= BOUNDS.biomeScale.max &&
+    profile.surface.heatBias >= BOUNDS.heatBias.min &&
+    profile.surface.heatBias <= BOUNDS.heatBias.max &&
+    profile.surface.moistureBias >= BOUNDS.moistureBias.min &&
+    profile.surface.moistureBias <= BOUNDS.moistureBias.max &&
+    profile.surface.ridgeSharpness >= BOUNDS.ridgeSharpness.min &&
+    profile.surface.ridgeSharpness <= BOUNDS.ridgeSharpness.max &&
     profile.color.hueShift >= BOUNDS.hueShift.min &&
     profile.color.hueShift <= BOUNDS.hueShift.max &&
     profile.color.saturation >= BOUNDS.saturation.min &&
@@ -167,6 +186,7 @@ export function profileSignature(profile: PlanetVisualProfile): string {
     profile.paletteFamily,
     profile.shape.radius.toFixed(3),
     profile.relief.macroStrength.toFixed(3),
+    profile.surface.oceanLevel.toFixed(3),
     profile.color.hueShift.toFixed(2),
     profile.atmosphere.enabled ? 'atmo:on' : 'atmo:off',
   ].join('|');

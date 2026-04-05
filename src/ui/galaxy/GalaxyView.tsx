@@ -24,32 +24,266 @@ interface PlanetRenderData {
 const FIELD_RADIUS = 70;
 const CAMERA_Z = 34;
 const MOVE_SPEED = 24;
+const BASE_GEOMETRY_DETAIL = 5;
 
-function createGeometryVariants(): THREE.IcosahedronGeometry[] {
-  const variants: THREE.IcosahedronGeometry[] = [];
+function fract(value: number): number {
+  return value - Math.floor(value);
+}
 
-  for (let i = 0; i < 8; i += 1) {
-    const geometry = new THREE.IcosahedronGeometry(1, 4);
-    const positions = geometry.attributes.position;
+function smoothstep(edge0: number, edge1: number, value: number): number {
+  const x = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
+  return x * x * (3 - 2 * x);
+}
 
-    for (let j = 0; j < positions.count; j += 1) {
-      const vertex = new THREE.Vector3(positions.getX(j), positions.getY(j), positions.getZ(j));
-      const n = vertex.clone().normalize();
+function hash3(x: number, y: number, z: number, seed: number): number {
+  return fract(Math.sin(x * 127.1 + y * 311.7 + z * 74.7 + seed * 0.0031) * 43758.5453123);
+}
 
-      const macro = Math.sin(n.x * (1.5 + i * 0.2) + n.y * 1.2 + n.z * 0.8 + i * 13.17);
-      const micro = Math.sin(n.x * 3.7 + n.y * 4.1 + n.z * 5.3 + i * 7.7);
+function valueNoise3(x: number, y: number, z: number, seed: number): number {
+  const xi = Math.floor(x);
+  const yi = Math.floor(y);
+  const zi = Math.floor(z);
 
-      const scale = 1 + macro * 0.08 + micro * 0.02;
-      vertex.multiplyScalar(scale);
-      positions.setXYZ(j, vertex.x, vertex.y, vertex.z);
-    }
+  const xf = x - xi;
+  const yf = y - yi;
+  const zf = z - zi;
 
-    geometry.computeVertexNormals();
-    positions.needsUpdate = true;
-    variants.push(geometry);
+  const u = xf * xf * (3 - 2 * xf);
+  const v = yf * yf * (3 - 2 * yf);
+  const w = zf * zf * (3 - 2 * zf);
+
+  const c000 = hash3(xi, yi, zi, seed);
+  const c100 = hash3(xi + 1, yi, zi, seed);
+  const c010 = hash3(xi, yi + 1, zi, seed);
+  const c110 = hash3(xi + 1, yi + 1, zi, seed);
+  const c001 = hash3(xi, yi, zi + 1, seed);
+  const c101 = hash3(xi + 1, yi, zi + 1, seed);
+  const c011 = hash3(xi, yi + 1, zi + 1, seed);
+  const c111 = hash3(xi + 1, yi + 1, zi + 1, seed);
+
+  const x00 = c000 * (1 - u) + c100 * u;
+  const x10 = c010 * (1 - u) + c110 * u;
+  const x01 = c001 * (1 - u) + c101 * u;
+  const x11 = c011 * (1 - u) + c111 * u;
+
+  const y0 = x00 * (1 - v) + x10 * v;
+  const y1 = x01 * (1 - v) + x11 * v;
+
+  return y0 * (1 - w) + y1 * w;
+}
+
+function fbm(x: number, y: number, z: number, seed: number, octaves: number): number {
+  let sum = 0;
+  let amplitude = 0.5;
+  let frequency = 1;
+
+  for (let i = 0; i < octaves; i += 1) {
+    const n = valueNoise3(x * frequency, y * frequency, z * frequency, seed + i * 3893);
+    sum += (n * 2 - 1) * amplitude;
+    frequency *= 2.01;
+    amplitude *= 0.5;
   }
 
-  return variants;
+  return sum;
+}
+
+function ridgedFbm(x: number, y: number, z: number, seed: number, octaves: number, sharpness: number): number {
+  let sum = 0;
+  let amplitude = 0.65;
+  let frequency = 1;
+
+  for (let i = 0; i < octaves; i += 1) {
+    const n = valueNoise3(x * frequency, y * frequency, z * frequency, seed + i * 1459) * 2 - 1;
+    const ridge = Math.pow(1 - Math.abs(n), 1 + sharpness);
+    sum += ridge * amplitude;
+    frequency *= 2.2;
+    amplitude *= 0.52;
+  }
+
+  return sum;
+}
+
+function mixColors(a: THREE.Color, b: THREE.Color, t: number): THREE.Color {
+  return new THREE.Color(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t);
+}
+
+function createAtmosphereMaterial(color: THREE.Color, intensity: number): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uColor: { value: color },
+      uIntensity: { value: intensity },
+    },
+    vertexShader: `
+      varying vec3 vWorldNormal;
+      varying vec3 vWorldPos;
+
+      void main() {
+        vec4 worldPos = modelMatrix * vec4(position, 1.0);
+        vWorldPos = worldPos.xyz;
+        vWorldNormal = normalize(mat3(modelMatrix) * normal);
+        gl_Position = projectionMatrix * viewMatrix * worldPos;
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 uColor;
+      uniform float uIntensity;
+      varying vec3 vWorldNormal;
+      varying vec3 vWorldPos;
+
+      void main() {
+        vec3 viewDir = normalize(cameraPosition - vWorldPos);
+        float fresnel = pow(1.0 - max(dot(viewDir, normalize(vWorldNormal)), 0.0), 2.5);
+        float alpha = fresnel * (0.2 + uIntensity * 0.55);
+        gl_FragColor = vec4(uColor * (0.25 + fresnel * 1.25), alpha);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.BackSide,
+  });
+}
+
+function createPlanetMesh(profile: PlanetVisualProfile): { mesh: THREE.Mesh; atmosphere?: THREE.Mesh; materials: THREE.Material[] } {
+  const style = mapProfileToRenderStyle(profile);
+  const geometry = new THREE.IcosahedronGeometry(1, BASE_GEOMETRY_DETAIL);
+  const positions = geometry.attributes.position;
+
+  const oceanColor = new THREE.Color(style.oceanColor);
+  const shoreColor = new THREE.Color(style.shoreColor);
+  const lowlandColor = new THREE.Color(style.lowlandColor);
+  const highlandColor = new THREE.Color(style.highlandColor);
+  const ridgeColor = new THREE.Color(style.ridgeColor);
+  const snowColor = new THREE.Color(style.snowColor);
+
+  const colorBuffer = new Float32Array(positions.count * 3);
+  const tempVertex = new THREE.Vector3();
+
+  const seed = profile.derivedSubSeeds.shapeSeed;
+  const reliefSeed = profile.derivedSubSeeds.reliefSeed;
+  const surfaceSeed = profile.derivedSubSeeds.surfaceSeed;
+
+  for (let i = 0; i < positions.count; i += 1) {
+    tempVertex.set(positions.getX(i), positions.getY(i), positions.getZ(i)).normalize();
+
+    const warp = fbm(
+      tempVertex.x * style.warpFrequency,
+      tempVertex.y * style.warpFrequency,
+      tempVertex.z * style.warpFrequency,
+      seed + 173,
+      3,
+    );
+
+    const warpOffset = warp * (0.2 + profile.shape.ridgeWarp * 0.75);
+
+    const macro = fbm(
+      tempVertex.x * style.macroFrequency + warpOffset,
+      tempVertex.y * style.macroFrequency - warpOffset,
+      tempVertex.z * style.macroFrequency + warpOffset * 0.5,
+      reliefSeed + 37,
+      5,
+    );
+
+    const ridged = ridgedFbm(
+      tempVertex.x * (style.macroFrequency * 0.95),
+      tempVertex.y * (style.macroFrequency * 0.95),
+      tempVertex.z * (style.macroFrequency * 0.95),
+      reliefSeed + 431,
+      4,
+      profile.surface.ridgeSharpness,
+    );
+
+    const micro = fbm(
+      tempVertex.x * style.microFrequency,
+      tempVertex.y * style.microFrequency,
+      tempVertex.z * style.microFrequency,
+      reliefSeed + 997,
+      4,
+    );
+
+    const craterField = valueNoise3(
+      tempVertex.x * (3.8 + profile.relief.craterDensity * 5.2),
+      tempVertex.y * (3.8 + profile.relief.craterDensity * 5.2),
+      tempVertex.z * (3.8 + profile.relief.craterDensity * 5.2),
+      surfaceSeed + 719,
+    );
+
+    const crater = smoothstep(0.68, 0.9, craterField) * profile.relief.craterDensity * 0.5;
+
+    const heightSignal = (
+      macro * profile.relief.macroStrength * 0.9 +
+      ridged * profile.shape.ridgeWarp * 0.55 +
+      micro * profile.relief.microStrength * 0.32 -
+      crater
+    );
+
+    const displacement = 1 + heightSignal * style.displacementScale + profile.shape.wobbleAmplitude * macro * 0.25;
+    tempVertex.multiplyScalar(displacement);
+    positions.setXYZ(i, tempVertex.x, tempVertex.y, tempVertex.z);
+
+    const elevation = smoothstep(-0.25, 0.45, heightSignal + 0.2);
+    const oceanThreshold = profile.surface.oceanLevel;
+    const moisture = fbm(
+      tempVertex.x * (1.2 + profile.surface.biomeScale),
+      tempVertex.y * (1.2 + profile.surface.biomeScale),
+      tempVertex.z * (1.2 + profile.surface.biomeScale),
+      surfaceSeed + 1597,
+      4,
+    ) * 0.5 + 0.5 + profile.surface.moistureBias;
+    const latitude = 1 - Math.abs(tempVertex.y + profile.surface.heatBias * 0.4);
+    const coldness = smoothstep(0.12, 0.78, 1 - latitude);
+
+    let color: THREE.Color;
+
+    if (elevation < oceanThreshold) {
+      const depthMix = smoothstep(0, oceanThreshold, elevation);
+      color = mixColors(oceanColor, shoreColor, depthMix * 0.65);
+    } else {
+      const landHeight = smoothstep(oceanThreshold, 1, elevation);
+      const biomeMix = smoothstep(0.28, 0.8, moisture);
+      const baseLand = mixColors(lowlandColor, highlandColor, landHeight * 0.7 + (1 - biomeMix) * 0.2);
+      const ridgeMix = smoothstep(0.62, 0.95, landHeight + ridged * 0.12);
+      color = mixColors(baseLand, ridgeColor, ridgeMix);
+
+      const snowMix = smoothstep(0.55, 0.98, coldness + landHeight * 0.4);
+      color = mixColors(color, snowColor, snowMix * (0.75 + landHeight * 0.25));
+    }
+
+    colorBuffer[i * 3] = color.r;
+    colorBuffer[i * 3 + 1] = color.g;
+    colorBuffer[i * 3 + 2] = color.b;
+  }
+
+  geometry.setAttribute('color', new THREE.BufferAttribute(colorBuffer, 3));
+  geometry.computeVertexNormals();
+  positions.needsUpdate = true;
+
+  const material = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    roughness: style.roughness,
+    metalness: style.metalness,
+    emissive: new THREE.Color(style.emissiveColor),
+    emissiveIntensity: style.emissiveIntensity,
+    envMapIntensity: 0.35,
+    flatShading: false,
+  });
+
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.scale.setScalar(profile.shape.radius * 0.82);
+
+  const materials: THREE.Material[] = [material];
+
+  if (profile.atmosphere.enabled && profile.atmosphere.intensity > 0.18) {
+    const atmoGeometry = new THREE.SphereGeometry(1, 36, 36);
+    const atmoMaterial = createAtmosphereMaterial(new THREE.Color(style.atmosphereColor), profile.atmosphere.intensity);
+    const atmo = new THREE.Mesh(atmoGeometry, atmoMaterial);
+    atmo.scale.setScalar((profile.shape.radius * 0.82) * (1.08 + profile.atmosphere.thickness * 1.6));
+    atmo.renderOrder = 2;
+    materials.push(atmoMaterial);
+    return { mesh, atmosphere: atmo, materials };
+  }
+
+  return { mesh, materials };
 }
 
 function createStarField(seed: string): THREE.Points {
@@ -136,57 +370,37 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     const stars = createStarField(worldSeed);
     scene.add(stars);
 
-    scene.add(new THREE.AmbientLight('#93c5fd', 0.36));
+    scene.add(new THREE.AmbientLight('#93c5fd', 0.42));
 
-    const keyLight = new THREE.DirectionalLight('#ffffff', 1.15);
+    const keyLight = new THREE.DirectionalLight('#ffffff', 1.3);
     keyLight.position.set(24, 28, 40);
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight('#67e8f9', 0.3);
+    const fillLight = new THREE.DirectionalLight('#67e8f9', 0.4);
     fillLight.position.set(-20, -18, 20);
     scene.add(fillLight);
 
-    const geometryVariants = createGeometryVariants();
-    const planetGroup = new THREE.Group();
-    const atmosphereGeometry = new THREE.SphereGeometry(1, 24, 24);
+    const backLight = new THREE.DirectionalLight('#c4b5fd', 0.22);
+    backLight.position.set(-40, 5, -10);
+    scene.add(backLight);
 
+    const planetGroup = new THREE.Group();
     const disposables: THREE.Material[] = [];
+    const geometries: THREE.BufferGeometry[] = [];
 
     for (const planet of planetData) {
-      const style = mapProfileToRenderStyle(planet.profile);
-      const variantIndex = deriveSeed(planet.profile.seeds.planetSeed, 'geo') % geometryVariants.length;
-      const geometry = geometryVariants[variantIndex] ?? geometryVariants[0];
-
-      const material = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(style.baseColor),
-        roughness: style.roughness,
-        metalness: style.metalness,
-        emissive: new THREE.Color(style.emissiveColor),
-        emissiveIntensity: style.emissiveIntensity,
-      });
-
-      disposables.push(material);
-
-      const mesh = new THREE.Mesh(geometry, material);
-      const sizeScale = planet.profile.shape.radius * 0.8;
-      mesh.scale.setScalar(sizeScale);
+      const { mesh, atmosphere, materials } = createPlanetMesh(planet.profile);
       mesh.position.set(planet.x, planet.y, planet.z);
+      geometries.push(mesh.geometry);
+      for (const material of materials) {
+        disposables.push(material);
+      }
       planetGroup.add(mesh);
 
-      if (planet.profile.atmosphere.enabled && planet.profile.atmosphere.intensity > 0.2) {
-        const atmoMaterial = new THREE.MeshBasicMaterial({
-          color: new THREE.Color(style.atmosphereColor),
-          transparent: true,
-          opacity: Math.min(0.2, planet.profile.atmosphere.intensity * 0.26),
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-        });
-        disposables.push(atmoMaterial);
-
-        const atmo = new THREE.Mesh(atmosphereGeometry, atmoMaterial);
-        atmo.scale.setScalar(sizeScale * 1.16);
-        atmo.position.copy(mesh.position);
-        planetGroup.add(atmo);
+      if (atmosphere) {
+        atmosphere.position.copy(mesh.position);
+        geometries.push(atmosphere.geometry);
+        planetGroup.add(atmosphere);
       }
     }
 
@@ -266,6 +480,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
 
     let previousTime = performance.now();
     let frame = 0;
+    let animationHandle = 0;
 
     const animate = (time: number) => {
       const delta = Math.min(0.05, (time - previousTime) / 1000);
@@ -294,13 +509,13 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       frame += 1;
 
       renderer.render(scene, camera);
-      requestAnimationFrame(animate);
+      animationHandle = requestAnimationFrame(animate);
     };
 
-    const raf = requestAnimationFrame(animate);
+    animationHandle = requestAnimationFrame(animate);
 
     return () => {
-      cancelAnimationFrame(raf);
+      cancelAnimationFrame(animationHandle);
 
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
@@ -309,8 +524,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       window.removeEventListener('resize', onResize);
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
 
-      atmosphereGeometry.dispose();
-      for (const geometry of geometryVariants) {
+      for (const geometry of geometries) {
         geometry.dispose();
       }
 

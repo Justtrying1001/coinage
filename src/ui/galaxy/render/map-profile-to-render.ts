@@ -1,7 +1,12 @@
 import type { PlanetVisualProfile } from '@/domain/world/planet-visual.types';
 
 export interface PlanetRenderStyle {
-  baseColor: string;
+  oceanColor: string;
+  shoreColor: string;
+  lowlandColor: string;
+  highlandColor: string;
+  ridgeColor: string;
+  snowColor: string;
   emissiveColor: string;
   emissiveIntensity: number;
   roughness: number;
@@ -9,6 +14,7 @@ export interface PlanetRenderStyle {
   displacementScale: number;
   macroFrequency: number;
   microFrequency: number;
+  warpFrequency: number;
   atmosphereColor: string;
 }
 
@@ -97,13 +103,13 @@ function hexToHsl(hex: string): { h: number; s: number; l: number } {
 function materialToMetalness(profile: PlanetVisualProfile): number {
   switch (profile.materialFamily) {
     case 'metallic':
-      return 0.55;
+      return 0.5;
     case 'icy':
-      return 0.28;
+      return 0.22;
     case 'dusty':
-      return 0.12;
+      return 0.08;
     default:
-      return 0.2;
+      return 0.16;
   }
 }
 
@@ -112,28 +118,39 @@ export function mapProfileToRenderStyle(profile: PlanetVisualProfile): PlanetRen
   const baseHsl = hexToHsl(baseHex);
 
   const hue = (baseHsl.h + profile.color.hueShift + 360) % 360;
-  const saturation = clamp(profile.color.saturation * 0.9 + baseHsl.s * 0.3, 0.2, 0.95);
-  const lightness = clamp(profile.color.lightness * 0.85 + baseHsl.l * 0.25, 0.2, 0.8);
+  const saturation = clamp(profile.color.saturation * 0.9 + baseHsl.s * 0.35, 0.2, 0.95);
+  const lightness = clamp(profile.color.lightness * 0.82 + baseHsl.l * 0.3, 0.2, 0.86);
 
-  const baseColor = hslToHex(hue, saturation, lightness);
-  const emissiveColor = hslToHex(hue, clamp(saturation * 0.8, 0.2, 1), clamp(lightness * 0.35, 0.08, 0.3));
+  const oceanColor = hslToHex((hue + 18 + profile.surface.heatBias * 22 + 360) % 360, clamp(saturation * 0.95, 0.35, 0.9), clamp(lightness * 0.48, 0.16, 0.52));
+  const shoreColor = hslToHex((hue + 7 + 360) % 360, clamp(saturation * 0.75, 0.25, 0.8), clamp(lightness * 0.66, 0.24, 0.7));
+  const lowlandColor = hslToHex((hue - 10 + profile.surface.moistureBias * 26 + 360) % 360, clamp(saturation * 1.02, 0.25, 0.95), clamp(lightness * 0.88, 0.24, 0.76));
+  const highlandColor = hslToHex((hue - 2 + 360) % 360, clamp(saturation * 0.82, 0.15, 0.84), clamp(lightness * 0.72, 0.2, 0.66));
+  const ridgeColor = hslToHex((hue + 3 + 360) % 360, clamp(saturation * 0.52, 0.08, 0.58), clamp(lightness * 0.54, 0.16, 0.6));
+  const snowColor = hslToHex((hue + 8 + 360) % 360, clamp(saturation * 0.25, 0.03, 0.3), clamp(lightness * 1.15, 0.72, 0.94));
 
+  const emissiveColor = hslToHex(hue, clamp(saturation * 0.65, 0.08, 0.7), clamp(lightness * 0.38, 0.04, 0.32));
   const atmosphereHue = (hue + profile.atmosphere.tintShift + 360) % 360;
-  const atmosphereColor = hslToHex(atmosphereHue, clamp(saturation * 0.8, 0.1, 1), clamp(lightness * 0.8, 0.2, 0.9));
+  const atmosphereColor = hslToHex(atmosphereHue, clamp(saturation * 0.76, 0.14, 0.86), clamp(lightness * 0.9, 0.24, 0.88));
 
   return {
-    baseColor,
+    oceanColor,
+    shoreColor,
+    lowlandColor,
+    highlandColor,
+    ridgeColor,
+    snowColor,
     emissiveColor,
-    emissiveIntensity: 0.05 + profile.color.accentMix * 0.18,
-    roughness: clamp(profile.relief.roughness, 0.2, 1),
+    emissiveIntensity: 0.03 + profile.color.accentMix * 0.11,
+    roughness: clamp(profile.relief.roughness, 0.25, 1),
     metalness: materialToMetalness(profile),
     displacementScale: clamp(
-      profile.relief.macroStrength * 0.13 + profile.relief.microStrength * 0.05,
-      0.01,
-      0.12,
+      profile.relief.macroStrength * 0.26 + profile.relief.microStrength * 0.16,
+      0.08,
+      0.34,
     ),
-    macroFrequency: 0.8 + profile.shape.wobbleFrequency * 1.4,
-    microFrequency: 2.2 + profile.shape.wobbleFrequency * 3.5,
+    macroFrequency: 0.75 + profile.shape.wobbleFrequency * 1.2,
+    microFrequency: 3.2 + profile.shape.wobbleFrequency * 4.8,
+    warpFrequency: 1.1 + profile.surface.biomeScale * 0.95,
     atmosphereColor,
   };
 }

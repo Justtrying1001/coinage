@@ -31,6 +31,7 @@ Runtime randomness rule:
 - size category + radius
 - silhouette/shape parameters (wobble frequency/amplitude, ridge warp)
 - relief/noise parameters (macro/micro strength, roughness, crater density)
+- surface stratification controls (ocean level, biome scale, heat/moisture bias, ridge sharpness)
 - material + palette family
 - color parameters (hue shift, saturation, lightness, accent mix)
 - optional atmosphere block (enabled/intensity/thickness/tint shift)

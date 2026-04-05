@@ -20,6 +20,7 @@ export interface DerivedSubSeeds {
   reliefSeed: number;
   colorSeed: number;
   atmoSeed: number;
+  surfaceSeed: number;
 }
 
 export interface ShapeParameters {
@@ -34,6 +35,14 @@ export interface ReliefParameters {
   microStrength: number;
   roughness: number;
   craterDensity: number;
+}
+
+export interface SurfaceParameters {
+  oceanLevel: number;
+  biomeScale: number;
+  heatBias: number;
+  moistureBias: number;
+  ridgeSharpness: number;
 }
 
 export interface ColorParameters {
@@ -60,6 +69,7 @@ export interface PlanetVisualProfile {
   paletteFamily: PaletteFamily;
   shape: ShapeParameters;
   relief: ReliefParameters;
+  surface: SurfaceParameters;
   color: ColorParameters;
   atmosphere: AtmosphereParameters;
 }
