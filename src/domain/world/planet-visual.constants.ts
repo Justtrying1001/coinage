@@ -3,15 +3,15 @@ import type { MaterialFamily, PaletteFamily, PlanetSizeCategory } from './planet
 export const DEFAULT_VISUAL_GEN_VERSION = 1;
 
 export const SIZE_CATEGORY_WEIGHTS: Array<{ category: PlanetSizeCategory; weight: number }> = [
-  { category: 'small', weight: 0.28 },
-  { category: 'medium', weight: 0.47 },
-  { category: 'large', weight: 0.25 },
+  { category: 'small', weight: 0.24 },
+  { category: 'medium', weight: 0.5 },
+  { category: 'large', weight: 0.26 },
 ];
 
 export const SIZE_RADIUS_RANGES: Record<PlanetSizeCategory, { min: number; max: number }> = {
-  small: { min: 0.96, max: 1.2 },
-  medium: { min: 1.2, max: 1.65 },
-  large: { min: 1.65, max: 2.35 },
+  small: { min: 1.22, max: 1.58 },
+  medium: { min: 1.72, max: 2.48 },
+  large: { min: 2.74, max: 4.15 },
 };
 
 export const MATERIAL_FAMILIES: MaterialFamily[] = ['rocky', 'dusty', 'metallic', 'icy'];

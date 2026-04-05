@@ -11,6 +11,14 @@ interface CachedGeometryEntry {
 }
 
 const GEOMETRY_CACHE = new Map<string, CachedGeometryEntry>();
+const ATMOSPHERE_GEOMETRY_CACHE = new Map<string, CachedGeometryEntry>();
+
+interface CachedMaterialEntry {
+  material: THREE.MeshStandardMaterial;
+  refs: number;
+}
+
+const SURFACE_MATERIAL_CACHE = new Map<string, CachedMaterialEntry>();
 
 function quantize(value: number, step: number): number {
   return Math.round(value / step) * step;
@@ -22,6 +30,13 @@ function buildGeometryKey(params: ReturnType<typeof mapProfileToProceduralUnifor
     `r:${quantize(params.radius, 0.5).toFixed(1)}`,
     `res:${Math.round(quantize(params.meshResolution, 4))}`,
     `rug:${quantize(params.simpleStrength + params.ridgedStrength, 0.16).toFixed(2)}`,
+  ].join('|');
+}
+
+function buildSurfaceMaterialKey(params: ReturnType<typeof mapProfileToProceduralUniforms>): string {
+  return [
+    `rough:${quantize(params.roughness, 0.04).toFixed(2)}`,
+    `metal:${quantize(params.metalness, 0.04).toFixed(2)}`,
   ].join('|');
 }
 
@@ -65,36 +80,89 @@ function getOrCreateGeometry(params: ReturnType<typeof mapProfileToProceduralUni
   };
 }
 
-export function applyPlanetRenderLod(
-  baseParams: ProceduralPlanetUniforms,
-  lod: 'galaxy' | 'planet' | undefined,
-): ProceduralPlanetUniforms {
-  if (lod === 'galaxy') {
+function getOrCreateSurfaceMaterial(params: ReturnType<typeof mapProfileToProceduralUniforms>): {
+  material: THREE.MeshStandardMaterial;
+  release: () => void;
+} {
+  const key = buildSurfaceMaterialKey(params);
+  const cached = SURFACE_MATERIAL_CACHE.get(key);
+
+  if (cached) {
+    cached.refs += 1;
     return {
-      ...baseParams,
-      meshResolution: Math.max(14, Math.min(22, baseParams.meshResolution - 4)),
-      simpleStrength: baseParams.simpleStrength * 0.78,
-      ridgedStrength: baseParams.ridgedStrength * 0.72,
-      elevationCap: baseParams.elevationCap * 0.85,
-      atmosphereIntensity: baseParams.atmosphereIntensity * 0.82,
+      material: cached.material,
+      release: () => {
+        const current = SURFACE_MATERIAL_CACHE.get(key);
+        if (!current) return;
+        current.refs -= 1;
+        if (current.refs <= 0) {
+          current.material.dispose();
+          SURFACE_MATERIAL_CACHE.delete(key);
+        }
+      },
     };
   }
 
-  if (lod === 'planet') {
+  const material = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    roughness: params.roughness,
+    metalness: params.metalness,
+  });
+  SURFACE_MATERIAL_CACHE.set(key, { material, refs: 1 });
+  return {
+    material,
+    release: () => {
+      const current = SURFACE_MATERIAL_CACHE.get(key);
+      if (!current) return;
+      current.refs -= 1;
+      if (current.refs <= 0) {
+        current.material.dispose();
+        SURFACE_MATERIAL_CACHE.delete(key);
+      }
+    },
+  };
+}
+
+function getOrCreateAtmosphereGeometry(radius: number, thickness: number, segments: number): {
+  geometry: THREE.BufferGeometry;
+  release: () => void;
+} {
+  const key = [
+    `r:${quantize(radius, 0.08).toFixed(2)}`,
+    `t:${quantize(thickness, 0.008).toFixed(3)}`,
+    `s:${segments}`,
+  ].join('|');
+  const cached = ATMOSPHERE_GEOMETRY_CACHE.get(key);
+  if (cached) {
+    cached.refs += 1;
     return {
-      ...baseParams,
-      meshResolution: Math.min(64, baseParams.meshResolution + 18),
-      simpleStrength: Math.min(0.9, baseParams.simpleStrength * 1.16),
-      ridgedStrength: Math.min(0.92, baseParams.ridgedStrength * 1.34),
-      elevationCap: Math.min(0.42, baseParams.elevationCap * 1.2 + 0.015),
-      terrainSmoothing: Math.max(0.34, baseParams.terrainSmoothing * 0.85),
-      ridgeAttenuation: Math.min(1, baseParams.ridgeAttenuation * 1.2),
-      detailAttenuation: Math.min(1, baseParams.detailAttenuation * 1.2),
-      atmosphereIntensity: Math.min(1, baseParams.atmosphereIntensity * 1.08),
+      geometry: cached.geometry,
+      release: () => {
+        const current = ATMOSPHERE_GEOMETRY_CACHE.get(key);
+        if (!current) return;
+        current.refs -= 1;
+        if (current.refs <= 0) {
+          current.geometry.dispose();
+          ATMOSPHERE_GEOMETRY_CACHE.delete(key);
+        }
+      },
     };
   }
 
-  return baseParams;
+  const geometry = new THREE.SphereGeometry(radius * (1 + thickness * 1.35), segments, segments);
+  ATMOSPHERE_GEOMETRY_CACHE.set(key, { geometry, refs: 1 });
+  return {
+    geometry,
+    release: () => {
+      const current = ATMOSPHERE_GEOMETRY_CACHE.get(key);
+      if (!current) return;
+      current.refs -= 1;
+      if (current.refs <= 0) {
+        current.geometry.dispose();
+        ATMOSPHERE_GEOMETRY_CACHE.delete(key);
+      }
+    },
+  };
 }
 
 export function createPlanetRenderInstance({ profile, x, y, z, options }: PlanetRenderInput): PlanetRenderInstance {
@@ -106,13 +174,7 @@ export function createPlanetRenderInstance({ profile, x, y, z, options }: Planet
 
   const { geometry, release } = getOrCreateGeometry(params);
 
-  const material = new THREE.MeshPhysicalMaterial({
-    vertexColors: true,
-    roughness: Math.max(0.2, params.roughness * (options?.lod === 'planet' ? 1.05 : 1.1)),
-    metalness: params.metalness * 0.6,
-    clearcoat: options?.lod === 'planet' ? 0.08 : 0.02,
-    clearcoatRoughness: options?.lod === 'planet' ? 0.7 : 0.85,
-  });
+  const { material, release: releaseMaterial } = getOrCreateSurfaceMaterial(params);
 
   material.onBeforeCompile = (shader) => {
     shader.fragmentShader = shader.fragmentShader.replace(
@@ -129,23 +191,21 @@ export function createPlanetRenderInstance({ profile, x, y, z, options }: Planet
   group.add(planetMesh);
 
   let atmosphereGeometry: THREE.BufferGeometry | null = null;
+  let releaseAtmosphereGeometry: (() => void) | null = null;
   let atmosphereMaterial: THREE.ShaderMaterial | null = null;
 
   if (params.atmosphereEnabled && params.atmosphereIntensity > 0.01) {
-    const atmoSegments = options?.lod === 'galaxy' ? 20 : options?.lod === 'planet' ? 56 : 34;
-    atmosphereGeometry = new THREE.SphereGeometry(
-      params.radius * (1 + params.atmosphereThickness * 1.15),
-      atmoSegments,
-      atmoSegments,
-    );
+    const atmoSegments = options?.lod === 'galaxy' ? 14 : 24;
+    const cachedAtmosphere = getOrCreateAtmosphereGeometry(params.radius, params.atmosphereThickness, atmoSegments);
+    atmosphereGeometry = cachedAtmosphere.geometry;
+    releaseAtmosphereGeometry = cachedAtmosphere.release;
 
     atmosphereMaterial = new THREE.ShaderMaterial({
       vertexShader: ATMOSPHERE_VERTEX_SHADER,
       fragmentShader: ATMOSPHERE_FRAGMENT_SHADER,
       uniforms: {
         uAtmosphereColor: { value: new THREE.Color(...params.atmosphereColor) },
-        uIntensity: { value: Math.min(1, params.atmosphereIntensity * 0.64 + 0.12) },
-        uLightDirection: { value: new THREE.Vector3(0.72, 0.34, 0.6).normalize() },
+        uIntensity: { value: Math.min(1, params.atmosphereIntensity * 0.42 + 0.06) },
       },
       blending: THREE.AdditiveBlending,
       transparent: true,
@@ -161,8 +221,8 @@ export function createPlanetRenderInstance({ profile, x, y, z, options }: Planet
     object: group,
     dispose: () => {
       release();
-      material.dispose();
-      atmosphereGeometry?.dispose();
+      releaseMaterial();
+      releaseAtmosphereGeometry?.();
       atmosphereMaterial?.dispose();
     },
   };

@@ -17,7 +17,7 @@ export function buildGalaxyPlanetManifest(worldSeed: string): GalaxyPlanetManife
   const profiles = Array.from({ length: planetCount }, (_, index) =>
     generatePlanetVisualProfile({ worldSeed, planetSeed: `planet-${index}` }),
   );
-  const estimatedRadii = profiles.map((profile) => profile.shape.radius * 0.96);
+  const estimatedRadii = profiles.map((profile) => profile.shape.radius * 0.97);
   const layout = generateGalaxyLayout(worldSeed, {
     ...GALAXY_LAYOUT_RUNTIME_CONFIG,
     planetRadii: estimatedRadii,

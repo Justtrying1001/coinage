@@ -27,7 +27,7 @@ interface PlanetRenderData {
 
 const FIELD_RADIUS = GALAXY_LAYOUT_RUNTIME_CONFIG.fieldRadius ?? 84;
 const MOVE_SPEED = 24;
-const BASE_VIEW_HEIGHT = 60;
+const BASE_VIEW_HEIGHT = 90;
 const GALAXY_BACKGROUND_Z = -180;
 
 function createStarField(seed: string): THREE.Group {
@@ -103,7 +103,7 @@ function createStarField(seed: string): THREE.Group {
 }
 
 function createBackdrop(seed: string): THREE.Mesh {
-  const textureSize = 1024;
+  const textureSize = 768;
   const canvas = document.createElement('canvas');
   canvas.width = textureSize;
   canvas.height = textureSize;
@@ -112,10 +112,17 @@ function createBackdrop(seed: string): THREE.Mesh {
     return new THREE.Mesh();
   }
 
-  const gradient = ctx.createLinearGradient(0, 0, 0, textureSize);
-  gradient.addColorStop(0, '#01040d');
-  gradient.addColorStop(0.4, '#040b1e');
-  gradient.addColorStop(1, '#01030a');
+  const gradient = ctx.createRadialGradient(
+    textureSize * 0.46,
+    textureSize * 0.44,
+    textureSize * 0.12,
+    textureSize * 0.5,
+    textureSize * 0.5,
+    textureSize * 0.82,
+  );
+  gradient.addColorStop(0, '#081327');
+  gradient.addColorStop(0.48, '#050c1b');
+  gradient.addColorStop(1, '#02050d');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, textureSize, textureSize);
 
@@ -127,78 +134,52 @@ function createBackdrop(seed: string): THREE.Mesh {
     return ((t ^ (t >>> 14)) >>> 0) / 0x100000000;
   };
 
-  const createNoiseGrid = (size: number) => {
-    const grid = new Float32Array(size * size);
-    for (let i = 0; i < grid.length; i += 1) {
-      grid[i] = random();
-    }
-    return grid;
-  };
-
-  const sampleGrid = (grid: Float32Array, size: number, x: number, y: number) => {
-    const maxIndex = size - 1;
-    const x0 = Math.floor(x);
-    const y0 = Math.floor(y);
-    const x1 = Math.min(maxIndex, x0 + 1);
-    const y1 = Math.min(maxIndex, y0 + 1);
-    const tx = x - x0;
-    const ty = y - y0;
-
-    const v00 = grid[Math.max(0, Math.min(maxIndex, y0)) * size + Math.max(0, Math.min(maxIndex, x0))];
-    const v10 = grid[Math.max(0, Math.min(maxIndex, y0)) * size + x1];
-    const v01 = grid[y1 * size + Math.max(0, Math.min(maxIndex, x0))];
-    const v11 = grid[y1 * size + x1];
-
-    const ix0 = v00 + (v10 - v00) * tx;
-    const ix1 = v01 + (v11 - v01) * tx;
-    return ix0 + (ix1 - ix0) * ty;
-  };
-
-  const lowNoise = createNoiseGrid(40);
-  const midNoise = createNoiseGrid(84);
-  const hiNoise = createNoiseGrid(164);
-
-  const image = ctx.getImageData(0, 0, textureSize, textureSize);
-  const data = image.data;
-  for (let y = 0; y < textureSize; y += 1) {
-    for (let x = 0; x < textureSize; x += 1) {
-      const nx = x / textureSize;
-      const ny = y / textureSize;
-
-      const low = sampleGrid(lowNoise, 40, nx * 39, ny * 39);
-      const mid = sampleGrid(midNoise, 84, nx * 83, ny * 83);
-      const hi = sampleGrid(hiNoise, 164, nx * 163, ny * 163);
-
-      const cloud = low * 0.62 + mid * 0.3 + hi * 0.08;
-      const dust = Math.max(0, (hi - 0.8) * 2.2);
-      const dx = nx - 0.5;
-      const dy = ny - 0.5;
-      const vignette = Math.min(1, Math.hypot(dx * 1.15, dy * 1.1) * 1.22);
-      const darkness = 1 - vignette * 0.58;
-
-      const r = 4 + cloud * 6 + dust * 4;
-      const g = 8 + cloud * 10 + dust * 4;
-      const b = 15 + cloud * 20 + dust * 7;
-      const i = (y * textureSize + x) * 4;
-      data[i] = Math.min(255, r * darkness);
-      data[i + 1] = Math.min(255, g * darkness);
-      data[i + 2] = Math.min(255, b * darkness);
-      data[i + 3] = 255;
-    }
-  }
-  ctx.putImageData(image, 0, 0);
-
-  for (let i = 0; i < 5; i += 1) {
+  for (let i = 0; i < 7; i += 1) {
     const cx = random() * textureSize;
     const cy = random() * textureSize;
-    const radius = 280 + random() * 260;
-    const nebula = ctx.createRadialGradient(cx, cy, radius * 0.06, cx, cy, radius);
-    const hue = 210 + Math.floor(random() * 18);
-    const alpha = 0.02 + random() * 0.015;
-    nebula.addColorStop(0, `hsla(${hue}, 72%, 65%, ${alpha})`);
-    nebula.addColorStop(1, `hsla(${hue}, 72%, 60%, 0)`);
+    const radius = 220 + random() * 240;
+    const nebula = ctx.createRadialGradient(cx, cy, radius * 0.02, cx, cy, radius);
+    const hue = 205 + Math.floor(random() * 32);
+    const alpha = 0.028 + random() * 0.018;
+    nebula.addColorStop(0, `hsla(${hue}, 64%, 62%, ${alpha})`);
+    nebula.addColorStop(0.54, `hsla(${hue + 8}, 58%, 50%, ${alpha * 0.38})`);
+    nebula.addColorStop(1, `hsla(${hue + 12}, 52%, 48%, 0)`);
     ctx.fillStyle = nebula;
     ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+  }
+
+  const grainCanvas = document.createElement('canvas');
+  const grainSize = 128;
+  grainCanvas.width = grainSize;
+  grainCanvas.height = grainSize;
+  const grainCtx = grainCanvas.getContext('2d');
+  if (grainCtx) {
+    const grain = grainCtx.getImageData(0, 0, grainSize, grainSize);
+    for (let i = 0; i < grain.data.length; i += 4) {
+      const value = 16 + Math.floor(random() * 20);
+      grain.data[i] = value;
+      grain.data[i + 1] = value;
+      grain.data[i + 2] = value + 4;
+      grain.data[i + 3] = 10 + Math.floor(random() * 8);
+    }
+    grainCtx.putImageData(grain, 0, 0);
+    const grainPattern = ctx.createPattern(grainCanvas, 'repeat');
+    if (grainPattern) {
+      ctx.globalAlpha = 0.13;
+      ctx.fillStyle = grainPattern;
+      ctx.fillRect(0, 0, textureSize, textureSize);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  for (let i = 0; i < 1400; i += 1) {
+    const x = random() * textureSize;
+    const y = random() * textureSize;
+    const size = random() < 0.08 ? 1.9 : 0.9;
+    const alpha = random() < 0.1 ? 0.36 + random() * 0.24 : 0.08 + random() * 0.18;
+    const hue = 205 + Math.floor(random() * 35);
+    ctx.fillStyle = `hsla(${hue}, 42%, ${72 + random() * 22}%, ${alpha})`;
+    ctx.fillRect(x, y, size, size);
   }
 
   const texture = new THREE.CanvasTexture(canvas);

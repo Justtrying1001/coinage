@@ -52,6 +52,25 @@ function pickLandColor(palette: PlanetVisualProfile['paletteFamily']): string {
   }
 }
 
+function paletteClimateBias(palette: PlanetVisualProfile['paletteFamily']): { dry: number; lush: number; mineral: number } {
+  switch (palette) {
+    case 'ember-dust':
+      return { dry: 0.8, lush: 0.1, mineral: 0.6 };
+    case 'basalt-moss':
+      return { dry: 0.3, lush: 0.7, mineral: 0.55 };
+    case 'cobalt-ice':
+      return { dry: 0.2, lush: 0.25, mineral: 0.65 };
+    case 'sulfur-stone':
+      return { dry: 0.7, lush: 0.15, mineral: 0.75 };
+    case 'violet-ash':
+      return { dry: 0.55, lush: 0.25, mineral: 0.7 };
+    case 'verdant-umber':
+      return { dry: 0.35, lush: 0.78, mineral: 0.45 };
+    case 'rose-quartz':
+      return { dry: 0.45, lush: 0.45, mineral: 0.52 };
+  }
+}
+
 interface TerrainProfileSettings {
   type: TerrainProfileKind;
   elevationCap: number;
@@ -119,28 +138,43 @@ function pickTerrainProfile(profile: PlanetVisualProfile): TerrainProfileSetting
 export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): ProceduralPlanetUniforms {
   const landBase = new THREE.Color(pickLandColor(profile.paletteFamily));
   const oceanBase = new THREE.Color(pickWaterColor(profile.paletteFamily));
+  const climate = paletteClimateBias(profile.paletteFamily);
 
   const hsl = { h: 0, s: 0, l: 0 };
   landBase.getHSL(hsl);
 
   const hue = (hsl.h + profile.color.hueShift / 360 + 1) % 1;
-  const saturation = clamp(hsl.s * 0.74 + profile.color.saturation * 0.5, 0.24, 0.95);
-  const lightness = clamp(hsl.l * 0.7 + profile.color.lightness * 0.42, 0.18, 0.82);
+  const saturation = clamp(hsl.s * 0.72 + profile.color.saturation * 0.46 + climate.mineral * 0.07, 0.2, 0.98);
+  const lightness = clamp(hsl.l * 0.7 + profile.color.lightness * 0.4, 0.18, 0.84);
 
-  const landColor = new THREE.Color().setHSL(hue, saturation, lightness);
-  const mountainColor = new THREE.Color().setHSL(
+  const lowlandColor = new THREE.Color().setHSL(
     hue,
-    clamp(saturation * 0.34 + 0.06, 0.1, 0.58),
-    clamp(lightness * 1.28, 0.36, 0.92),
+    clamp(saturation * (0.74 + climate.lush * 0.18), 0.18, 0.92),
+    clamp(lightness * (0.84 + climate.lush * 0.16), 0.2, 0.78),
+  );
+  const landColor = new THREE.Color().setHSL(
+    (hue + (climate.dry - climate.lush) * 0.02 + 1) % 1,
+    clamp(saturation * (0.7 + climate.dry * 0.2), 0.16, 0.92),
+    clamp(lightness * (0.92 + climate.dry * 0.1), 0.22, 0.82),
+  );
+  const mountainColor = new THREE.Color().setHSL(
+    (hue + climate.mineral * 0.025 + 1) % 1,
+    clamp(saturation * (0.26 + climate.mineral * 0.18), 0.08, 0.58),
+    clamp(lightness * (1.06 + climate.mineral * 0.24), 0.34, 0.92),
   );
   const iceColor = new THREE.Color().setHSL(
-    hue,
-    clamp(saturation * 0.09, 0.015, 0.18),
-    clamp(lightness * 1.38, 0.66, 0.97),
+    (hue + 0.015 + climate.mineral * 0.02) % 1,
+    clamp(saturation * (0.06 + climate.mineral * 0.06), 0.015, 0.2),
+    clamp(lightness * (1.32 + climate.lush * 0.1), 0.68, 0.98),
   );
 
-  const oceanColor = oceanBase.clone().offsetHSL(profile.color.hueShift / 720, -0.01, -0.11);
-  const shallowWaterColor = oceanBase.clone().offsetHSL(profile.color.hueShift / 840, 0.08, 0.13);
+  const oceanColor = oceanBase
+    .clone()
+    .offsetHSL(profile.color.hueShift / 660, 0.01 - climate.dry * 0.04, -0.1 + climate.mineral * 0.03);
+  const shallowWaterColor = oceanBase
+    .clone()
+    .offsetHSL(profile.color.hueShift / 780, 0.1 + climate.lush * 0.08, 0.12 - climate.dry * 0.05);
+  const coastalColor = lowlandColor.clone().lerp(shallowWaterColor, 0.32);
 
   const isIcy = profile.materialFamily === 'icy';
   const isRocky = profile.materialFamily === 'rocky';
@@ -151,13 +185,13 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     reliefSeed: profile.derivedSubSeeds.reliefSeed >>> 0,
     baseColor: colorToTuple(oceanColor),
     shallowWaterColor: colorToTuple(shallowWaterColor),
-    landColor: colorToTuple(landColor),
+    landColor: colorToTuple(landColor.lerp(coastalColor, 0.26)),
     mountainColor: colorToTuple(mountainColor),
     iceColor: colorToTuple(iceColor),
-    radius: clamp(profile.shape.radius * 0.96, 0.85, 2.95),
-    meshResolution: Math.round(clamp(18 + profile.shape.radius * 5 + profile.relief.macroStrength * 10, 20, 34)),
-    oceanLevel: clamp(0.38 + (0.5 - profile.color.accentMix) * 0.18 + (isIcy ? 0.08 : 0), 0.25, 0.62),
-    mountainLevel: clamp(0.7 + profile.relief.macroStrength * 0.18 + (isRocky ? 0.03 : 0), 0.66, 0.92),
+    radius: clamp(profile.shape.radius * 0.97, 1.1, 4.6),
+    meshResolution: Math.round(clamp(15 + profile.shape.radius * 3.6 + profile.relief.macroStrength * 7, 16, 24)),
+    oceanLevel: clamp(0.36 + (0.5 - profile.color.accentMix) * 0.15 + (isIcy ? 0.09 : 0) + climate.dry * 0.05, 0.24, 0.64),
+    mountainLevel: clamp(0.68 + profile.relief.macroStrength * 0.14 + (isRocky ? 0.035 : 0) + climate.mineral * 0.04, 0.64, 0.9),
     simpleFrequency: clamp(profile.shape.wobbleFrequency * 0.9 + 0.55, 0.8, 4.2),
     simpleStrength: clamp(
       (profile.relief.macroStrength * 0.72 + profile.shape.wobbleAmplitude * 0.45) * terrainProfile.macroScale,
@@ -184,8 +218,8 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     atmosphereColor: colorToTuple(
       new THREE.Color().setHSL(
         (hue + profile.atmosphere.tintShift / 360 + 1) % 1,
-        clamp(saturation * 0.72, 0.1, 0.9),
-        clamp(lightness * 0.88, 0.22, 0.86),
+        clamp(saturation * 0.52, 0.08, 0.72),
+        clamp(lightness * 0.78, 0.2, 0.76),
       ),
     ),
   };

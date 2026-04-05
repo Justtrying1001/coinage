@@ -104,17 +104,17 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
 
     assert.ok(uniforms.shapeSeed >= 0, `shapeSeed out of range: ${uniforms.shapeSeed}`);
     assert.ok(uniforms.reliefSeed >= 0, `reliefSeed out of range: ${uniforms.reliefSeed}`);
-    assert.ok(uniforms.radius >= 0.85 && uniforms.radius <= 2.95, `radius out of range: ${uniforms.radius}`);
+    assert.ok(uniforms.radius >= 1.1 && uniforms.radius <= 4.6, `radius out of range: ${uniforms.radius}`);
     assert.ok(
       uniforms.meshResolution >= 20 && uniforms.meshResolution <= 34,
       `meshResolution out of range: ${uniforms.meshResolution}`,
     );
     assert.ok(
-      uniforms.oceanLevel >= 0.25 && uniforms.oceanLevel <= 0.62,
+      uniforms.oceanLevel >= 0.24 && uniforms.oceanLevel <= 0.64,
       `oceanLevel out of range: ${uniforms.oceanLevel}`,
     );
     assert.ok(
-      uniforms.mountainLevel >= 0.66 && uniforms.mountainLevel <= 0.92,
+      uniforms.mountainLevel >= 0.64 && uniforms.mountainLevel <= 0.9,
       `mountainLevel out of range: ${uniforms.mountainLevel}`,
     );
     assert.ok(

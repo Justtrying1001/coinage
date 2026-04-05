@@ -55,11 +55,13 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     3,
   ) * 2 - 1;
 
-  const oceanFloor = -smoothstep(0.14, 0.52, 1 - continentSignal) * (0.055 + params.simpleStrength * 0.09);
-  const continentBase = continentMask * (0.052 + params.simpleStrength * 0.17);
-  const uplands = inlandMask * Math.max(0, ridgeRelief - 0.28) * params.ridgedStrength * params.ridgeAttenuation * 0.2;
-  const midLayer = midRelief * params.simpleStrength * (0.028 + inlandMask * 0.038);
-  const microLayer = microRelief * params.ridgedStrength * params.detailAttenuation * (0.006 + inlandMask * 0.008);
+  const rawElevation =
+    -oceanBasin * (0.07 + params.simpleStrength * 0.16) +
+    continentMask * (0.08 + params.simpleStrength * 0.3) +
+    macro * params.simpleStrength * 0.14 +
+    Math.max(0, ridged - 0.42) * params.ridgedStrength * params.ridgeAttenuation * (0.12 + continentMask * 0.3) +
+    detail * params.ridgedStrength * params.detailAttenuation * 0.015 +
+    plateau;
 
   const rawElevation = oceanFloor + continentBase + uplands + midLayer + microLayer;
   const normalized = clamp((rawElevation + 0.16) / 0.42, 0, 1);
@@ -69,57 +71,12 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     normalized,
   );
   const centered = (smoothed - 0.5) * 2;
-  const upwardCap = Math.min(params.elevationCap * 0.78 + 0.018, 0.22);
-  const downwardCap = Math.min(0.1, params.elevationCap * 0.42 + 0.015);
+  const upwardCap = params.elevationCap;
+  const downwardCap = Math.min(0.22, params.elevationCap * 0.68 + 0.03);
   const amplitude = centered >= 0 ? upwardCap : downwardCap;
   const elevation = centered * amplitude;
 
-  return clamp(elevation, -0.1, 0.22);
-}
-
-function applyMicroNormalDetail(geometry: THREE.BufferGeometry, params: ProceduralPlanetUniforms): void {
-  const positionAttr = geometry.getAttribute('position');
-  const normalAttr = geometry.getAttribute('normal');
-
-  if (!(positionAttr instanceof THREE.BufferAttribute) || !(normalAttr instanceof THREE.BufferAttribute)) {
-    return;
-  }
-
-  const baseAxis = new THREE.Vector3(0, 1, 0);
-  const point = new THREE.Vector3();
-  const normal = new THREE.Vector3();
-  const tangent = new THREE.Vector3();
-  const bitangent = new THREE.Vector3();
-  const perturbed = new THREE.Vector3();
-  const blend = clamp(0.07 + params.detailAttenuation * 0.18, 0.07, 0.2);
-
-  for (let i = 0; i < normalAttr.count; i += 1) {
-    point.set(positionAttr.getX(i), positionAttr.getY(i), positionAttr.getZ(i)).normalize();
-    normal.set(normalAttr.getX(i), normalAttr.getY(i), normalAttr.getZ(i)).normalize();
-
-    tangent.crossVectors(baseAxis, point);
-    if (tangent.lengthSq() < 0.00001) {
-      tangent.set(1, 0, 0);
-    } else {
-      tangent.normalize();
-    }
-    bitangent.crossVectors(point, tangent).normalize();
-
-    const microA = fbm(point.clone().multiplyScalar(params.ridgedFrequency * 3.8), params.reliefSeed ^ 0x5bd1e995, 2) * 2 - 1;
-    const microB = fbm(point.clone().multiplyScalar(params.ridgedFrequency * 5.6), params.shapeSeed ^ 0x27d4eb2d, 2) * 2 - 1;
-    const slope = (microA * 0.64 + microB * 0.36) * blend;
-    const twist = (microB - microA) * (blend * 0.42);
-
-    perturbed
-      .copy(normal)
-      .addScaledVector(tangent, slope)
-      .addScaledVector(bitangent, twist)
-      .normalize();
-
-    normalAttr.setXYZ(i, perturbed.x, perturbed.y, perturbed.z);
-  }
-
-  normalAttr.needsUpdate = true;
+  return clamp(elevation, -0.2, params.elevationCap);
 }
 
 export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE.BufferGeometry {
@@ -181,44 +138,62 @@ export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE
     const latitude = Math.abs(new THREE.Vector3(vx, vy, vz).normalize().y);
 
     const color = new THREE.Color();
-    const beachBand = smoothstep(params.oceanLevel - 0.018, params.oceanLevel + 0.022, normalized);
-    const shorelineBand = smoothstep(params.oceanLevel - 0.01, params.oceanLevel + 0.012, normalized)
-      - smoothstep(params.oceanLevel + 0.012, params.oceanLevel + 0.034, normalized);
-    const highlandMask = smoothstep(params.mountainLevel - 0.12, params.mountainLevel - 0.02, normalized);
-    const mountainMask = smoothstep(params.mountainLevel - 0.02, params.mountainLevel + 0.08, normalized);
-    const iceCap = smoothstep(0.74, 0.95, latitude) * smoothstep(params.mountainLevel - 0.04, 1, normalized);
+    const coastalBand = smoothstep(params.oceanLevel - 0.025, params.oceanLevel + 0.05, normalized);
+    const foothillBand = smoothstep(params.mountainLevel - 0.2, params.mountainLevel - 0.04, normalized);
+    const mountainBand = smoothstep(params.mountainLevel - 0.04, params.mountainLevel + 0.07, normalized);
+    const iceCap = smoothstep(0.74, 0.95, latitude) * smoothstep(params.oceanLevel + 0.12, 0.98, normalized);
 
-    const oceanDepthT = clamp(normalized / Math.max(0.01, params.oceanLevel + 0.01), 0, 1);
-    const lowLandT = clamp((normalized - params.oceanLevel) / Math.max(0.02, params.mountainLevel - params.oceanLevel), 0, 1);
-    const deepWater = new THREE.Color().setRGB(params.baseColor[0], params.baseColor[1], params.baseColor[2]);
-    const shallowWater = new THREE.Color().setRGB(params.shallowWaterColor[0], params.shallowWaterColor[1], params.shallowWaterColor[2]);
-    const plains = new THREE.Color().setRGB(
-      lerp(params.landColor[0], params.mountainColor[0], 0.18),
-      lerp(params.landColor[1], params.mountainColor[1], 0.12),
-      lerp(params.landColor[2], params.mountainColor[2], 0.08),
-    );
+    if (normalized <= params.oceanLevel) {
+      const t = clamp(normalized / Math.max(0.01, params.oceanLevel), 0, 1);
+      color.setRGB(
+        lerp(params.baseColor[0], params.shallowWaterColor[0], t),
+        lerp(params.baseColor[1], params.shallowWaterColor[1], t),
+        lerp(params.baseColor[2], params.shallowWaterColor[2], t),
+      );
+    } else if (normalized <= params.mountainLevel) {
+      const baseT = clamp(
+        (normalized - params.oceanLevel) / Math.max(0.01, params.mountainLevel - params.oceanLevel),
+        0,
+        1,
+      );
+      const t = clamp(baseT * 0.74 + coastalBand * 0.2 + foothillBand * 0.16, 0, 1);
+      color.setRGB(
+        lerp(params.landColor[0], params.mountainColor[0], t),
+        lerp(params.landColor[1], params.mountainColor[1], t),
+        lerp(params.landColor[2], params.mountainColor[2], t),
+      );
+    } else {
+      const t = clamp((normalized - params.mountainLevel) / Math.max(0.01, 1 - params.mountainLevel), 0, 1);
+      color.setRGB(
+        lerp(params.mountainColor[0], params.iceColor[0], t),
+        lerp(params.mountainColor[1], params.iceColor[1], t),
+        lerp(params.mountainColor[2], params.iceColor[2], t),
+      );
+    }
 
-    color.copy(deepWater).lerp(shallowWater, clamp(oceanDepthT * 1.06, 0, 1));
-    color.lerp(plains, beachBand);
-    color.lerp(
-      new THREE.Color(params.landColor[0], params.landColor[1], params.landColor[2]),
-      smoothstep(params.oceanLevel + 0.01, params.oceanLevel + 0.1, normalized),
-    );
-    color.lerp(
-      new THREE.Color(params.mountainColor[0], params.mountainColor[1], params.mountainColor[2]),
-      clamp(highlandMask * 0.7 + mountainMask * 0.6, 0, 1),
-    );
-    color.lerp(
-      new THREE.Color(params.iceColor[0], params.iceColor[1], params.iceColor[2]),
-      clamp(iceCap * 0.92 + mountainMask * 0.08, 0, 1),
-    );
+    if (coastalBand > 0.02) {
+      color.setRGB(
+        lerp(color.r, params.shallowWaterColor[0], coastalBand * 0.07),
+        lerp(color.g, params.shallowWaterColor[1], coastalBand * 0.07),
+        lerp(color.b, params.shallowWaterColor[2], coastalBand * 0.07),
+      );
+    }
 
-    const coastAccent = shorelineBand * (0.05 + lowLandT * 0.03);
-    color.setRGB(
-      clamp(color.r + coastAccent * 0.65, 0, 1),
-      clamp(color.g + coastAccent * 0.54, 0, 1),
-      clamp(color.b + coastAccent * 0.44, 0, 1),
-    );
+    if (mountainBand > 0.01) {
+      color.setRGB(
+        lerp(color.r, params.mountainColor[0], mountainBand * 0.28),
+        lerp(color.g, params.mountainColor[1], mountainBand * 0.28),
+        lerp(color.b, params.mountainColor[2], mountainBand * 0.28),
+      );
+    }
+
+    if (iceCap > 0.01) {
+      color.setRGB(
+        lerp(color.r, params.iceColor[0], iceCap * 0.9),
+        lerp(color.g, params.iceColor[1], iceCap * 0.9),
+        lerp(color.b, params.iceColor[2], iceCap * 0.9),
+      );
+    }
 
     colors.push(color.r, color.g, color.b);
   }
