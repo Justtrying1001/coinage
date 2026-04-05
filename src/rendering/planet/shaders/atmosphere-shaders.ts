@@ -25,11 +25,13 @@ export const ATMOSPHERE_FRAGMENT_SHADER = `
     vec3 N = normalize(vNormalW);
     vec3 L = normalize(uLightDirection);
 
-    float horizon = pow(1.0 - max(dot(N, V), 0.0), 2.4);
-    float forwardScatter = pow(max(dot(V, -L), 0.0), 2.0) * 0.55 + 0.45;
-    float litEdge = pow(max(dot(N, L), 0.0), 0.8) * 0.22 + 0.78;
+    float viewDot = clamp(dot(N, V), 0.0, 1.0);
+    float horizon = pow(1.0 - viewDot, 3.1);
+    float forwardScatter = pow(max(dot(V, -L), 0.0), 2.6) * 0.45 + 0.55;
+    float litEdge = pow(max(dot(N, L), 0.0), 1.25) * 0.26 + 0.74;
+    float edgeTightening = smoothstep(0.02, 0.62, horizon);
 
-    float alpha = horizon * forwardScatter * litEdge * uIntensity * uDensity;
+    float alpha = horizon * forwardScatter * litEdge * edgeTightening * uIntensity * uDensity;
     gl_FragColor = vec4(uAtmosphereColor, alpha);
   }
 `;

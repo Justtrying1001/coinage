@@ -158,6 +158,7 @@ function getOrCreateSurfaceMaterial(params: ReturnType<typeof mapProfileToProced
     vertexColors: true,
     roughness: params.roughness,
     metalness: params.metalness,
+    envMapIntensity: 1.05,
   });
   SURFACE_MATERIAL_CACHE.set(key, { material, refs: 1 });
   return {
@@ -200,7 +201,7 @@ function getOrCreateAtmosphereGeometry(radius: number, thickness: number, segmen
     };
   }
 
-  const geometry = new THREE.SphereGeometry(radius * (1 + thickness * 1.35), segments, segments);
+  const geometry = new THREE.SphereGeometry(radius * (1 + thickness * 1.12), segments, segments);
   ATMOSPHERE_GEOMETRY_CACHE.set(key, { geometry, refs: 1 });
   return {
     geometry,
@@ -251,8 +252,8 @@ function getOrCreateAtmosphereMaterial(params: ReturnType<typeof mapProfileToPro
     fragmentShader: ATMOSPHERE_FRAGMENT_SHADER,
     uniforms: {
       uAtmosphereColor: { value: new THREE.Color(...params.atmosphereColor) },
-      uIntensity: { value: Math.min(0.58, params.atmosphereIntensity * 0.24 + 0.05) },
-      uDensity: { value: Math.min(1, 0.5 + params.atmosphereThickness * 3.2) },
+      uIntensity: { value: Math.min(0.5, params.atmosphereIntensity * 0.2 + 0.035) },
+      uDensity: { value: Math.min(0.85, 0.44 + params.atmosphereThickness * 2.5) },
       uLightDirection: { value: new THREE.Vector3(0.38, 0.54, 0.75).normalize() },
     },
     blending: THREE.AdditiveBlending,
@@ -290,12 +291,25 @@ export function createPlanetRenderInstance({ profile, x, y, z, options }: Planet
   if (material.userData.coinageRoughnessPatch !== true) {
     material.onBeforeCompile = (shader) => {
       shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        float waterMask = smoothstep(0.08, 0.26, vColor.b - max(vColor.r, vColor.g));
+        float mountainMask = smoothstep(0.46, 0.86, vColor.r * 0.55 + vColor.g * 0.35);
+        float landMask = clamp(1.0 - waterMask, 0.0, 1.0);
+        vec3 biomeTint = vec3(1.0);
+        biomeTint = mix(biomeTint, vec3(0.95, 1.01, 1.06), waterMask * 0.85);
+        biomeTint = mix(biomeTint, vec3(1.06, 1.03, 0.98), mountainMask * landMask * 0.42);
+        diffuseColor.rgb *= biomeTint;`,
+      );
+      shader.fragmentShader = shader.fragmentShader.replace(
         '#include <roughnessmap_fragment>',
         `#include <roughnessmap_fragment>
         float waterMask = smoothstep(0.08, 0.24, vColor.b - max(vColor.r, vColor.g));
-        float highlandMask = smoothstep(0.5, 0.85, vColor.r * 0.35 + vColor.g * 0.5 + vColor.b * 0.15);
-        roughnessFactor = mix(roughnessFactor, 0.08, waterMask * 0.92);
-        roughnessFactor = mix(roughnessFactor, clamp(roughnessFactor * 1.26 + 0.08, 0.0, 1.0), highlandMask * (1.0 - waterMask));`,
+        float highlandMask = smoothstep(0.5, 0.84, vColor.r * 0.35 + vColor.g * 0.5 + vColor.b * 0.15);
+        float ridgeMicro = smoothstep(0.18, 0.72, abs(vColor.r - vColor.g) + abs(vColor.g - vColor.b));
+        roughnessFactor = mix(roughnessFactor, 0.05, waterMask * 0.94);
+        roughnessFactor = mix(roughnessFactor, clamp(roughnessFactor * 1.24 + 0.1, 0.0, 1.0), highlandMask * (1.0 - waterMask));
+        roughnessFactor = mix(roughnessFactor, clamp(roughnessFactor + 0.08, 0.0, 1.0), ridgeMicro * 0.38 * (1.0 - waterMask));`,
       );
     };
     material.userData.coinageRoughnessPatch = true;
