@@ -70,15 +70,45 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
 
     scene.add(planetInstance.object);
 
+    const framingBounds = new THREE.Box3().setFromObject(planetInstance.object);
+    const framingSphere = framingBounds.getBoundingSphere(new THREE.Sphere());
+    const framingCenter = framingSphere.center.clone();
+    const framingRadius = Number.isFinite(framingSphere.radius) && framingSphere.radius > 0 ? framingSphere.radius : 1;
+    const framingMargin = 1.18;
+
+    const baseViewDirection = camera.position.clone().sub(framingCenter).normalize();
+    if (!Number.isFinite(baseViewDirection.lengthSq()) || baseViewDirection.lengthSq() < 1e-6) {
+      baseViewDirection.set(0, 0.045, 1).normalize();
+    }
+
+    const computeFitDistance = (radius: number, perspectiveCamera: THREE.PerspectiveCamera): number => {
+      const verticalFov = THREE.MathUtils.degToRad(perspectiveCamera.fov);
+      const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * perspectiveCamera.aspect);
+      const verticalDistance = radius / Math.sin(Math.max(0.01, verticalFov / 2));
+      const horizontalDistance = radius / Math.sin(Math.max(0.01, horizontalFov / 2));
+      return Math.max(verticalDistance, horizontalDistance);
+    };
+
+    const baseFitDistance = computeFitDistance(framingRadius, camera);
+    const initialDistance = baseFitDistance * framingMargin;
+    const minDistance = Math.max(framingRadius * 1.05, baseFitDistance * 0.68);
+    const maxDistance = Math.max(baseFitDistance * 7.5, minDistance * 2.5);
+
+    camera.near = Math.max(0.01, framingRadius * 0.03);
+    camera.far = Math.max(1200, maxDistance * 6);
+    camera.updateProjectionMatrix();
+    camera.position.copy(framingCenter).addScaledVector(baseViewDirection, initialDistance);
+    camera.lookAt(framingCenter);
+
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enablePan = false;
     controls.enableDamping = true;
     controls.dampingFactor = 0.06;
-    controls.minDistance = 2.8;
-    controls.maxDistance = 7.8;
+    controls.minDistance = minDistance;
+    controls.maxDistance = maxDistance;
     controls.minPolarAngle = 0.01;
     controls.maxPolarAngle = Math.PI - 0.01;
-    controls.target.set(0, 0, 0);
+    controls.target.copy(framingCenter);
     controls.autoRotate = false;
     controls.update();
 
@@ -90,8 +120,28 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
       const width = mountRef.current.clientWidth;
       const height = mountRef.current.clientHeight;
       camera.aspect = width / Math.max(1, height);
+      const resizedFitDistance = computeFitDistance(framingRadius, camera);
+      const resizedMinDistance = Math.max(framingRadius * 1.05, resizedFitDistance * 0.68);
+      const resizedMaxDistance = Math.max(resizedFitDistance * 7.5, resizedMinDistance * 2.5);
+
+      controls.minDistance = resizedMinDistance;
+      controls.maxDistance = resizedMaxDistance;
+
+      const offset = camera.position.clone().sub(controls.target);
+      if (offset.lengthSq() <= 1e-6) {
+        offset.copy(baseViewDirection);
+      } else {
+        offset.normalize();
+      }
+      const currentDistance = camera.position.distanceTo(controls.target);
+      const nextDistance = Math.min(resizedMaxDistance, Math.max(currentDistance, resizedFitDistance * framingMargin));
+      camera.position.copy(controls.target).addScaledVector(offset, nextDistance);
+
+      camera.near = Math.max(0.01, framingRadius * 0.03);
+      camera.far = Math.max(1200, resizedMaxDistance * 6);
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
+      controls.update();
     };
 
     window.addEventListener('resize', onResize);
