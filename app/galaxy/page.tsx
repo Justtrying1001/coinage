@@ -1,6 +1,5 @@
 import GalaxyView from '@/ui/galaxy/GalaxyView';
-
-const WORLD_SEED = 'coinage-mvp-seed';
+import { WORLD_SEED } from '@/domain/world/world.constants';
 
 export default function GalaxyPage() {
   return (
