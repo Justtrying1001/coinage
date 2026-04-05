@@ -42,20 +42,23 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     renderer.toneMappingExposure = 1.08;
     mount.appendChild(renderer.domElement);
 
-    const hemiLight = new THREE.HemisphereLight('#bcd6ff', '#182131', 0.34);
+    const ambientLight = new THREE.AmbientLight('#ffffff', 1.18);
+    scene.add(ambientLight);
+
+    const hemiLight = new THREE.HemisphereLight('#f4f7ff', '#d9e1f0', 0.52);
     scene.add(hemiLight);
 
-    const keyLight = new THREE.DirectionalLight('#fff5de', 1.58);
-    keyLight.position.set(4.4, 2.6, 5.8);
-    scene.add(keyLight);
+    const frontLight = new THREE.DirectionalLight('#ffffff', 0.3);
+    frontLight.position.set(4, 1.4, 4.2);
+    scene.add(frontLight);
 
-    const fillLight = new THREE.DirectionalLight('#7ea6ff', 0.46);
-    fillLight.position.set(-3.6, -0.9, 2.6);
-    scene.add(fillLight);
+    const backLight = new THREE.DirectionalLight('#ffffff', 0.3);
+    backLight.position.set(-4, -1.2, -4.2);
+    scene.add(backLight);
 
-    const rimLight = new THREE.DirectionalLight('#8db6ff', 0.58);
-    rimLight.position.set(-3.4, 2.8, -4.8);
-    scene.add(rimLight);
+    const topLight = new THREE.DirectionalLight('#ffffff', 0.2);
+    topLight.position.set(0, 5, 0);
+    scene.add(topLight);
 
     const planetInstance = createPlanetRenderInstance({
       profile: resolved.profile,
@@ -73,10 +76,11 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     controls.dampingFactor = 0.06;
     controls.minDistance = 2.8;
     controls.maxDistance = 7.8;
-    controls.minPolarAngle = Math.PI * 0.15;
-    controls.maxPolarAngle = Math.PI * 0.85;
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.35;
+    controls.minPolarAngle = 0.01;
+    controls.maxPolarAngle = Math.PI - 0.01;
+    controls.target.set(0, 0, 0);
+    controls.autoRotate = false;
+    controls.update();
 
     const onResize = () => {
       if (!mountRef.current) {
