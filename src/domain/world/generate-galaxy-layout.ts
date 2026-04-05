@@ -20,9 +20,9 @@ export interface GalaxyLayoutConfig {
 }
 
 const DEFAULT_CONFIG: Required<GalaxyLayoutConfig> = {
-  planetCount: 120,
-  fieldRadius: 70,
-  minSpacing: 6.8,
+  planetCount: 140,
+  fieldRadius: 74,
+  minSpacing: 6.2,
   depthRange: 0,
 };
 
@@ -57,28 +57,59 @@ export function generateGalaxyLayout(
   const rng = createSeededRng(deriveSeed(worldSeed, 'galaxy-layout'));
 
   const points: GalaxyPlanetLayout[] = [];
-  const maxAttempts = merged.planetCount * 120;
+  const candidateChecks = Math.max(18, Math.round(merged.planetCount / 4));
+  const maxAttempts = merged.planetCount * 10;
 
   let attempts = 0;
   while (points.length < merged.planetCount && attempts < maxAttempts) {
     attempts += 1;
 
-    const radiusBias = Math.pow(rng(), 0.75);
-    const angle = rng() * Math.PI * 2;
-    const radius = radiusBias * merged.fieldRadius;
+    let bestCandidate: { x: number; y: number; nearestDistance: number } | null = null;
 
-    const x = Math.cos(angle) * radius;
-    const y = Math.sin(angle) * radius;
+    for (let i = 0; i < candidateChecks; i += 1) {
+      const angle = rng() * Math.PI * 2;
+      const radialBias = Math.pow(rng(), 1.12);
+      const radius = (0.14 + radialBias * 0.86) * merged.fieldRadius;
 
-    if (!isFarEnough(x, y, points, merged.minSpacing)) {
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+
+      let nearestDistance = Number.POSITIVE_INFINITY;
+      for (const point of points) {
+        const dx = point.x - x;
+        const dy = point.y - y;
+        const distance = Math.hypot(dx, dy);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+        }
+      }
+
+      if (!Number.isFinite(nearestDistance)) {
+        nearestDistance = merged.fieldRadius;
+      }
+
+      const edgeFactor = radius / merged.fieldRadius;
+      const score = nearestDistance * (0.9 + edgeFactor * 0.24);
+
+      if (!bestCandidate || score > bestCandidate.nearestDistance) {
+        bestCandidate = { x, y, nearestDistance: score };
+      }
+    }
+
+    if (!bestCandidate) {
+      continue;
+    }
+
+    const dynamicMinSpacing = merged.minSpacing * (0.92 + rng() * 0.18);
+    if (!isFarEnough(bestCandidate.x, bestCandidate.y, points, dynamicMinSpacing)) {
       continue;
     }
 
     points.push({
       id: `planet-${points.length}`,
       planetSeed: `planet-${points.length}`,
-      x,
-      y,
+      x: bestCandidate.x,
+      y: bestCandidate.y,
       z: 0,
     });
   }

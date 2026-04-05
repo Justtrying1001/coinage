@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 import type { PlanetVisualProfile } from '@/domain/world/planet-visual.types';
 
-import type { ProceduralPlanetUniforms } from './types';
+import type { ProceduralPlanetUniforms, TerrainProfileKind } from './types';
 
 function clamp(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) {
@@ -44,6 +44,70 @@ function pickLandColor(palette: PlanetVisualProfile['paletteFamily']): string {
   }
 }
 
+interface TerrainProfileSettings {
+  type: TerrainProfileKind;
+  elevationCap: number;
+  terrainSmoothing: number;
+  ridgeAttenuation: number;
+  detailAttenuation: number;
+  macroScale: number;
+  ridgedScale: number;
+}
+
+function pickTerrainProfile(profile: PlanetVisualProfile): TerrainProfileSettings {
+  const ruggedness =
+    profile.relief.macroStrength * 0.55 + profile.relief.microStrength * 0.35 + profile.shape.ridgeWarp * 0.28;
+
+  const rarity = ((profile.derivedSubSeeds.reliefSeed ^ (profile.derivedSubSeeds.shapeSeed >>> 3)) & 1023) / 1023;
+  const rareExtremeGate = (profile.derivedSubSeeds.reliefSeed % 43 === 0 || profile.derivedSubSeeds.shapeSeed % 61 === 0) && rarity > 0.72;
+
+  if (ruggedness < 0.55 && rarity < 0.48) {
+    return {
+      type: 'smooth',
+      elevationCap: 0.19,
+      terrainSmoothing: 0.82,
+      ridgeAttenuation: 0.32,
+      detailAttenuation: 0.24,
+      macroScale: 0.8,
+      ridgedScale: 0.48,
+    };
+  }
+
+  if (rareExtremeGate) {
+    return {
+      type: 'extreme',
+      elevationCap: 0.33,
+      terrainSmoothing: 0.45,
+      ridgeAttenuation: 0.9,
+      detailAttenuation: 0.72,
+      macroScale: 1.08,
+      ridgedScale: 0.88,
+    };
+  }
+
+  if (ruggedness > 0.88 || rarity > 0.86) {
+    return {
+      type: 'rough',
+      elevationCap: 0.27,
+      terrainSmoothing: 0.58,
+      ridgeAttenuation: 0.66,
+      detailAttenuation: 0.44,
+      macroScale: 0.98,
+      ridgedScale: 0.72,
+    };
+  }
+
+  return {
+    type: 'moderate',
+    elevationCap: 0.23,
+    terrainSmoothing: 0.7,
+    ridgeAttenuation: 0.5,
+    detailAttenuation: 0.34,
+    macroScale: 0.9,
+    ridgedScale: 0.6,
+  };
+}
+
 export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): ProceduralPlanetUniforms {
   const landBase = new THREE.Color(pickLandColor(profile.paletteFamily));
   const oceanBase = new THREE.Color(pickWaterColor(profile.paletteFamily));
@@ -72,6 +136,7 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
 
   const isIcy = profile.materialFamily === 'icy';
   const isRocky = profile.materialFamily === 'rocky';
+  const terrainProfile = pickTerrainProfile(profile);
 
   return {
     shapeSeed: profile.derivedSubSeeds.shapeSeed >>> 0,
@@ -86,10 +151,23 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     oceanLevel: clamp(0.38 + (0.5 - profile.color.accentMix) * 0.18 + (isIcy ? 0.08 : 0), 0.25, 0.62),
     mountainLevel: clamp(0.7 + profile.relief.macroStrength * 0.18 + (isRocky ? 0.03 : 0), 0.66, 0.92),
     simpleFrequency: clamp(profile.shape.wobbleFrequency * 0.9 + 0.55, 0.8, 4.2),
-    simpleStrength: clamp(profile.relief.macroStrength * 0.85 + profile.shape.wobbleAmplitude * 0.6, 0.08, 0.9),
+    simpleStrength: clamp(
+      (profile.relief.macroStrength * 0.72 + profile.shape.wobbleAmplitude * 0.45) * terrainProfile.macroScale,
+      0.08,
+      0.76,
+    ),
     ridgedFrequency: clamp(profile.shape.wobbleFrequency * 2.0 + 1.4, 1.8, 8.2),
-    ridgedStrength: clamp(profile.relief.microStrength * 1.8 + profile.shape.ridgeWarp * 0.35, 0.06, 0.95),
+    ridgedStrength: clamp(
+      (profile.relief.microStrength * 1.12 + profile.shape.ridgeWarp * 0.22) * terrainProfile.ridgedScale,
+      0.04,
+      0.72,
+    ),
     maskStrength: clamp(0.45 + profile.shape.ridgeWarp * 0.4 + profile.relief.craterDensity * 0.1, 0.3, 0.95),
+    terrainProfile: terrainProfile.type,
+    elevationCap: terrainProfile.elevationCap,
+    terrainSmoothing: terrainProfile.terrainSmoothing,
+    ridgeAttenuation: terrainProfile.ridgeAttenuation,
+    detailAttenuation: terrainProfile.detailAttenuation,
     roughness: clamp(profile.relief.roughness * 0.9 + 0.05, 0.2, 1),
     metalness: clamp(profile.materialFamily === 'metallic' ? 0.35 : profile.materialFamily === 'icy' ? 0.18 : 0.08, 0.05, 0.45),
     atmosphereEnabled: profile.atmosphere.enabled,

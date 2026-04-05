@@ -52,15 +52,27 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
   const plateauSteps = Math.floor((continentMask * 4 + macro * 1.6 + 2) * 2.4) / 2.4;
   const plateau = clamp(plateauSteps * 0.12 - 0.18, -0.18, 0.28);
 
-  const elevation =
+  const rawElevation =
     -oceanBasin * (0.07 + params.simpleStrength * 0.16) +
     continentMask * (0.08 + params.simpleStrength * 0.3) +
     macro * params.simpleStrength * 0.18 +
-    Math.max(0, ridged - 0.36) * params.ridgedStrength * (0.2 + continentMask * 0.55) +
-    detail * params.ridgedStrength * 0.05 +
+    Math.max(0, ridged - 0.36) * params.ridgedStrength * params.ridgeAttenuation * (0.16 + continentMask * 0.42) +
+    detail * params.ridgedStrength * params.detailAttenuation * 0.032 +
     plateau;
 
-  return clamp(elevation, -0.28, 0.5);
+  const normalized = clamp((rawElevation + 0.26) / 0.72, 0, 1);
+  const smoothed = smoothstep(
+    0.08 + (1 - params.terrainSmoothing) * 0.18,
+    0.93 - params.terrainSmoothing * 0.08,
+    normalized,
+  );
+  const centered = (smoothed - 0.5) * 2;
+  const upwardCap = params.elevationCap;
+  const downwardCap = Math.min(0.24, params.elevationCap * 0.75 + 0.03);
+  const amplitude = centered >= 0 ? upwardCap : downwardCap;
+  const elevation = centered * amplitude;
+
+  return clamp(elevation, -0.24, params.elevationCap);
 }
 
 export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE.BufferGeometry {

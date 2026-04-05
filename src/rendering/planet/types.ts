@@ -1,6 +1,8 @@
 import type * as THREE from 'three';
 import type { PlanetVisualProfile } from '@/domain/world/planet-visual.types';
 
+export type TerrainProfileKind = 'smooth' | 'moderate' | 'rough' | 'extreme';
+
 export interface ProceduralPlanetUniforms {
   shapeSeed: number;
   reliefSeed: number;
@@ -18,6 +20,11 @@ export interface ProceduralPlanetUniforms {
   ridgedFrequency: number;
   ridgedStrength: number;
   maskStrength: number;
+  terrainProfile: TerrainProfileKind;
+  elevationCap: number;
+  terrainSmoothing: number;
+  ridgeAttenuation: number;
+  detailAttenuation: number;
   roughness: number;
   metalness: number;
   atmosphereEnabled: boolean;
