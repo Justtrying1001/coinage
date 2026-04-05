@@ -158,6 +158,9 @@ function getOrCreateSurfaceMaterial(params: ReturnType<typeof mapProfileToProced
     vertexColors: true,
     roughness: params.roughness,
     metalness: params.metalness,
+    side: THREE.DoubleSide,
+    emissive: new THREE.Color(0x1f2f45),
+    emissiveIntensity: 0.2,
     envMapIntensity: 1.05,
   });
   SURFACE_MATERIAL_CACHE.set(key, { material, refs: 1 });
