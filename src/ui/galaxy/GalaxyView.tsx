@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import * as THREE from 'three';
 
-import { DEFAULT_GALAXY_LAYOUT_CONFIG, generateGalaxyLayout } from '@/domain/world/generate-galaxy-layout';
-import { generatePlanetVisualProfile } from '@/domain/world/generate-planet-visual-profile';
+import { buildGalaxyPlanetManifest } from '@/domain/world/build-galaxy-planet-manifest';
 import type { PlanetVisualProfile } from '@/domain/world/planet-visual.types';
 import { deriveSeed } from '@/domain/world/seeded-rng';
+import { GALAXY_LAYOUT_RUNTIME_CONFIG } from '@/domain/world/world.constants';
 import { createPlanetRenderInstance } from '@/rendering/planet/create-planet-render-instance';
 import type { PlanetRenderInstance } from '@/rendering/planet/types';
 
@@ -17,22 +18,17 @@ interface GalaxyViewProps {
 
 interface PlanetRenderData {
   id: string;
+  planetSeed: string;
   x: number;
   y: number;
   radius: number;
   profile: PlanetVisualProfile;
 }
 
-const FIELD_RADIUS = 84;
+const FIELD_RADIUS = GALAXY_LAYOUT_RUNTIME_CONFIG.fieldRadius ?? 84;
 const MOVE_SPEED = 24;
 const BASE_VIEW_HEIGHT = 60;
 const GALAXY_BACKGROUND_Z = -180;
-const GALAXY_LAYOUT_RUNTIME_CONFIG = {
-  ...DEFAULT_GALAXY_LAYOUT_CONFIG,
-  planetCount: 176,
-  fieldRadius: FIELD_RADIUS,
-  minSpacing: 3.2,
-} as const;
 
 function createStarField(seed: string): THREE.Group {
   const group = new THREE.Group();
@@ -225,24 +221,10 @@ function createBackdrop(seed: string): THREE.Mesh {
 
 export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
 
   const planetData = useMemo<PlanetRenderData[]>(() => {
-    const profiles = Array.from({ length: GALAXY_LAYOUT_RUNTIME_CONFIG.planetCount }, (_, index) =>
-      generatePlanetVisualProfile({ worldSeed, planetSeed: `planet-${index}` }),
-    );
-    const estimatedRadii = profiles.map((profile) => profile.shape.radius * 0.96);
-    const layout = generateGalaxyLayout(worldSeed, {
-      ...GALAXY_LAYOUT_RUNTIME_CONFIG,
-      planetRadii: estimatedRadii,
-    });
-
-    return layout.map((planet, index) => ({
-      id: planet.id,
-      x: planet.x,
-      y: planet.y,
-      radius: estimatedRadii[index] ?? 1,
-      profile: profiles[index]!,
-    }));
+    return buildGalaxyPlanetManifest(worldSeed);
   }, [worldSeed]);
 
   useEffect(() => {
@@ -293,6 +275,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
 
     const planetGroup = new THREE.Group();
     const instances: PlanetRenderInstance[] = [];
+    const interactivePlanetMeshes: THREE.Mesh[] = [];
 
     for (const planet of planetData) {
       const instance = createPlanetRenderInstance({
@@ -301,6 +284,15 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         y: planet.y,
         z: 0,
         options: { lod: 'galaxy' },
+      });
+      instance.object.userData.planetId = planet.id;
+      instance.object.userData.planetSeed = planet.planetSeed;
+      instance.object.traverse((node) => {
+        if (node instanceof THREE.Mesh) {
+          node.userData.planetId = planet.id;
+          node.userData.planetSeed = planet.planetSeed;
+          interactivePlanetMeshes.push(node);
+        }
       });
       instances.push(instance);
       planetGroup.add(instance.object);
@@ -359,6 +351,33 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       dragging = false;
     };
 
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+
+    const onDoubleClick = (event: MouseEvent) => {
+      const bounds = renderer.domElement.getBoundingClientRect();
+      if (bounds.width <= 0 || bounds.height <= 0) {
+        return;
+      }
+
+      pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
+      pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+
+      const intersections = raycaster.intersectObjects(interactivePlanetMeshes, false);
+      const firstHit = intersections[0];
+      if (!firstHit) {
+        return;
+      }
+
+      const planetId = firstHit.object.userData.planetId as string | undefined;
+      if (!planetId) {
+        return;
+      }
+
+      router.push(`/planet/${planetId}`);
+    };
+
     const onResize = () => {
       if (!mountRef.current) {
         return;
@@ -383,6 +402,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     window.addEventListener('pointerup', onPointerUp);
     window.addEventListener('resize', onResize);
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
+    renderer.domElement.addEventListener('dblclick', onDoubleClick);
     renderer.domElement.addEventListener('contextmenu', (event: MouseEvent) => event.preventDefault());
     renderer.domElement.addEventListener('wheel', (event: WheelEvent) => event.preventDefault(), { passive: false });
 
@@ -430,6 +450,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('resize', onResize);
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
+      renderer.domElement.removeEventListener('dblclick', onDoubleClick);
 
       for (const instance of instances) {
         instance.dispose();
@@ -466,7 +487,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         mount.removeChild(renderer.domElement);
       }
     };
-  }, [planetData, worldSeed]);
+  }, [planetData, router, worldSeed]);
 
   return (
     <section className="relative h-full w-full overflow-hidden">
@@ -474,6 +495,9 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         <p className="text-[11px] uppercase tracking-[0.16em] text-slate-300/90">Coinage Galaxy Map</p>
         <p className="mt-1 text-slate-100/90">
           <span className="font-semibold">Pan:</span> WASD / Arrow Keys / drag
+        </p>
+        <p className="mt-1 text-slate-100/90">
+          <span className="font-semibold">Planet View:</span> double-click a planet
         </p>
       </div>
       <div className="pointer-events-auto absolute left-4 top-20 z-10">
