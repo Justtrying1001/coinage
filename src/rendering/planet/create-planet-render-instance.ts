@@ -293,23 +293,32 @@ export function createPlanetRenderInstance({ profile, x, y, z, options }: Planet
       shader.fragmentShader = shader.fragmentShader.replace(
         '#include <color_fragment>',
         `#include <color_fragment>
-        float waterMask = smoothstep(0.08, 0.26, vColor.b - max(vColor.r, vColor.g));
-        float mountainMask = smoothstep(0.46, 0.86, vColor.r * 0.55 + vColor.g * 0.35);
-        float landMask = clamp(1.0 - waterMask, 0.0, 1.0);
+        float coinageWaterMaskColor = smoothstep(0.08, 0.26, vColor.b - max(vColor.r, vColor.g));
+        float coinageMountainMaskColor = smoothstep(0.46, 0.86, vColor.r * 0.55 + vColor.g * 0.35);
+        float coinageLandMaskColor = clamp(1.0 - coinageWaterMaskColor, 0.0, 1.0);
         vec3 biomeTint = vec3(1.0);
-        biomeTint = mix(biomeTint, vec3(0.95, 1.01, 1.06), waterMask * 0.85);
-        biomeTint = mix(biomeTint, vec3(1.06, 1.03, 0.98), mountainMask * landMask * 0.42);
-        diffuseColor.rgb *= biomeTint;`,
+        biomeTint = mix(biomeTint, vec3(0.95, 1.01, 1.06), coinageWaterMaskColor * 0.85);
+        biomeTint = mix(biomeTint, vec3(1.06, 1.03, 0.98), coinageMountainMaskColor * coinageLandMaskColor * 0.42);
+        diffuseColor.rgb *= biomeTint;
+        diffuseColor.rgb = min(diffuseColor.rgb * 1.08, vec3(1.0));`,
       );
       shader.fragmentShader = shader.fragmentShader.replace(
         '#include <roughnessmap_fragment>',
         `#include <roughnessmap_fragment>
-        float waterMask = smoothstep(0.08, 0.24, vColor.b - max(vColor.r, vColor.g));
-        float highlandMask = smoothstep(0.5, 0.84, vColor.r * 0.35 + vColor.g * 0.5 + vColor.b * 0.15);
-        float ridgeMicro = smoothstep(0.18, 0.72, abs(vColor.r - vColor.g) + abs(vColor.g - vColor.b));
-        roughnessFactor = mix(roughnessFactor, 0.05, waterMask * 0.94);
-        roughnessFactor = mix(roughnessFactor, clamp(roughnessFactor * 1.24 + 0.1, 0.0, 1.0), highlandMask * (1.0 - waterMask));
-        roughnessFactor = mix(roughnessFactor, clamp(roughnessFactor + 0.08, 0.0, 1.0), ridgeMicro * 0.38 * (1.0 - waterMask));`,
+        float coinageWaterMaskRoughness = smoothstep(0.08, 0.24, vColor.b - max(vColor.r, vColor.g));
+        float coinageHighlandMaskRoughness = smoothstep(0.5, 0.84, vColor.r * 0.35 + vColor.g * 0.5 + vColor.b * 0.15);
+        float coinageRidgeMicroRoughness = smoothstep(0.18, 0.72, abs(vColor.r - vColor.g) + abs(vColor.g - vColor.b));
+        roughnessFactor = mix(roughnessFactor, 0.05, coinageWaterMaskRoughness * 0.94);
+        roughnessFactor = mix(
+          roughnessFactor,
+          clamp(roughnessFactor * 1.24 + 0.1, 0.0, 1.0),
+          coinageHighlandMaskRoughness * (1.0 - coinageWaterMaskRoughness)
+        );
+        roughnessFactor = mix(
+          roughnessFactor,
+          clamp(roughnessFactor + 0.08, 0.0, 1.0),
+          coinageRidgeMicroRoughness * 0.38 * (1.0 - coinageWaterMaskRoughness)
+        );`,
       );
     };
     material.userData.coinageRoughnessPatch = true;
