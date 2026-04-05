@@ -24,7 +24,7 @@ interface PlanetRenderData {
 
 const FIELD_RADIUS = GALAXY_LAYOUT_RUNTIME_CONFIG.fieldRadius ?? 84;
 const MOVE_SPEED = 24;
-const BASE_VIEW_HEIGHT = 90;
+const BASE_VIEW_HEIGHT = 72;
 
 export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -64,16 +64,16 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
+    renderer.toneMappingExposure = 1.6;
     mount.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight('#9fc5ff', 1.1));
+    scene.add(new THREE.AmbientLight('#b7d1ff', 1.9));
 
-    const keyLight = new THREE.DirectionalLight('#ffffff', 1.35);
+    const keyLight = new THREE.DirectionalLight('#ffffff', 2.1);
     keyLight.position.set(20, 26, 44);
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight('#90b5ff', 0.68);
+    const fillLight = new THREE.DirectionalLight('#b6ccff', 1.25);
     fillLight.position.set(-24, -12, 32);
     scene.add(fillLight);
 
