@@ -7,7 +7,7 @@ import { generateGalaxyLayout } from '@/domain/world/generate-galaxy-layout';
 import { generatePlanetVisualProfile } from '@/domain/world/generate-planet-visual-profile';
 import type { PlanetVisualProfile } from '@/domain/world/planet-visual.types';
 import { deriveSeed } from '@/domain/world/seeded-rng';
-import { mapProfileToRenderStyle } from '@/ui/prototype/planet/map-profile-to-render';
+import { mapProfileToRenderStyle } from '@/ui/galaxy/render/map-profile-to-render';
 
 interface GalaxyViewProps {
   worldSeed: string;
