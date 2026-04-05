@@ -4,7 +4,7 @@ export const WORLD_SEED = 'coinage-mvp-seed';
 
 export const GALAXY_LAYOUT_RUNTIME_CONFIG: GalaxyLayoutConfig = {
   ...DEFAULT_GALAXY_LAYOUT_CONFIG,
-  planetCount: 158,
-  fieldRadius: 88,
-  minSpacing: 4.4,
+  planetCount: 500,
+  fieldRadius: 280,
+  minSpacing: 9.5,
 };
