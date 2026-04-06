@@ -74,7 +74,8 @@ const FIXED_CAMERA_ZOOM = 2.85;
 const KEYBOARD_ACCELERATION = 15;
 const KEYBOARD_DECELERATION = 13;
 const CAMERA_FOLLOW_DAMPING = 16;
-const DRAG_PAN_FACTOR = 0.0135 * BASE_VIEW_HEIGHT;
+const DRAG_PAN_SENSITIVITY = 1.18;
+const DRAG_DIRECT_RESPONSE = 0.58;
 const PLANET_BATCH_SIZE = 24;
 const INITIAL_BATCH_CAP = 72;
 const PERF_LOG_PREFIX = '[GalaxyPerf]';
@@ -159,6 +160,15 @@ function measurePerf(
   }
 
   return duration;
+}
+
+function getWorldUnitsPerPixel(camera: THREE.OrthographicCamera, viewportWidth: number, viewportHeight: number) {
+  const safeWidth = Math.max(1, viewportWidth);
+  const safeHeight = Math.max(1, viewportHeight);
+  return {
+    x: (camera.right - camera.left) / (camera.zoom * safeWidth),
+    y: (camera.top - camera.bottom) / (camera.zoom * safeHeight),
+  };
 }
 
 function isPlanetInsideInitialViewport(
@@ -287,6 +297,8 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.6;
+    renderer.domElement.style.touchAction = 'none';
+    renderer.domElement.style.cursor = 'grab';
     mount.appendChild(renderer.domElement);
 
     scene.add(new THREE.AmbientLight('#b7d1ff', 1.9));
@@ -352,6 +364,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       lastX = event.clientX;
       lastY = event.clientY;
       renderer.domElement.setPointerCapture(event.pointerId);
+      renderer.domElement.style.cursor = 'grabbing';
       invalidateRender();
     };
 
@@ -365,8 +378,13 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       lastX = event.clientX;
       lastY = event.clientY;
 
-      cameraTarget.x -= (dx / Math.max(1, mount.clientHeight)) * DRAG_PAN_FACTOR;
-      cameraTarget.y += (dy / Math.max(1, mount.clientHeight)) * DRAG_PAN_FACTOR;
+      const unitsPerPixel = getWorldUnitsPerPixel(camera, mount.clientWidth, mount.clientHeight);
+      const dragDeltaX = dx * unitsPerPixel.x * DRAG_PAN_SENSITIVITY;
+      const dragDeltaY = dy * unitsPerPixel.y * DRAG_PAN_SENSITIVITY;
+      cameraTarget.x -= dragDeltaX;
+      cameraTarget.y += dragDeltaY;
+      camera.position.x += (cameraTarget.x - camera.position.x) * DRAG_DIRECT_RESPONSE;
+      camera.position.y += (cameraTarget.y - camera.position.y) * DRAG_DIRECT_RESPONSE;
       invalidateRender();
     };
 
@@ -375,6 +393,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       if (renderer.domElement.hasPointerCapture(event.pointerId)) {
         renderer.domElement.releasePointerCapture(event.pointerId);
       }
+      renderer.domElement.style.cursor = 'grab';
       invalidateRender();
     };
 
