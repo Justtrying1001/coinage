@@ -7,7 +7,7 @@ function toColor(value: [number, number, number]): THREE.Color {
   return new THREE.Color(value[0], value[1], value[2]);
 }
 
-const SURFACE_VERTEX_SHADER = `
+const SHARED_VERTEX_SHADER = `
   varying vec3 vNormalW;
   varying vec3 vWorldPos;
   varying vec2 vUv;
@@ -70,60 +70,78 @@ const SURFACE_FRAGMENT_SHADER = `
 
   float fbm(vec3 p) {
     float value = 0.0;
-    float amplitude = 0.5;
+    float amplitude = 0.52;
     float frequency = 1.0;
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
       value += amplitude * noise(p * frequency);
-      frequency *= 2.05;
-      amplitude *= 0.5;
+      frequency *= 2.02;
+      amplitude *= 0.52;
     }
 
     return value;
   }
 
-  void main() {
-    vec3 normal = normalize(vNormalW);
-    vec3 lightDir = normalize(uLightDirection);
+  float heightAt(vec3 p, vec3 seedVec) {
+    float macro = fbm((p + seedVec) * 2.2);
+    float detail = fbm((p + seedVec * 1.7) * 7.2);
+    float micro = noise((p + seedVec * 2.8) * 18.0);
+    float ridges = abs(noise((p + seedVec * 1.3) * 5.2) - 0.5) * 2.0;
+    return macro * 0.65 + detail * 0.35 + micro * 0.15 + ridges * uReliefAmplitude * 0.22;
+  }
 
+  void main() {
+    vec3 lightDir = normalize(uLightDirection);
+    vec3 viewDir = normalize(cameraPosition - vWorldPos);
+    vec3 sphereNormal = normalize(vNormalW);
     vec3 p = normalize(vWorldPos);
     vec3 seedVec = vec3(uSeed * 0.00000013, uSeed * 0.00000021, uSeed * 0.00000031);
 
-    float macro = fbm((p + seedVec) * 2.3);
-    float detail = fbm((p + seedVec * 2.0) * 8.5);
-    float micro = noise((p + seedVec * 3.0) * 22.0);
+    vec3 tangent = normalize(abs(sphereNormal.y) < 0.99 ? cross(sphereNormal, vec3(0.0, 1.0, 0.0)) : cross(sphereNormal, vec3(1.0, 0.0, 0.0)));
+    vec3 bitangent = normalize(cross(sphereNormal, tangent));
 
-    float heightField = macro * 0.75 + detail * 0.35 + micro * 0.12;
-    float oceanMask = smoothstep(0.38, 0.52, heightField);
-    float shore = smoothstep(0.47, 0.53, heightField) - smoothstep(0.53, 0.59, heightField);
+    float baseHeight = heightAt(p, seedVec);
+    float e = 0.018;
+    float hT = heightAt(normalize(p + tangent * e), seedVec);
+    float hB = heightAt(normalize(p + bitangent * e), seedVec);
+    vec3 perturbedNormal = normalize(sphereNormal + tangent * (hT - baseHeight) * 1.8 + bitangent * (hB - baseHeight) * 1.8);
+
+    float oceanMask = smoothstep(0.4, 0.56, baseHeight);
+    float shoreMask = smoothstep(0.49, 0.54, baseHeight) - smoothstep(0.54, 0.60, baseHeight);
 
     float latitude = abs(p.y);
-    float biomeStripe = smoothstep(0.22, 0.72, noise(vec3(vUv * vec2(10.0, 6.0), uSeed * 0.00000007))) * uBanding;
-    vec3 landBase = mix(uColorA, uColorB, clamp(detail + biomeStripe * 0.4, 0.0, 1.0));
-    vec3 biomeTint = mix(vec3(1.06, 1.03, 0.98), vec3(0.9, 0.95, 1.05), latitude);
-    vec3 landColor = landBase * biomeTint;
+    float biomeNoise = noise(vec3(vUv * vec2(8.0, 4.6), uSeed * 0.00000007));
+    float highlandMask = smoothstep(0.62, 0.84, baseHeight);
 
-    vec3 shorelineColor = mix(uOceanColor, landColor, 0.55) * 1.12;
+    vec3 lowLand = mix(uColorA, uColorB, biomeNoise * 0.5 + uBanding * 0.2);
+    vec3 highLand = mix(lowLand, uColorB * 1.08, highlandMask);
+    vec3 latTint = mix(vec3(1.04, 1.03, 1.0), vec3(0.92, 0.98, 1.08), latitude);
+    vec3 landColor = highLand * latTint;
+
+    vec3 shorelineColor = mix(uOceanColor, landColor, 0.57) * 1.1;
     vec3 albedo = mix(uOceanColor, landColor, oceanMask);
-    albedo = mix(albedo, shorelineColor, shore * 0.9);
+    albedo = mix(albedo, shorelineColor, shoreMask);
 
-    float ndl = max(dot(normal, lightDir), 0.0);
-    float wrapped = ndl * 0.86 + 0.14;
-    float terminator = smoothstep(-0.25, 0.2, dot(normal, lightDir));
+    float ndl = max(dot(perturbedNormal, lightDir), 0.0);
+    float wrappedDiffuse = ndl * 0.72 + 0.28;
 
-    vec3 viewDir = normalize(cameraPosition - vWorldPos);
     vec3 halfVec = normalize(lightDir + viewDir);
-    float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.8);
-    float spec = pow(max(dot(normal, halfVec), 0.0), mix(18.0, 48.0, 1.0 - uRoughness)) * (0.08 + uSpecular * 0.45);
-    spec *= mix(0.5, 1.0, 1.0 - oceanMask);
+    float fresnel = pow(1.0 - max(dot(perturbedNormal, viewDir), 0.0), 3.0);
 
-    vec3 lit = albedo * wrapped * mix(0.5, 1.0, terminator);
-    lit += albedo * (0.08 + uReliefAmplitude * 0.18) * (detail - 0.5);
-    lit += vec3(spec) + albedo * fresnel * 0.07;
+    float waterSpec = pow(max(dot(perturbedNormal, halfVec), 0.0), 84.0) * (0.24 + uSpecular * 0.8);
+    float landSpec = pow(max(dot(perturbedNormal, halfVec), 0.0), 26.0) * (0.05 + (1.0 - uRoughness) * 0.18);
+    float spec = mix(waterSpec, landSpec, oceanMask);
 
-    lit *= uLightingBoost;
+    float ao = 0.82 + (baseHeight - 0.5) * 0.22;
+    vec3 diffuse = albedo * wrappedDiffuse * ao;
 
-    gl_FragColor = vec4(clamp(lit, 0.0, 1.0), 1.0);
+    vec3 reliefAccent = albedo * (baseHeight - 0.5) * (0.16 + uReliefAmplitude * 0.4);
+    vec3 color = diffuse + reliefAccent + vec3(spec) + albedo * fresnel * 0.06;
+
+    color *= uLightingBoost;
+    color = clamp(color, 0.0, 1.0);
+
+    gl_FragColor = vec4(color, 1.0);
   }
 `;
 
@@ -149,6 +167,7 @@ const CLOUD_FRAGMENT_SHADER = `
     vec3 i = floor(x);
     vec3 f = fract(x);
     f = f * f * (3.0 - 2.0 * f);
+
     float n000 = hash(i + vec3(0.0, 0.0, 0.0));
     float n100 = hash(i + vec3(1.0, 0.0, 0.0));
     float n010 = hash(i + vec3(0.0, 1.0, 0.0));
@@ -157,12 +176,14 @@ const CLOUD_FRAGMENT_SHADER = `
     float n101 = hash(i + vec3(1.0, 0.0, 1.0));
     float n011 = hash(i + vec3(0.0, 1.0, 1.0));
     float n111 = hash(i + vec3(1.0, 1.0, 1.0));
+
     float nx00 = mix(n000, n100, f.x);
     float nx10 = mix(n010, n110, f.x);
     float nx01 = mix(n001, n101, f.x);
     float nx11 = mix(n011, n111, f.x);
     float nxy0 = mix(nx00, nx10, f.y);
     float nxy1 = mix(nx01, nx11, f.y);
+
     return mix(nxy0, nxy1, f.z);
   }
 
@@ -170,10 +191,10 @@ const CLOUD_FRAGMENT_SHADER = `
     float value = 0.0;
     float amp = 0.55;
     float freq = 1.0;
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
       value += noise(p * freq) * amp;
-      freq *= 2.1;
-      amp *= 0.5;
+      freq *= 2.06;
+      amp *= 0.52;
     }
     return value;
   }
@@ -184,16 +205,21 @@ const CLOUD_FRAGMENT_SHADER = `
     vec3 p = normalize(vWorldPos);
     vec3 seedVec = vec3(uSeed * 0.00000017, uSeed * 0.00000023, uSeed * 0.00000029);
 
-    float cloudField = fbm((p + seedVec) * 6.3);
-    float breakup = fbm((p + seedVec * 1.9) * 14.0);
-    float mask = smoothstep(1.0 - uCoverage, 1.02 - uCoverage, cloudField + breakup * 0.4);
+    float macro = fbm((p + seedVec) * 5.8);
+    float breakup = fbm((p + seedVec * 1.8) * 12.4);
+    float wisps = noise((p + seedVec * 3.1) * 24.0);
+    float cloudField = macro * 0.7 + breakup * 0.35 + wisps * 0.2;
+
+    float threshold = 1.04 - uCoverage;
+    float mask = smoothstep(threshold - 0.08, threshold + 0.06, cloudField);
 
     float ndl = max(dot(normal, lightDir), 0.0);
-    float phase = pow(max(dot(normal, normalize(lightDir + vec3(0.0, 0.0, 1.0))), 0.0), 4.0);
-    float lighting = (0.55 + ndl * 0.45 + phase * 0.18) * uLightingBoost;
+    float wrapped = ndl * 0.58 + 0.42;
+    float forwardScatter = pow(max(dot(normal, normalize(lightDir + vec3(0.0, 0.0, 1.0))), 0.0), 6.0) * 0.2;
 
-    float alpha = clamp(mask * uOpacity, 0.0, 0.95);
-    vec3 color = uCloudColor * lighting;
+    float alpha = clamp(mask * uOpacity * (0.72 + breakup * 0.35), 0.0, 0.94);
+    vec3 color = uCloudColor * (wrapped + forwardScatter) * uLightingBoost;
+
     gl_FragColor = vec4(color, alpha);
   }
 `;
@@ -212,30 +238,58 @@ const ATMOSPHERE_FRAGMENT_SHADER = `
     vec3 lightDir = normalize(uLightDirection);
     vec3 viewDir = normalize(cameraPosition - vWorldPos);
 
-    float rim = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.2) * uRim;
-    float sunFacing = max(dot(normal, lightDir), 0.0);
-    float horizonTint = smoothstep(0.0, 0.85, rim);
+    float rim = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.1);
+    float sunLift = max(dot(normal, lightDir), 0.0) * 0.16;
 
-    vec3 lowerColor = uColor * 0.72;
-    vec3 upperColor = uColor * 1.2;
-    vec3 atmoColor = mix(lowerColor, upperColor, horizonTint);
+    vec3 lowTone = uColor * 0.78;
+    vec3 highTone = uColor * 1.24;
+    vec3 color = mix(lowTone, highTone, rim * 0.9 + 0.1);
 
-    float alpha = clamp((rim * (0.28 + uDensity)) + sunFacing * 0.08, 0.0, 0.92);
-    gl_FragColor = vec4(atmoColor, alpha);
+    float alpha = clamp((0.08 + uDensity * 0.24) + rim * uRim * 0.56 + sunLift, 0.0, 0.9);
+    gl_FragColor = vec4(color, alpha);
   }
 `;
 
-const SHARED_VERTEX_SHADER = `
-  varying vec3 vNormalW;
-  varying vec3 vWorldPos;
+const RING_VERTEX_SHADER = `
   varying vec2 vUv;
+  varying vec3 vNormalW;
 
   void main() {
     vUv = uv;
-    vec4 worldPos = modelMatrix * vec4(position, 1.0);
-    vWorldPos = worldPos.xyz;
     vNormalW = normalize(mat3(modelMatrix) * normal);
-    gl_Position = projectionMatrix * viewMatrix * worldPos;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const RING_FRAGMENT_SHADER = `
+  varying vec2 vUv;
+  varying vec3 vNormalW;
+
+  uniform vec3 uColor;
+  uniform float uOpacity;
+  uniform float uSeed;
+  uniform vec3 uLightDirection;
+
+  float band(vec2 uv, float seed) {
+    float coarse = sin((uv.x + seed * 0.00000011) * 130.0) * 0.5 + 0.5;
+    float medium = sin((uv.x + seed * 0.00000019) * 340.0) * 0.5 + 0.5;
+    float fine = sin((uv.x + seed * 0.00000027) * 720.0) * 0.5 + 0.5;
+    return coarse * 0.5 + medium * 0.32 + fine * 0.18;
+  }
+
+  void main() {
+    float radial = abs(vUv.y - 0.5) * 2.0;
+    float edgeFade = 1.0 - smoothstep(0.72, 1.0, radial);
+    float b = band(vUv, uSeed);
+
+    vec3 lightDir = normalize(uLightDirection);
+    float ndl = max(dot(normalize(vNormalW), lightDir), 0.0);
+    float lightResponse = ndl * 0.4 + 0.6;
+
+    float alpha = edgeFade * uOpacity * (0.56 + b * 0.44);
+    vec3 color = uColor * (0.78 + b * 0.36) * lightResponse;
+
+    gl_FragColor = vec4(color, clamp(alpha, 0.0, 0.95));
   }
 `;
 
@@ -247,7 +301,7 @@ function createSurfaceLayer(
 ): THREE.Mesh {
   const geometry = new THREE.SphereGeometry(planetRadius, segments, segments);
   const material = new THREE.ShaderMaterial({
-    vertexShader: SURFACE_VERTEX_SHADER,
+    vertexShader: SHARED_VERTEX_SHADER,
     fragmentShader: SURFACE_FRAGMENT_SHADER,
     uniforms: {
       uColorA: { value: toColor(render.surface.colorA) },
@@ -258,7 +312,7 @@ function createSurfaceLayer(
       uSpecular: { value: render.surface.specularStrength },
       uBanding: { value: render.surface.bandingStrength },
       uSeed: { value: render.surface.noiseSeed },
-      uLightDirection: { value: new THREE.Vector3(0.48, 0.35, 0.8).normalize() },
+      uLightDirection: { value: new THREE.Vector3(0.56, 0.35, 0.74).normalize() },
       uLightingBoost: { value: lightingBoost },
     },
   });
@@ -275,7 +329,7 @@ function createCloudLayer(
   segments: number,
   lightingBoost: number,
 ): THREE.Mesh {
-  const geometry = new THREE.SphereGeometry(planetRadius * 1.017, segments, segments);
+  const geometry = new THREE.SphereGeometry(planetRadius * 1.018, segments, segments);
   const material = new THREE.ShaderMaterial({
     vertexShader: SHARED_VERTEX_SHADER,
     fragmentShader: CLOUD_FRAGMENT_SHADER,
@@ -284,7 +338,7 @@ function createCloudLayer(
       uCoverage: { value: render.clouds.coverage },
       uOpacity: { value: render.clouds.opacity },
       uSeed: { value: render.clouds.noiseSeed },
-      uLightDirection: { value: new THREE.Vector3(0.48, 0.35, 0.8).normalize() },
+      uLightDirection: { value: new THREE.Vector3(0.56, 0.35, 0.74).normalize() },
       uLightingBoost: { value: lightingBoost },
     },
     transparent: true,
@@ -298,7 +352,7 @@ function createCloudLayer(
 }
 
 function createAtmosphereLayer(planetRadius: number, render: PlanetRenderInput['planet']['render'], segments: number): THREE.Mesh {
-  const geometry = new THREE.SphereGeometry(planetRadius * (1.02 + render.atmosphere.thickness), segments, segments);
+  const geometry = new THREE.SphereGeometry(planetRadius * (1.024 + render.atmosphere.thickness), segments, segments);
   const material = new THREE.ShaderMaterial({
     vertexShader: SHARED_VERTEX_SHADER,
     fragmentShader: ATMOSPHERE_FRAGMENT_SHADER,
@@ -306,7 +360,7 @@ function createAtmosphereLayer(planetRadius: number, render: PlanetRenderInput['
       uColor: { value: toColor(render.atmosphere.color) },
       uDensity: { value: render.atmosphere.density },
       uRim: { value: render.atmosphere.rimStrength },
-      uLightDirection: { value: new THREE.Vector3(0.48, 0.35, 0.8).normalize() },
+      uLightDirection: { value: new THREE.Vector3(0.56, 0.35, 0.74).normalize() },
     },
     transparent: true,
     depthWrite: false,
@@ -321,27 +375,15 @@ function createAtmosphereLayer(planetRadius: number, render: PlanetRenderInput['
 }
 
 function createRingLayer(render: PlanetRenderInput['planet']['render']): THREE.Mesh {
-  const geometry = new THREE.RingGeometry(render.rings.innerRadius, render.rings.outerRadius, 128);
+  const geometry = new THREE.RingGeometry(render.rings.innerRadius, render.rings.outerRadius, 180);
   const material = new THREE.ShaderMaterial({
-    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-    fragmentShader: `
-      varying vec2 vUv;
-      uniform vec3 uColor;
-      uniform float uOpacity;
-      uniform float uSeed;
-      void main(){
-        float radial = abs(vUv.y - 0.5) * 2.0;
-        float bands = sin((vUv.x + uSeed * 0.00000011) * 120.0) * 0.5 + 0.5;
-        float dust = sin((vUv.x + uSeed * 0.00000021) * 340.0) * 0.5 + 0.5;
-        float alpha = (1.0 - smoothstep(0.7, 1.0, radial)) * uOpacity * (0.65 + bands * 0.25 + dust * 0.1);
-        vec3 col = uColor * (0.82 + bands * 0.24);
-        gl_FragColor = vec4(col, alpha);
-      }
-    `,
+    vertexShader: RING_VERTEX_SHADER,
+    fragmentShader: RING_FRAGMENT_SHADER,
     uniforms: {
       uColor: { value: toColor(render.surface.colorB) },
       uOpacity: { value: render.rings.opacity },
       uSeed: { value: render.rings.noiseSeed },
+      uLightDirection: { value: new THREE.Vector3(0.56, 0.35, 0.74).normalize() },
     },
     transparent: true,
     side: THREE.DoubleSide,
