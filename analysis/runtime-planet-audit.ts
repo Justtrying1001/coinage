@@ -5,7 +5,7 @@ import { applyPlanetRenderLod } from '@/rendering/planet/create-planet-render-in
 
 const WORLD_SEED = 'coinage-mvp-seed';
 const SAMPLE_SIZE = 100;
-const FIXED_CAMERA_ZOOM = 2.85;
+const FIXED_CAMERA_ZOOM = 2.55;
 const VIEW_HEIGHT = 208.8; // from GalaxyView constants with fieldRadius=360
 
 function mean(values: number[]): number {

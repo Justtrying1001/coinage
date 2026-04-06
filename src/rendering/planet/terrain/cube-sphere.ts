@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 
 import type { ProceduralPlanetUniforms } from '../types';
-import { fbm, ridgedFbm } from './noise';
 
 const FACE_DIRECTIONS = [
   new THREE.Vector3(0, 1, 0),
@@ -23,6 +22,81 @@ function lerp(a: number, b: number, t: number): number {
 function smoothstep(edge0: number, edge1: number, x: number): number {
   const t = clamp((x - edge0) / Math.max(0.0001, edge1 - edge0), 0, 1);
   return t * t * (3 - 2 * t);
+}
+
+function hash3(x: number, y: number, z: number, seed: number): number {
+  let h = seed ^ (x * 374761393) ^ (y * 668265263) ^ (z * 2147483647);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
+  return (h >>> 0) / 0xffffffff;
+}
+
+function valueNoise3(point: THREE.Vector3, seed: number): number {
+  const ix = Math.floor(point.x);
+  const iy = Math.floor(point.y);
+  const iz = Math.floor(point.z);
+
+  const fx = point.x - ix;
+  const fy = point.y - iy;
+  const fz = point.z - iz;
+
+  const sx = smoothstep(0, 1, fx);
+  const sy = smoothstep(0, 1, fy);
+  const sz = smoothstep(0, 1, fz);
+
+  const n000 = hash3(ix, iy, iz, seed);
+  const n100 = hash3(ix + 1, iy, iz, seed);
+  const n010 = hash3(ix, iy + 1, iz, seed);
+  const n110 = hash3(ix + 1, iy + 1, iz, seed);
+  const n001 = hash3(ix, iy, iz + 1, seed);
+  const n101 = hash3(ix + 1, iy, iz + 1, seed);
+  const n011 = hash3(ix, iy + 1, iz + 1, seed);
+  const n111 = hash3(ix + 1, iy + 1, iz + 1, seed);
+
+  const nx00 = n000 + (n100 - n000) * sx;
+  const nx10 = n010 + (n110 - n010) * sx;
+  const nx01 = n001 + (n101 - n001) * sx;
+  const nx11 = n011 + (n111 - n011) * sx;
+
+  const nxy0 = nx00 + (nx10 - nx00) * sy;
+  const nxy1 = nx01 + (nx11 - nx01) * sy;
+
+  return nxy0 + (nxy1 - nxy0) * sz;
+}
+
+function fbm(point: THREE.Vector3, seed: number, octaves = 5): number {
+  let frequency = 1;
+  let amplitude = 0.5;
+  let value = 0;
+
+  for (let i = 0; i < octaves; i += 1) {
+    value += valueNoise3(point.clone().multiplyScalar(frequency), seed + i * 97) * amplitude;
+    frequency *= 2.02;
+    amplitude *= 0.5;
+  }
+
+  return value;
+}
+
+function ridgedFbm(point: THREE.Vector3, seed: number, octaves = 5): number {
+  let frequency = 1;
+  let amplitude = 0.5;
+  let value = 0;
+  let weight = 1;
+
+  for (let i = 0; i < octaves; i += 1) {
+    let n = valueNoise3(point.clone().multiplyScalar(frequency), seed + i * 131);
+    n = 1 - Math.abs(n * 2 - 1);
+    n *= n;
+    n *= weight;
+    weight = Math.max(0, Math.min(1, n * 1.8));
+
+    value += n * amplitude;
+    frequency *= 2.12;
+    amplitude *= 0.5;
+  }
+
+  return value;
 }
 
 function faceAxes(localUp: THREE.Vector3): { axisA: THREE.Vector3; axisB: THREE.Vector3 } {
@@ -284,9 +358,14 @@ export function generateCubeSphereTerrainBuffers(
       3,
     );
     const biomeSignal = clamp(macroBiome * 0.72 + microBiome * 0.28, 0, 1);
-    const latBand =
+    const rawLatBand =
       (Math.sin((latitude + point.x * 0.25 + point.z * 0.2) * Math.PI * params.bandingFrequency) * 0.5 + 0.5) *
       params.bandingStrength;
+    const bandingPermitted =
+      params.surfaceCategory === 'abyssal' ||
+      params.surfaceCategory === 'toxic' ||
+      params.surfaceCategory === 'ice';
+    const latBand = bandingPermitted && params.bandingStrength >= 0.03 ? rawLatBand : 0;
 
     const deepOceanBand = smoothstep(0, effectiveOceanLevel * 0.6, normalized);
     const shallowBand = smoothstep(effectiveOceanLevel * 0.68, effectiveOceanLevel + 0.02, normalized);
@@ -339,20 +418,20 @@ export function generateCubeSphereTerrainBuffers(
 
     if (latBand > 0.02) {
       const bandTint = params.surfaceCategory === 'toxic' || params.surfaceCategory === 'abyssal'
-        ? new THREE.Color(0.72, 1, 0.82)
+        ? new THREE.Color(0.78, 0.9, 0.74)
         : params.surfaceCategory === 'ice'
-          ? new THREE.Color(0.86, 0.94, 1)
-          : new THREE.Color(0.96, 0.9, 0.78);
-      color.lerp(bandTint, latBand * 0.24);
+          ? new THREE.Color(0.9, 0.94, 0.96)
+          : new THREE.Color(0.9, 0.86, 0.78);
+      color.lerp(bandTint, latBand * 0.12);
     }
 
     if (params.biomeHarshness > 0.4) {
       const harshness = params.biomeHarshness - 0.4;
       const gray = color.r * 0.299 + color.g * 0.587 + color.b * 0.114;
       color.setRGB(
-        lerp(color.r, gray, harshness * 0.24),
-        lerp(color.g, gray, harshness * 0.2),
-        lerp(color.b, gray, harshness * 0.16),
+        lerp(color.r, gray, harshness * 0.14),
+        lerp(color.g, gray, harshness * 0.12),
+        lerp(color.b, gray, harshness * 0.1),
       );
     }
 
@@ -364,13 +443,14 @@ export function generateCubeSphereTerrainBuffers(
       );
     }
 
-    if (params.thermalActivity > 0.08) {
+    const thermalPermitted = params.surfaceCategory === 'volcanic' || params.surfaceCategory === 'toxic' || params.surfaceCategory === 'abyssal';
+    if (thermalPermitted && params.thermalActivity > 0.08) {
       const thermalSignal = clamp((microBiome - 0.58) * 2.5 + (mountainBand + highlandBand) * 0.4, 0, 1);
-      const thermalMask = thermalSignal * params.thermalActivity * (0.35 + params.craterStrength * 0.2);
+      const thermalMask = thermalSignal * Math.min(0.7, params.thermalActivity) * (0.35 + params.craterStrength * 0.2);
       color.setRGB(
-        lerp(color.r, Math.min(1, color.r + 0.28), thermalMask * 0.34),
-        lerp(color.g, color.g * 0.92, thermalMask * 0.22),
-        lerp(color.b, color.b * 0.72, thermalMask * 0.32),
+        lerp(color.r, Math.min(1, color.r + 0.14), thermalMask * 0.2),
+        lerp(color.g, color.g * 0.94, thermalMask * 0.12),
+        lerp(color.b, color.b * 0.86, thermalMask * 0.16),
       );
     }
 

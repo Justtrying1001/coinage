@@ -1,15 +1,46 @@
 import * as THREE from 'three';
 
 import { mapProfileToProceduralUniforms } from './map-profile-to-procedural-uniforms';
-import { ATMOSPHERE_FRAGMENT_SHADER, ATMOSPHERE_VERTEX_SHADER } from './shaders/atmosphere-shaders';
-import { createCubeSphereGeometryFromBuffers, createCubeSphereTerrain } from './terrain/cube-sphere';
-import type {
-  PlanetRenderInput,
-  PlanetRenderInstance,
-  PlanetRendererOptions,
-  ProceduralPlanetUniforms,
-  PrecomputedTerrainBuffers,
-} from './types';
+import { createCubeSphereTerrain } from './terrain/cube-sphere';
+import type { PlanetRenderInput, PlanetRenderInstance, PlanetRendererOptions, ProceduralPlanetUniforms } from './types';
+
+const ATMOSPHERE_VERTEX_SHADER = `
+  varying vec3 vNormalW;
+  varying vec3 vPositionW;
+
+  void main() {
+    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    vPositionW = worldPos.xyz;
+    vNormalW = normalize(mat3(modelMatrix) * normal);
+
+    gl_Position = projectionMatrix * viewMatrix * worldPos;
+  }
+`;
+
+const ATMOSPHERE_FRAGMENT_SHADER = `
+  varying vec3 vNormalW;
+  varying vec3 vPositionW;
+
+  uniform vec3 uAtmosphereColor;
+  uniform float uIntensity;
+  uniform float uDensity;
+  uniform vec3 uLightDirection;
+
+  void main() {
+    vec3 V = normalize(cameraPosition - vPositionW);
+    vec3 N = normalize(vNormalW);
+    vec3 L = normalize(uLightDirection);
+
+    float viewDot = clamp(dot(N, V), 0.0, 1.0);
+    float horizon = pow(1.0 - viewDot, 3.1);
+    float forwardScatter = pow(max(dot(V, -L), 0.0), 2.6) * 0.45 + 0.55;
+    float litEdge = pow(max(dot(N, L), 0.0), 1.25) * 0.26 + 0.74;
+    float edgeTightening = smoothstep(0.02, 0.62, horizon);
+
+    float alpha = horizon * forwardScatter * litEdge * edgeTightening * uIntensity * uDensity;
+    gl_FragColor = vec4(uAtmosphereColor, alpha);
+  }
+`;
 
 interface CachedGeometryEntry {
   geometry: THREE.BufferGeometry;
@@ -91,18 +122,20 @@ export function applyPlanetRenderLod(
   }
 
   const radius = params.radius;
-  const targetResolution = radius < 1.7 ? 11 : radius < 2.8 ? 14 : 18;
+  const targetResolution = radius < 1.7 ? 12 : radius < 2.8 ? 15 : 19;
   const reducedResolution = Math.max(10, Math.min(params.meshResolution, targetResolution));
 
   return {
     ...params,
-    radius: Math.min(5.7, params.radius * 1.08),
+    radius: Math.min(5.7, params.radius * 1.02),
     meshResolution: reducedResolution,
-    ridgedStrength: params.ridgedStrength * 0.9,
-    elevationCap: params.elevationCap * 0.95,
-    detailAttenuation: params.detailAttenuation * 0.84,
-    colorContrast: Math.min(1.6, params.colorContrast + 0.08),
-    bandingStrength: Math.min(0.85, params.bandingStrength + 0.04),
+    ridgedStrength: params.ridgedStrength,
+    elevationCap: params.elevationCap,
+    detailAttenuation: params.detailAttenuation * 0.96,
+    craterStrength: params.craterStrength,
+    thermalActivity: params.thermalActivity,
+    colorContrast: params.colorContrast,
+    bandingStrength: params.bandingStrength,
   };
 }
 

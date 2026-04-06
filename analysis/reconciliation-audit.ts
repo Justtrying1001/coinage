@@ -148,7 +148,7 @@ async function main() {
 
   const fieldRadius = GALAXY_LAYOUT_RUNTIME_CONFIG.fieldRadius ?? 84;
   const viewHeight = Math.min(380, Math.max(140, fieldRadius * 0.58));
-  const zoom = 2.85;
+  const zoom = 2.55;
   const viewWidth = viewHeight * (VIEWPORT.width / VIEWPORT.height);
   const camX = manifest.reduce((s, p) => s + p.x, 0) / manifest.length;
   const camY = manifest.reduce((s, p) => s + p.y, 0) / manifest.length;
