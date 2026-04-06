@@ -1,8 +1,14 @@
 import * as THREE from 'three';
 
 import { mapProfileToProceduralUniforms } from './map-profile-to-procedural-uniforms';
-import { createCubeSphereTerrain } from './terrain/cube-sphere';
-import type { PlanetRenderInput, PlanetRenderInstance, PlanetRendererOptions, ProceduralPlanetUniforms } from './types';
+import { createCubeSphereGeometryFromBuffers, createCubeSphereTerrain } from './terrain/cube-sphere';
+import type {
+  PlanetRenderInput,
+  PlanetRenderInstance,
+  PlanetRendererOptions,
+  PrecomputedTerrainBuffers,
+  ProceduralPlanetUniforms,
+} from './types';
 
 const ATMOSPHERE_VERTEX_SHADER = `
   varying vec3 vNormalW;
