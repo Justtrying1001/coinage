@@ -150,6 +150,7 @@ function applyPlanetSurfaceShaderEnhancement(
          float constructibility = clamp(vTerrainGeoData.a, 0.0, 1.0);
          float wetnessZone = clamp(vTerrainRegionData.z, 0.0, 1.0);
          float erosionZone = clamp(vTerrainRegionData.w, 0.0, 1.0);
+         float regionClass = clamp(vTerrainRegionData.x, 0.0, 1.0);
          float flatlandZone = clamp(fertileZone * (1.0 - ruggedZone), 0.0, 1.0);
          float detailMask = clamp(ruggedZone * 0.94 + ridgeZone * 0.42 + erosionZone * 0.26 + coastZone * 0.32 + shelfZone * 0.14 + (1.0 - flatlandZone) * 0.18 + inlandness * 0.08 - constructibility * 0.12 - wetnessZone * 0.1, 0.0, 1.0);
          float nPulseA = sin((vViewPosition.x + vViewPosition.y * 0.62) * 16.0 + altitude * 19.0);
@@ -170,7 +171,8 @@ function applyPlanetSurfaceShaderEnhancement(
          float fertileSmooth = clamp(vTerrainData.z * (1.0 - slopeRough) * 0.34, 0.0, 0.3);
          float plateauSmooth = clamp(vTerrainData.z * (1.0 - slopeRough * 1.3), 0.0, 1.0);
          float microRough = (sin(vTerrainData.z * 35.0 + vTerrainData.x * 31.0) * 0.5 + 0.5) * 0.07;
-         roughnessFactor = clamp(roughnessFactor * coastRough + slopeRough * 0.14 + ridgeRough * 0.18 + erosionRough + microRough - fertileSmooth - plateauSmooth * 0.08 - shelfSmooth - wetnessSmooth, 0.24, 1.0);`,
+         float regionRoughBias = smoothstep(0.6, 1.0, regionClass) * 0.1 - (1.0 - smoothstep(0.2, 0.55, regionClass)) * 0.04;
+         roughnessFactor = clamp(roughnessFactor * coastRough + slopeRough * 0.14 + ridgeRough * 0.18 + erosionRough + microRough - fertileSmooth - plateauSmooth * 0.08 - shelfSmooth - wetnessSmooth + regionRoughBias, 0.24, 1.0);`,
       )
       .replace(
         '#include <dithering_fragment>',
@@ -181,6 +183,8 @@ function applyPlanetSurfaceShaderEnhancement(
          float wetnessTint = smoothstep(0.2, 0.92, vTerrainRegionData.z) * 0.045;
          float erosionTint = smoothstep(0.24, 0.94, vTerrainRegionData.w) * 0.05;
          float plateauTint = smoothstep(0.22, 0.94, vTerrainRegionData.y) * 0.03;
+         float regionPlainsTint = (1.0 - smoothstep(0.58, 0.95, regionClass)) * smoothstep(0.34, 0.56, regionClass) * 0.04;
+         float regionMountainShade = smoothstep(0.72, 1.0, regionClass) * 0.06;
          float highlandShade = smoothstep(0.45, 0.96, vTerrainData.a) * 0.1;
          float fertileTint = smoothstep(0.28, 0.94, vTerrainData.z) * 0.048;
          float flatlandTint = smoothstep(0.45, 0.95, vTerrainData.z * (1.0 - vTerrainData.a)) * 0.048;
@@ -195,7 +199,9 @@ function applyPlanetSurfaceShaderEnhancement(
          gl_FragColor.rgb += vec3(0.006, 0.015, 0.012) * wetnessTint;
          gl_FragColor.rgb += vec3(0.011, 0.009, 0.006) * erosionTint;
          gl_FragColor.rgb += vec3(0.01, 0.012, 0.009) * plateauTint;
+         gl_FragColor.rgb += vec3(0.013, 0.017, 0.011) * regionPlainsTint;
          gl_FragColor.rgb += vec3(0.012, 0.015, 0.01) * constructibilityTint;
+         gl_FragColor.rgb *= 1.0 - regionMountainShade;
          gl_FragColor.rgb *= 1.0 - inlandShade * 0.08;
          gl_FragColor.rgb = mix(gl_FragColor.rgb, gl_FragColor.rgb * (1.0 - highlandShade) + vec3(0.048, 0.041, 0.036) * highlandShade, 0.76);
          gl_FragColor.rgb += vec3(thermalTint, thermalTint * 0.35, -thermalTint * 0.15);
