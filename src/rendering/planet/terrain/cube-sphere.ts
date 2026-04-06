@@ -30,6 +30,72 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
   return t * t * (3 - 2 * t);
 }
 
+function quantile(sortedValues: number[], ratio: number): number {
+  if (sortedValues.length === 0) {
+    return 0;
+  }
+  const clamped = clamp(ratio, 0, 1);
+  const index = Math.floor((sortedValues.length - 1) * clamped);
+  return sortedValues[Math.max(0, Math.min(sortedValues.length - 1, index))]!;
+}
+
+export interface TerrainHydrologyResolution {
+  effectiveOceanLevel: number;
+  mountainLevel: number;
+  visualLandRatio: number;
+  strictLandRatio: number;
+}
+
+export function resolveTerrainHydrology(
+  normalizedElevations: number[],
+  params: ProceduralPlanetUniforms,
+): TerrainHydrologyResolution {
+  const sortedElevations = [...normalizedElevations].sort((a, b) => a - b);
+  const targetLandRatio = clamp(params.minLandRatio, 0.42, 0.9);
+  const maxOceanCoverage = clamp(1 - targetLandRatio, 0.12, 0.56);
+  const visualLandBuffer = 0.035;
+
+  const oceanQuantileCap = quantile(sortedElevations, maxOceanCoverage) - 0.002;
+  const strictLandQuantileCap = quantile(sortedElevations, clamp(1 - (targetLandRatio + visualLandBuffer), 0.06, 0.52)) - 0.003;
+  const maxAllowedOcean = Math.min(
+    params.mountainLevel - 0.19,
+    oceanQuantileCap,
+    strictLandQuantileCap,
+  );
+  let effectiveOceanLevel = clamp(Math.min(params.oceanLevel, maxAllowedOcean), 0.005, 0.58);
+  let strictLandCount = 0;
+  let visualLandCount = 0;
+  const total = Math.max(1, normalizedElevations.length);
+  const recomputeCoverage = () => {
+    strictLandCount = 0;
+    visualLandCount = 0;
+    for (const normalized of normalizedElevations) {
+      if (normalized > effectiveOceanLevel) {
+        strictLandCount += 1;
+      }
+      if (normalized > effectiveOceanLevel + visualLandBuffer) {
+        visualLandCount += 1;
+      }
+    }
+  };
+
+  recomputeCoverage();
+  for (let pass = 0; pass < 3 && strictLandCount / total + 0.002 < targetLandRatio; pass += 1) {
+    const tightenedOceanCoverage = clamp(1 - targetLandRatio - (pass + 1) * 0.02, 0.06, 0.5);
+    const tightenedQuantileCap = quantile(sortedElevations, tightenedOceanCoverage) - (0.006 + pass * 0.002);
+    effectiveOceanLevel = clamp(Math.min(effectiveOceanLevel, tightenedQuantileCap), 0.005, 0.58);
+    recomputeCoverage();
+  }
+
+  const mountainLevel = clamp(Math.max(params.mountainLevel, effectiveOceanLevel + 0.17), 0.58, 0.94);
+  return {
+    effectiveOceanLevel,
+    mountainLevel,
+    strictLandRatio: strictLandCount / total,
+    visualLandRatio: visualLandCount / total,
+  };
+}
+
 function faceAxes(localUp: THREE.Vector3): { axisA: THREE.Vector3; axisB: THREE.Vector3 } {
   const axisA = new THREE.Vector3(localUp.y, localUp.z, localUp.x);
   const axisB = new THREE.Vector3().crossVectors(localUp, axisA);
@@ -53,15 +119,27 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
   const macroSecondary = fbm(warpedPoint.clone().multiplyScalar(params.simpleFrequency * 0.21), continentSeed ^ 0x45d9f3b, 4);
   const macroTertiary = fbm(warpedPoint.clone().multiplyScalar(params.simpleFrequency * 0.12), continentSeed ^ 0x7f4a7c15, 3);
   const continentSignal = macroPrimary * 0.58 + macroSecondary * 0.28 + macroTertiary * 0.14;
-  const continentMask = smoothstep(
+  const continentMaskBase = smoothstep(
     params.continentThreshold - params.continentSharpness,
     params.continentThreshold + params.continentSharpness,
     continentSignal,
   );
+  const tectonicPlateSignal = macroSecondary * 0.55 + macroTertiary * 0.45;
+  const tectonicBackbone = smoothstep(
+    params.continentThreshold - 0.16,
+    params.continentThreshold + 0.14,
+    tectonicPlateSignal,
+  );
+  const continentMask = clamp(
+    continentMaskBase * (0.78 + params.maskStrength * 0.08) +
+      tectonicBackbone * (0.24 + (1 - params.continentDrift) * 0.18),
+    0,
+    1,
+  );
   const inlandMask = smoothstep(
     params.continentThreshold + params.continentSharpness * 0.7,
     Math.min(0.95, params.continentThreshold + 0.33 + params.continentSharpness),
-    continentSignal,
+    Math.max(continentSignal, tectonicPlateSignal * 0.94),
   );
 
   const midRelief = fbm(
@@ -101,10 +179,17 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     3,
   );
   const driftedFragmentation = smoothstep(0.58 - params.continentDrift * 0.2, 0.82, archipelagoSignal);
+  const landDemand = clamp((params.minLandRatio - 0.5) * 1.8, 0, 0.62);
 
-  const oceanFloor = (1 - continentMask) * (0.045 + params.simpleStrength * 0.08 + trenchSignal * params.trenchDepth * 0.18);
-  const continentBase = continentMask * (0.06 + params.simpleStrength * 0.2);
-  const uplands = inlandMask * Math.max(0, continentSignal - 0.48) * params.simpleStrength * (0.14 + params.continentDrift * 0.07);
+  const oceanFloor =
+    (1 - continentMask) *
+    (0.045 + params.simpleStrength * (0.08 - landDemand * 0.035) + trenchSignal * params.trenchDepth * (0.18 - landDemand * 0.06));
+  const continentBase = continentMask * (0.06 + params.simpleStrength * (0.2 + landDemand * 0.16));
+  const uplands =
+    inlandMask *
+    Math.max(0, continentSignal - (0.48 - landDemand * 0.08)) *
+    params.simpleStrength *
+    (0.14 + params.continentDrift * 0.07 + landDemand * 0.05);
   const midLayer =
     Math.max(0, ridgeRelief - 0.44) *
     params.ridgedStrength *
@@ -113,7 +198,12 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
   const microLayer = microRelief * params.ridgedStrength * params.detailAttenuation * (0.004 + mountainMask * 0.005);
   const plateau = Math.max(0, midRelief) * inlandMask * (0.04 + params.continentDrift * 0.04);
   const mountainLift = mountainMask * params.ridgedStrength * params.ridgeAttenuation * 0.1;
-  const fragmentedIslands = driftedFragmentation * (1 - inlandMask) * params.simpleStrength * params.continentDrift * 0.09;
+  const fragmentedIslands =
+    driftedFragmentation *
+    (1 - inlandMask) *
+    params.simpleStrength *
+    params.continentDrift *
+    (0.09 + landDemand * 0.08);
   const craterDepth = craterMask * params.craterStrength * (0.014 + params.terrainSmoothing * 0.014);
   const tectonicBand = Math.sin((warpedPoint.y + warpedPoint.x * 0.35) * (params.bandingFrequency * 1.7)) * 0.5 + 0.5;
   const thermalUplift =
@@ -145,7 +235,8 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
   const amplitude = centered >= 0 ? upwardCap : downwardCap;
   const elevation = centered * amplitude;
 
-  return clamp(elevation, -0.1, params.elevationCap);
+  const oceanFloorClamp = -Math.max(0.16, params.elevationCap * 0.72);
+  return clamp(elevation, oceanFloorClamp, params.elevationCap);
 }
 
 function applyMicroNormalDetail(geometry: THREE.BufferGeometry, params: ProceduralPlanetUniforms): void {
@@ -251,12 +342,10 @@ export function generateCubeSphereTerrainBuffers(
 
   const elevationSpan = Math.max(0.0001, maxElevation - minElevation);
   const normalizedElevations = elevations.map((elevation) => (elevation - minElevation) / elevationSpan);
-  const sortedElevations = [...normalizedElevations].sort((a, b) => a - b);
-  const maxOceanCoverage = clamp(1 - params.minLandRatio, 0.22, 0.62);
-  const oceanQuantileIndex = Math.floor((sortedElevations.length - 1) * maxOceanCoverage);
-  const oceanQuantileCap = sortedElevations[Math.max(0, Math.min(sortedElevations.length - 1, oceanQuantileIndex))] - 0.002;
-  const effectiveOceanLevel = clamp(Math.min(params.oceanLevel, params.mountainLevel - 0.18, oceanQuantileCap), 0.03, 0.62);
-  const mountainLevel = clamp(Math.max(params.mountainLevel, effectiveOceanLevel + 0.17), 0.58, 0.94);
+  const {
+    effectiveOceanLevel,
+    mountainLevel,
+  } = resolveTerrainHydrology(normalizedElevations, params);
   const categoryColorConfig = {
     ocean: { coastBoost: 0.24, mountainBoost: 0.16, iceBoost: 0.45, landToMountain: 0.42 },
     desert: { coastBoost: 0.05, mountainBoost: 0.2, iceBoost: 0.18, landToMountain: 0.6 },

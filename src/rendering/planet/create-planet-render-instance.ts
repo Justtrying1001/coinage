@@ -91,7 +91,7 @@ export function applyPlanetRenderLod(
   }
 
   const radius = params.radius;
-  const targetResolution = radius < 1.7 ? 11 : radius < 2.8 ? 14 : 18;
+  const targetResolution = radius < 2.6 ? 12 : radius < 3.7 ? 15 : 18;
   const reducedResolution = Math.max(10, Math.min(params.meshResolution, targetResolution));
 
   return {

@@ -104,7 +104,7 @@ export function generatePlanetVisualProfile(
   const atmosphereEnabled = identity.atmosphereFamily !== 'none' && atmoRng() < archetype.atmosphereChance;
 
   const hydrologyRangeByFamily = {
-    waterworld: { oceanBias: [0.62, 0.88], minLandRatio: [MIN_GAMEPLAY_LAND_RATIO, 0.5], maxOceanRatio: [0.5, 0.72] },
+    waterworld: { oceanBias: [0.56, 0.78], minLandRatio: [0.46, 0.56], maxOceanRatio: [0.44, 0.58] },
     balanced: { oceanBias: [0.35, 0.62], minLandRatio: [0.46, 0.68], maxOceanRatio: [0.3, 0.54] },
     arid: { oceanBias: [0.12, 0.34], minLandRatio: [0.58, 0.8], maxOceanRatio: [0.14, 0.34] },
     dry: { oceanBias: [0.02, 0.18], minLandRatio: [0.68, 0.9], maxOceanRatio: [0.02, 0.18] },
