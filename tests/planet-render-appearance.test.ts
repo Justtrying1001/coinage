@@ -31,10 +31,34 @@ test('renderer disables atmosphere shell by default to avoid halo artifacts', ()
   instance.dispose();
 });
 
-test('renderer uses neutral non-specular surface material defaults', () => {
+test('galaxy renderer keeps neutral non-specular surface material defaults', () => {
   const profile = generatePlanetVisualProfile({
     worldSeed: 'coinage-mvp-seed',
     planetSeed: 'appearance-neutral-material',
+  });
+
+  const instance = createPlanetRenderInstance({
+    profile,
+    x: 0,
+    y: 0,
+    z: 0,
+    options: { lod: 'galaxy' },
+  });
+
+  const surface = instance.object.children[0];
+  assert.ok(surface instanceof THREE.Mesh, 'surface object should be a mesh');
+  assert.ok(surface.material instanceof THREE.MeshStandardMaterial, 'surface material should be MeshStandardMaterial');
+  assert.equal(surface.material.roughness, 1);
+  assert.equal(surface.material.metalness, 0);
+  assert.equal(surface.material.envMapIntensity, 0);
+
+  instance.dispose();
+});
+
+test('planet renderer enables richer close-up material response', () => {
+  const profile = generatePlanetVisualProfile({
+    worldSeed: 'coinage-mvp-seed',
+    planetSeed: 'appearance-planet-material-richness',
   });
 
   const instance = createPlanetRenderInstance({
@@ -48,9 +72,13 @@ test('renderer uses neutral non-specular surface material defaults', () => {
   const surface = instance.object.children[0];
   assert.ok(surface instanceof THREE.Mesh, 'surface object should be a mesh');
   assert.ok(surface.material instanceof THREE.MeshStandardMaterial, 'surface material should be MeshStandardMaterial');
-  assert.equal(surface.material.roughness, 1);
-  assert.equal(surface.material.metalness, 0);
-  assert.equal(surface.material.envMapIntensity, 0);
+  assert.ok(surface.material.roughness < 1, `expected roughness < 1, got ${surface.material.roughness}`);
+  assert.ok(surface.material.metalness > 0, `expected metalness > 0, got ${surface.material.metalness}`);
+  assert.ok(typeof surface.material.onBeforeCompile === 'function', 'expected custom shader hook for close-up material');
+  assert.ok(surface.geometry instanceof THREE.BufferGeometry, 'surface geometry should be BufferGeometry');
+  const terrainAttribute = surface.geometry.getAttribute('terrain');
+  assert.ok(terrainAttribute, 'expected terrain attribute for close-up shading');
+  assert.equal(terrainAttribute.itemSize, 4, 'terrain attribute should expose vec4 packed terrain data');
 
   instance.dispose();
 });

@@ -15,6 +15,7 @@ test('LOD contract: planet close-up has higher geometric/detail budget than gala
   const galaxy = applyPlanetRenderLod(base, 'galaxy');
   const planet = applyPlanetRenderLod(base, 'planet');
 
-  assert.ok(planet.meshResolution >= galaxy.meshResolution);
+  assert.ok(planet.meshResolution > galaxy.meshResolution);
+  assert.ok(planet.ridgedStrength >= galaxy.ridgedStrength);
   assert.ok(planet.detailAttenuation > galaxy.detailAttenuation);
 });

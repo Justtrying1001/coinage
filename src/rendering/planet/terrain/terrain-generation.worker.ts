@@ -48,6 +48,7 @@ workerScope.onmessage = (event: MessageEvent<TerrainWorkerRequest>) => {
       buffers.indices.buffer,
       buffers.positions.buffer,
       buffers.colors.buffer,
+      buffers.terrain.buffer,
     ]);
   } catch (error) {
     const payload: TerrainWorkerError = {

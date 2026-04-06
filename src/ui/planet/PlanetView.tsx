@@ -38,22 +38,30 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.NoToneMapping;
-    renderer.toneMappingExposure = 1;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.22;
     mount.appendChild(renderer.domElement);
 
-    const ambientLight = new THREE.AmbientLight('#ffffff', 1.95);
+    const ambientLight = new THREE.AmbientLight('#c7d8ff', 0.92);
     scene.add(ambientLight);
 
-    const hemiLight = new THREE.HemisphereLight('#e9edf8', '#d7dde8', 1.05);
+    const hemiLight = new THREE.HemisphereLight('#e8efff', '#9cb0d3', 0.64);
     scene.add(hemiLight);
+
+    const keyLight = new THREE.DirectionalLight('#ffffff', 2.35);
+    keyLight.position.set(8, 5, 12);
+    scene.add(keyLight);
+
+    const rimLight = new THREE.DirectionalLight('#6aa6ff', 1.05);
+    rimLight.position.set(-10, -3, -8);
+    scene.add(rimLight);
 
     const planetInstance = createPlanetRenderInstance({
       profile: resolved.profile,
       x: 0,
       y: 0,
       z: 0,
-      options: { lod: 'planet' },
+      options: { lod: 'planet', enableAtmosphere: true },
     });
 
     scene.add(planetInstance.object);

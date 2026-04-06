@@ -141,6 +141,12 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     Math.min(0.95, params.continentThreshold + 0.33 + params.continentSharpness),
     Math.max(continentSignal, tectonicPlateSignal * 0.94),
   );
+  const coastBreakupSignal = fbm(
+    warpedPoint.clone().multiplyScalar(params.simpleFrequency * (2.2 + params.continentDrift * 1.2)),
+    continentSeed ^ 0x3f6a2c17,
+    3,
+  );
+  const coastNoise = (coastBreakupSignal - 0.5) * (0.08 + params.continentDrift * 0.08);
 
   const midRelief = fbm(
     warpedPoint.clone().multiplyScalar(params.simpleFrequency * 1.34).addScalar(params.shapeSeed * 0.000041),
@@ -161,6 +167,16 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     4,
   ) * 2 - 1;
   const mountainMask = smoothstep(0.56, 0.9, ridgeRelief) * inlandMask;
+  const mesoRidgeSignal = ridgedFbm(
+    warpedPoint.clone().multiplyScalar(params.ridgedFrequency * (0.54 + params.continentDrift * 0.22)),
+    params.reliefSeed ^ 0x5a6d39ef,
+    5,
+  );
+  const mesoHillSignal = fbm(
+    warpedPoint.clone().multiplyScalar(params.simpleFrequency * (0.96 + params.continentDrift * 0.45)),
+    params.shapeSeed ^ 0x3ab2471d,
+    4,
+  ) * 2 - 1;
   const craterNoise = ridgedFbm(
     warpedPoint.clone().multiplyScalar(params.ridgedFrequency * (1.3 + params.craterStrength * 0.8)),
     params.reliefSeed ^ 0x2d2816fe,
@@ -184,12 +200,27 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
   const oceanFloor =
     (1 - continentMask) *
     (0.045 + params.simpleStrength * (0.08 - landDemand * 0.035) + trenchSignal * params.trenchDepth * (0.18 - landDemand * 0.06));
-  const continentBase = continentMask * (0.06 + params.simpleStrength * (0.2 + landDemand * 0.16));
+  const continentBase = continentMask * (0.06 + params.simpleStrength * (0.2 + landDemand * 0.16) + coastNoise);
   const uplands =
     inlandMask *
     Math.max(0, continentSignal - (0.48 - landDemand * 0.08)) *
     params.simpleStrength *
     (0.14 + params.continentDrift * 0.07 + landDemand * 0.05);
+  const lowHills =
+    inlandMask *
+    Math.max(0, mesoHillSignal + 0.18) *
+    params.simpleStrength *
+    (0.042 + (1 - params.terrainSmoothing) * 0.045);
+  const mesoRidges =
+    Math.max(0, mesoRidgeSignal - 0.34) *
+    params.ridgedStrength *
+    (0.045 + params.ridgeAttenuation * 0.08) *
+    (0.4 + inlandMask * 0.6);
+  const plateauSteps =
+    smoothstep(0.46, 0.84, mesoRidgeSignal) *
+    inlandMask *
+    params.simpleStrength *
+    (0.016 + params.continentDrift * 0.03);
   const midLayer =
     Math.max(0, ridgeRelief - 0.44) *
     params.ridgedStrength *
@@ -204,6 +235,7 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     params.simpleStrength *
     params.continentDrift *
     (0.09 + landDemand * 0.08);
+  const shorelineShelf = Math.max(0, continentMask - inlandMask) * (0.012 + params.trenchDepth * 0.04 + coastNoise * 0.5);
   const craterDepth = craterMask * params.craterStrength * (0.014 + params.terrainSmoothing * 0.014);
   const tectonicBand = Math.sin((warpedPoint.y + warpedPoint.x * 0.35) * (params.bandingFrequency * 1.7)) * 0.5 + 0.5;
   const thermalUplift =
@@ -216,11 +248,15 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     -oceanFloor +
     continentBase +
     uplands +
+    lowHills +
+    mesoRidges +
+    plateauSteps +
     midLayer +
     microLayer +
     plateau +
     mountainLift +
     fragmentedIslands -
+    shorelineShelf -
     craterDepth +
     thermalUplift;
   const normalized = clamp((rawElevation + 0.125) / 0.345, 0, 1);
@@ -261,19 +297,20 @@ function applyMicroNormalDetail(geometry: THREE.BufferGeometry, params: Procedur
 }
 
 export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE.BufferGeometry {
-  const { indices, positions, colors } = generateCubeSphereTerrainBuffers(params);
-  return createCubeSphereGeometryFromBuffers(params, { indices, positions, colors });
+  const { indices, positions, colors, terrain } = generateCubeSphereTerrainBuffers(params);
+  return createCubeSphereGeometryFromBuffers(params, { indices, positions, colors, terrain });
 }
 
 export function createCubeSphereGeometryFromBuffers(
   params: ProceduralPlanetUniforms,
   buffers: GeneratedCubeSphereTerrainBuffers,
 ): THREE.BufferGeometry {
-  const { indices, positions, colors } = buffers;
+  const { indices, positions, colors, terrain } = buffers;
   const geometry = new THREE.BufferGeometry();
   geometry.setIndex(new THREE.BufferAttribute(indices, 1));
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geometry.setAttribute('terrain', new THREE.BufferAttribute(terrain, 4));
   geometry.computeVertexNormals();
   applyMicroNormalDetail(geometry, params);
 
@@ -284,6 +321,7 @@ export interface GeneratedCubeSphereTerrainBuffers {
   indices: Uint32Array;
   positions: Float32Array;
   colors: Float32Array;
+  terrain: Float32Array;
 }
 
 /**
@@ -296,6 +334,7 @@ export function generateCubeSphereTerrainBuffers(
   const resolution = params.meshResolution;
   const vertices: number[] = [];
   const colors: number[] = [];
+  const terrain: number[] = [];
   const indices: number[] = [];
   const elevations: number[] = [];
 
@@ -385,12 +424,24 @@ export function generateCubeSphereTerrainBuffers(
     const optionalBandMask = smoothstep(effectiveOceanLevel + 0.02, 1, normalized);
     const softenedLatBand = latBand * optionalBandMask;
 
-    const deepOceanBand = smoothstep(0, effectiveOceanLevel * 0.6, normalized);
+    const deepOceanBand = smoothstep(0, effectiveOceanLevel * 0.48, normalized);
+    const shelfWaterBand = smoothstep(effectiveOceanLevel * 0.46, effectiveOceanLevel - 0.008, normalized);
     const shallowBand = smoothstep(effectiveOceanLevel * 0.68, effectiveOceanLevel + 0.02, normalized);
-    const coastalBand = smoothstep(effectiveOceanLevel - 0.015, effectiveOceanLevel + 0.04, normalized);
-    const plainsBand = smoothstep(effectiveOceanLevel + 0.01, mountainLevel - 0.22, normalized);
+    const coastalBand = smoothstep(effectiveOceanLevel - 0.018, effectiveOceanLevel + 0.045, normalized);
+    const shorelineBand = smoothstep(effectiveOceanLevel + 0.005, effectiveOceanLevel + 0.06, normalized) * (1 - smoothstep(effectiveOceanLevel + 0.06, effectiveOceanLevel + 0.12, normalized));
+    const lowPlainsBand = smoothstep(effectiveOceanLevel + 0.03, mountainLevel - 0.3, normalized) * (1 - smoothstep(mountainLevel - 0.28, mountainLevel - 0.19, normalized));
+    const midPlainsBand = smoothstep(effectiveOceanLevel + 0.09, mountainLevel - 0.21, normalized) * (1 - smoothstep(mountainLevel - 0.18, mountainLevel - 0.1, normalized));
+    const fertileTransitionBand = midPlainsBand * (0.6 + biomeSignal * 0.4);
+    const plainsBand = clamp(lowPlainsBand + midPlainsBand * 0.8, 0, 1);
     const highlandBand = smoothstep(mountainLevel - 0.2, mountainLevel - 0.03, normalized);
     const mountainBand = smoothstep(mountainLevel - 0.03, mountainLevel + 0.08, normalized);
+    const slopeSignal = clamp(
+      Math.abs(highlandBand - plainsBand) * 0.65 +
+      mountainBand * 0.55 +
+      Math.abs(microBiome - 0.5) * 0.3,
+      0,
+      1,
+    );
     const iceCap =
       smoothstep(0.72, 0.96, latitude) *
       smoothstep(effectiveOceanLevel + 0.08, 0.98, normalized) *
@@ -398,7 +449,7 @@ export function generateCubeSphereTerrainBuffers(
 
     if (normalized <= effectiveOceanLevel) {
       const t = clamp(normalized / Math.max(0.01, effectiveOceanLevel), 0, 1);
-      const depthTint = clamp(1 - deepOceanBand * 0.22, 0.75, 1);
+      const depthTint = clamp(0.78 - deepOceanBand * 0.18 + shelfWaterBand * 0.1, 0.72, 1);
       color.setRGB(
         smoothLerp(params.baseColor[0], params.shallowWaterColor[0], shallowBand * t) * depthTint,
         smoothLerp(params.baseColor[1], params.shallowWaterColor[1], shallowBand * t) * depthTint,
@@ -413,9 +464,27 @@ export function generateCubeSphereTerrainBuffers(
       const lushVariation = (biomeSignal - 0.5) * (0.14 - params.biomeHarshness * 0.08);
       const t = clamp(baseT * categoryColorConfig.landToMountain + highlandBand * 0.24, 0, 1);
       color.setRGB(
-        clamp(smoothLerp(params.landColor[0], params.mountainColor[0], t) + lushVariation * plainsBand, 0, 1),
-        clamp(smoothLerp(params.landColor[1], params.mountainColor[1], t) + lushVariation * plainsBand * 1.2, 0, 1),
-        clamp(smoothLerp(params.landColor[2], params.mountainColor[2], t) - lushVariation * plainsBand * 0.8, 0, 1),
+        clamp(
+          smoothLerp(params.landColor[0], params.mountainColor[0], t) +
+          lushVariation * (lowPlainsBand * 0.9 + fertileTransitionBand * 0.5) -
+          shorelineBand * 0.03,
+          0,
+          1,
+        ),
+        clamp(
+          smoothLerp(params.landColor[1], params.mountainColor[1], t) +
+          lushVariation * (lowPlainsBand * 1.15 + fertileTransitionBand * 0.8) +
+          fertileTransitionBand * 0.04,
+          0,
+          1,
+        ),
+        clamp(
+          smoothLerp(params.landColor[2], params.mountainColor[2], t) -
+          lushVariation * (lowPlainsBand * 0.75 + fertileTransitionBand * 0.55) +
+          shorelineBand * 0.02,
+          0,
+          1,
+        ),
       );
     } else {
       const t = clamp((normalized - mountainLevel) / Math.max(0.01, 1 - mountainLevel), 0, 1);
@@ -428,9 +497,17 @@ export function generateCubeSphereTerrainBuffers(
 
     if (coastalBand > 0.02) {
       color.setRGB(
-        lerp(color.r, params.shallowWaterColor[0], coastalBand * categoryColorConfig.coastBoost * 1.15),
-        lerp(color.g, params.shallowWaterColor[1], coastalBand * categoryColorConfig.coastBoost * 1.15),
-        lerp(color.b, params.shallowWaterColor[2], coastalBand * categoryColorConfig.coastBoost * 1.15),
+        lerp(color.r, params.shallowWaterColor[0], coastalBand * categoryColorConfig.coastBoost * 1.18),
+        lerp(color.g, params.shallowWaterColor[1], coastalBand * categoryColorConfig.coastBoost * 1.18),
+        lerp(color.b, params.shallowWaterColor[2], coastalBand * categoryColorConfig.coastBoost * 1.18),
+      );
+    }
+
+    if (shorelineBand > 0.01 && normalized > effectiveOceanLevel) {
+      color.setRGB(
+        lerp(color.r, params.shallowWaterColor[0] + 0.03, shorelineBand * 0.16),
+        lerp(color.g, params.shallowWaterColor[1] + 0.03, shorelineBand * 0.16),
+        lerp(color.b, params.shallowWaterColor[2] + 0.02, shorelineBand * 0.14),
       );
     }
 
@@ -497,11 +574,18 @@ export function generateCubeSphereTerrainBuffers(
     );
 
     colors.push(color.r, color.g, color.b);
+    terrain.push(
+      normalized,
+      clamp(coastalBand * 0.72 + shorelineBand * 0.85 + shelfWaterBand * 0.3, 0, 1),
+      clamp(fertileTransitionBand * 0.6 + biomeSignal * 0.4, 0, 1),
+      clamp(slopeSignal * 0.6 + highlandBand * 0.3 + mountainBand * 0.25, 0, 1),
+    );
   }
 
   return {
     indices: new Uint32Array(indices),
     positions: new Float32Array(vertices),
     colors: new Float32Array(colors),
+    terrain: new Float32Array(terrain),
   };
 }

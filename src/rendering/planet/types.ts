@@ -64,6 +64,7 @@ export interface PrecomputedTerrainBuffers {
   indices: Uint32Array;
   positions: Float32Array;
   colors: Float32Array;
+  terrain: Float32Array;
 }
 
 export interface PlanetRenderInstance {
