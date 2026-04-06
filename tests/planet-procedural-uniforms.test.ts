@@ -96,6 +96,11 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
       'terrainSmoothing',
       'ridgeAttenuation',
       'detailAttenuation',
+      'craterStrength',
+      'thermalActivity',
+      'bandingStrength',
+      'bandingFrequency',
+      'colorContrast',
       'roughness',
       'metalness',
       'atmosphereIntensity',
@@ -186,6 +191,11 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
       uniforms.biomeHarshness >= 0.14 && uniforms.biomeHarshness <= 0.86,
       `biomeHarshness out of range: ${uniforms.biomeHarshness}`,
     );
+    assert.ok(uniforms.craterStrength >= 0.02 && uniforms.craterStrength <= 1, `craterStrength out of range: ${uniforms.craterStrength}`);
+    assert.ok(uniforms.thermalActivity >= 0 && uniforms.thermalActivity <= 1, `thermalActivity out of range: ${uniforms.thermalActivity}`);
+    assert.ok(uniforms.bandingStrength >= 0 && uniforms.bandingStrength <= 0.8, `bandingStrength out of range: ${uniforms.bandingStrength}`);
+    assert.ok(uniforms.bandingFrequency >= 1.8 && uniforms.bandingFrequency <= 8.2, `bandingFrequency out of range: ${uniforms.bandingFrequency}`);
+    assert.ok(uniforms.colorContrast >= 1.02 && uniforms.colorContrast <= 1.5, `colorContrast out of range: ${uniforms.colorContrast}`);
     assert.ok(uniforms.roughness >= 0.2 && uniforms.roughness <= 1, `roughness out of range: ${uniforms.roughness}`);
     assert.ok(uniforms.metalness >= 0.05 && uniforms.metalness <= 0.45, `metalness out of range: ${uniforms.metalness}`);
     assert.ok(
@@ -208,4 +218,54 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
   assert.ok(profileCounts.extreme <= 40, `expected extreme terrain to remain controlled, got ${profileCounts.extreme}`);
   assert.ok(paletteFamilies.size >= 10, `expected at least 10 palette families, got ${paletteFamilies.size}`);
   assert.ok(surfaceCategories.size >= 7, `expected at least 7 surface categories, got ${surfaceCategories.size}`);
+});
+
+test('archetypes expose structurally distinct procedural traits', () => {
+  const samplesByArchetype = new Map<
+    string,
+    Array<{ crater: number; thermal: number; banding: number; contrast: number; ocean: number }>
+  >();
+
+  for (let i = 0; i < 420; i += 1) {
+    const profile = generatePlanetVisualProfile({
+      worldSeed: 'coinage-mvp-seed',
+      planetSeed: `archetype-structure-${i}`,
+    });
+    const uniforms = mapProfileToProceduralUniforms(profile);
+    const bucket = samplesByArchetype.get(profile.archetype) ?? [];
+    bucket.push({
+      crater: uniforms.craterStrength,
+      thermal: uniforms.thermalActivity,
+      banding: uniforms.bandingStrength,
+      contrast: uniforms.colorContrast,
+      ocean: uniforms.oceanLevel,
+    });
+    samplesByArchetype.set(profile.archetype, bucket);
+  }
+
+  const medians = new Map<string, { crater: number; thermal: number; banding: number; contrast: number; ocean: number }>();
+  for (const [archetype, values] of samplesByArchetype.entries()) {
+    if (values.length < 8) continue;
+    const sorted = <K extends keyof (typeof values)[number]>(key: K) => values.map((v) => v[key]).sort((a, b) => a - b);
+    const median = <K extends keyof (typeof values)[number]>(key: K) => {
+      const arr = sorted(key);
+      return arr[Math.floor(arr.length / 2)] ?? 0;
+    };
+    medians.set(archetype, {
+      crater: median('crater'),
+      thermal: median('thermal'),
+      banding: median('banding'),
+      contrast: median('contrast'),
+      ocean: median('ocean'),
+    });
+  }
+
+  assert.ok(medians.size >= 10, `expected at least 10 archetype buckets, got ${medians.size}`);
+
+  const signatureSet = new Set(
+    [...medians.values()].map((m) =>
+      [m.crater, m.thermal, m.banding, m.contrast, m.ocean].map((v) => v.toFixed(2)).join('|'),
+    ),
+  );
+  assert.ok(signatureSet.size >= 9, `expected rich archetype signatures, got ${signatureSet.size}`);
 });

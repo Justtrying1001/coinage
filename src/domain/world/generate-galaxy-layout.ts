@@ -27,7 +27,7 @@ export const DEFAULT_GALAXY_LAYOUT_CONFIG: Required<GalaxyLayoutBaseConfig> = {
   minSpacing: 7.2,
 };
 
-const EDGE_PADDING_FACTOR = 0.985;
+const EDGE_PADDING_FACTOR = 0.997;
 
 interface ArmBand {
   phase: number;
@@ -88,8 +88,9 @@ function sampleUniverseDensity(
 ): number {
   const radius = Math.hypot(x, y);
   const normalizedRadius = radius / Math.max(1, fieldRadius);
-  const halo = Math.exp(-Math.pow((normalizedRadius - 0.62) / 0.38, 2));
+  const halo = Math.exp(-Math.pow((normalizedRadius - 0.68) / 0.46, 2));
   const core = Math.exp(-Math.pow(normalizedRadius / 0.2, 2));
+  const edgeHalo = Math.exp(-Math.pow((normalizedRadius - 0.9) / 0.22, 2));
 
   let armSignal = 0;
   for (const arm of structure.arms) {
@@ -104,11 +105,11 @@ function sampleUniverseDensity(
     if (distance < voidRegion.radius) {
       const normalized = distance / voidRegion.radius;
       const suppression = Math.pow(1 - normalized, voidRegion.softness);
-      voidAttenuation *= 1 - suppression * 0.95;
+      voidAttenuation *= 1 - suppression * 0.78;
     }
   }
 
-  const baseDensity = 0.06 + halo * 0.18 + core * 0.14 + armSignal * 0.78;
+  const baseDensity = 0.09 + halo * 0.18 + edgeHalo * 0.12 + core * 0.12 + armSignal * 0.64;
   return Math.max(0, Math.min(1, baseDensity * voidAttenuation));
 }
 
@@ -123,21 +124,26 @@ function sampleStructuredCandidate(
     let x = 0;
     let y = 0;
 
-    if (modeRoll < 0.67) {
+    if (modeRoll < 0.56) {
       const arm = structure.arms[Math.floor(rng() * structure.arms.length)]!;
       const radius = fieldRadius * (0.1 + 0.88 * Math.pow(rng(), 1.2));
       const angle = arm.phase + radius * arm.twist + (rng() - 0.5) * 0.62;
       const radialJitter = (rng() - 0.5) * arm.width * 0.9;
       x = Math.cos(angle) * (radius + radialJitter);
       y = Math.sin(angle) * (radius + radialJitter);
-    } else if (modeRoll < 0.86) {
+    } else if (modeRoll < 0.78) {
       const angle = rng() * Math.PI * 2;
-      const radius = fieldRadius * (0.08 + 0.78 * Math.pow(rng(), 1.45));
+      const radius = fieldRadius * (0.06 + 0.86 * Math.pow(rng(), 1.2));
+      x = Math.cos(angle) * radius;
+      y = Math.sin(angle) * radius;
+    } else if (modeRoll < 0.92) {
+      const angle = rng() * Math.PI * 2;
+      const radius = fieldRadius * (0.72 + 0.27 * Math.pow(rng(), 0.42));
       x = Math.cos(angle) * radius;
       y = Math.sin(angle) * radius;
     } else {
       const angle = rng() * Math.PI * 2;
-      const radius = fieldRadius * (0.08 + 0.9 * Math.sqrt(rng()));
+      const radius = fieldRadius * (0.04 + 0.95 * Math.sqrt(rng()));
       x = Math.cos(angle) * radius;
       y = Math.sin(angle) * radius;
     }
@@ -152,7 +158,9 @@ function sampleStructuredCandidate(
       continue;
     }
 
-    const accepted = rng() < 0.25 + density * 0.88;
+    const edgeRatio = distanceFromCenter / fieldRadius;
+    const edgeAcceptanceBoost = edgeRatio > 0.78 ? 0.12 : 0;
+    const accepted = rng() < 0.3 + density * 0.8 + edgeAcceptanceBoost;
     if (!accepted && attempt < 17) {
       continue;
     }
@@ -243,9 +251,9 @@ export function generateGalaxyLayout(
       }
 
       const edgeFactor = radiusFromCenter / merged.fieldRadius;
-      const emptinessBoost = Math.pow(1 - candidate.density, 1.45) * merged.minSpacing * 0.55;
-      const armPresenceBoost = candidate.density * merged.minSpacing * 0.5;
-      const edgeComposure = edgeFactor > 0.84 ? merged.minSpacing * 0.24 : 0;
+      const emptinessBoost = Math.pow(1 - candidate.density, 1.25) * merged.minSpacing * 0.46;
+      const armPresenceBoost = candidate.density * merged.minSpacing * 0.42;
+      const edgeComposure = edgeFactor > 0.8 ? merged.minSpacing * 0.36 : 0;
 
       const score = nearestDistance + emptinessBoost + armPresenceBoost + edgeComposure;
 
@@ -265,8 +273,10 @@ export function generateGalaxyLayout(
 
     const fillRatio = points.length / Math.max(1, merged.planetCount);
     const candidateRadius = merged.planetRadii?.[points.length] ?? 0;
-    const densitySpacingMultiplier = 1.6 - bestCandidate.density * 0.64;
-    const packingRelaxation = 1.08 - fillRatio * 0.14 + rng() * 0.05;
+    const densitySpacingMultiplier = 1.42 - bestCandidate.density * 0.5;
+    const edgeRatio = Math.hypot(bestCandidate.x, bestCandidate.y) / Math.max(1, merged.fieldRadius);
+    const edgePackingBoost = edgeRatio > 0.8 ? 0.09 : 0;
+    const packingRelaxation = 1.06 - fillRatio * 0.2 - edgePackingBoost + rng() * 0.04;
     const dynamicMinSpacing = Math.max(
       merged.minSpacing,
       merged.minSpacing * densitySpacingMultiplier * packingRelaxation,
@@ -292,7 +302,11 @@ export function generateGalaxyLayout(
     fallbackAttempts += 1;
     const candidate = sampleStructuredCandidate(rng, merged.fieldRadius, structure);
     const candidateRadius = merged.planetRadii?.[points.length] ?? 0;
-    const relaxedSpacing = Math.max(merged.minSpacing, merged.minSpacing * (1.2 - candidate.density * 0.42));
+    const edgeRatio = Math.hypot(candidate.x, candidate.y) / Math.max(1, merged.fieldRadius);
+    const relaxedSpacing = Math.max(
+      merged.minSpacing,
+      merged.minSpacing * (1.14 - candidate.density * 0.34 - (edgeRatio > 0.82 ? 0.06 : 0)),
+    );
 
     if (!isFarEnough(candidate.x, candidate.y, candidateRadius, points, placedRadii, relaxedSpacing)) {
       continue;
