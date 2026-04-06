@@ -46,6 +46,69 @@ export interface TerrainHydrologyResolution {
   strictLandRatio: number;
 }
 
+interface TerrainSynthesisContext {
+  plateAxes: THREE.Vector3[];
+  climateDriftAxis: THREE.Vector3;
+}
+
+function seededUnit(seed: number): THREE.Vector3 {
+  const a = ((Math.imul(seed ^ 0x9e3779b9, 1664525) + 1013904223) >>> 0) / 0xffffffff;
+  const b = ((Math.imul(seed ^ 0x7f4a7c15, 22695477) + 1) >>> 0) / 0xffffffff;
+  const theta = a * Math.PI * 2;
+  const z = b * 2 - 1;
+  const radial = Math.sqrt(Math.max(0.000001, 1 - z * z));
+  return new THREE.Vector3(Math.cos(theta) * radial, z, Math.sin(theta) * radial).normalize();
+}
+
+function createTerrainSynthesisContext(params: ProceduralPlanetUniforms): TerrainSynthesisContext {
+  const baseSeed = params.shapeSeed ^ params.reliefSeed ^ 0x51f2b3d;
+  const plateCount = Math.max(5, Math.min(9, 5 + Math.floor(params.continentDrift * 10)));
+  const plateAxes = Array.from({ length: plateCount }, (_, index) =>
+    seededUnit(baseSeed + index * 0x45d9f3b),
+  );
+  const climateDriftAxis = seededUnit(baseSeed ^ 0x632be59d);
+
+  return {
+    plateAxes,
+    climateDriftAxis,
+  };
+}
+
+interface PlateFieldSample {
+  dominant: number;
+  secondary: number;
+  boundary: number;
+  regionNorm: number;
+}
+
+function samplePlateField(point: THREE.Vector3, context: TerrainSynthesisContext): PlateFieldSample {
+  let dominant = -1;
+  let secondary = -1;
+  let dominantIndex = 0;
+
+  for (let i = 0; i < context.plateAxes.length; i += 1) {
+    const axis = context.plateAxes[i]!;
+    const value = point.dot(axis);
+    if (value > dominant) {
+      secondary = dominant;
+      dominant = value;
+      dominantIndex = i;
+    } else if (value > secondary) {
+      secondary = value;
+    }
+  }
+
+  const boundary = clamp(1 - (dominant - secondary) * 4.8, 0, 1);
+  const regionNorm = context.plateAxes.length > 1 ? dominantIndex / (context.plateAxes.length - 1) : 0;
+
+  return {
+    dominant,
+    secondary,
+    boundary,
+    regionNorm,
+  };
+}
+
 export function resolveTerrainHydrology(
   normalizedElevations: number[],
   params: ProceduralPlanetUniforms,
@@ -107,7 +170,11 @@ function faceAxes(localUp: THREE.Vector3): { axisA: THREE.Vector3; axisB: THREE.
   return { axisA, axisB };
 }
 
-function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms): number {
+function computeElevation(
+  point: THREE.Vector3,
+  params: ProceduralPlanetUniforms,
+  context: TerrainSynthesisContext,
+): number {
   const continentSeed = params.shapeSeed ^ (params.reliefSeed << 1);
   const warpedPoint = point
     .clone()
@@ -123,7 +190,10 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
   const macroPrimary = fbm(warpedPoint.clone().multiplyScalar(params.simpleFrequency * 0.34), continentSeed, 5);
   const macroSecondary = fbm(warpedPoint.clone().multiplyScalar(params.simpleFrequency * 0.21), continentSeed ^ 0x45d9f3b, 4);
   const macroTertiary = fbm(warpedPoint.clone().multiplyScalar(params.simpleFrequency * 0.12), continentSeed ^ 0x7f4a7c15, 3);
-  const continentSignal = macroPrimary * 0.58 + macroSecondary * 0.28 + macroTertiary * 0.14;
+  const plateField = samplePlateField(warpedPoint, context);
+  const plateCore = smoothstep(0.14, 0.78, plateField.dominant);
+  const plateBoundaryLift = plateField.boundary * (0.12 + params.continentDrift * 0.16);
+  const continentSignal = macroPrimary * 0.48 + macroSecondary * 0.22 + macroTertiary * 0.12 + plateCore * 0.18;
   const continentSigned =
     (continentSignal - params.continentThreshold) / Math.max(0.06, params.continentSharpness * 1.9);
   const continentMaskBase = smoothstep(-1.25, 1.25, continentSigned);
@@ -132,7 +202,7 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     params.continentThreshold - 0.16,
     params.continentThreshold + 0.14,
     tectonicPlateSignal,
-  );
+  ) * (0.72 + plateField.boundary * 0.55);
   const continentMask = clamp(
     continentMaskBase * (0.78 + params.maskStrength * 0.08) +
       tectonicBackbone * (0.24 + (1 - params.continentDrift) * 0.18),
@@ -142,7 +212,7 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
   const inlandMask = smoothstep(
     0.18,
     1.35,
-    continentSigned + (tectonicBackbone - 0.5) * 0.65,
+    continentSigned + (tectonicBackbone - 0.5) * 0.65 + plateCore * 0.15,
   );
   const continentalGradient = smoothstep(-0.7, 0.95, continentSigned);
   const shorelineProximity = 1 - smoothstep(0.06, 0.88, Math.abs(continentSigned));
@@ -151,7 +221,7 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     continentSeed ^ 0x3f6a2c17,
     3,
   );
-  const coastNoise = (coastBreakupSignal - 0.5) * (0.06 + params.continentDrift * 0.07) * (0.3 + shorelineProximity * 0.7);
+  const coastNoise = (coastBreakupSignal - 0.5) * (0.06 + params.continentDrift * 0.07 + plateBoundaryLift * 0.04) * (0.3 + shorelineProximity * 0.7);
 
   const midRelief = fbm(
     warpedPoint.clone().multiplyScalar(params.simpleFrequency * 1.34).addScalar(params.shapeSeed * 0.000041),
@@ -201,6 +271,8 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
   );
   const driftedFragmentation = smoothstep(0.58 - params.continentDrift * 0.2, 0.82, archipelagoSignal);
   const landDemand = clamp((params.minLandRatio - 0.5) * 1.8, 0, 0.62);
+  const tectonicBoundaryRelief = plateField.boundary * (0.02 + params.ridgeBias * 0.06);
+  const regionalWarp = point.dot(context.climateDriftAxis) * 0.5 + 0.5;
 
   const oceanFloor =
     (1 - continentalGradient) *
@@ -212,7 +284,7 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     inlandMask *
     Math.max(0, continentSignal - (0.48 - landDemand * 0.08)) *
     params.simpleStrength *
-    (0.14 + params.continentDrift * 0.07 + landDemand * 0.05);
+    (0.14 + params.continentDrift * 0.07 + landDemand * 0.05 + tectonicBoundaryRelief * 0.18);
   const lowHills =
     inlandMask *
     Math.max(0, mesoHillSignal + 0.18) *
@@ -223,7 +295,7 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     (1 - mountainMask) *
     (1 - smoothstep(0.2, 0.86, Math.abs(mesoHillSignal))) *
     params.simpleStrength *
-    (0.015 + params.terrainSmoothing * 0.03);
+    (0.015 + params.terrainSmoothing * 0.03 + (1 - regionalWarp) * 0.008);
   const mesoRidges =
     Math.max(0, mesoRidgeSignal - 0.34) *
     params.ridgedStrength *
@@ -238,7 +310,7 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     Math.max(0, ridgeRelief - 0.44) *
     params.ridgedStrength *
     params.ridgeAttenuation *
-    (0.08 + continentMask * 0.25);
+    (0.08 + continentMask * 0.25 + tectonicBoundaryRelief * 0.44);
   const microLayer = microRelief * params.ridgedStrength * params.detailAttenuation * (0.004 + mountainMask * 0.005);
   const plateau = Math.max(0, midRelief) * inlandMask * (0.04 + params.continentDrift * 0.04);
   const mountainLift = mountainMask * params.ridgedStrength * params.ridgeAttenuation * 0.1;
@@ -247,10 +319,10 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     (1 - inlandMask) *
     params.simpleStrength *
     params.continentDrift *
-    (0.09 + landDemand * 0.08);
+    (0.09 + landDemand * 0.08 + plateBoundaryLift * 0.06);
   const shorelineShelf =
     Math.max(0, shorelineProximity) *
-    (0.014 + params.trenchDepth * 0.046 + coastNoise * 0.32) *
+    (0.014 + params.trenchDepth * 0.046 + coastNoise * 0.32 + plateBoundaryLift * 0.015) *
     (0.45 + (1 - inlandMask) * 0.55);
   const craterDepth = craterMask * params.craterStrength * (0.014 + params.terrainSmoothing * 0.014);
   const tectonicBand = Math.sin((warpedPoint.y + warpedPoint.x * 0.35) * (params.bandingFrequency * 1.7)) * 0.5 + 0.5;
@@ -258,8 +330,9 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     params.thermalActivity *
     Math.max(0, tectonicBand - 0.55) *
     (0.015 + params.ridgedStrength * 0.025) *
-    inlandMask;
+    inlandMask * (0.88 + regionalWarp * 0.22);
   const hydrologyLift = (0.024 + landDemand * 0.09) * (0.42 + continentalGradient * 0.58);
+  const regionalLift = (regionalWarp - 0.5) * 0.02 * inlandMask;
 
   const rawElevation =
     -oceanFloor +
@@ -275,6 +348,7 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     mountainLift +
     fragmentedIslands +
     hydrologyLift -
+    regionalLift -
     shorelineShelf -
     craterDepth +
     thermalUplift;
@@ -316,20 +390,23 @@ function applyMicroNormalDetail(geometry: THREE.BufferGeometry, params: Procedur
 }
 
 export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE.BufferGeometry {
-  const { indices, positions, colors, terrain } = generateCubeSphereTerrainBuffers(params);
-  return createCubeSphereGeometryFromBuffers(params, { indices, positions, colors, terrain });
+  const { indices, positions, colors, terrain, terrainAux, terrainGeo, terrainRegion } = generateCubeSphereTerrainBuffers(params);
+  return createCubeSphereGeometryFromBuffers(params, { indices, positions, colors, terrain, terrainAux, terrainGeo, terrainRegion });
 }
 
 export function createCubeSphereGeometryFromBuffers(
   params: ProceduralPlanetUniforms,
   buffers: GeneratedCubeSphereTerrainBuffers,
 ): THREE.BufferGeometry {
-  const { indices, positions, colors, terrain } = buffers;
+  const { indices, positions, colors, terrain, terrainAux, terrainGeo, terrainRegion } = buffers;
   const geometry = new THREE.BufferGeometry();
   geometry.setIndex(new THREE.BufferAttribute(indices, 1));
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   geometry.setAttribute('terrain', new THREE.BufferAttribute(terrain, 4));
+  geometry.setAttribute('terrainAux', new THREE.BufferAttribute(terrainAux, 4));
+  geometry.setAttribute('terrainGeo', new THREE.BufferAttribute(terrainGeo, 4));
+  geometry.setAttribute('terrainRegion', new THREE.BufferAttribute(terrainRegion, 4));
   geometry.computeVertexNormals();
   applyMicroNormalDetail(geometry, params);
 
@@ -341,6 +418,9 @@ export interface GeneratedCubeSphereTerrainBuffers {
   positions: Float32Array;
   colors: Float32Array;
   terrain: Float32Array;
+  terrainAux: Float32Array;
+  terrainGeo: Float32Array;
+  terrainRegion: Float32Array;
 }
 
 /**
@@ -351,12 +431,15 @@ export function generateCubeSphereTerrainBuffers(
   params: ProceduralPlanetUniforms,
 ): GeneratedCubeSphereTerrainBuffers {
   const resolution = params.meshResolution;
-  const faceVertexCount = resolution * resolution;
   const vertices: number[] = [];
   const colors: number[] = [];
   const terrain: number[] = [];
+  const terrainAux: number[] = [];
+  const terrainGeo: number[] = [];
+  const terrainRegion: number[] = [];
   const indices: number[] = [];
   const elevations: number[] = [];
+  const synthesisContext = createTerrainSynthesisContext(params);
 
   for (let faceIndex = 0; faceIndex < FACE_DIRECTIONS.length; faceIndex += 1) {
     const localUp = FACE_DIRECTIONS[faceIndex];
@@ -374,7 +457,7 @@ export function generateCubeSphereTerrainBuffers(
           .addScaledVector(axisB, (py - 0.5) * 2);
 
         const pointOnSphere = pointOnCube.normalize();
-        const elevation = computeElevation(pointOnSphere, params);
+        const elevation = computeElevation(pointOnSphere, params, synthesisContext);
         const radius = params.radius * (1 + elevation);
         const displaced = pointOnSphere.clone().multiplyScalar(radius);
 
@@ -394,7 +477,7 @@ export function generateCubeSphereTerrainBuffers(
 
   const slopeByVertex: number[] = new Array(elevations.length).fill(0);
   for (let faceIndex = 0; faceIndex < FACE_DIRECTIONS.length; faceIndex += 1) {
-    const faceOffset = faceIndex * faceVertexCount;
+    const faceOffset = faceIndex * resolution * resolution;
     for (let y = 0; y < resolution; y += 1) {
       for (let x = 0; x < resolution; x += 1) {
         const center = faceOffset + x + y * resolution;
@@ -405,8 +488,24 @@ export function generateCubeSphereTerrainBuffers(
 
         const dx = elevations[right]! - elevations[left]!;
         const dy = elevations[up]! - elevations[down]!;
-        const gradient = Math.sqrt(dx * dx + dy * dy) * resolution * 0.9;
-        slopeByVertex[center] = clamp(gradient, 0, 1);
+        const geometricGradient = Math.sqrt(dx * dx + dy * dy) * resolution * 0.84;
+        const point = new THREE.Vector3(
+          vertices[center * 3]!,
+          vertices[center * 3 + 1]!,
+          vertices[center * 3 + 2]!,
+        ).normalize();
+        const seamStableRidgeProbe = Math.abs(
+          ridgedFbm(
+            point.clone().multiplyScalar(params.ridgedFrequency * 0.66),
+            params.reliefSeed ^ 0x4f1bbcdc,
+            3,
+          ) - 0.5,
+        ) * 2;
+        slopeByVertex[center] = clamp(
+          geometricGradient * (0.76 + params.ridgeBias * 0.22) + seamStableRidgeProbe * 0.18,
+          0,
+          1,
+        );
       }
     }
   }
@@ -446,6 +545,7 @@ export function generateCubeSphereTerrainBuffers(
 
     const color = new THREE.Color();
     const point = new THREE.Vector3(vx, vy, vz).normalize();
+    const plateField = samplePlateField(point, synthesisContext);
     const macroBiome = fbm(
       point.clone().multiplyScalar(params.simpleFrequency * 0.7).addScalar(params.shapeSeed * 0.000021),
       params.shapeSeed ^ 0x6c8e9cf5,
@@ -490,6 +590,69 @@ export function generateCubeSphereTerrainBuffers(
       smoothstep(0.72, 0.96, latitude) *
       smoothstep(effectiveOceanLevel + 0.08, 0.98, normalized) *
       (0.75 + biomeSignal * 0.25);
+    const signedCoastDistance = coastDistanceNorm;
+    const inlandness = normalized > effectiveOceanLevel
+      ? clamp(smoothstep(0.02, 0.96, coastDistanceNorm * (0.74 + params.inlandTransitionSharpness * 0.74)), 0, 1)
+      : 0;
+    const oceanDepth = normalized <= effectiveOceanLevel
+      ? clamp((effectiveOceanLevel - normalized) / Math.max(0.01, effectiveOceanLevel), 0, 1)
+      : 0;
+    const shelfSignal = normalized <= effectiveOceanLevel
+      ? clamp(
+        smoothstep(0.03, 0.9, shelfWaterBand + shallowBand * 0.32) *
+          (1 - oceanDepth * (0.64 - params.coastShelfScale * 0.24)),
+        0,
+        1,
+      )
+      : clamp(shorelineBand * (0.42 + params.coastShelfScale * 0.38), 0, 1);
+    const ruggednessMultiscale = clamp(
+      slopeSignal * (0.56 + params.ridgeBias * 0.2) +
+      mountainBand * 0.26 +
+      Math.abs(microBiome - 0.5) * 0.26 +
+      Math.max(0, highlandBand - lowPlainsBand) * 0.18,
+      0,
+      1,
+    );
+    const ridgeStrength = clamp(
+      ruggednessMultiscale * (0.42 + params.ridgeBias * 0.34) +
+      highlandBand * 0.22 +
+      mountainBand * 0.18 +
+      Math.max(0, biomeSignal - 0.52) * 0.1,
+      0,
+      1,
+    );
+    const basinLikelihood = clamp(
+      (1 - ruggednessMultiscale * (0.78 + params.basinBias * 0.08)) *
+      (lowPlainsBand * 0.56 + fertileTransitionBand * 0.3 + shelfSignal * 0.12) *
+      (0.38 + params.basinBias * 0.56),
+      0,
+      1,
+    );
+    const curvatureApprox = clamp(0.5 + (highlandBand - lowPlainsBand) * 0.5 + (ridgeStrength - basinLikelihood) * 0.28, 0, 1);
+    const plateauSignal = clamp(highlandBand * (1 - ruggednessMultiscale * 0.92) * (1 - mountainBand * 0.85), 0, 1);
+    const constructibilitySignal = clamp(
+      (flatlandMask * 0.52 + basinLikelihood * 0.3 + plateauSignal * 0.18) *
+      (1 - ruggednessMultiscale * (0.56 + params.constructibilityBias * 0.12)) *
+      (0.5 + params.constructibilityBias * 0.58),
+      0,
+      1,
+    );
+    const wetnessProxy = clamp(
+      (normalized <= effectiveOceanLevel
+        ? 1 - oceanDepth * 0.82
+        : shelfSignal * 0.52 + basinLikelihood * 0.26 + (1 - inlandness) * 0.22) *
+      (0.78 + (1 - params.biomeHarshness) * 0.26),
+      0,
+      1,
+    );
+    const erosionProxy = clamp(
+      ruggednessMultiscale * 0.44 +
+      Math.abs(curvatureApprox - 0.5) * 0.34 +
+      (1 - wetnessProxy) * 0.14 +
+      plateField.boundary * 0.18,
+      0,
+      1,
+    );
 
     if (normalized <= effectiveOceanLevel) {
       const t = clamp(normalized / Math.max(0.01, effectiveOceanLevel), 0, 1);
@@ -622,7 +785,25 @@ export function generateCubeSphereTerrainBuffers(
       normalized,
       clamp(coastalBand * 0.68 + shorelineBand * 0.9 + shelfWaterBand * 0.34, 0, 1),
       clamp(fertileTransitionBand * 0.56 + biomeSignal * 0.28 + flatlandMask * 0.16, 0, 1),
-      clamp(slopeSignal * 0.68 + highlandBand * 0.24 + mountainBand * 0.2, 0, 1),
+      ruggednessMultiscale,
+    );
+    terrainAux.push(
+      signedCoastDistance,
+      inlandness,
+      oceanDepth,
+      shelfSignal,
+    );
+    terrainGeo.push(
+      ridgeStrength,
+      basinLikelihood,
+      curvatureApprox,
+      constructibilitySignal,
+    );
+    terrainRegion.push(
+      plateField.regionNorm,
+      plateauSignal,
+      wetnessProxy,
+      erosionProxy,
     );
   }
 
@@ -631,5 +812,8 @@ export function generateCubeSphereTerrainBuffers(
     positions: new Float32Array(vertices),
     colors: new Float32Array(colors),
     terrain: new Float32Array(terrain),
+    terrainAux: new Float32Array(terrainAux),
+    terrainGeo: new Float32Array(terrainGeo),
+    terrainRegion: new Float32Array(terrainRegion),
   };
 }

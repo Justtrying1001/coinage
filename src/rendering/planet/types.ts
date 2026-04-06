@@ -42,6 +42,11 @@ export interface ProceduralPlanetUniforms {
   continentDrift: number;
   trenchDepth: number;
   biomeHarshness: number;
+  coastShelfScale: number;
+  inlandTransitionSharpness: number;
+  basinBias: number;
+  ridgeBias: number;
+  constructibilityBias: number;
   craterStrength: number;
   thermalActivity: number;
   bandingStrength: number;
@@ -65,6 +70,9 @@ export interface PrecomputedTerrainBuffers {
   positions: Float32Array;
   colors: Float32Array;
   terrain: Float32Array;
+  terrainAux: Float32Array;
+  terrainGeo: Float32Array;
+  terrainRegion: Float32Array;
 }
 
 export interface PlanetRenderInstance {

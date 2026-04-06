@@ -71,6 +71,11 @@ function buildGeometryKey(params: ReturnType<typeof mapProfileToProceduralUnifor
     `cd:${quantize(params.continentDrift, 0.01).toFixed(2)}`,
     `td:${quantize(params.trenchDepth, 0.01).toFixed(2)}`,
     `bh:${quantize(params.biomeHarshness, 0.01).toFixed(2)}`,
+    `css:${quantize(params.coastShelfScale, 0.01).toFixed(2)}`,
+    `its:${quantize(params.inlandTransitionSharpness, 0.01).toFixed(2)}`,
+    `bb:${quantize(params.basinBias, 0.01).toFixed(2)}`,
+    `rb:${quantize(params.ridgeBias, 0.01).toFixed(2)}`,
+    `cb:${quantize(params.constructibilityBias, 0.01).toFixed(2)}`,
     `c:${colorSignature}`,
   ].join('|');
 }
@@ -98,12 +103,25 @@ function applyPlanetSurfaceShaderEnhancement(
         '#include <common>',
         `#include <common>
          attribute vec4 terrain;
+         attribute vec4 terrainAux;
+         attribute vec4 terrainGeo;
+         attribute vec4 terrainRegion;
          varying vec4 vTerrainData;`,
+      )
+      .replace(
+        'varying vec4 vTerrainData;',
+        `varying vec4 vTerrainData;
+         varying vec4 vTerrainAuxData;
+         varying vec4 vTerrainGeoData;
+         varying vec4 vTerrainRegionData;`,
       )
       .replace(
         '#include <begin_vertex>',
         `#include <begin_vertex>
-         vTerrainData = terrain;`,
+         vTerrainData = terrain;
+         vTerrainAuxData = terrainAux;
+         vTerrainGeoData = terrainGeo;
+         vTerrainRegionData = terrainRegion;`,
       );
 
     shader.fragmentShader = shader.fragmentShader
@@ -111,6 +129,9 @@ function applyPlanetSurfaceShaderEnhancement(
         '#include <common>',
         `#include <common>
          varying vec4 vTerrainData;
+         varying vec4 vTerrainAuxData;
+         varying vec4 vTerrainGeoData;
+         varying vec4 vTerrainRegionData;
          uniform float uPlanetDetailIntensity;
          uniform float uPlanetContrast;
          uniform float uThermalActivity;`,
@@ -122,8 +143,15 @@ function applyPlanetSurfaceShaderEnhancement(
          float coastZone = clamp(vTerrainData.y, 0.0, 1.0);
          float fertileZone = clamp(vTerrainData.z, 0.0, 1.0);
          float ruggedZone = clamp(vTerrainData.a, 0.0, 1.0);
+         float inlandness = clamp(vTerrainAuxData.y, 0.0, 1.0);
+         float shelfZone = clamp(vTerrainAuxData.a, 0.0, 1.0);
+         float ridgeZone = clamp(vTerrainGeoData.x, 0.0, 1.0);
+         float basinZone = clamp(vTerrainGeoData.y, 0.0, 1.0);
+         float constructibility = clamp(vTerrainGeoData.a, 0.0, 1.0);
+         float wetnessZone = clamp(vTerrainRegionData.z, 0.0, 1.0);
+         float erosionZone = clamp(vTerrainRegionData.w, 0.0, 1.0);
          float flatlandZone = clamp(fertileZone * (1.0 - ruggedZone), 0.0, 1.0);
-         float detailMask = clamp(ruggedZone * 1.25 + coastZone * 0.42 + (1.0 - flatlandZone) * 0.24, 0.0, 1.0);
+         float detailMask = clamp(ruggedZone * 0.94 + ridgeZone * 0.42 + erosionZone * 0.26 + coastZone * 0.32 + shelfZone * 0.14 + (1.0 - flatlandZone) * 0.18 + inlandness * 0.08 - constructibility * 0.12 - wetnessZone * 0.1, 0.0, 1.0);
          float nPulseA = sin((vViewPosition.x + vViewPosition.y * 0.62) * 16.0 + altitude * 19.0);
          float nPulseB = cos((vViewPosition.z - vViewPosition.x * 0.33) * 13.0 + fertileZone * 17.0);
          float nPulseC = sin((vViewPosition.y + vViewPosition.z * 0.52) * 22.0 + coastZone * 14.0);
@@ -135,22 +163,40 @@ function applyPlanetSurfaceShaderEnhancement(
         `#include <roughnessmap_fragment>
          float coastRough = 1.0 - clamp(vTerrainData.y * 0.78, 0.0, 0.54);
          float slopeRough = clamp(vTerrainData.a, 0.0, 1.0);
+         float ridgeRough = clamp(vTerrainGeoData.x, 0.0, 1.0);
+         float shelfSmooth = clamp(vTerrainAuxData.a * 0.22, 0.0, 0.2);
+         float wetnessSmooth = clamp(vTerrainRegionData.z * 0.26, 0.0, 0.24);
+         float erosionRough = clamp(vTerrainRegionData.w * 0.26, 0.0, 0.24);
          float fertileSmooth = clamp(vTerrainData.z * (1.0 - slopeRough) * 0.34, 0.0, 0.3);
          float plateauSmooth = clamp(vTerrainData.z * (1.0 - slopeRough * 1.3), 0.0, 1.0);
          float microRough = (sin(vTerrainData.z * 35.0 + vTerrainData.x * 31.0) * 0.5 + 0.5) * 0.07;
-         roughnessFactor = clamp(roughnessFactor * coastRough + slopeRough * 0.24 + microRough - fertileSmooth - plateauSmooth * 0.08, 0.34, 1.0);`,
+         roughnessFactor = clamp(roughnessFactor * coastRough + slopeRough * 0.14 + ridgeRough * 0.18 + erosionRough + microRough - fertileSmooth - plateauSmooth * 0.08 - shelfSmooth - wetnessSmooth, 0.24, 1.0);`,
       )
       .replace(
         '#include <dithering_fragment>',
         `float coastGlow = smoothstep(0.24, 0.96, vTerrainData.y) * 0.065;
+         float inlandShade = smoothstep(0.2, 0.95, vTerrainAuxData.y) * 0.045;
+         float basinTint = smoothstep(0.25, 0.95, basinZone) * 0.04;
+         float shelfTint = smoothstep(0.15, 0.95, vTerrainAuxData.a) * 0.05;
+         float wetnessTint = smoothstep(0.2, 0.92, vTerrainRegionData.z) * 0.045;
+         float erosionTint = smoothstep(0.24, 0.94, vTerrainRegionData.w) * 0.05;
+         float plateauTint = smoothstep(0.22, 0.94, vTerrainRegionData.y) * 0.03;
          float highlandShade = smoothstep(0.45, 0.96, vTerrainData.a) * 0.1;
          float fertileTint = smoothstep(0.28, 0.94, vTerrainData.z) * 0.048;
          float flatlandTint = smoothstep(0.45, 0.95, vTerrainData.z * (1.0 - vTerrainData.a)) * 0.048;
+         float constructibilityTint = smoothstep(0.32, 0.96, vTerrainGeoData.a) * 0.038;
          float thermalTint = smoothstep(0.52, 0.92, vTerrainData.z) * uThermalActivity * 0.06;
          float breakup = sin((vViewPosition.x + vViewPosition.z) * 3.4 + vTerrainData.x * 29.0) * 0.5 + 0.5;
          gl_FragColor.rgb += vec3(coastGlow * 0.45, coastGlow * 0.5, coastGlow * 0.55);
+         gl_FragColor.rgb += vec3(shelfTint * 0.12, shelfTint * 0.16, shelfTint * 0.2);
          gl_FragColor.rgb += vec3(0.01, 0.015, 0.005) * fertileTint;
+         gl_FragColor.rgb += vec3(0.009, 0.011, 0.007) * basinTint;
          gl_FragColor.rgb += vec3(0.015, 0.018, 0.012) * flatlandTint;
+         gl_FragColor.rgb += vec3(0.006, 0.015, 0.012) * wetnessTint;
+         gl_FragColor.rgb += vec3(0.011, 0.009, 0.006) * erosionTint;
+         gl_FragColor.rgb += vec3(0.01, 0.012, 0.009) * plateauTint;
+         gl_FragColor.rgb += vec3(0.012, 0.015, 0.01) * constructibilityTint;
+         gl_FragColor.rgb *= 1.0 - inlandShade * 0.08;
          gl_FragColor.rgb = mix(gl_FragColor.rgb, gl_FragColor.rgb * (1.0 - highlandShade) + vec3(0.048, 0.041, 0.036) * highlandShade, 0.76);
          gl_FragColor.rgb += vec3(thermalTint, thermalTint * 0.35, -thermalTint * 0.15);
          gl_FragColor.rgb *= 0.98 + breakup * 0.05;
@@ -173,9 +219,9 @@ export function applyPlanetRenderLod(
   if (lod === 'planet') {
     return {
       ...params,
-      meshResolution: Math.min(44, params.meshResolution + 10),
-      ridgedStrength: Math.min(0.82, params.ridgedStrength * 1.16),
-      detailAttenuation: Math.min(0.8, params.detailAttenuation * 1.34),
+      meshResolution: Math.min(52, params.meshResolution + 14),
+      ridgedStrength: Math.min(0.86, params.ridgedStrength * 1.22),
+      detailAttenuation: Math.min(0.88, params.detailAttenuation * 1.42),
     };
   }
 
@@ -188,8 +234,8 @@ export function applyPlanetRenderLod(
   return {
     ...params,
     meshResolution: reducedResolution,
-    ridgedStrength: params.ridgedStrength * 0.92,
-    detailAttenuation: params.detailAttenuation * 0.86,
+    ridgedStrength: params.ridgedStrength * 0.88,
+    detailAttenuation: params.detailAttenuation * 0.8,
   };
 }
 

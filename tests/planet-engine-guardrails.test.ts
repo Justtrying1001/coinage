@@ -48,6 +48,47 @@ test('terrain generation enforces gameplay and visual land floor on final geomet
   }
 });
 
+test('terrain generation exports extended geographic fields with deterministic sizing and bounded ranges', () => {
+  const profile = generatePlanetVisualProfile({
+    worldSeed: 'coinage-mvp-seed',
+    planetSeed: 'terrain-geo-fields',
+  });
+  const uniforms = mapProfileToProceduralUniforms(profile);
+  const buffers = generateCubeSphereTerrainBuffers(uniforms);
+
+  assert.equal(buffers.terrainAux.length, buffers.terrain.length, 'terrainAux should keep 1:1 vertex packing (vec4)');
+  assert.equal(buffers.terrainGeo.length, buffers.terrain.length, 'terrainGeo should keep 1:1 vertex packing (vec4)');
+  assert.equal(buffers.terrainRegion.length, buffers.terrain.length, 'terrainRegion should keep 1:1 vertex packing (vec4)');
+
+  for (let i = 0; i < buffers.terrainAux.length; i += 4) {
+    const signedCoastDistance = buffers.terrainAux[i]!;
+    const inlandness = buffers.terrainAux[i + 1]!;
+    const oceanDepth = buffers.terrainAux[i + 2]!;
+    const shelfSignal = buffers.terrainAux[i + 3]!;
+    const ridgeStrength = buffers.terrainGeo[i]!;
+    const basinLikelihood = buffers.terrainGeo[i + 1]!;
+    const curvatureApprox = buffers.terrainGeo[i + 2]!;
+    const constructibility = buffers.terrainGeo[i + 3]!;
+    const macroRegion = buffers.terrainRegion[i]!;
+    const plateauMask = buffers.terrainRegion[i + 1]!;
+    const wetnessProxy = buffers.terrainRegion[i + 2]!;
+    const erosionProxy = buffers.terrainRegion[i + 3]!;
+
+    assert.ok(signedCoastDistance >= -1 && signedCoastDistance <= 1, `signed coast distance out of range at vertex ${i / 4}`);
+    assert.ok(inlandness >= 0 && inlandness <= 1, `inlandness out of range at vertex ${i / 4}`);
+    assert.ok(oceanDepth >= 0 && oceanDepth <= 1, `ocean depth out of range at vertex ${i / 4}`);
+    assert.ok(shelfSignal >= 0 && shelfSignal <= 1, `shelf signal out of range at vertex ${i / 4}`);
+    assert.ok(ridgeStrength >= 0 && ridgeStrength <= 1, `ridge strength out of range at vertex ${i / 4}`);
+    assert.ok(basinLikelihood >= 0 && basinLikelihood <= 1, `basin likelihood out of range at vertex ${i / 4}`);
+    assert.ok(curvatureApprox >= 0 && curvatureApprox <= 1, `curvature out of range at vertex ${i / 4}`);
+    assert.ok(constructibility >= 0 && constructibility <= 1, `constructibility out of range at vertex ${i / 4}`);
+    assert.ok(macroRegion >= 0 && macroRegion <= 1, `macro region out of range at vertex ${i / 4}`);
+    assert.ok(plateauMask >= 0 && plateauMask <= 1, `plateau mask out of range at vertex ${i / 4}`);
+    assert.ok(wetnessProxy >= 0 && wetnessProxy <= 1, `wetness proxy out of range at vertex ${i / 4}`);
+    assert.ok(erosionProxy >= 0 && erosionProxy <= 1, `erosion proxy out of range at vertex ${i / 4}`);
+  }
+});
+
 test('galaxy manifest and renderer mapping keep radius fidelity and avoid tiny planets', () => {
   const manifest = getGalaxyPlanetManifest('coinage-mvp-seed');
 

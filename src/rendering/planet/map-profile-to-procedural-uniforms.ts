@@ -615,6 +615,43 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     0.04,
     0.66,
   );
+  const coastShelfScale = clamp(
+    0.35 +
+      (0.62 - finalOceanLevel) * 0.34 +
+      (1 - climate.dry) * 0.18 +
+      (surfaceCategory === 'ocean' || surfaceCategory === 'lush' ? 0.08 : 0),
+    0.28,
+    0.9,
+  );
+  const inlandTransitionSharpness = clamp(
+    0.38 + terrainProfile.continentSharpness * 1.24 + Math.max(0, minLandRatio - 0.52) * 0.48,
+    0.26,
+    0.92,
+  );
+  const basinBias = clamp(
+    0.32 +
+      terrainProfile.trenchDepth * 1.05 +
+      terrainProfile.terrainSmoothing * 0.28 +
+      (terrainProfile.type === 'continental' || terrainProfile.type === 'smooth' ? 0.1 : 0),
+    0.2,
+    0.88,
+  );
+  const ridgeBias = clamp(
+    0.3 +
+      terrainProfile.ridgeAttenuation * 0.72 +
+      mappedRidgedStrength * 0.38 +
+      (terrainProfile.type === 'extreme' || terrainProfile.type === 'fragmented' ? 0.08 : 0),
+    0.24,
+    0.94,
+  );
+  const constructibilityBias = clamp(
+    0.24 +
+      terrainProfile.terrainSmoothing * 0.56 +
+      (1 - terrainProfile.biomeHarshness) * 0.24 +
+      Math.max(0, minLandRatio - 0.5) * 0.35,
+    0.12,
+    0.94,
+  );
 
   const landSurfaceColor = landColor.clone().lerp(new THREE.Color(categoryColors.land), 0.38).lerp(coastalColor, 0.14);
   const mountainSurfaceColor = mountainColor.clone().lerp(categoryMountain, 0.56);
@@ -631,7 +668,7 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     mountainColor: colorToTuple(mountainSurfaceColor),
     iceColor: colorToTuple(iceSurfaceColor),
     radius: clamp(profile.shape.radius * 0.99, 2.16, 5.6),
-    meshResolution: Math.round(clamp(15 + profile.shape.radius * 3.6 + profile.relief.macroStrength * 7, 16, 25)),
+    meshResolution: Math.round(clamp(18 + profile.shape.radius * 4.4 + profile.relief.macroStrength * 8.6, 20, 32)),
     oceanLevel: finalOceanLevel,
     mountainLevel,
     minLandRatio,
@@ -651,6 +688,11 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     continentDrift: terrainProfile.continentDrift,
     trenchDepth: terrainProfile.trenchDepth,
     biomeHarshness: terrainProfile.biomeHarshness,
+    coastShelfScale,
+    inlandTransitionSharpness,
+    basinBias,
+    ridgeBias,
+    constructibilityBias,
     craterStrength: clamp(
       (allowedEffects.has('craters') ? 1 : 0) *
         (profile.relief.craterDensity * (0.65 + identity.renderTuning.craterBoost) + climate.mineral * 0.14),
