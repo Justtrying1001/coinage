@@ -25,7 +25,7 @@ interface PlanetRenderData {
 const FIELD_RADIUS = GALAXY_LAYOUT_RUNTIME_CONFIG.fieldRadius ?? 84;
 const MOVE_SPEED = Math.max(24, FIELD_RADIUS * 0.18);
 const BASE_VIEW_HEIGHT = Math.min(380, Math.max(140, FIELD_RADIUS * 0.58));
-const FIXED_CAMERA_ZOOM = 2.85;
+const FIXED_CAMERA_ZOOM = 2.42;
 const KEYBOARD_ACCELERATION = 15;
 const KEYBOARD_DECELERATION = 13;
 const CAMERA_FOLLOW_DAMPING = 16;
@@ -89,15 +89,19 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     renderer.toneMappingExposure = 1.6;
     mount.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight('#b7d1ff', 1.9));
+    scene.add(new THREE.AmbientLight('#f5efe4', 1.3));
 
-    const keyLight = new THREE.DirectionalLight('#ffffff', 2.1);
-    keyLight.position.set(20, 26, 44);
+    const keyLight = new THREE.DirectionalLight('#ffe7cf', 1.82);
+    keyLight.position.set(24, 22, 44);
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight('#b6ccff', 1.25);
-    fillLight.position.set(-24, -12, 32);
+    const fillLight = new THREE.DirectionalLight('#d4d8e6', 0.7);
+    fillLight.position.set(-26, -10, 30);
     scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight('#fcead0', 0.5);
+    rimLight.position.set(0, 34, -16);
+    scene.add(rimLight);
 
     const planetGroup = new THREE.Group();
     const instances: PlanetRenderInstance[] = [];
