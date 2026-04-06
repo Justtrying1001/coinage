@@ -108,3 +108,16 @@ Limites actuelles de couverture:
 
 Recommandation minimale avant GO final strict:
 - aligner `computeGalaxyVisualRadius` sur `silhouetteProtectedRadius` (ou clamp mini 3.05), puis ajouter un test de non-régression dédié.
+
+## Addendum — correction finale ciblée (2026-04-06)
+
+- `computeGalaxyVisualRadius` applique maintenant explicitement la protection silhouette canonique avant clamp guardrails.
+- Test de non-régression ajouté: 400 seeds, assertion stricte `visualRadius >= 3.05`.
+
+Sweep post-correction (400 seeds):
+- min galaxy visual radius final: `3.05`
+- max galaxy visual radius final: `5.798830487655306`
+- nombre de cas sous 3.05: `0`
+- extrêmes:
+  - min: `audit-20` (dwarf) -> physicalRadius `2620.4899969976395`, renderRadiusBase `2.9786338835531336`, normalizedRadius `0.05954462785104459`, galaxyVisualRadius `3.05`, planetViewScale `1`
+  - max: `audit-156` (giant) -> physicalRadius `13995.282966876402`, renderRadiusBase `5.798830487655306`, normalizedRadius `0.9996101625517688`, galaxyVisualRadius `5.798830487655306`, planetViewScale `1`

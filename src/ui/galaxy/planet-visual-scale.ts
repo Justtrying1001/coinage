@@ -5,6 +5,7 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 export function computeGalaxyVisualRadius(scale: PlanetScaleProfile): number {
-  const radius = scale.renderRadiusBase * scale.galaxyViewScaleMultiplier;
-  return clamp(radius, scale.minRadiusGuardrail, scale.maxRadiusGuardrail);
+  const radiusFromBase = scale.renderRadiusBase * scale.galaxyViewScaleMultiplier;
+  const silhouetteProtected = Math.max(radiusFromBase, scale.silhouetteProtectedRadius);
+  return clamp(silhouetteProtected, scale.minRadiusGuardrail, scale.maxRadiusGuardrail);
 }
