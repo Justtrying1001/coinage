@@ -80,10 +80,15 @@ export function resolveTerrainHydrology(
   };
 
   recomputeCoverage();
-  for (let pass = 0; pass < 3 && strictLandCount / total + 0.002 < targetLandRatio; pass += 1) {
+  for (let pass = 0; pass < 6 && strictLandCount / total + 0.002 < targetLandRatio; pass += 1) {
     const tightenedOceanCoverage = clamp(1 - targetLandRatio - (pass + 1) * 0.02, 0.06, 0.5);
     const tightenedQuantileCap = quantile(sortedElevations, tightenedOceanCoverage) - (0.006 + pass * 0.002);
     effectiveOceanLevel = clamp(Math.min(effectiveOceanLevel, tightenedQuantileCap), 0.005, 0.58);
+    recomputeCoverage();
+  }
+  if (strictLandCount / total + 0.001 < targetLandRatio) {
+    const strictTargetCap = quantile(sortedElevations, clamp(1 - targetLandRatio, 0.04, 0.5)) - 0.005;
+    effectiveOceanLevel = clamp(Math.min(effectiveOceanLevel, strictTargetCap), 0.005, 0.58);
     recomputeCoverage();
   }
 
@@ -119,11 +124,9 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
   const macroSecondary = fbm(warpedPoint.clone().multiplyScalar(params.simpleFrequency * 0.21), continentSeed ^ 0x45d9f3b, 4);
   const macroTertiary = fbm(warpedPoint.clone().multiplyScalar(params.simpleFrequency * 0.12), continentSeed ^ 0x7f4a7c15, 3);
   const continentSignal = macroPrimary * 0.58 + macroSecondary * 0.28 + macroTertiary * 0.14;
-  const continentMaskBase = smoothstep(
-    params.continentThreshold - params.continentSharpness,
-    params.continentThreshold + params.continentSharpness,
-    continentSignal,
-  );
+  const continentSigned =
+    (continentSignal - params.continentThreshold) / Math.max(0.06, params.continentSharpness * 1.9);
+  const continentMaskBase = smoothstep(-1.25, 1.25, continentSigned);
   const tectonicPlateSignal = macroSecondary * 0.55 + macroTertiary * 0.45;
   const tectonicBackbone = smoothstep(
     params.continentThreshold - 0.16,
@@ -137,16 +140,18 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     1,
   );
   const inlandMask = smoothstep(
-    params.continentThreshold + params.continentSharpness * 0.7,
-    Math.min(0.95, params.continentThreshold + 0.33 + params.continentSharpness),
-    Math.max(continentSignal, tectonicPlateSignal * 0.94),
+    0.18,
+    1.35,
+    continentSigned + (tectonicBackbone - 0.5) * 0.65,
   );
+  const continentalGradient = smoothstep(-0.7, 0.95, continentSigned);
+  const shorelineProximity = 1 - smoothstep(0.06, 0.88, Math.abs(continentSigned));
   const coastBreakupSignal = fbm(
     warpedPoint.clone().multiplyScalar(params.simpleFrequency * (2.2 + params.continentDrift * 1.2)),
     continentSeed ^ 0x3f6a2c17,
     3,
   );
-  const coastNoise = (coastBreakupSignal - 0.5) * (0.08 + params.continentDrift * 0.08);
+  const coastNoise = (coastBreakupSignal - 0.5) * (0.06 + params.continentDrift * 0.07) * (0.3 + shorelineProximity * 0.7);
 
   const midRelief = fbm(
     warpedPoint.clone().multiplyScalar(params.simpleFrequency * 1.34).addScalar(params.shapeSeed * 0.000041),
@@ -198,9 +203,11 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
   const landDemand = clamp((params.minLandRatio - 0.5) * 1.8, 0, 0.62);
 
   const oceanFloor =
-    (1 - continentMask) *
-    (0.045 + params.simpleStrength * (0.08 - landDemand * 0.035) + trenchSignal * params.trenchDepth * (0.18 - landDemand * 0.06));
-  const continentBase = continentMask * (0.06 + params.simpleStrength * (0.2 + landDemand * 0.16) + coastNoise);
+    (1 - continentalGradient) *
+    (0.042 + params.simpleStrength * (0.072 - landDemand * 0.03) + trenchSignal * params.trenchDepth * (0.16 - landDemand * 0.045));
+  const continentBase =
+    continentalGradient *
+    (0.058 + params.simpleStrength * (0.2 + landDemand * 0.15) + coastNoise * 0.7 + shorelineProximity * 0.015);
   const uplands =
     inlandMask *
     Math.max(0, continentSignal - (0.48 - landDemand * 0.08)) *
@@ -211,6 +218,12 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     Math.max(0, mesoHillSignal + 0.18) *
     params.simpleStrength *
     (0.042 + (1 - params.terrainSmoothing) * 0.045);
+  const basinPlains =
+    inlandMask *
+    (1 - mountainMask) *
+    (1 - smoothstep(0.2, 0.86, Math.abs(mesoHillSignal))) *
+    params.simpleStrength *
+    (0.015 + params.terrainSmoothing * 0.03);
   const mesoRidges =
     Math.max(0, mesoRidgeSignal - 0.34) *
     params.ridgedStrength *
@@ -235,7 +248,10 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     params.simpleStrength *
     params.continentDrift *
     (0.09 + landDemand * 0.08);
-  const shorelineShelf = Math.max(0, continentMask - inlandMask) * (0.012 + params.trenchDepth * 0.04 + coastNoise * 0.5);
+  const shorelineShelf =
+    Math.max(0, shorelineProximity) *
+    (0.014 + params.trenchDepth * 0.046 + coastNoise * 0.32) *
+    (0.45 + (1 - inlandMask) * 0.55);
   const craterDepth = craterMask * params.craterStrength * (0.014 + params.terrainSmoothing * 0.014);
   const tectonicBand = Math.sin((warpedPoint.y + warpedPoint.x * 0.35) * (params.bandingFrequency * 1.7)) * 0.5 + 0.5;
   const thermalUplift =
@@ -243,19 +259,22 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     Math.max(0, tectonicBand - 0.55) *
     (0.015 + params.ridgedStrength * 0.025) *
     inlandMask;
+  const hydrologyLift = (0.024 + landDemand * 0.09) * (0.42 + continentalGradient * 0.58);
 
   const rawElevation =
     -oceanFloor +
     continentBase +
     uplands +
-    lowHills +
+    lowHills -
+    basinPlains +
     mesoRidges +
     plateauSteps +
     midLayer +
     microLayer +
     plateau +
     mountainLift +
-    fragmentedIslands -
+    fragmentedIslands +
+    hydrologyLift -
     shorelineShelf -
     craterDepth +
     thermalUplift;
@@ -332,6 +351,7 @@ export function generateCubeSphereTerrainBuffers(
   params: ProceduralPlanetUniforms,
 ): GeneratedCubeSphereTerrainBuffers {
   const resolution = params.meshResolution;
+  const faceVertexCount = resolution * resolution;
   const vertices: number[] = [];
   const colors: number[] = [];
   const terrain: number[] = [];
@@ -368,6 +388,25 @@ export function generateCubeSphereTerrainBuffers(
         const i = vertexOffset + x + y * resolution;
         indices.push(i, i + 1, i + resolution + 1);
         indices.push(i, i + resolution + 1, i + resolution);
+      }
+    }
+  }
+
+  const slopeByVertex: number[] = new Array(elevations.length).fill(0);
+  for (let faceIndex = 0; faceIndex < FACE_DIRECTIONS.length; faceIndex += 1) {
+    const faceOffset = faceIndex * faceVertexCount;
+    for (let y = 0; y < resolution; y += 1) {
+      for (let x = 0; x < resolution; x += 1) {
+        const center = faceOffset + x + y * resolution;
+        const left = faceOffset + Math.max(0, x - 1) + y * resolution;
+        const right = faceOffset + Math.min(resolution - 1, x + 1) + y * resolution;
+        const down = faceOffset + x + Math.max(0, y - 1) * resolution;
+        const up = faceOffset + x + Math.min(resolution - 1, y + 1) * resolution;
+
+        const dx = elevations[right]! - elevations[left]!;
+        const dy = elevations[up]! - elevations[down]!;
+        const gradient = Math.sqrt(dx * dx + dy * dy) * resolution * 0.9;
+        slopeByVertex[center] = clamp(gradient, 0, 1);
       }
     }
   }
@@ -424,21 +463,26 @@ export function generateCubeSphereTerrainBuffers(
     const optionalBandMask = smoothstep(effectiveOceanLevel + 0.02, 1, normalized);
     const softenedLatBand = latBand * optionalBandMask;
 
-    const deepOceanBand = smoothstep(0, effectiveOceanLevel * 0.48, normalized);
-    const shelfWaterBand = smoothstep(effectiveOceanLevel * 0.46, effectiveOceanLevel - 0.008, normalized);
-    const shallowBand = smoothstep(effectiveOceanLevel * 0.68, effectiveOceanLevel + 0.02, normalized);
-    const coastalBand = smoothstep(effectiveOceanLevel - 0.018, effectiveOceanLevel + 0.045, normalized);
-    const shorelineBand = smoothstep(effectiveOceanLevel + 0.005, effectiveOceanLevel + 0.06, normalized) * (1 - smoothstep(effectiveOceanLevel + 0.06, effectiveOceanLevel + 0.12, normalized));
-    const lowPlainsBand = smoothstep(effectiveOceanLevel + 0.03, mountainLevel - 0.3, normalized) * (1 - smoothstep(mountainLevel - 0.28, mountainLevel - 0.19, normalized));
-    const midPlainsBand = smoothstep(effectiveOceanLevel + 0.09, mountainLevel - 0.21, normalized) * (1 - smoothstep(mountainLevel - 0.18, mountainLevel - 0.1, normalized));
+    const terrainEdge = normalized - effectiveOceanLevel;
+    const coastDistanceNorm = clamp(terrainEdge / 0.11, -1, 1);
+    const deepOceanBand = smoothstep(0, effectiveOceanLevel * 0.44, normalized);
+    const shelfWaterBand = smoothstep(effectiveOceanLevel * 0.4, effectiveOceanLevel - 0.012, normalized);
+    const shallowBand = smoothstep(effectiveOceanLevel * 0.66, effectiveOceanLevel + 0.03, normalized);
+    const coastalBand = smoothstep(-0.72, 0.72, coastDistanceNorm);
+    const shorelineBand = (1 - smoothstep(0.05, 0.95, Math.abs(coastDistanceNorm))) * (1 - deepOceanBand * 0.42);
+    const lowPlainsBand = smoothstep(effectiveOceanLevel + 0.018, mountainLevel - 0.32, normalized) * (1 - smoothstep(mountainLevel - 0.3, mountainLevel - 0.19, normalized));
+    const midPlainsBand = smoothstep(effectiveOceanLevel + 0.08, mountainLevel - 0.2, normalized) * (1 - smoothstep(mountainLevel - 0.17, mountainLevel - 0.08, normalized));
     const fertileTransitionBand = midPlainsBand * (0.6 + biomeSignal * 0.4);
     const plainsBand = clamp(lowPlainsBand + midPlainsBand * 0.8, 0, 1);
     const highlandBand = smoothstep(mountainLevel - 0.2, mountainLevel - 0.03, normalized);
     const mountainBand = smoothstep(mountainLevel - 0.03, mountainLevel + 0.08, normalized);
+    const geometricSlope = slopeByVertex[i] ?? 0;
+    const flatlandMask = clamp((1 - geometricSlope * 1.35) * (lowPlainsBand * 0.8 + fertileTransitionBand * 0.55), 0, 1);
     const slopeSignal = clamp(
-      Math.abs(highlandBand - plainsBand) * 0.65 +
-      mountainBand * 0.55 +
-      Math.abs(microBiome - 0.5) * 0.3,
+      geometricSlope * 0.64 +
+      Math.abs(highlandBand - plainsBand) * 0.42 +
+      mountainBand * 0.44 +
+      Math.abs(microBiome - 0.5) * 0.14,
       0,
       1,
     );
@@ -467,21 +511,21 @@ export function generateCubeSphereTerrainBuffers(
         clamp(
           smoothLerp(params.landColor[0], params.mountainColor[0], t) +
           lushVariation * (lowPlainsBand * 0.9 + fertileTransitionBand * 0.5) -
-          shorelineBand * 0.03,
+          shorelineBand * 0.035 - flatlandMask * 0.016,
           0,
           1,
         ),
         clamp(
           smoothLerp(params.landColor[1], params.mountainColor[1], t) +
           lushVariation * (lowPlainsBand * 1.15 + fertileTransitionBand * 0.8) +
-          fertileTransitionBand * 0.04,
+          fertileTransitionBand * 0.05 + flatlandMask * 0.04,
           0,
           1,
         ),
         clamp(
           smoothLerp(params.landColor[2], params.mountainColor[2], t) -
           lushVariation * (lowPlainsBand * 0.75 + fertileTransitionBand * 0.55) +
-          shorelineBand * 0.02,
+          shorelineBand * 0.02 - flatlandMask * 0.012,
           0,
           1,
         ),
@@ -576,9 +620,9 @@ export function generateCubeSphereTerrainBuffers(
     colors.push(color.r, color.g, color.b);
     terrain.push(
       normalized,
-      clamp(coastalBand * 0.72 + shorelineBand * 0.85 + shelfWaterBand * 0.3, 0, 1),
-      clamp(fertileTransitionBand * 0.6 + biomeSignal * 0.4, 0, 1),
-      clamp(slopeSignal * 0.6 + highlandBand * 0.3 + mountainBand * 0.25, 0, 1),
+      clamp(coastalBand * 0.68 + shorelineBand * 0.9 + shelfWaterBand * 0.34, 0, 1),
+      clamp(fertileTransitionBand * 0.56 + biomeSignal * 0.28 + flatlandMask * 0.16, 0, 1),
+      clamp(slopeSignal * 0.68 + highlandBand * 0.24 + mountainBand * 0.2, 0, 1),
     );
   }
 

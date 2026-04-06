@@ -118,34 +118,39 @@ function applyPlanetSurfaceShaderEnhancement(
       .replace(
         '#include <normal_fragment_maps>',
         `#include <normal_fragment_maps>
+         float altitude = clamp(vTerrainData.x, 0.0, 1.0);
          float coastZone = clamp(vTerrainData.y, 0.0, 1.0);
          float fertileZone = clamp(vTerrainData.z, 0.0, 1.0);
          float ruggedZone = clamp(vTerrainData.a, 0.0, 1.0);
-         float detailMask = clamp(ruggedZone * 1.2 + coastZone * 0.35 + fertileZone * 0.2, 0.0, 1.0);
-         float nPulseA = sin((vViewPosition.x + vViewPosition.y * 0.7) * 18.0 + vTerrainData.z * 13.0);
-         float nPulseB = cos((vViewPosition.z - vViewPosition.x * 0.4) * 14.0 + vTerrainData.x * 17.0);
-         float nPulseC = sin((vViewPosition.y + vViewPosition.z * 0.45) * 23.0 + coastZone * 11.0);
-         vec3 detailPerturb = vec3(nPulseA, nPulseB, nPulseA * nPulseB + nPulseC * 0.6) * 0.034 * uPlanetDetailIntensity * detailMask;
+         float flatlandZone = clamp(fertileZone * (1.0 - ruggedZone), 0.0, 1.0);
+         float detailMask = clamp(ruggedZone * 1.25 + coastZone * 0.42 + (1.0 - flatlandZone) * 0.24, 0.0, 1.0);
+         float nPulseA = sin((vViewPosition.x + vViewPosition.y * 0.62) * 16.0 + altitude * 19.0);
+         float nPulseB = cos((vViewPosition.z - vViewPosition.x * 0.33) * 13.0 + fertileZone * 17.0);
+         float nPulseC = sin((vViewPosition.y + vViewPosition.z * 0.52) * 22.0 + coastZone * 14.0);
+         vec3 detailPerturb = vec3(nPulseA, nPulseB, nPulseA * nPulseB + nPulseC * 0.55) * 0.031 * uPlanetDetailIntensity * detailMask;
          normal = normalize(normal + detailPerturb);`,
       )
       .replace(
         '#include <roughnessmap_fragment>',
         `#include <roughnessmap_fragment>
-         float coastRough = 1.0 - clamp(vTerrainData.y * 0.85, 0.0, 0.58);
+         float coastRough = 1.0 - clamp(vTerrainData.y * 0.78, 0.0, 0.54);
          float slopeRough = clamp(vTerrainData.a, 0.0, 1.0);
-         float fertileSmooth = clamp(vTerrainData.z * 0.28, 0.0, 0.24);
-         float microRough = (sin(vTerrainData.z * 40.0 + vTerrainData.x * 34.0) * 0.5 + 0.5) * 0.08;
-         roughnessFactor = clamp(roughnessFactor * coastRough + slopeRough * 0.22 + microRough - fertileSmooth, 0.36, 1.0);`,
+         float fertileSmooth = clamp(vTerrainData.z * (1.0 - slopeRough) * 0.34, 0.0, 0.3);
+         float plateauSmooth = clamp(vTerrainData.z * (1.0 - slopeRough * 1.3), 0.0, 1.0);
+         float microRough = (sin(vTerrainData.z * 35.0 + vTerrainData.x * 31.0) * 0.5 + 0.5) * 0.07;
+         roughnessFactor = clamp(roughnessFactor * coastRough + slopeRough * 0.24 + microRough - fertileSmooth - plateauSmooth * 0.08, 0.34, 1.0);`,
       )
       .replace(
         '#include <dithering_fragment>',
         `float coastGlow = smoothstep(0.24, 0.96, vTerrainData.y) * 0.065;
-         float highlandShade = smoothstep(0.43, 0.95, vTerrainData.a) * 0.095;
-         float fertileTint = smoothstep(0.28, 0.94, vTerrainData.z) * 0.05;
+         float highlandShade = smoothstep(0.45, 0.96, vTerrainData.a) * 0.1;
+         float fertileTint = smoothstep(0.28, 0.94, vTerrainData.z) * 0.048;
+         float flatlandTint = smoothstep(0.45, 0.95, vTerrainData.z * (1.0 - vTerrainData.a)) * 0.048;
          float thermalTint = smoothstep(0.52, 0.92, vTerrainData.z) * uThermalActivity * 0.06;
          float breakup = sin((vViewPosition.x + vViewPosition.z) * 3.4 + vTerrainData.x * 29.0) * 0.5 + 0.5;
          gl_FragColor.rgb += vec3(coastGlow * 0.45, coastGlow * 0.5, coastGlow * 0.55);
          gl_FragColor.rgb += vec3(0.01, 0.015, 0.005) * fertileTint;
+         gl_FragColor.rgb += vec3(0.015, 0.018, 0.012) * flatlandTint;
          gl_FragColor.rgb = mix(gl_FragColor.rgb, gl_FragColor.rgb * (1.0 - highlandShade) + vec3(0.048, 0.041, 0.036) * highlandShade, 0.76);
          gl_FragColor.rgb += vec3(thermalTint, thermalTint * 0.35, -thermalTint * 0.15);
          gl_FragColor.rgb *= 0.98 + breakup * 0.05;
@@ -168,9 +173,9 @@ export function applyPlanetRenderLod(
   if (lod === 'planet') {
     return {
       ...params,
-      meshResolution: Math.min(34, params.meshResolution + 6),
-      ridgedStrength: Math.min(0.78, params.ridgedStrength * 1.12),
-      detailAttenuation: Math.min(0.74, params.detailAttenuation * 1.28),
+      meshResolution: Math.min(44, params.meshResolution + 10),
+      ridgedStrength: Math.min(0.82, params.ridgedStrength * 1.16),
+      detailAttenuation: Math.min(0.8, params.detailAttenuation * 1.34),
     };
   }
 
