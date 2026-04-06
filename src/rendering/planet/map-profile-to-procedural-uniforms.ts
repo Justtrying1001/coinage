@@ -12,6 +12,11 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+function remap(value: number, inMin: number, inMax: number, outMin: number, outMax: number): number {
+  const t = clamp((value - inMin) / Math.max(0.0001, inMax - inMin), 0, 1);
+  return outMin + (outMax - outMin) * t;
+}
+
 function colorToTuple(color: THREE.Color): [number, number, number] {
   return [color.r, color.g, color.b];
 }
@@ -587,6 +592,10 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     0.05,
     Math.min(maxOceanLevelFromHydrology, hardOceanCapFromLand, rawMountainLevel - 0.18),
   );
+  const mountainLevel = clamp(Math.max(rawMountainLevel, finalOceanLevel + 0.18), 0.6, 0.92);
+  const oceanGap = clamp(mountainLevel - finalOceanLevel, 0.18, 0.72);
+  const normalizedGap = remap(oceanGap, 0.18, 0.72, 0, 1);
+  const optionalEffectBudget = clamp(0.24 + normalizedGap * 0.58 + (1 - climate.oddity) * 0.16, 0.26, 0.9);
 
   const landSurfaceColor = landColor.clone().lerp(new THREE.Color(categoryColors.land), 0.38).lerp(coastalColor, 0.14);
   const mountainSurfaceColor = mountainColor.clone().lerp(categoryMountain, 0.56);
@@ -605,7 +614,7 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     radius: clamp(profile.shape.radius * 0.98, 1.86, 5.1),
     meshResolution: Math.round(clamp(15 + profile.shape.radius * 3.6 + profile.relief.macroStrength * 7, 16, 25)),
     oceanLevel: finalOceanLevel,
-    mountainLevel: rawMountainLevel,
+    mountainLevel,
     minLandRatio,
     simpleFrequency: clamp(profile.shape.wobbleFrequency * 0.9 + 0.55, 0.8, 4.2),
     simpleStrength: clamp(
@@ -638,25 +647,27 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     craterStrength: clamp(
       (allowedEffects.has('craters') ? 1 : 0) *
         (profile.relief.craterDensity * (0.65 + identity.renderTuning.craterBoost) + climate.mineral * 0.14),
-      0.02,
+      0,
       1,
     ),
     thermalActivity: clamp(
       (allowedEffects.has('thermal') ? 1 : 0) *
-        (identity.renderTuning.thermalActivity * 0.7 +
-          profile.relief.macroStrength * 0.3 +
-          (surfaceCategory === 'volcanic' ? 0.24 : 0) +
-          (surfaceCategory === 'toxic' ? 0.16 : 0)),
+        (identity.renderTuning.thermalActivity * 0.62 +
+          profile.relief.macroStrength * 0.24 +
+          (surfaceCategory === 'volcanic' ? 0.2 : 0) +
+          (surfaceCategory === 'toxic' ? 0.12 : 0)) *
+        optionalEffectBudget,
       0,
-      1,
+      0.82,
     ),
     bandingStrength: clamp(
       (allowedEffects.has('banding') ? 1 : 0) *
         (identity.renderTuning.bandingStrength +
-          (surfaceCategory === 'ice' ? 0.08 : 0) +
-          (surfaceCategory === 'abyssal' ? 0.12 : 0)),
+          (surfaceCategory === 'ice' ? 0.05 : 0) +
+          (surfaceCategory === 'abyssal' ? 0.08 : 0)) *
+        optionalEffectBudget,
       0,
-      0.8,
+      0.4,
     ),
     bandingFrequency: clamp(
       identity.renderTuning.bandingFrequency + profile.shape.wobbleFrequency * 0.32 + profile.shape.ridgeWarp * 0.6,
@@ -668,7 +679,7 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
         profile.relief.roughness * 0.1 +
         (surfaceCategory === 'volcanic' || surfaceCategory === 'toxic' ? 0.06 : 0),
       1.02,
-      1.5,
+      1.38,
     ),
     roughness: clamp(profile.relief.roughness * 0.9 + 0.05, 0.2, 1),
     metalness: clamp(profile.materialFamily === 'metallic' ? 0.35 : profile.materialFamily === 'icy' ? 0.18 : 0.08, 0.05, 0.45),
