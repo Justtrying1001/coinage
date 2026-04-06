@@ -1,4 +1,8 @@
-import { ARCHETYPE_IDENTITY_RULES, MIN_GAMEPLAY_LAND_RATIO } from './planet-identity.constants';
+import {
+  ARCHETYPE_IDENTITY_RULES,
+  MIN_GAMEPLAY_LAND_RATIO,
+  MIN_VISUAL_LAND_RATIO,
+} from './planet-identity.constants';
 import type {
   PlanetArchetype,
   PlanetIdentity,
@@ -68,7 +72,7 @@ export function generatePlanetIdentity(input: {
   const atmosphereFamily = pickOne(rng, rule.allowedAtmosphereFamilies);
 
   const minGameplayLandRatio = MIN_GAMEPLAY_LAND_RATIO;
-  const effectiveMinLandRatio = Math.max(rule.targetLandRatio.min, minGameplayLandRatio);
+  const effectiveMinLandRatio = Math.max(rule.targetLandRatio.min, MIN_VISUAL_LAND_RATIO, minGameplayLandRatio);
   const effectiveMaxLandRatio = Math.max(rule.targetLandRatio.max, effectiveMinLandRatio);
 
   const targetLandRatio = clamp(range(rng, effectiveMinLandRatio, effectiveMaxLandRatio), minGameplayLandRatio, 0.95);

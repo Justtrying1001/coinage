@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-import { MIN_GAMEPLAY_LAND_RATIO } from '@/domain/world/planet-identity.constants';
+import { MIN_GAMEPLAY_LAND_RATIO, MIN_VISUAL_LAND_RATIO } from '@/domain/world/planet-identity.constants';
 import type { PlanetVisualProfile } from '@/domain/world/planet-visual.types';
 
 import type { ProceduralPlanetUniforms, SurfaceCategoryKind, TerrainProfileKind } from './types';
@@ -137,23 +137,23 @@ interface TerrainProfileSettings {
 function minimumLandRatioForCategory(category: SurfaceCategoryKind): number {
   switch (category) {
     case 'ocean':
-      return 0.4;
+      return 0.46;
     case 'ice':
-      return 0.42;
+      return 0.46;
     case 'toxic':
-      return 0.44;
+      return 0.47;
     case 'abyssal':
-      return 0.43;
+      return 0.47;
     case 'lush':
-      return 0.5;
+      return 0.52;
     case 'desert':
-      return 0.54;
+      return 0.56;
     case 'volcanic':
-      return 0.58;
+      return 0.6;
     case 'mineral':
-      return 0.54;
+      return 0.56;
     case 'barren':
-      return 0.5;
+      return 0.52;
   }
 }
 function applyMacroStyleToTerrain(
@@ -561,7 +561,7 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
       (0.5 - profile.color.accentMix) * 0.06 +
       (isIcy ? 0.02 : 0) -
       climate.dry * 0.04,
-    0.05,
+    0.02,
     0.62,
   );
   const minLandRatio = clamp(
@@ -570,9 +570,10 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
       profile.hydrology.minLandRatio,
       identity.visualConstraints.minLandRatio,
       identity.targetLandRatio,
+      MIN_VISUAL_LAND_RATIO,
     ),
     MIN_GAMEPLAY_LAND_RATIO,
-    0.78,
+    0.76,
   );
   const estimatedLandRatio = estimateLandRatio(
     rawOceanLevel,
@@ -584,19 +585,36 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
   const guardedOceanLevel = rawOceanLevel - Math.max(0, minLandRatio - estimatedLandRatio) * 1.18;
   const maxOceanLevelFromHydrology = clamp(
     Math.min(profile.hydrology.maxOceanRatio, identity.targetOceanRatio, identity.visualConstraints.maxOceanRatio),
-    0.02,
+    0,
     0.62,
   );
   const hardOceanCapFromLand = clamp(1 - minLandRatio + 0.02, 0.18, 0.6);
   const finalOceanLevel = clamp(
     guardedOceanLevel,
-    0.05,
+    0.01,
     Math.min(maxOceanLevelFromHydrology, hardOceanCapFromLand, rawMountainLevel - 0.18),
   );
   const mountainLevel = clamp(Math.max(rawMountainLevel, finalOceanLevel + 0.18), 0.6, 0.92);
   const oceanGap = clamp(mountainLevel - finalOceanLevel, 0.18, 0.72);
   const normalizedGap = remap(oceanGap, 0.18, 0.72, 0, 1);
   const optionalEffectBudget = clamp(0.24 + normalizedGap * 0.58 + (1 - climate.oddity) * 0.16, 0.26, 0.9);
+  const landDemandBoost = 1 + Math.max(0, minLandRatio - 0.54) * 1.35;
+  const mappedSimpleStrength = clamp(
+    (profile.relief.macroStrength * 0.62 + profile.shape.wobbleAmplitude * 0.35) *
+      terrainProfile.macroScale *
+      categorySimpleScale[surfaceCategory] *
+      landDemandBoost,
+    0.1,
+    0.74,
+  );
+  const mappedRidgedStrength = clamp(
+    (profile.relief.microStrength * 0.9 + profile.shape.ridgeWarp * 0.14) *
+      terrainProfile.ridgedScale *
+      categoryRidgedScale[surfaceCategory] *
+      (1 + Math.max(0, minLandRatio - 0.56) * 0.9),
+    0.04,
+    0.66,
+  );
 
   const landSurfaceColor = landColor.clone().lerp(new THREE.Color(categoryColors.land), 0.38).lerp(coastalColor, 0.14);
   const mountainSurfaceColor = mountainColor.clone().lerp(categoryMountain, 0.56);
@@ -612,27 +630,15 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     landColor: colorToTuple(landSurfaceColor),
     mountainColor: colorToTuple(mountainSurfaceColor),
     iceColor: colorToTuple(iceSurfaceColor),
-    radius: clamp(profile.shape.radius * 0.98, 1.86, 5.1),
+    radius: clamp(profile.shape.radius * 0.99, 2.16, 5.6),
     meshResolution: Math.round(clamp(15 + profile.shape.radius * 3.6 + profile.relief.macroStrength * 7, 16, 25)),
     oceanLevel: finalOceanLevel,
     mountainLevel,
     minLandRatio,
     simpleFrequency: clamp(profile.shape.wobbleFrequency * 0.9 + 0.55, 0.8, 4.2),
-    simpleStrength: clamp(
-      (profile.relief.macroStrength * 0.62 + profile.shape.wobbleAmplitude * 0.35) *
-        terrainProfile.macroScale *
-        categorySimpleScale[surfaceCategory],
-      0.08,
-      0.7,
-    ),
+    simpleStrength: mappedSimpleStrength,
     ridgedFrequency: clamp(profile.shape.wobbleFrequency * 2.0 + 1.4, 1.8, 8.2),
-    ridgedStrength: clamp(
-      (profile.relief.microStrength * 0.9 + profile.shape.ridgeWarp * 0.14) *
-        terrainProfile.ridgedScale *
-        categoryRidgedScale[surfaceCategory],
-      0.04,
-      0.62,
-    ),
+    ridgedStrength: mappedRidgedStrength,
     maskStrength: clamp(0.45 + profile.shape.ridgeWarp * 0.4 + profile.relief.craterDensity * 0.1, 0.3, 0.95),
     surfaceCategory,
     terrainProfile: terrainProfile.type,

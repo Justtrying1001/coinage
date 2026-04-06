@@ -116,13 +116,13 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
 
     assert.ok(uniforms.shapeSeed >= 0, `shapeSeed out of range: ${uniforms.shapeSeed}`);
     assert.ok(uniforms.reliefSeed >= 0, `reliefSeed out of range: ${uniforms.reliefSeed}`);
-    assert.ok(uniforms.radius >= 1.86 && uniforms.radius <= 5.1, `radius out of range: ${uniforms.radius}`);
+    assert.ok(uniforms.radius >= 2.16 && uniforms.radius <= 5.6, `radius out of range: ${uniforms.radius}`);
     assert.ok(
       uniforms.meshResolution >= 20 && uniforms.meshResolution <= 35,
       `meshResolution out of range: ${uniforms.meshResolution}`,
     );
     assert.ok(
-      uniforms.oceanLevel >= 0.05 && uniforms.oceanLevel <= 0.62,
+      uniforms.oceanLevel >= 0.01 && uniforms.oceanLevel <= 0.62,
       `oceanLevel out of range: ${uniforms.oceanLevel}`,
     );
     assert.ok(
@@ -130,7 +130,7 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
       `mountainLevel out of range: ${uniforms.mountainLevel}`,
     );
     assert.ok(
-      uniforms.minLandRatio >= 0.4 && uniforms.minLandRatio <= 0.78,
+      uniforms.minLandRatio >= 0.46 && uniforms.minLandRatio <= 0.76,
       `minLandRatio out of range: ${uniforms.minLandRatio}`,
     );
     assert.ok(
@@ -146,7 +146,7 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
       `simpleFrequency out of range: ${uniforms.simpleFrequency}`,
     );
     assert.ok(
-      uniforms.simpleStrength >= 0.08 && uniforms.simpleStrength <= 0.7,
+      uniforms.simpleStrength >= 0.1 && uniforms.simpleStrength <= 0.74,
       `simpleStrength out of range: ${uniforms.simpleStrength}`,
     );
     assert.ok(
@@ -154,7 +154,7 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
       `ridgedFrequency out of range: ${uniforms.ridgedFrequency}`,
     );
     assert.ok(
-      uniforms.ridgedStrength >= 0.04 && uniforms.ridgedStrength <= 0.62,
+      uniforms.ridgedStrength >= 0.04 && uniforms.ridgedStrength <= 0.66,
       `ridgedStrength out of range: ${uniforms.ridgedStrength}`,
     );
     assert.ok(

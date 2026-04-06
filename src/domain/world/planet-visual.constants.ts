@@ -15,9 +15,9 @@ export const SIZE_CATEGORY_WEIGHTS: Array<{ category: PlanetSizeCategory; weight
 ];
 
 export const SIZE_RADIUS_RANGES: Record<PlanetSizeCategory, { min: number; max: number }> = {
-  small: { min: 1.9, max: 2.3 },
-  medium: { min: 2.36, max: 3.3 },
-  large: { min: 3.34, max: 4.78 },
+  small: { min: 2.22, max: 2.78 },
+  medium: { min: 2.84, max: 3.86 },
+  large: { min: 3.96, max: 5.32 },
 };
 
 export const MATERIAL_FAMILIES: MaterialFamily[] = ['rocky', 'dusty', 'metallic', 'icy'];
