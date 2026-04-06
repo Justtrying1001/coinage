@@ -12,6 +12,7 @@ import { mapProfileToProceduralUniforms } from '@/rendering/planet/map-profile-t
 import { applyPlanetRenderLod, createPlanetRenderInstance } from '@/rendering/planet/create-planet-render-instance';
 import type { PlanetRenderInstance } from '@/rendering/planet/types';
 import { TerrainWorkerClient } from './terrain-worker-client';
+import { computeGalaxyVisualRadius } from './planet-visual-scale';
 
 const GalaxyHud = dynamic(() => import('./GalaxyHud'), {
   ssr: false,
@@ -26,6 +27,7 @@ interface PlanetRenderData {
   id: string;
   x: number;
   y: number;
+  radius: number;
   profile: PlanetVisualProfile;
 }
 
@@ -578,6 +580,10 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       }
 
       const params = applyPlanetRenderLod(mapProfileToProceduralUniforms(planet.profile), 'galaxy');
+      const visualRadius = computeGalaxyVisualRadius({
+        manifestRadius: planet.radius,
+        renderRadius: params.radius,
+      });
       const workerResult = await terrainWorkerClient.enqueue(params);
       totalWorkerJobMs += workerResult.generationMs;
       if (perfStore) {
@@ -596,6 +602,8 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         options: { lod: 'galaxy' },
         precomputedTerrainBuffers: workerResult.buffers,
       });
+      const visualScale = visualRadius / Math.max(0.0001, params.radius);
+      instance.object.scale.setScalar(visualScale);
       const geometryBuildMs = performance.now() - startedAt;
       totalGeometryBuildMs += geometryBuildMs;
       totalInstantiationMs += workerResult.generationMs + geometryBuildMs;
