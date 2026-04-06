@@ -40,6 +40,34 @@ export type PlanetMacroStyle =
   | 'dual-hemisphere'
   | 'basin';
 
+export type PlanetShapeFamily = 'stable-spheroid' | 'eroded' | 'tectonic' | 'fragmented-shell';
+export type PlanetReliefFamily = 'gentle' | 'moderate' | 'rugged' | 'extreme' | 'fragmented';
+export type PlanetHydrologyFamily = 'waterworld' | 'balanced' | 'arid' | 'dry' | 'cryo';
+export type PlanetSurfaceFamily =
+  | 'ocean'
+  | 'desert'
+  | 'ice'
+  | 'volcanic'
+  | 'lush'
+  | 'mineral'
+  | 'barren'
+  | 'toxic'
+  | 'abyssal';
+export type PlanetAtmosphereFamily = 'none' | 'thin' | 'standard' | 'dense' | 'reactive';
+export type PlanetTerrainFamily = 'smooth' | 'moderate' | 'rough' | 'extreme' | 'fragmented' | 'continental';
+export type PlanetEffect = 'craters' | 'thermal' | 'banding' | 'icecaps' | 'aurora';
+
+export interface PlanetRenderTuning {
+  colorPresence: number;
+  craterBoost: number;
+  thermalActivity: number;
+  bandingStrength: number;
+  bandingFrequency: number;
+  colorContrast: number;
+  oceanLevelOffset: number;
+  mountainLevelOffset: number;
+}
+
 export interface SeedInputs {
   worldSeed: string;
   planetSeed: string;
@@ -52,6 +80,30 @@ export interface DerivedSubSeeds {
   colorSeed: number;
   atmoSeed: number;
   hydroSeed: number;
+}
+
+export interface PlanetIdentity {
+  archetype: PlanetArchetype;
+  sizeCategory: PlanetSizeCategory;
+  shapeFamily: PlanetShapeFamily;
+  reliefFamily: PlanetReliefFamily;
+  hydrologyFamily: PlanetHydrologyFamily;
+  surfaceFamily: PlanetSurfaceFamily;
+  paletteFamily: PaletteFamily;
+  atmosphereFamily: PlanetAtmosphereFamily;
+  targetLandRatio: number;
+  targetOceanRatio: number;
+  allowedTerrainProfiles: PlanetTerrainFamily[];
+  allowedEffects: PlanetEffect[];
+  forbiddenEffects: PlanetEffect[];
+  visualConstraints: {
+    minLandRatio: number;
+    maxOceanRatio: number;
+    minElevationCap: number;
+    maxElevationCap: number;
+  };
+  renderTuning: PlanetRenderTuning;
+  specialTraits: string[];
 }
 
 export interface ShapeParameters {
@@ -93,6 +145,7 @@ export interface PlanetVisualProfile {
   visualGenVersion: number;
   seeds: SeedInputs;
   derivedSubSeeds: DerivedSubSeeds;
+  identity: PlanetIdentity;
   archetype: PlanetArchetype;
   macroStyle: PlanetMacroStyle;
   sizeCategory: PlanetSizeCategory;

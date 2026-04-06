@@ -70,103 +70,14 @@ declare global {
 const FIELD_RADIUS = GALAXY_LAYOUT_RUNTIME_CONFIG.fieldRadius ?? 84;
 const MOVE_SPEED = Math.max(24, FIELD_RADIUS * 0.18);
 const BASE_VIEW_HEIGHT = Math.min(380, Math.max(140, FIELD_RADIUS * 0.58));
-const FIXED_CAMERA_ZOOM = 2.42;
+const FIXED_CAMERA_ZOOM = 2.85;
 const KEYBOARD_ACCELERATION = 15;
 const KEYBOARD_DECELERATION = 13;
 const CAMERA_FOLLOW_DAMPING = 16;
 const DRAG_PAN_FACTOR = 0.0135 * BASE_VIEW_HEIGHT;
-const PAN_SENSITIVITY = 0.8;
-const MICRO_JITTER_THRESHOLD = 0.1;
 const PLANET_BATCH_SIZE = 24;
 const INITIAL_BATCH_CAP = 72;
 const PERF_LOG_PREFIX = '[GalaxyPerf]';
-
-class CameraController {
-  position: { x: number; y: number };
-  velocity: { x: number; y: number };
-  target: { x: number; y: number };
-
-  private viewportHeight: number;
-  private boundsX = 0;
-  private boundsY = 0;
-  private readonly panSensitivity: number;
-
-  constructor(initialX: number, initialY: number, viewportHeight: number, panSensitivity: number) {
-    this.position = { x: initialX, y: initialY };
-    this.target = { x: initialX, y: initialY };
-    this.velocity = { x: 0, y: 0 };
-    this.viewportHeight = Math.max(1, viewportHeight);
-    this.panSensitivity = panSensitivity;
-  }
-
-  setViewportHeight(viewportHeight: number): void {
-    this.viewportHeight = Math.max(1, viewportHeight);
-  }
-
-  setBounds(boundsX: number, boundsY: number): void {
-    this.boundsX = Math.max(0, boundsX);
-    this.boundsY = Math.max(0, boundsY);
-    this.clampTarget();
-    this.clampPosition();
-  }
-
-  moveTarget(deltaX: number, deltaY: number): void {
-    this.target.x += deltaX;
-    this.target.y += deltaY;
-  }
-
-  onDrag(deltaX: number, deltaY: number): void {
-    let safeDeltaX = deltaX;
-    let safeDeltaY = deltaY;
-
-    if (Math.abs(safeDeltaX) < MICRO_JITTER_THRESHOLD) {
-      safeDeltaX = 0;
-    }
-    if (Math.abs(safeDeltaY) < MICRO_JITTER_THRESHOLD) {
-      safeDeltaY = 0;
-    }
-    if (safeDeltaX === 0 && safeDeltaY === 0) {
-      return;
-    }
-
-    const worldDeltaX = (safeDeltaX / this.viewportHeight) * DRAG_PAN_FACTOR;
-    const worldDeltaY = (safeDeltaY / this.viewportHeight) * DRAG_PAN_FACTOR;
-    this.velocity.x += -worldDeltaX * this.panSensitivity;
-    this.velocity.y += worldDeltaY * this.panSensitivity;
-  }
-
-  update(deltaTime: number): void {
-    const safeDelta = Math.max(0, deltaTime);
-    const damping = Math.pow(0.9, safeDelta);
-    this.velocity.x *= damping;
-    this.velocity.y *= damping;
-
-    const speed = Math.min(1, Math.hypot(this.velocity.x, this.velocity.y));
-    const easedVelocityScale = 0.85 + 0.1 * speed;
-    this.velocity.x *= easedVelocityScale;
-    this.velocity.y *= easedVelocityScale;
-
-    this.target.x += this.velocity.x * safeDelta;
-    this.target.y += this.velocity.y * safeDelta;
-    this.clampTarget();
-
-    const followLerpPerFrame = 1 - Math.exp(-CAMERA_FOLLOW_DAMPING / 60);
-    const followFactor = 1 - Math.pow(1 - followLerpPerFrame, safeDelta);
-    this.position.x += (this.target.x - this.position.x) * followFactor;
-    this.position.y += (this.target.y - this.position.y) * followFactor;
-    this.clampPosition();
-  }
-
-  private clampTarget(): void {
-    this.target.x = Math.max(-this.boundsX, Math.min(this.boundsX, this.target.x));
-    this.target.y = Math.max(-this.boundsY, Math.min(this.boundsY, this.target.y));
-  }
-
-  private clampPosition(): void {
-    this.position.x = Math.max(-this.boundsX, Math.min(this.boundsX, this.position.x));
-    this.position.y = Math.max(-this.boundsY, Math.min(this.boundsY, this.position.y));
-  }
-}
 
 function createDefaultCounters(totalPlanets = 0): GalaxyPerfCounters {
   return {
@@ -367,12 +278,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     camera.zoom = FIXED_CAMERA_ZOOM;
     camera.updateProjectionMatrix();
     camera.lookAt(camera.position.x, camera.position.y, 0);
-    const cameraController = new CameraController(
-      camera.position.x,
-      camera.position.y,
-      mount.clientHeight,
-      PAN_SENSITIVITY,
-    );
+    const cameraTarget = new THREE.Vector2(camera.position.x, camera.position.y);
     const keyboardVelocity = new THREE.Vector2(0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -383,19 +289,15 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     renderer.toneMappingExposure = 1.6;
     mount.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight('#f5efe4', 1.3));
+    scene.add(new THREE.AmbientLight('#b7d1ff', 1.9));
 
-    const keyLight = new THREE.DirectionalLight('#ffe7cf', 1.82);
-    keyLight.position.set(24, 22, 44);
+    const keyLight = new THREE.DirectionalLight('#ffffff', 2.1);
+    keyLight.position.set(20, 26, 44);
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight('#d4d8e6', 0.7);
-    fillLight.position.set(-26, -10, 30);
+    const fillLight = new THREE.DirectionalLight('#b6ccff', 1.25);
+    fillLight.position.set(-24, -12, 32);
     scene.add(fillLight);
-
-    const rimLight = new THREE.DirectionalLight('#fcead0', 0.5);
-    rimLight.position.set(0, 34, -16);
-    scene.add(rimLight);
 
     const planetGroup = new THREE.Group();
     const instances: PlanetRenderInstance[] = [];
@@ -408,7 +310,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
 
     const { queue: prioritizedQueue, prioritizedCount } = prioritizePlanets(
       planetData,
-      new THREE.Vector2(cameraController.position.x, cameraController.position.y),
+      cameraTarget,
       camera,
     );
     const initialBatchTarget = Math.min(
@@ -463,7 +365,8 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       lastX = event.clientX;
       lastY = event.clientY;
 
-      cameraController.onDrag(dx, dy);
+      cameraTarget.x -= (dx / Math.max(1, mount.clientHeight)) * DRAG_PAN_FACTOR;
+      cameraTarget.y += (dy / Math.max(1, mount.clientHeight)) * DRAG_PAN_FACTOR;
       invalidateRender();
     };
 
@@ -522,7 +425,6 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       camera.bottom = -frustumHalfHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(currentWidth, currentHeight);
-      cameraController.setViewportHeight(currentHeight);
       invalidateRender();
     };
 
@@ -603,12 +505,8 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       keyState.d;
 
     const hasCameraMotion = () => {
-      const distanceToTarget = Math.hypot(
-        cameraController.target.x - cameraController.position.x,
-        cameraController.target.y - cameraController.position.y,
-      );
-      const cameraVelocity = Math.hypot(cameraController.velocity.x, cameraController.velocity.y);
-      return distanceToTarget > 0.02 || cameraVelocity > 0.02 || Math.hypot(keyboardVelocity.x, keyboardVelocity.y) > 0.02;
+      const distanceToTarget = Math.hypot(cameraTarget.x - camera.position.x, cameraTarget.y - camera.position.y);
+      return distanceToTarget > 0.02 || Math.hypot(keyboardVelocity.x, keyboardVelocity.y) > 0.02;
     };
 
     const shouldContinueRendering = () => {
@@ -831,9 +729,8 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       renderScheduled = false;
 
       const frameStartedAt = performance.now();
-      const deltaSeconds = Math.min(0.05, (time - previousFrameTime) / 1000);
+      const delta = Math.min(0.05, (time - previousFrameTime) / 1000);
       previousFrameTime = time;
-      const deltaTime = (deltaSeconds * 1000) / 16.67;
 
       let moveX = 0;
       let moveY = 0;
@@ -847,20 +744,22 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       const desiredKeyboardVelocityX = moveX === 0 ? 0 : (moveX / length) * MOVE_SPEED;
       const desiredKeyboardVelocityY = moveY === 0 ? 0 : (moveY / length) * MOVE_SPEED;
       const keyboardResponse =
-        1 - Math.exp(-(moveX === 0 && moveY === 0 ? KEYBOARD_DECELERATION : KEYBOARD_ACCELERATION) * deltaSeconds);
+        1 - Math.exp(-(moveX === 0 && moveY === 0 ? KEYBOARD_DECELERATION : KEYBOARD_ACCELERATION) * delta);
       keyboardVelocity.x += (desiredKeyboardVelocityX - keyboardVelocity.x) * keyboardResponse;
       keyboardVelocity.y += (desiredKeyboardVelocityY - keyboardVelocity.y) * keyboardResponse;
-      cameraController.moveTarget(keyboardVelocity.x * deltaSeconds, keyboardVelocity.y * deltaSeconds);
+      cameraTarget.x += keyboardVelocity.x * delta;
+      cameraTarget.y += keyboardVelocity.y * delta;
 
       const verticalHalfSpan = (camera.top - camera.bottom) / (2 * camera.zoom);
       const horizontalHalfSpan = (camera.right - camera.left) / (2 * camera.zoom);
       const clampedXRadius = Math.max(0, FIELD_RADIUS - horizontalHalfSpan * 0.4);
       const clampedYRadius = Math.max(0, FIELD_RADIUS - verticalHalfSpan * 0.4);
-      cameraController.setBounds(clampedXRadius, clampedYRadius);
-      cameraController.update(deltaTime);
+      cameraTarget.x = Math.max(-clampedXRadius, Math.min(clampedXRadius, cameraTarget.x));
+      cameraTarget.y = Math.max(-clampedYRadius, Math.min(clampedYRadius, cameraTarget.y));
 
-      camera.position.x = cameraController.position.x;
-      camera.position.y = cameraController.position.y;
+      const followFactor = 1 - Math.exp(-CAMERA_FOLLOW_DAMPING * delta);
+      camera.position.x += (cameraTarget.x - camera.position.x) * followFactor;
+      camera.position.y += (cameraTarget.y - camera.position.y) * followFactor;
 
       renderer.render(scene, camera);
       renderInvalidated = false;

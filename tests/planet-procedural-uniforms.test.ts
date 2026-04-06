@@ -121,14 +121,25 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
       uniforms.meshResolution >= 20 && uniforms.meshResolution <= 35,
       `meshResolution out of range: ${uniforms.meshResolution}`,
     );
-    assert.ok(uniforms.oceanLevel >= 0 && uniforms.oceanLevel <= 1, `oceanLevel out of range: ${uniforms.oceanLevel}`);
+    assert.ok(
+      uniforms.oceanLevel >= 0.05 && uniforms.oceanLevel <= 0.62,
+      `oceanLevel out of range: ${uniforms.oceanLevel}`,
+    );
     assert.ok(
       uniforms.mountainLevel >= 0.6 && uniforms.mountainLevel <= 0.92,
       `mountainLevel out of range: ${uniforms.mountainLevel}`,
     );
     assert.ok(
-      uniforms.minLandRatio >= 0 && uniforms.minLandRatio <= 1,
+      uniforms.minLandRatio >= 0.4 && uniforms.minLandRatio <= 0.78,
       `minLandRatio out of range: ${uniforms.minLandRatio}`,
+    );
+    assert.ok(
+      uniforms.mountainLevel - uniforms.oceanLevel >= 0.18,
+      `expected land band gap >= 0.18, got ${uniforms.mountainLevel - uniforms.oceanLevel}`,
+    );
+    assert.ok(
+      uniforms.oceanLevel <= 1 - uniforms.minLandRatio + 0.03,
+      `expected ocean level to respect minLandRatio guardrail, got ocean=${uniforms.oceanLevel}, minLandRatio=${uniforms.minLandRatio}`,
     );
     assert.ok(
       uniforms.simpleFrequency >= 0.8 && uniforms.simpleFrequency <= 4.2,
