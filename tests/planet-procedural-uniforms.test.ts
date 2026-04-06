@@ -197,7 +197,8 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
     assert.ok(uniforms.bandingFrequency >= 1.8 && uniforms.bandingFrequency <= 8.2, `bandingFrequency out of range: ${uniforms.bandingFrequency}`);
     assert.ok(uniforms.colorContrast >= 1.02 && uniforms.colorContrast <= 1.38, `colorContrast out of range: ${uniforms.colorContrast}`);
     assert.ok(uniforms.roughness >= 0.2 && uniforms.roughness <= 1, `roughness out of range: ${uniforms.roughness}`);
-    assert.ok(uniforms.metalness >= 0.05 && uniforms.metalness <= 0.45, `metalness out of range: ${uniforms.metalness}`);
+    assert.equal(uniforms.roughness, 1, `roughness should be neutralized to 1, got ${uniforms.roughness}`);
+    assert.equal(uniforms.metalness, 0, `metalness should be neutralized to 0, got ${uniforms.metalness}`);
     assert.ok(
       uniforms.atmosphereIntensity >= 0 && uniforms.atmosphereIntensity <= 1,
       `atmosphereIntensity out of range: ${uniforms.atmosphereIntensity}`,

@@ -1,4 +1,4 @@
-import { ARCHETYPE_IDENTITY_RULES } from './planet-identity.constants';
+import { ARCHETYPE_IDENTITY_RULES, MIN_GAMEPLAY_LAND_RATIO } from './planet-identity.constants';
 import type {
   PlanetArchetype,
   PlanetIdentity,
@@ -67,7 +67,11 @@ export function generatePlanetIdentity(input: {
   const paletteFamily = pickOne(rng, rule.allowedPaletteFamilies);
   const atmosphereFamily = pickOne(rng, rule.allowedAtmosphereFamilies);
 
-  const targetLandRatio = clamp(range(rng, rule.targetLandRatio.min, rule.targetLandRatio.max), 0.2, 0.95);
+  const minGameplayLandRatio = MIN_GAMEPLAY_LAND_RATIO;
+  const effectiveMinLandRatio = Math.max(rule.targetLandRatio.min, minGameplayLandRatio);
+  const effectiveMaxLandRatio = Math.max(rule.targetLandRatio.max, effectiveMinLandRatio);
+
+  const targetLandRatio = clamp(range(rng, effectiveMinLandRatio, effectiveMaxLandRatio), minGameplayLandRatio, 0.95);
   const rawOceanRatio = clamp(range(rng, rule.targetOceanRatio.min, rule.targetOceanRatio.max), 0, 0.8);
   const maxOceanByLand = clamp(1 - targetLandRatio - 0.06, 0, 0.8);
   const targetOceanRatio = Math.min(rawOceanRatio, maxOceanByLand);
@@ -92,7 +96,7 @@ export function generatePlanetIdentity(input: {
     allowedEffects: withoutForbidden(rule.allowedEffects, rule.forbiddenEffects),
     forbiddenEffects: [...rule.forbiddenEffects],
     visualConstraints: {
-      minLandRatio: rule.targetLandRatio.min,
+      minLandRatio: effectiveMinLandRatio,
       maxOceanRatio: rule.targetOceanRatio.max,
       minElevationCap: rule.elevationCapRange.min,
       maxElevationCap: rule.elevationCapRange.max,
@@ -104,6 +108,14 @@ export function generatePlanetIdentity(input: {
 
 export function validatePlanetIdentity(identity: PlanetIdentity): string[] {
   const issues: string[] = [];
+
+  if (identity.visualConstraints.minLandRatio < MIN_GAMEPLAY_LAND_RATIO) {
+    issues.push('visualConstraints.minLandRatio below gameplay minimum');
+  }
+
+  if (identity.targetLandRatio < MIN_GAMEPLAY_LAND_RATIO) {
+    issues.push('targetLandRatio below gameplay minimum');
+  }
 
   if (identity.targetLandRatio < identity.visualConstraints.minLandRatio) {
     issues.push('targetLandRatio below minLandRatio constraint');

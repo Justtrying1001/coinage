@@ -29,6 +29,8 @@ export interface ArchetypeIdentityRule {
   rareTraits?: string[];
 }
 
+export const MIN_GAMEPLAY_LAND_RATIO = 0.4;
+
 export const ARCHETYPE_IDENTITY_RULES: Record<PlanetArchetype, ArchetypeIdentityRule> = {
   oceanic: {
     weight: 1.1,
@@ -42,7 +44,7 @@ export const ARCHETYPE_IDENTITY_RULES: Record<PlanetArchetype, ArchetypeIdentity
     allowedTerrainProfiles: ['smooth', 'moderate', 'continental'],
     allowedEffects: ['banding', 'icecaps', 'aurora'],
     forbiddenEffects: ['thermal'],
-    targetLandRatio: { min: 0.34, max: 0.56 },
+    targetLandRatio: { min: 0.4, max: 0.56 },
     targetOceanRatio: { min: 0.44, max: 0.66 },
     elevationCapRange: { min: 0.18, max: 0.25 },
   },
