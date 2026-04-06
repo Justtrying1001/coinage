@@ -57,6 +57,7 @@ export interface ProceduralPlanetUniforms {
 
 export interface PlanetRendererOptions {
   lod?: 'galaxy' | 'planet';
+  enableAtmosphere?: boolean;
 }
 
 export interface PrecomputedTerrainBuffers {

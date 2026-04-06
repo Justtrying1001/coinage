@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 import { generatePlanetVisualProfile } from '@/domain/world/generate-planet-visual-profile';
 import { validateProfileIdentity } from '@/domain/world/generate-planet-identity';
+import { ARCHETYPE_IDENTITY_RULES, MIN_GAMEPLAY_LAND_RATIO } from '@/domain/world/planet-identity.constants';
 import { mapProfileToProceduralUniforms } from '@/rendering/planet/map-profile-to-procedural-uniforms';
 import { applyPlanetRenderLod } from '@/rendering/planet/create-planet-render-instance';
 
@@ -40,8 +41,21 @@ test('mapper respects identity surface family and land/ocean constraints', () =>
       `expected minLandRatio >= identity minLandRatio for ${profile.id}`,
     );
     assert.ok(
+      uniforms.minLandRatio >= MIN_GAMEPLAY_LAND_RATIO,
+      `expected minLandRatio >= gameplay minimum for ${profile.id}`,
+    );
+    assert.ok(
       uniforms.oceanLevel <= profile.identity.visualConstraints.maxOceanRatio + 0.02,
       `expected oceanLevel <= identity maxOceanRatio envelope for ${profile.id}`,
+    );
+  }
+});
+
+test('archetype identity rules enforce gameplay minimum land ratio', () => {
+  for (const [archetype, rule] of Object.entries(ARCHETYPE_IDENTITY_RULES)) {
+    assert.ok(
+      rule.targetLandRatio.min >= MIN_GAMEPLAY_LAND_RATIO,
+      `${archetype} targetLandRatio.min below gameplay minimum`,
     );
   }
 });

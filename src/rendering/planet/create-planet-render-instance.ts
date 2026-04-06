@@ -180,12 +180,12 @@ function getOrCreateSurfaceMaterial(params: ReturnType<typeof mapProfileToProced
 
   const material = new THREE.MeshStandardMaterial({
     vertexColors: true,
-    roughness: params.roughness,
-    metalness: params.metalness,
+    roughness: 1,
+    metalness: 0,
     side: THREE.DoubleSide,
-    emissive: new THREE.Color(0x14161b),
-    emissiveIntensity: 0.1,
-    envMapIntensity: 1.05,
+    emissive: new THREE.Color(0x0f1116),
+    emissiveIntensity: 0.08,
+    envMapIntensity: 0,
   });
   SURFACE_MATERIAL_CACHE.set(key, { material, refs: 1 });
   return {
@@ -330,7 +330,7 @@ export function createPlanetRenderInstance({
   let atmosphereMaterial: THREE.ShaderMaterial | null = null;
   let releaseAtmosphereMaterial: (() => void) | null = null;
 
-  if (params.atmosphereEnabled && params.atmosphereIntensity > 0.01) {
+  if (options?.enableAtmosphere === true && params.atmosphereEnabled && params.atmosphereIntensity > 0.01) {
     const atmoSegments = options?.lod === 'galaxy' ? 14 : 24;
     const cachedAtmosphere = getOrCreateAtmosphereGeometry(params.radius, params.atmosphereThickness, atmoSegments);
     atmosphereGeometry = cachedAtmosphere.geometry;

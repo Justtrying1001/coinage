@@ -11,6 +11,7 @@ import {
   pickArchetypeFromIdentityRules,
   validateProfileIdentity,
 } from './generate-planet-identity';
+import { MIN_GAMEPLAY_LAND_RATIO } from './planet-identity.constants';
 import type {
   MaterialFamily,
   PlanetMacroStyle,
@@ -103,7 +104,7 @@ export function generatePlanetVisualProfile(
   const atmosphereEnabled = identity.atmosphereFamily !== 'none' && atmoRng() < archetype.atmosphereChance;
 
   const hydrologyRangeByFamily = {
-    waterworld: { oceanBias: [0.62, 0.88], minLandRatio: [0.32, 0.5], maxOceanRatio: [0.5, 0.72] },
+    waterworld: { oceanBias: [0.62, 0.88], minLandRatio: [MIN_GAMEPLAY_LAND_RATIO, 0.5], maxOceanRatio: [0.5, 0.72] },
     balanced: { oceanBias: [0.35, 0.62], minLandRatio: [0.46, 0.68], maxOceanRatio: [0.3, 0.54] },
     arid: { oceanBias: [0.12, 0.34], minLandRatio: [0.58, 0.8], maxOceanRatio: [0.14, 0.34] },
     dry: { oceanBias: [0.02, 0.18], minLandRatio: [0.68, 0.9], maxOceanRatio: [0.02, 0.18] },
@@ -135,7 +136,7 @@ export function generatePlanetVisualProfile(
         min: hydroFamilyRange.oceanBias[0],
         max: hydroFamilyRange.oceanBias[1],
       }),
-      minLandRatio: sampleBiasedRange(hydroRng, { min: 0.34, max: 0.9 }, {
+      minLandRatio: sampleBiasedRange(hydroRng, { min: MIN_GAMEPLAY_LAND_RATIO, max: 0.9 }, {
         min: Math.max(hydroFamilyRange.minLandRatio[0], identity.visualConstraints.minLandRatio),
         max: hydroFamilyRange.minLandRatio[1],
       }),
@@ -214,7 +215,7 @@ export function isPlanetVisualProfileInBounds(profile: PlanetVisualProfile): boo
     profile.color.accentMix <= BOUNDS.accentMix.max &&
     profile.hydrology.oceanBias >= 0 &&
     profile.hydrology.oceanBias <= 1 &&
-    profile.hydrology.minLandRatio >= 0.34 &&
+    profile.hydrology.minLandRatio >= MIN_GAMEPLAY_LAND_RATIO &&
     profile.hydrology.minLandRatio <= 0.9 &&
     profile.hydrology.maxOceanRatio >= 0.02 &&
     profile.hydrology.maxOceanRatio <= 0.74 &&

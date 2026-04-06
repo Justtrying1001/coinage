@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 
+import { MIN_GAMEPLAY_LAND_RATIO } from '@/domain/world/planet-identity.constants';
 import type { PlanetVisualProfile } from '@/domain/world/planet-visual.types';
 
 import type { ProceduralPlanetUniforms, SurfaceCategoryKind, TerrainProfileKind } from './types';
@@ -570,7 +571,7 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
       identity.visualConstraints.minLandRatio,
       identity.targetLandRatio,
     ),
-    0.4,
+    MIN_GAMEPLAY_LAND_RATIO,
     0.78,
   );
   const estimatedLandRatio = estimateLandRatio(
@@ -681,8 +682,8 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
       1.02,
       1.38,
     ),
-    roughness: clamp(profile.relief.roughness * 0.9 + 0.05, 0.2, 1),
-    metalness: clamp(profile.materialFamily === 'metallic' ? 0.35 : profile.materialFamily === 'icy' ? 0.18 : 0.08, 0.05, 0.45),
+    roughness: 1,
+    metalness: 0,
     atmosphereEnabled: profile.atmosphere.enabled,
     atmosphereIntensity: profile.atmosphere.enabled ? clamp(profile.atmosphere.intensity * (0.86 + climate.oddity * 0.24), 0.12, 1) : 0,
     atmosphereThickness: profile.atmosphere.enabled ? clamp(profile.atmosphere.thickness * (0.86 + climate.cryo * 0.24), 0.015, 0.14) : 0,
