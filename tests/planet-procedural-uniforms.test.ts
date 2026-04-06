@@ -191,11 +191,11 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
       uniforms.biomeHarshness >= 0.14 && uniforms.biomeHarshness <= 0.86,
       `biomeHarshness out of range: ${uniforms.biomeHarshness}`,
     );
-    assert.ok(uniforms.craterStrength >= 0.02 && uniforms.craterStrength <= 1, `craterStrength out of range: ${uniforms.craterStrength}`);
-    assert.ok(uniforms.thermalActivity >= 0 && uniforms.thermalActivity <= 1, `thermalActivity out of range: ${uniforms.thermalActivity}`);
-    assert.ok(uniforms.bandingStrength >= 0 && uniforms.bandingStrength <= 0.8, `bandingStrength out of range: ${uniforms.bandingStrength}`);
+    assert.ok(uniforms.craterStrength >= 0 && uniforms.craterStrength <= 1, `craterStrength out of range: ${uniforms.craterStrength}`);
+    assert.ok(uniforms.thermalActivity >= 0 && uniforms.thermalActivity <= 0.82, `thermalActivity out of range: ${uniforms.thermalActivity}`);
+    assert.ok(uniforms.bandingStrength >= 0 && uniforms.bandingStrength <= 0.4, `bandingStrength out of range: ${uniforms.bandingStrength}`);
     assert.ok(uniforms.bandingFrequency >= 1.8 && uniforms.bandingFrequency <= 8.2, `bandingFrequency out of range: ${uniforms.bandingFrequency}`);
-    assert.ok(uniforms.colorContrast >= 1.02 && uniforms.colorContrast <= 1.5, `colorContrast out of range: ${uniforms.colorContrast}`);
+    assert.ok(uniforms.colorContrast >= 1.02 && uniforms.colorContrast <= 1.38, `colorContrast out of range: ${uniforms.colorContrast}`);
     assert.ok(uniforms.roughness >= 0.2 && uniforms.roughness <= 1, `roughness out of range: ${uniforms.roughness}`);
     assert.ok(uniforms.metalness >= 0.05 && uniforms.metalness <= 0.45, `metalness out of range: ${uniforms.metalness}`);
     assert.ok(
@@ -218,6 +218,29 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
   assert.ok(profileCounts.extreme <= 40, `expected extreme terrain to remain controlled, got ${profileCounts.extreme}`);
   assert.ok(paletteFamilies.size >= 10, `expected at least 10 palette families, got ${paletteFamilies.size}`);
   assert.ok(surfaceCategories.size >= 7, `expected at least 7 surface categories, got ${surfaceCategories.size}`);
+});
+
+test('archetypes without crater effect map to zero crater strength', () => {
+  let checked = 0;
+
+  for (let i = 0; i < 600; i += 1) {
+    const profile = generatePlanetVisualProfile({
+      worldSeed: 'coinage-mvp-seed',
+      planetSeed: `forbidden-craters-${i}`,
+    });
+
+    if (!profile.identity.allowedEffects.includes('craters')) {
+      const uniforms = mapProfileToProceduralUniforms(profile);
+      assert.equal(
+        uniforms.craterStrength,
+        0,
+        `expected craterStrength=0 for ${profile.archetype}, got ${uniforms.craterStrength}`,
+      );
+      checked += 1;
+    }
+  }
+
+  assert.ok(checked > 0, 'expected at least one sampled profile without crater effect');
 });
 
 test('archetypes expose structurally distinct procedural traits', () => {
