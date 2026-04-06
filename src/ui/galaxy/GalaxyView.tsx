@@ -25,6 +25,10 @@ interface PlanetRenderData {
 const FIELD_RADIUS = GALAXY_LAYOUT_RUNTIME_CONFIG.fieldRadius ?? 84;
 const MOVE_SPEED = Math.max(24, FIELD_RADIUS * 0.18);
 const BASE_VIEW_HEIGHT = Math.min(560, Math.max(120, FIELD_RADIUS * 0.95));
+const INITIAL_CAMERA_ZOOM = 2.2;
+const MIN_CAMERA_ZOOM = 1.1;
+const MAX_CAMERA_ZOOM = 5.5;
+const ZOOM_STEP = 0.0018;
 
 export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -56,8 +60,23 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       0.1,
       600,
     );
-    camera.position.set(0, 0, 60);
-    camera.lookAt(0, 0, 0);
+    const centralRegionTarget = planetData.reduce(
+      (acc, planet) => {
+        acc.x += planet.x;
+        acc.y += planet.y;
+        return acc;
+      },
+      { x: 0, y: 0 },
+    );
+    if (planetData.length > 0) {
+      centralRegionTarget.x /= planetData.length;
+      centralRegionTarget.y /= planetData.length;
+    }
+
+    camera.position.set(centralRegionTarget.x, centralRegionTarget.y, 60);
+    camera.zoom = INITIAL_CAMERA_ZOOM;
+    camera.updateProjectionMatrix();
+    camera.lookAt(camera.position.x, camera.position.y, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setSize(mount.clientWidth, mount.clientHeight);
@@ -145,8 +164,9 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       lastX = event.clientX;
       lastY = event.clientY;
 
-      camera.position.x -= dx * 0.04;
-      camera.position.y += dy * 0.04;
+      const zoomAdjustedPanFactor = 0.04 / camera.zoom;
+      camera.position.x -= dx * zoomAdjustedPanFactor;
+      camera.position.y += dy * zoomAdjustedPanFactor;
     };
 
     const onPointerUp = () => {
@@ -159,6 +179,9 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
 
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
+      const nextZoom = camera.zoom - event.deltaY * ZOOM_STEP;
+      camera.zoom = THREE.MathUtils.clamp(nextZoom, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM);
+      camera.updateProjectionMatrix();
     };
 
     const raycaster = new THREE.Raycaster();
@@ -242,8 +265,8 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         camera.position.y += (moveY / length) * MOVE_SPEED * delta;
       }
 
-      const verticalHalfSpan = (camera.top - camera.bottom) / 2;
-      const horizontalHalfSpan = (camera.right - camera.left) / 2;
+      const verticalHalfSpan = (camera.top - camera.bottom) / (2 * camera.zoom);
+      const horizontalHalfSpan = (camera.right - camera.left) / (2 * camera.zoom);
       const clampedXRadius = Math.max(0, FIELD_RADIUS - horizontalHalfSpan * 0.4);
       const clampedYRadius = Math.max(0, FIELD_RADIUS - verticalHalfSpan * 0.4);
       camera.position.x = Math.max(-clampedXRadius, Math.min(clampedXRadius, camera.position.x));
@@ -289,6 +312,9 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         </p>
         <p className="mt-1 text-slate-100/90">
           <span className="font-semibold">Planet View:</span> double-click a planet
+        </p>
+        <p className="mt-1 text-slate-100/90">
+          <span className="font-semibold">Zoom:</span> mouse wheel
         </p>
         <p className="mt-1 text-slate-100/90">
           <span className="font-semibold">Planets:</span> {planetData.length}
