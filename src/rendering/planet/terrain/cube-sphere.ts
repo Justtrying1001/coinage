@@ -142,6 +142,38 @@ function applyMicroNormalDetail(geometry: THREE.BufferGeometry, params: Procedur
 }
 
 export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE.BufferGeometry {
+  const { indices, positions, colors } = generateCubeSphereTerrainBuffers(params);
+  return createCubeSphereGeometryFromBuffers(params, { indices, positions, colors });
+}
+
+export function createCubeSphereGeometryFromBuffers(
+  params: ProceduralPlanetUniforms,
+  buffers: GeneratedCubeSphereTerrainBuffers,
+): THREE.BufferGeometry {
+  const { indices, positions, colors } = buffers;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geometry.computeVertexNormals();
+  applyMicroNormalDetail(geometry, params);
+
+  return geometry;
+}
+
+export interface GeneratedCubeSphereTerrainBuffers {
+  indices: Uint32Array;
+  positions: Float32Array;
+  colors: Float32Array;
+}
+
+/**
+ * Pure terrain-data generation step intended for eventual off-main-thread workerization.
+ * This function performs no WebGL or scene graph work and returns transferable typed arrays.
+ */
+export function generateCubeSphereTerrainBuffers(
+  params: ProceduralPlanetUniforms,
+): GeneratedCubeSphereTerrainBuffers {
   const resolution = params.meshResolution;
   const vertices: number[] = [];
   const colors: number[] = [];
@@ -308,12 +340,9 @@ export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE
     colors.push(color.r, color.g, color.b);
   }
 
-  const geometry = new THREE.BufferGeometry();
-  geometry.setIndex(indices);
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  geometry.computeVertexNormals();
-  applyMicroNormalDetail(geometry, params);
-
-  return geometry;
+  return {
+    indices: new Uint32Array(indices),
+    positions: new Float32Array(vertices),
+    colors: new Float32Array(colors),
+  };
 }

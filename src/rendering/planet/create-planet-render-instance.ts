@@ -2,8 +2,14 @@ import * as THREE from 'three';
 
 import { mapProfileToProceduralUniforms } from './map-profile-to-procedural-uniforms';
 import { ATMOSPHERE_FRAGMENT_SHADER, ATMOSPHERE_VERTEX_SHADER } from './shaders/atmosphere-shaders';
-import { createCubeSphereTerrain } from './terrain/cube-sphere';
-import type { PlanetRenderInput, PlanetRenderInstance, PlanetRendererOptions, ProceduralPlanetUniforms } from './types';
+import { createCubeSphereGeometryFromBuffers, createCubeSphereTerrain } from './terrain/cube-sphere';
+import type {
+  PlanetRenderInput,
+  PlanetRenderInstance,
+  PlanetRendererOptions,
+  ProceduralPlanetUniforms,
+  PrecomputedTerrainBuffers,
+} from './types';
 
 interface CachedGeometryEntry {
   geometry: THREE.BufferGeometry;
@@ -97,10 +103,23 @@ export function applyPlanetRenderLod(
   };
 }
 
-function getOrCreateGeometry(params: ReturnType<typeof mapProfileToProceduralUniforms>): {
+function getOrCreateGeometry(
+  params: ReturnType<typeof mapProfileToProceduralUniforms>,
+  precomputedTerrainBuffers?: PrecomputedTerrainBuffers,
+): {
   geometry: THREE.BufferGeometry;
   release: () => void;
 } {
+  if (precomputedTerrainBuffers) {
+    const geometry = createCubeSphereGeometryFromBuffers(params, precomputedTerrainBuffers);
+    return {
+      geometry,
+      release: () => {
+        geometry.dispose();
+      },
+    };
+  }
+
   const key = buildGeometryKey(params);
   const cached = GEOMETRY_CACHE.get(key);
 
@@ -286,14 +305,21 @@ function getOrCreateAtmosphereMaterial(params: ReturnType<typeof mapProfileToPro
   };
 }
 
-export function createPlanetRenderInstance({ profile, x, y, z, options }: PlanetRenderInput): PlanetRenderInstance {
+export function createPlanetRenderInstance({
+  profile,
+  x,
+  y,
+  z,
+  options,
+  precomputedTerrainBuffers,
+}: PlanetRenderInput): PlanetRenderInstance {
   const baseParams = mapProfileToProceduralUniforms(profile);
   const params = applyPlanetRenderLod(baseParams, options?.lod);
 
   const group = new THREE.Group();
   group.position.set(x, y, z);
 
-  const { geometry, release } = getOrCreateGeometry(params);
+  const { geometry, release } = getOrCreateGeometry(params, precomputedTerrainBuffers);
 
   const { material, release: releaseMaterial } = getOrCreateSurfaceMaterial(params);
 
