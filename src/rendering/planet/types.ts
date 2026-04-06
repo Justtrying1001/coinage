@@ -59,6 +59,12 @@ export interface PlanetRendererOptions {
   lod?: 'galaxy' | 'planet';
 }
 
+export interface PrecomputedTerrainBuffers {
+  indices: Uint32Array;
+  positions: Float32Array;
+  colors: Float32Array;
+}
+
 export interface PlanetRenderInstance {
   object: THREE.Group;
   dispose: () => void;
@@ -70,4 +76,5 @@ export interface PlanetRenderInput {
   y: number;
   z: number;
   options?: PlanetRendererOptions;
+  precomputedTerrainBuffers?: PrecomputedTerrainBuffers;
 }
