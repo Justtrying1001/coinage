@@ -1,0 +1,245 @@
+{
+  "summary": {
+    "pairCount": 28,
+    "galaxy": {
+      "min": 0.04352092978395061,
+      "p25": 0.06614200367647059,
+      "median": 0.0888191040305011,
+      "p75": 0.12840725989469862,
+      "max": 0.2541746096586783
+    },
+    "large": {
+      "min": 0.03419259486201888,
+      "p25": 0.047370302287581705,
+      "median": 0.0705271026234568,
+      "p75": 0.0863261392519971,
+      "max": 0.10936237631626725
+    }
+  },
+  "entries": [
+    {
+      "a": "planet-62",
+      "aArch": "superterran",
+      "b": "planet-95",
+      "bArch": "icy",
+      "galaxyMad": 0.06672836669389978,
+      "largeMad": 0.0807346983932462
+    },
+    {
+      "a": "planet-62",
+      "aArch": "superterran",
+      "b": "planet-111",
+      "bArch": "exotic",
+      "galaxyMad": 0.21457879448075529,
+      "largeMad": 0.10461629675018155
+    },
+    {
+      "a": "planet-62",
+      "aArch": "superterran",
+      "b": "planet-128",
+      "bArch": "mineral",
+      "galaxyMad": 0.06695743690994917,
+      "largeMad": 0.03565112677015251
+    },
+    {
+      "a": "planet-62",
+      "aArch": "superterran",
+      "b": "planet-206",
+      "bArch": "lush",
+      "galaxyMad": 0.0888191040305011,
+      "largeMad": 0.10744995915032679
+    },
+    {
+      "a": "planet-62",
+      "aArch": "superterran",
+      "b": "planet-210",
+      "bArch": "fragmented",
+      "galaxyMad": 0.056706012844952795,
+      "largeMad": 0.07586408405954975
+    },
+    {
+      "a": "planet-62",
+      "aArch": "superterran",
+      "b": "planet-296",
+      "bArch": "oceanic",
+      "galaxyMad": 0.06489537944807552,
+      "largeMad": 0.08484888457697894
+    },
+    {
+      "a": "planet-62",
+      "aArch": "superterran",
+      "b": "planet-315",
+      "bArch": "arid",
+      "galaxyMad": 0.09942314020515614,
+      "largeMad": 0.08881967138707335
+    },
+    {
+      "a": "planet-95",
+      "aArch": "icy",
+      "b": "planet-111",
+      "bArch": "exotic",
+      "galaxyMad": 0.22918354552469136,
+      "largeMad": 0.047149175063543936
+    },
+    {
+      "a": "planet-95",
+      "aArch": "icy",
+      "b": "planet-128",
+      "bArch": "mineral",
+      "galaxyMad": 0.07661228553921569,
+      "largeMad": 0.0863261392519971
+    },
+    {
+      "a": "planet-95",
+      "aArch": "icy",
+      "b": "planet-206",
+      "bArch": "lush",
+      "galaxyMad": 0.06869766135620915,
+      "largeMad": 0.06257815336782861
+    },
+    {
+      "a": "planet-95",
+      "aArch": "icy",
+      "b": "planet-210",
+      "bArch": "fragmented",
+      "galaxyMad": 0.0624602850399419,
+      "largeMad": 0.05098932802287582
+    },
+    {
+      "a": "planet-95",
+      "aArch": "icy",
+      "b": "planet-296",
+      "bArch": "oceanic",
+      "galaxyMad": 0.05158590345860566,
+      "largeMad": 0.03952886710239651
+    },
+    {
+      "a": "planet-95",
+      "aArch": "icy",
+      "b": "planet-315",
+      "bArch": "arid",
+      "galaxyMad": 0.09874046840958604,
+      "largeMad": 0.0705271026234568
+    },
+    {
+      "a": "planet-111",
+      "aArch": "exotic",
+      "b": "planet-128",
+      "bArch": "mineral",
+      "galaxyMad": 0.18606714097676108,
+      "largeMad": 0.10879757284858388
+    },
+    {
+      "a": "planet-111",
+      "aArch": "exotic",
+      "b": "planet-206",
+      "bArch": "lush",
+      "galaxyMad": 0.2541746096586783,
+      "largeMad": 0.03419259486201888
+    },
+    {
+      "a": "planet-111",
+      "aArch": "exotic",
+      "b": "planet-210",
+      "bArch": "fragmented",
+      "galaxyMad": 0.20912408655591866,
+      "largeMad": 0.06533309504357299
+    },
+    {
+      "a": "planet-111",
+      "aArch": "exotic",
+      "b": "planet-296",
+      "bArch": "oceanic",
+      "galaxyMad": 0.22985713961510532,
+      "largeMad": 0.04759454997276688
+    },
+    {
+      "a": "planet-111",
+      "aArch": "exotic",
+      "b": "planet-315",
+      "bArch": "arid",
+      "galaxyMad": 0.23753928944262892,
+      "largeMad": 0.047370302287581705
+    },
+    {
+      "a": "planet-128",
+      "aArch": "mineral",
+      "b": "planet-206",
+      "bArch": "lush",
+      "galaxyMad": 0.12840725989469862,
+      "largeMad": 0.10936237631626725
+    },
+    {
+      "a": "planet-128",
+      "aArch": "mineral",
+      "b": "planet-210",
+      "bArch": "fragmented",
+      "galaxyMad": 0.05204461124727669,
+      "largeMad": 0.07874072372004357
+    },
+    {
+      "a": "planet-128",
+      "aArch": "mineral",
+      "b": "planet-296",
+      "bArch": "oceanic",
+      "galaxyMad": 0.07273738198983297,
+      "largeMad": 0.08891044843863471
+    },
+    {
+      "a": "planet-128",
+      "aArch": "mineral",
+      "b": "planet-315",
+      "bArch": "arid",
+      "galaxyMad": 0.1243510859204793,
+      "largeMad": 0.09009494712236746
+    },
+    {
+      "a": "planet-206",
+      "aArch": "lush",
+      "b": "planet-210",
+      "bArch": "fragmented",
+      "galaxyMad": 0.09003764410856936,
+      "largeMad": 0.08279150780682644
+    },
+    {
+      "a": "planet-206",
+      "aArch": "lush",
+      "b": "planet-296",
+      "bArch": "oceanic",
+      "galaxyMad": 0.06880474990922295,
+      "largeMad": 0.05913458265250545
+    },
+    {
+      "a": "planet-206",
+      "aArch": "lush",
+      "b": "planet-315",
+      "bArch": "arid",
+      "galaxyMad": 0.06614200367647059,
+      "largeMad": 0.047153004720406684
+    },
+    {
+      "a": "planet-210",
+      "aArch": "fragmented",
+      "b": "planet-296",
+      "bArch": "oceanic",
+      "galaxyMad": 0.04352092978395061,
+      "largeMad": 0.03812480142519971
+    },
+    {
+      "a": "planet-210",
+      "aArch": "fragmented",
+      "b": "planet-315",
+      "bArch": "arid",
+      "galaxyMad": 0.10567470043572985,
+      "largeMad": 0.08250924791212781
+    },
+    {
+      "a": "planet-296",
+      "aArch": "oceanic",
+      "b": "planet-315",
+      "bArch": "arid",
+      "galaxyMad": 0.09748448279774874,
+      "largeMad": 0.06852830541938998
+    }
+  ]
+}
