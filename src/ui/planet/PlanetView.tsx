@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import { resolvePlanetIdentity } from '@/domain/world/resolve-planet-identity';
-import { createPlanetRenderInstance } from '@/rendering/planet/create-planet-render-instance';
+import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
 
 interface PlanetViewProps {
   worldSeed: string;
@@ -140,11 +140,15 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
         return;
       }
 
+      const delta = Math.min(0.05, animationClock.getDelta());
+      updatePlanetLayerAnimation(planetInstance.object, delta);
       controls.update();
       renderer.render(scene, camera);
       requestAnimationFrame(animate);
     };
 
+
+    const animationClock = new THREE.Clock();
     const raf = requestAnimationFrame(animate);
 
     return () => {

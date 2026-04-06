@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { getGalaxyPlanetManifest } from '@/domain/world/build-galaxy-planet-manifest';
 import type { CanonicalPlanet } from '@/domain/world/planet-visual.types';
 import { GALAXY_LAYOUT_RUNTIME_CONFIG } from '@/domain/world/world.constants';
-import { createPlanetRenderInstance } from '@/rendering/planet/create-planet-render-instance';
+import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
 import type { PlanetRenderInstance } from '@/rendering/planet/types';
 import { computeGalaxyVisualRadius } from './planet-visual-scale';
 
@@ -774,6 +774,10 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       const followFactor = 1 - Math.exp(-CAMERA_FOLLOW_DAMPING * delta);
       camera.position.x += (cameraTarget.x - camera.position.x) * followFactor;
       camera.position.y += (cameraTarget.y - camera.position.y) * followFactor;
+
+      for (const instance of instances) {
+        updatePlanetLayerAnimation(instance.object, delta);
+      }
 
       renderer.render(scene, camera);
       renderInvalidated = false;
