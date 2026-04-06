@@ -78,6 +78,12 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
     4,
   ) * 2 - 1;
   const mountainMask = smoothstep(0.56, 0.9, ridgeRelief) * inlandMask;
+  const craterNoise = ridgedFbm(
+    warpedPoint.clone().multiplyScalar(params.ridgedFrequency * (1.3 + params.craterStrength * 0.8)),
+    params.reliefSeed ^ 0x2d2816fe,
+    4,
+  );
+  const craterMask = smoothstep(0.7 - params.craterStrength * 0.18, 0.95, craterNoise) * (0.55 + inlandMask * 0.45);
 
   const trenchSignal = fbm(
     warpedPoint.clone().multiplyScalar(params.simpleFrequency * (1.16 + params.continentDrift * 0.8)).addScalar(params.shapeSeed * 0.000019),
@@ -103,8 +109,25 @@ function computeElevation(point: THREE.Vector3, params: ProceduralPlanetUniforms
   const plateau = Math.max(0, midRelief) * inlandMask * (0.04 + params.continentDrift * 0.04);
   const mountainLift = mountainMask * params.ridgedStrength * params.ridgeAttenuation * 0.1;
   const fragmentedIslands = driftedFragmentation * (1 - inlandMask) * params.simpleStrength * params.continentDrift * 0.09;
+  const craterDepth = craterMask * params.craterStrength * (0.02 + params.terrainSmoothing * 0.02);
+  const tectonicBand = Math.sin((warpedPoint.y + warpedPoint.x * 0.35) * (params.bandingFrequency * 1.7)) * 0.5 + 0.5;
+  const thermalUplift =
+    params.thermalActivity *
+    Math.max(0, tectonicBand - 0.55) *
+    (0.015 + params.ridgedStrength * 0.025) *
+    inlandMask;
 
-  const rawElevation = -oceanFloor + continentBase + uplands + midLayer + microLayer + plateau + mountainLift + fragmentedIslands;
+  const rawElevation =
+    -oceanFloor +
+    continentBase +
+    uplands +
+    midLayer +
+    microLayer +
+    plateau +
+    mountainLift +
+    fragmentedIslands -
+    craterDepth +
+    thermalUplift;
   const normalized = clamp((rawElevation + 0.12) / 0.34, 0, 1);
   const smoothed = smoothstep(
     0.06 + (1 - params.terrainSmoothing) * 0.15,
@@ -229,6 +252,9 @@ export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE
       3,
     );
     const biomeSignal = clamp(macroBiome * 0.72 + microBiome * 0.28, 0, 1);
+    const latBand =
+      (Math.sin((latitude + point.x * 0.25 + point.z * 0.2) * Math.PI * params.bandingFrequency) * 0.5 + 0.5) *
+      params.bandingStrength;
 
     const deepOceanBand = smoothstep(0, effectiveOceanLevel * 0.6, normalized);
     const shallowBand = smoothstep(effectiveOceanLevel * 0.68, effectiveOceanLevel + 0.02, normalized);
@@ -279,6 +305,15 @@ export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE
       );
     }
 
+    if (latBand > 0.02) {
+      const bandTint = params.surfaceCategory === 'toxic' || params.surfaceCategory === 'abyssal'
+        ? new THREE.Color(0.72, 1, 0.82)
+        : params.surfaceCategory === 'ice'
+          ? new THREE.Color(0.86, 0.94, 1)
+          : new THREE.Color(0.96, 0.9, 0.78);
+      color.lerp(bandTint, latBand * 0.24);
+    }
+
     if (params.biomeHarshness > 0.4) {
       const harshness = params.biomeHarshness - 0.4;
       const gray = color.r * 0.299 + color.g * 0.587 + color.b * 0.114;
@@ -297,11 +332,31 @@ export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE
       );
     }
 
+    if (params.thermalActivity > 0.08) {
+      const thermalSignal = clamp((microBiome - 0.58) * 2.5 + (mountainBand + highlandBand) * 0.4, 0, 1);
+      const thermalMask = thermalSignal * params.thermalActivity * (0.35 + params.craterStrength * 0.2);
+      color.setRGB(
+        lerp(color.r, Math.min(1, color.r + 0.28), thermalMask * 0.34),
+        lerp(color.g, color.g * 0.92, thermalMask * 0.22),
+        lerp(color.b, color.b * 0.72, thermalMask * 0.32),
+      );
+    }
+
     if (iceCap > 0.01) {
       color.setRGB(
         lerp(color.r, params.iceColor[0], iceCap * categoryColorConfig.iceBoost),
         lerp(color.g, params.iceColor[1], iceCap * categoryColorConfig.iceBoost),
         lerp(color.b, params.iceColor[2], iceCap * categoryColorConfig.iceBoost),
+      );
+    }
+
+    if (params.colorContrast > 1.01) {
+      const luminance = color.r * 0.299 + color.g * 0.587 + color.b * 0.114;
+      const contrast = Math.min(1.5, params.colorContrast) - 1;
+      color.setRGB(
+        clamp(luminance + (color.r - luminance) * (1 + contrast), 0, 1),
+        clamp(luminance + (color.g - luminance) * (1 + contrast), 0, 1),
+        clamp(luminance + (color.b - luminance) * (1 + contrast), 0, 1),
       );
     }
 

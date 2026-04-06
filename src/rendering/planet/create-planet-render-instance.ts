@@ -90,10 +90,13 @@ export function applyPlanetRenderLod(
 
   return {
     ...params,
+    radius: Math.min(5.7, params.radius * 1.08),
     meshResolution: reducedResolution,
-    ridgedStrength: params.ridgedStrength * 0.82,
-    elevationCap: params.elevationCap * 0.9,
-    detailAttenuation: params.detailAttenuation * 0.74,
+    ridgedStrength: params.ridgedStrength * 0.9,
+    elevationCap: params.elevationCap * 0.95,
+    detailAttenuation: params.detailAttenuation * 0.84,
+    colorContrast: Math.min(1.6, params.colorContrast + 0.08),
+    bandingStrength: Math.min(0.85, params.bandingStrength + 0.04),
   };
 }
 

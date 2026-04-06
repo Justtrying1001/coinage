@@ -6,5 +6,5 @@ export const GALAXY_LAYOUT_RUNTIME_CONFIG: GalaxyLayoutConfig = {
   ...DEFAULT_GALAXY_LAYOUT_CONFIG,
   planetCount: 500,
   fieldRadius: 360,
-  minSpacing: 10.4,
+  minSpacing: 9.1,
 };

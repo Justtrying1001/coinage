@@ -42,6 +42,11 @@ export interface ProceduralPlanetUniforms {
   continentDrift: number;
   trenchDepth: number;
   biomeHarshness: number;
+  craterStrength: number;
+  thermalActivity: number;
+  bandingStrength: number;
+  bandingFrequency: number;
+  colorContrast: number;
   roughness: number;
   metalness: number;
   atmosphereEnabled: boolean;

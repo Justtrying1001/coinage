@@ -201,6 +201,41 @@ function archetypeLandFloor(archetype: PlanetVisualProfile['archetype']): number
   }
 }
 
+function archetypeSurfaceModifiers(archetype: PlanetVisualProfile['archetype']): {
+  craterBoost: number;
+  thermalActivity: number;
+  bandingStrength: number;
+  bandingFrequency: number;
+  colorContrast: number;
+} {
+  switch (archetype) {
+    case 'oceanic':
+      return { craterBoost: 0.28, thermalActivity: 0.06, bandingStrength: 0.08, bandingFrequency: 2.6, colorContrast: 1.08 };
+    case 'icy':
+      return { craterBoost: 0.42, thermalActivity: 0.1, bandingStrength: 0.24, bandingFrequency: 4.4, colorContrast: 1.16 };
+    case 'arid':
+      return { craterBoost: 0.72, thermalActivity: 0.24, bandingStrength: 0.15, bandingFrequency: 3.2, colorContrast: 1.14 };
+    case 'lush':
+      return { craterBoost: 0.26, thermalActivity: 0.08, bandingStrength: 0.12, bandingFrequency: 2.9, colorContrast: 1.12 };
+    case 'volcanic':
+      return { craterBoost: 1.2, thermalActivity: 0.92, bandingStrength: 0.1, bandingFrequency: 3.8, colorContrast: 1.34 };
+    case 'dead':
+      return { craterBoost: 1.14, thermalActivity: 0.24, bandingStrength: 0.08, bandingFrequency: 3.1, colorContrast: 1.2 };
+    case 'toxic':
+      return { craterBoost: 0.58, thermalActivity: 0.66, bandingStrength: 0.28, bandingFrequency: 5.2, colorContrast: 1.28 };
+    case 'mineral':
+      return { craterBoost: 0.86, thermalActivity: 0.34, bandingStrength: 0.14, bandingFrequency: 3.6, colorContrast: 1.22 };
+    case 'clouded':
+      return { craterBoost: 0.3, thermalActivity: 0.14, bandingStrength: 0.34, bandingFrequency: 6.4, colorContrast: 1.15 };
+    case 'exotic':
+      return { craterBoost: 0.56, thermalActivity: 0.54, bandingStrength: 0.38, bandingFrequency: 5.9, colorContrast: 1.3 };
+    case 'fragmented':
+      return { craterBoost: 0.9, thermalActivity: 0.36, bandingStrength: 0.22, bandingFrequency: 4.8, colorContrast: 1.26 };
+    case 'superterran':
+      return { craterBoost: 0.22, thermalActivity: 0.12, bandingStrength: 0.06, bandingFrequency: 2.2, colorContrast: 1.12 };
+  }
+}
+
 function applyMacroStyleToTerrain(
   terrain: TerrainProfileSettings,
   macroStyle: PlanetVisualProfile['macroStyle'],
@@ -706,6 +741,7 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
 
   const isIcy = profile.materialFamily === 'icy';
   const isRocky = profile.materialFamily === 'rocky';
+  const archetypeModifiers = archetypeSurfaceModifiers(profile.archetype);
   const terrainProfile = applyMacroStyleToTerrain(pickTerrainProfile(profile), profile.macroStyle);
 
   const categoryOceanLevel: Record<SurfaceCategoryKind, number> = {
@@ -867,6 +903,38 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     continentDrift: terrainProfile.continentDrift,
     trenchDepth: terrainProfile.trenchDepth,
     biomeHarshness: terrainProfile.biomeHarshness,
+    craterStrength: clamp(
+      profile.relief.craterDensity * (0.65 + archetypeModifiers.craterBoost) + climate.mineral * 0.14,
+      0.02,
+      1,
+    ),
+    thermalActivity: clamp(
+      archetypeModifiers.thermalActivity * 0.7 +
+        profile.relief.macroStrength * 0.3 +
+        (surfaceCategory === 'volcanic' ? 0.24 : 0) +
+        (surfaceCategory === 'toxic' ? 0.16 : 0),
+      0,
+      1,
+    ),
+    bandingStrength: clamp(
+      archetypeModifiers.bandingStrength +
+        (surfaceCategory === 'ice' ? 0.08 : 0) +
+        (surfaceCategory === 'abyssal' ? 0.12 : 0),
+      0,
+      0.8,
+    ),
+    bandingFrequency: clamp(
+      archetypeModifiers.bandingFrequency + profile.shape.wobbleFrequency * 0.32 + profile.shape.ridgeWarp * 0.6,
+      1.8,
+      8.2,
+    ),
+    colorContrast: clamp(
+      archetypeModifiers.colorContrast +
+        profile.relief.roughness * 0.1 +
+        (surfaceCategory === 'volcanic' || surfaceCategory === 'toxic' ? 0.06 : 0),
+      1.02,
+      1.5,
+    ),
     roughness: clamp(profile.relief.roughness * 0.9 + 0.05, 0.2, 1),
     metalness: clamp(profile.materialFamily === 'metallic' ? 0.35 : profile.materialFamily === 'icy' ? 0.18 : 0.08, 0.05, 0.45),
     atmosphereEnabled: profile.atmosphere.enabled,

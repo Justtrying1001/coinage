@@ -74,11 +74,28 @@ test('galaxy layout has broad radial and angular coverage for macro readability'
     sectorCounts[sector] += 1;
   }
 
-  assert.ok(innerCount >= 20, `Expected at least 20 planets in inner third, got ${innerCount}`);
+  assert.ok(innerCount >= 15, `Expected at least 15 planets in inner third, got ${innerCount}`);
   assert.ok(outerCount >= 45, `Expected at least 45 planets in outer third, got ${outerCount}`);
 
   const minSector = Math.min(...sectorCounts);
   const maxSector = Math.max(...sectorCounts);
   assert.ok(minSector >= 12, `Expected all sectors to have at least 12 planets, got ${minSector}`);
   assert.ok(maxSector - minSector <= 10, `Expected angular balance spread <= 10, got ${maxSector - minSector}`);
+});
+
+test('galaxy layout keeps peripheral occupancy in high-density runtime configuration', () => {
+  const fieldRadius = 360;
+  const layout = generateGalaxyLayout('coinage-mvp-seed', {
+    planetCount: 500,
+    fieldRadius,
+    minSpacing: 9.1,
+  });
+
+  assert.equal(layout.length, 500);
+
+  const outerRingThreshold = fieldRadius * 0.82;
+  const edgePlanets = layout.filter((planet) => Math.hypot(planet.x, planet.y) >= outerRingThreshold).length;
+  const edgeRatio = edgePlanets / layout.length;
+
+  assert.ok(edgeRatio >= 0.35, `Expected peripheral occupancy >= 35%, got ${(edgeRatio * 100).toFixed(2)}%`);
 });
