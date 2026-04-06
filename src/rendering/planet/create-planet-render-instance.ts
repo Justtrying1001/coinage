@@ -96,13 +96,9 @@ export function applyPlanetRenderLod(
 
   return {
     ...params,
-    radius: Math.min(5.7, params.radius * 1.08),
     meshResolution: reducedResolution,
-    ridgedStrength: params.ridgedStrength * 0.9,
-    elevationCap: params.elevationCap * 0.95,
-    detailAttenuation: params.detailAttenuation * 0.84,
-    colorContrast: Math.min(1.6, params.colorContrast + 0.08),
-    bandingStrength: Math.min(0.85, params.bandingStrength + 0.04),
+    ridgedStrength: params.ridgedStrength * 0.92,
+    detailAttenuation: params.detailAttenuation * 0.86,
   };
 }
 
@@ -325,43 +321,6 @@ export function createPlanetRenderInstance({
   const { geometry, release } = getOrCreateGeometry(params, precomputedTerrainBuffers);
 
   const { material, release: releaseMaterial } = getOrCreateSurfaceMaterial(params);
-
-  if (material.userData.coinageRoughnessPatch !== true) {
-    material.onBeforeCompile = (shader) => {
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <color_fragment>',
-        `#include <color_fragment>
-        float coinageWaterMaskColor = smoothstep(0.08, 0.26, vColor.b - max(vColor.r, vColor.g));
-        float coinageMountainMaskColor = smoothstep(0.46, 0.86, vColor.r * 0.55 + vColor.g * 0.35);
-        float coinageLandMaskColor = clamp(1.0 - coinageWaterMaskColor, 0.0, 1.0);
-        vec3 biomeTint = vec3(1.0);
-        biomeTint = mix(biomeTint, vec3(0.98, 1.0, 1.02), coinageWaterMaskColor * 0.45);
-        biomeTint = mix(biomeTint, vec3(1.03, 1.01, 0.99), coinageMountainMaskColor * coinageLandMaskColor * 0.2);
-        diffuseColor.rgb *= biomeTint;
-        diffuseColor.rgb = min(diffuseColor.rgb * 1.04, vec3(1.0));`,
-      );
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <roughnessmap_fragment>',
-        `#include <roughnessmap_fragment>
-        float coinageWaterMaskRoughness = smoothstep(0.08, 0.24, vColor.b - max(vColor.r, vColor.g));
-        float coinageHighlandMaskRoughness = smoothstep(0.5, 0.84, vColor.r * 0.35 + vColor.g * 0.5 + vColor.b * 0.15);
-        float coinageRidgeMicroRoughness = smoothstep(0.18, 0.72, abs(vColor.r - vColor.g) + abs(vColor.g - vColor.b));
-        roughnessFactor = mix(roughnessFactor, 0.05, coinageWaterMaskRoughness * 0.94);
-        roughnessFactor = mix(
-          roughnessFactor,
-          clamp(roughnessFactor * 1.24 + 0.1, 0.0, 1.0),
-          coinageHighlandMaskRoughness * (1.0 - coinageWaterMaskRoughness)
-        );
-        roughnessFactor = mix(
-          roughnessFactor,
-          clamp(roughnessFactor + 0.08, 0.0, 1.0),
-          coinageRidgeMicroRoughness * 0.38 * (1.0 - coinageWaterMaskRoughness)
-        );`,
-      );
-    };
-    material.userData.coinageRoughnessPatch = true;
-    material.needsUpdate = true;
-  }
 
   const planetMesh = new THREE.Mesh(geometry, material);
   group.add(planetMesh);

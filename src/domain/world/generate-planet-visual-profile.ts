@@ -3,30 +3,22 @@ import {
   BOUNDS,
   DEFAULT_VISUAL_GEN_VERSION,
   MATERIAL_FAMILIES,
-  PALETTE_FAMILIES,
   PLANET_ARCHETYPES,
-  SIZE_CATEGORY_WEIGHTS,
   SIZE_RADIUS_RANGES,
 } from './planet-visual.constants';
+import {
+  generatePlanetIdentity,
+  pickArchetypeFromIdentityRules,
+  validateProfileIdentity,
+} from './generate-planet-identity';
 import type {
   MaterialFamily,
   PlanetMacroStyle,
-  PaletteFamily,
-  PlanetArchetype,
-  PlanetSizeCategory,
   PlanetVisualGeneratorConfig,
   PlanetVisualProfile,
   SeedInputs,
 } from './planet-visual.types';
 import { createSeededRng, deriveSeed, pickWeighted, range } from './seeded-rng';
-
-
-function pickArchetype(rng: () => number): ArchetypeConfig {
-  return pickWeighted(
-    rng,
-    PLANET_ARCHETYPES.map((archetype) => ({ value: archetype, weight: archetype.weight })),
-  );
-}
 
 function pickMaterialFamily(rng: () => number, archetype: ArchetypeConfig): MaterialFamily {
   return pickWeighted(
@@ -34,30 +26,6 @@ function pickMaterialFamily(rng: () => number, archetype: ArchetypeConfig): Mate
     MATERIAL_FAMILIES.map((materialFamily) => ({
       value: materialFamily,
       weight: archetype.materialWeights[materialFamily],
-    })),
-  );
-}
-
-function pickPaletteFamily(rng: () => number, materialFamily: MaterialFamily, archetype: ArchetypeConfig): PaletteFamily {
-  const weighted = PALETTE_FAMILIES.map((palette) => {
-    const compatibilityWeight = palette.materialBias.includes(materialFamily) ? 1.35 : 0.52;
-    const diversityJitter = 0.72 + rng() * 0.9;
-    const archetypeBias = archetype.paletteBias[palette.name] ?? 1;
-    return {
-      value: palette.name,
-      weight: palette.weight * compatibilityWeight * diversityJitter * archetypeBias,
-    };
-  });
-
-  return pickWeighted(rng, weighted);
-}
-
-function pickSizeCategory(rng: () => number, archetype: ArchetypeConfig): PlanetSizeCategory {
-  return pickWeighted(
-    rng,
-    SIZE_CATEGORY_WEIGHTS.map((item) => ({
-      value: item.category,
-      weight: item.weight * (archetype.sizeWeights[item.category] ?? 1),
     })),
   );
 }
@@ -91,6 +59,14 @@ function sampleBiasedRange(
   );
 }
 
+function ensureArchetypeConfig(archetype: PlanetVisualProfile['archetype']): ArchetypeConfig {
+  const config = PLANET_ARCHETYPES.find((item) => item.name === archetype);
+  if (!config) {
+    throw new Error(`missing-archetype-config:${archetype}`);
+  }
+  return config;
+}
+
 export function generatePlanetVisualProfile(
   seedInputs: SeedInputs,
   config: PlanetVisualGeneratorConfig = {},
@@ -116,18 +92,27 @@ export function generatePlanetVisualProfile(
   const hydroRng = createSeededRng(hydroSeed);
   const baseRng = createSeededRng(baseSeed);
 
-  const archetype = pickArchetype(baseRng);
+  const archetypeName = pickArchetypeFromIdentityRules(baseRng);
+  const identity = generatePlanetIdentity({ archetype: archetypeName, baseSeed });
+  const archetype = ensureArchetypeConfig(identity.archetype);
 
-  const sizeCategory = pickSizeCategory(shapeRng, archetype);
-  const radiusRange = SIZE_RADIUS_RANGES[sizeCategory];
+  const radiusRange = SIZE_RADIUS_RANGES[identity.sizeCategory];
   const macroStyle = pickMacroStyle(baseRng, archetype);
-
   const materialFamily = pickMaterialFamily(colorRng, archetype);
-  const paletteFamily = pickPaletteFamily(colorRng, materialFamily, archetype);
 
-  const atmosphereEnabled = atmoRng() < archetype.atmosphereChance;
+  const atmosphereEnabled = identity.atmosphereFamily !== 'none' && atmoRng() < archetype.atmosphereChance;
 
-  return {
+  const hydrologyRangeByFamily = {
+    waterworld: { oceanBias: [0.62, 0.88], minLandRatio: [0.32, 0.5], maxOceanRatio: [0.5, 0.72] },
+    balanced: { oceanBias: [0.35, 0.62], minLandRatio: [0.46, 0.68], maxOceanRatio: [0.3, 0.54] },
+    arid: { oceanBias: [0.12, 0.34], minLandRatio: [0.58, 0.8], maxOceanRatio: [0.14, 0.34] },
+    dry: { oceanBias: [0.02, 0.18], minLandRatio: [0.68, 0.9], maxOceanRatio: [0.02, 0.18] },
+    cryo: { oceanBias: [0.2, 0.42], minLandRatio: [0.48, 0.72], maxOceanRatio: [0.22, 0.44] },
+  } as const;
+
+  const hydroFamilyRange = hydrologyRangeByFamily[identity.hydrologyFamily];
+
+  const profile: PlanetVisualProfile = {
     id: `${seeds.worldSeed}:${seeds.planetSeed}:v${config.visualGenVersion ?? DEFAULT_VISUAL_GEN_VERSION}`,
     visualGenVersion: config.visualGenVersion ?? DEFAULT_VISUAL_GEN_VERSION,
     seeds,
@@ -139,15 +124,25 @@ export function generatePlanetVisualProfile(
       atmoSeed,
       hydroSeed,
     },
-    archetype: archetype.name,
+    identity,
+    archetype: identity.archetype,
     macroStyle,
-    sizeCategory,
+    sizeCategory: identity.sizeCategory,
     materialFamily,
-    paletteFamily,
+    paletteFamily: identity.paletteFamily,
     hydrology: {
-      oceanBias: sampleBiasedRange(hydroRng, { min: 0, max: 1 }, archetype.hydrology.oceanBias),
-      minLandRatio: sampleBiasedRange(hydroRng, { min: 0.34, max: 0.82 }, archetype.hydrology.minLandRatio),
-      maxOceanRatio: sampleBiasedRange(hydroRng, { min: 0.2, max: 0.74 }, archetype.hydrology.maxOceanRatio),
+      oceanBias: sampleBiasedRange(hydroRng, { min: 0, max: 1 }, {
+        min: hydroFamilyRange.oceanBias[0],
+        max: hydroFamilyRange.oceanBias[1],
+      }),
+      minLandRatio: sampleBiasedRange(hydroRng, { min: 0.34, max: 0.9 }, {
+        min: Math.max(hydroFamilyRange.minLandRatio[0], identity.visualConstraints.minLandRatio),
+        max: hydroFamilyRange.minLandRatio[1],
+      }),
+      maxOceanRatio: sampleBiasedRange(hydroRng, { min: 0.02, max: 0.74 }, {
+        min: hydroFamilyRange.maxOceanRatio[0],
+        max: Math.min(hydroFamilyRange.maxOceanRatio[1], identity.visualConstraints.maxOceanRatio),
+      }),
     },
     shape: {
       radius: range(shapeRng, radiusRange.min, radiusRange.max),
@@ -180,6 +175,13 @@ export function generatePlanetVisualProfile(
         : 0,
     },
   };
+
+  const identityIssues = validateProfileIdentity(profile);
+  if (identityIssues.length > 0) {
+    throw new Error(`invalid-planet-identity:${identityIssues.join('|')}`);
+  }
+
+  return profile;
 }
 
 export function isPlanetVisualProfileInBounds(profile: PlanetVisualProfile): boolean {
@@ -213,8 +215,8 @@ export function isPlanetVisualProfileInBounds(profile: PlanetVisualProfile): boo
     profile.hydrology.oceanBias >= 0 &&
     profile.hydrology.oceanBias <= 1 &&
     profile.hydrology.minLandRatio >= 0.34 &&
-    profile.hydrology.minLandRatio <= 0.82 &&
-    profile.hydrology.maxOceanRatio >= 0.2 &&
+    profile.hydrology.minLandRatio <= 0.9 &&
+    profile.hydrology.maxOceanRatio >= 0.02 &&
     profile.hydrology.maxOceanRatio <= 0.74 &&
     (profile.atmosphere.enabled
       ? profile.atmosphere.intensity >= BOUNDS.atmosphereIntensity.min &&
@@ -231,7 +233,10 @@ export function isPlanetVisualProfileInBounds(profile: PlanetVisualProfile): boo
 
 export function profileSignature(profile: PlanetVisualProfile): string {
   return [
-    profile.archetype,
+    profile.identity.archetype,
+    profile.identity.shapeFamily,
+    profile.identity.reliefFamily,
+    profile.identity.surfaceFamily,
     profile.macroStyle,
     profile.sizeCategory,
     profile.materialFamily,
