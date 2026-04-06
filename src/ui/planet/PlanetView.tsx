@@ -49,11 +49,11 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     scene.add(hemiLight);
 
     const planetInstance = createPlanetRenderInstance({
-      profile: resolved.profile,
+      planet: resolved.planet,
       x: 0,
       y: 0,
       z: 0,
-      options: { lod: 'planet' },
+      options: { viewMode: 'planet' },
     });
 
     scene.add(planetInstance.object);

@@ -1,251 +1,255 @@
-import {
-  type ArchetypeConfig,
-  BOUNDS,
-  DEFAULT_VISUAL_GEN_VERSION,
-  MATERIAL_FAMILIES,
-  PLANET_ARCHETYPES,
-  SIZE_RADIUS_RANGES,
-} from './planet-visual.constants';
-import {
-  generatePlanetIdentity,
-  pickArchetypeFromIdentityRules,
-  validateProfileIdentity,
-} from './generate-planet-identity';
-import { MIN_GAMEPLAY_LAND_RATIO } from './planet-identity.constants';
+import { deriveSeed, createSeededRng, range } from './seeded-rng';
 import type {
-  MaterialFamily,
-  PlanetMacroStyle,
-  PlanetVisualGeneratorConfig,
-  PlanetVisualProfile,
-  SeedInputs,
+  CanonicalPlanet,
+  PlanetAtmosphereClass,
+  PlanetClassification,
+  PlanetFamily,
+  PlanetGeneratedProfile,
+  PlanetIdentity,
+  PlanetRadiusClass,
+  PlanetReliefClass,
+  PlanetRenderProfile,
+  PlanetRoughnessClass,
+  PlanetScaleProfile,
+  PlanetViewProfile,
+  PlanetVisualDNA,
 } from './planet-visual.types';
-import { createSeededRng, deriveSeed, pickWeighted, range } from './seeded-rng';
 
-function pickMaterialFamily(rng: () => number, archetype: ArchetypeConfig): MaterialFamily {
-  return pickWeighted(
-    rng,
-    MATERIAL_FAMILIES.map((materialFamily) => ({
-      value: materialFamily,
-      weight: archetype.materialWeights[materialFamily],
-    })),
-  );
+export interface PlanetSeedInput {
+  worldSeed: string;
+  planetSeed: string;
+  planetId?: string;
+  worldPosition?: { x: number; y: number; z?: number };
 }
 
-function pickMacroStyle(rng: () => number, archetype: ArchetypeConfig): PlanetMacroStyle {
-  return pickWeighted(
-    rng,
-    (Object.entries(archetype.macroStyleWeights) as Array<[PlanetMacroStyle, number]>).map(([value, weight]) => ({
-      value,
-      weight,
-    })),
-  );
+const MIN_RENDER_RADIUS = 2.8;
+const MAX_RENDER_RADIUS = 5.8;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
 
-function normalizeSeedInputs({ worldSeed, planetSeed }: SeedInputs): SeedInputs {
+function pickFamily(rng: () => number): PlanetFamily {
+  const roll = rng();
+  if (roll < 0.16) return 'oceanic';
+  if (roll < 0.3) return 'icy';
+  if (roll < 0.45) return 'volcanic';
+  if (roll < 0.62) return 'barren';
+  if (roll < 0.77) return 'toxic';
+  if (roll < 0.9) return 'gas-dwarf';
+  return 'terrestrial';
+}
+
+function pickRadiusClass(rng: () => number): PlanetRadiusClass {
+  const roll = rng();
+  if (roll < 0.26) return 'dwarf';
+  if (roll < 0.82) return 'standard';
+  return 'giant';
+}
+
+function radiusRangeForClass(radiusClass: PlanetRadiusClass): { min: number; max: number } {
+  if (radiusClass === 'dwarf') return { min: 1900, max: 4100 };
+  if (radiusClass === 'giant') return { min: 7900, max: 14000 };
+  return { min: 4200, max: 7800 };
+}
+
+function toColor(rng: () => number, base: [number, number, number], variance: number): [number, number, number] {
+  return base.map((channel) => clamp(channel + (rng() - 0.5) * variance, 0, 1)) as [number, number, number];
+}
+
+function classificationFromFamily(family: PlanetFamily, rng: () => number): PlanetClassification {
+  const reliefClass: PlanetReliefClass = family === 'volcanic' ? 'extreme' : rng() > 0.55 ? 'rugged' : 'gentle';
+  const roughnessClass: PlanetRoughnessClass = reliefClass === 'extreme' ? 'coarse' : rng() > 0.5 ? 'balanced' : 'polished';
+  const atmosphereClass: PlanetAtmosphereClass =
+    family === 'barren' ? 'none' : family === 'toxic' ? 'reactive' : rng() > 0.7 ? 'dense' : 'standard';
+
   return {
-    worldSeed: worldSeed.trim(),
-    planetSeed: planetSeed.trim(),
+    family,
+    biomeArchetype:
+      family === 'oceanic'
+        ? 'lush'
+        : family === 'icy'
+          ? 'ice'
+          : family === 'volcanic'
+            ? 'molten'
+            : family === 'toxic'
+              ? 'toxic'
+              : family === 'gas-dwarf'
+                ? 'storm'
+                : 'rocky',
+    atmosphereClass,
+    roughnessClass,
+    reliefClass,
+    hasOceans: family === 'oceanic' || family === 'terrestrial',
+    canHaveClouds: atmosphereClass !== 'none' && family !== 'volcanic',
+    canHaveRings: family === 'gas-dwarf' || rng() > 0.82,
   };
 }
 
-function sampleBiasedRange(
-  rng: () => number,
-  globalBounds: { min: number; max: number },
-  archetypeBounds: { min: number; max: number },
-): number {
-  return range(
-    rng,
-    Math.max(globalBounds.min, archetypeBounds.min),
-    Math.min(globalBounds.max, archetypeBounds.max),
-  );
+function buildScaleProfile(physicalRadius: number): PlanetScaleProfile {
+  const normalizedRadius = clamp((physicalRadius - 1900) / (14000 - 1900), 0, 1);
+  const renderRadiusBase = MIN_RENDER_RADIUS + normalizedRadius * (MAX_RENDER_RADIUS - MIN_RENDER_RADIUS);
+
+  return {
+    physicalRadius,
+    renderRadiusBase,
+    normalizedRadius,
+    galaxyViewScaleMultiplier: 1,
+    planetViewScaleMultiplier: 1,
+    silhouetteProtectedRadius: Math.max(3.05, renderRadiusBase),
+    minRadiusGuardrail: MIN_RENDER_RADIUS,
+    maxRadiusGuardrail: MAX_RENDER_RADIUS,
+  };
 }
 
-function ensureArchetypeConfig(archetype: PlanetVisualProfile['archetype']): ArchetypeConfig {
-  const config = PLANET_ARCHETYPES.find((item) => item.name === archetype);
-  if (!config) {
-    throw new Error(`missing-archetype-config:${archetype}`);
-  }
-  return config;
+function buildViewProfile(viewMode: PlanetViewProfile['viewMode']): PlanetViewProfile {
+  const isGalaxy = viewMode === 'galaxy';
+  return {
+    viewMode,
+    lod: isGalaxy ? 'low' : 'high',
+    meshSegments: isGalaxy ? 28 : 96,
+    cloudSegments: isGalaxy ? 24 : 72,
+    atmosphereSegments: isGalaxy ? 20 : 60,
+    enableRings: true,
+    lightingBoost: isGalaxy ? 1 : 1.18,
+  };
 }
 
-export function generatePlanetVisualProfile(
-  seedInputs: SeedInputs,
-  config: PlanetVisualGeneratorConfig = {},
-): PlanetVisualProfile {
-  const seeds = normalizeSeedInputs(seedInputs);
+export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet {
+  const worldSeed = input.worldSeed.trim();
+  const planetSeed = input.planetSeed.trim();
+  const canonicalSeed = deriveSeed(`${worldSeed}::${planetSeed}`, 'planet-canonical');
+  const rng = createSeededRng(canonicalSeed);
 
-  if (!seeds.worldSeed || !seeds.planetSeed) {
-    throw new Error('worldSeed and planetSeed must be non-empty strings');
-  }
+  const family = pickFamily(rng);
+  const radiusClass = pickRadiusClass(rng);
+  const physicalRadius = range(rng, radiusRangeForClass(radiusClass).min, radiusRangeForClass(radiusClass).max);
 
-  const base = `${seeds.worldSeed}::${seeds.planetSeed}`;
-  const baseSeed = deriveSeed(base, 'base');
-  const shapeSeed = deriveSeed(base, 'shape');
-  const reliefSeed = deriveSeed(base, 'relief');
-  const colorSeed = deriveSeed(base, 'color');
-  const atmoSeed = deriveSeed(base, 'atmo');
-  const hydroSeed = deriveSeed(base, 'hydro');
-
-  const shapeRng = createSeededRng(shapeSeed);
-  const reliefRng = createSeededRng(reliefSeed);
-  const colorRng = createSeededRng(colorSeed);
-  const atmoRng = createSeededRng(atmoSeed);
-  const hydroRng = createSeededRng(hydroSeed);
-  const baseRng = createSeededRng(baseSeed);
-
-  const archetypeName = pickArchetypeFromIdentityRules(baseRng);
-  const identity = generatePlanetIdentity({ archetype: archetypeName, baseSeed });
-  const archetype = ensureArchetypeConfig(identity.archetype);
-
-  const radiusRange = SIZE_RADIUS_RANGES[identity.sizeCategory];
-  const macroStyle = pickMacroStyle(baseRng, archetype);
-  const materialFamily = pickMaterialFamily(colorRng, archetype);
-
-  const atmosphereEnabled = identity.atmosphereFamily !== 'none' && atmoRng() < archetype.atmosphereChance;
-
-  const hydrologyRangeByFamily = {
-    waterworld: { oceanBias: [0.56, 0.78], minLandRatio: [0.46, 0.56], maxOceanRatio: [0.44, 0.58] },
-    balanced: { oceanBias: [0.35, 0.62], minLandRatio: [0.46, 0.68], maxOceanRatio: [0.3, 0.54] },
-    arid: { oceanBias: [0.12, 0.34], minLandRatio: [0.58, 0.8], maxOceanRatio: [0.14, 0.34] },
-    dry: { oceanBias: [0.02, 0.18], minLandRatio: [0.68, 0.9], maxOceanRatio: [0.02, 0.18] },
-    cryo: { oceanBias: [0.2, 0.42], minLandRatio: [0.48, 0.72], maxOceanRatio: [0.22, 0.44] },
-  } as const;
-
-  const hydroFamilyRange = hydrologyRangeByFamily[identity.hydrologyFamily];
-
-  const profile: PlanetVisualProfile = {
-    id: `${seeds.worldSeed}:${seeds.planetSeed}:v${config.visualGenVersion ?? DEFAULT_VISUAL_GEN_VERSION}`,
-    visualGenVersion: config.visualGenVersion ?? DEFAULT_VISUAL_GEN_VERSION,
-    seeds,
-    derivedSubSeeds: {
-      baseSeed,
-      shapeSeed,
-      reliefSeed,
-      colorSeed,
-      atmoSeed,
-      hydroSeed,
+  const identity: PlanetIdentity = {
+    planetId: input.planetId ?? planetSeed,
+    planetSeed,
+    worldSeed,
+    canonicalSeed,
+    family,
+    radiusClass,
+    worldPosition: {
+      x: input.worldPosition?.x ?? 0,
+      y: input.worldPosition?.y ?? 0,
+      z: input.worldPosition?.z ?? 0,
     },
+  };
+
+  const classification = classificationFromFamily(family, rng);
+
+  const visualDNA: PlanetVisualDNA = {
+    paletteId: `${family}-${Math.floor(rng() * 5)}`,
+    baseColor: toColor(rng, family === 'icy' ? [0.68, 0.82, 0.92] : [0.43, 0.39, 0.33], 0.34),
+    secondaryColor: toColor(rng, family === 'volcanic' ? [0.92, 0.33, 0.19] : [0.54, 0.49, 0.42], 0.42),
+    oceanColor: toColor(rng, family === 'oceanic' ? [0.1, 0.3, 0.7] : [0.15, 0.22, 0.38], 0.22),
+    cloudColor: toColor(rng, [0.93, 0.95, 0.98], 0.08),
+    atmosphereTint: toColor(rng, [0.4, 0.58, 0.9], 0.28),
+    oceanCoverage: classification.hasOceans ? range(rng, 0.22, 0.74) : 0,
+    cloudCoverage: classification.canHaveClouds ? range(rng, 0.12, 0.82) : 0,
+    atmosphereDensity: classification.atmosphereClass === 'none' ? 0 : range(rng, 0.12, 0.9),
+    reliefAmplitude: range(rng, 0.08, classification.reliefClass === 'extreme' ? 0.42 : 0.24),
+    roughness: classification.roughnessClass === 'coarse' ? range(rng, 0.65, 0.96) : range(rng, 0.3, 0.75),
+    specularStrength: classification.hasOceans ? range(rng, 0.2, 0.7) : range(rng, 0.05, 0.28),
+    emissiveIntensity: family === 'volcanic' ? range(rng, 0.08, 0.32) : range(rng, 0, 0.08),
+    bandingStrength: family === 'gas-dwarf' ? range(rng, 0.34, 0.82) : range(rng, 0.02, 0.34),
+    noiseSeeds: {
+      surface: deriveSeed(String(canonicalSeed), 'surface'),
+      clouds: deriveSeed(String(canonicalSeed), 'clouds'),
+      bands: deriveSeed(String(canonicalSeed), 'bands'),
+      rings: deriveSeed(String(canonicalSeed), 'rings'),
+    },
+    rotation: {
+      surfaceSpeed: range(rng, 0.04, 0.2),
+      cloudSpeed: range(rng, 0.05, 0.26),
+      axialTilt: range(rng, -0.36, 0.36),
+    },
+  };
+
+  const generated: PlanetGeneratedProfile = {
     identity,
-    archetype: identity.archetype,
-    macroStyle,
-    sizeCategory: identity.sizeCategory,
-    materialFamily,
-    paletteFamily: identity.paletteFamily,
-    hydrology: {
-      oceanBias: sampleBiasedRange(hydroRng, { min: 0, max: 1 }, {
-        min: hydroFamilyRange.oceanBias[0],
-        max: hydroFamilyRange.oceanBias[1],
-      }),
-      minLandRatio: sampleBiasedRange(hydroRng, { min: MIN_GAMEPLAY_LAND_RATIO, max: 0.9 }, {
-        min: Math.max(hydroFamilyRange.minLandRatio[0], identity.visualConstraints.minLandRatio),
-        max: hydroFamilyRange.minLandRatio[1],
-      }),
-      maxOceanRatio: sampleBiasedRange(hydroRng, { min: 0.02, max: 0.74 }, {
-        min: hydroFamilyRange.maxOceanRatio[0],
-        max: Math.min(hydroFamilyRange.maxOceanRatio[1], identity.visualConstraints.maxOceanRatio),
-      }),
+    classification,
+    visualDNA,
+    physicalRadius,
+    ring: {
+      enabled: classification.canHaveRings,
+      innerRadiusRatio: range(rng, 1.3, 1.7),
+      outerRadiusRatio: range(rng, 1.85, 2.4),
+      tilt: range(rng, -0.72, 0.72),
+      opacity: range(rng, 0.22, 0.72),
     },
-    shape: {
-      radius: range(shapeRng, radiusRange.min, radiusRange.max),
-      wobbleFrequency: sampleBiasedRange(shapeRng, BOUNDS.wobbleFrequency, archetype.shapeBias.wobbleFrequency),
-      wobbleAmplitude: sampleBiasedRange(shapeRng, BOUNDS.wobbleAmplitude, archetype.shapeBias.wobbleAmplitude),
-      ridgeWarp: sampleBiasedRange(shapeRng, BOUNDS.ridgeWarp, archetype.shapeBias.ridgeWarp),
+  };
+
+  const scale = buildScaleProfile(physicalRadius);
+
+  const render: PlanetRenderProfile = {
+    planetId: identity.planetId,
+    renderRadius: scale.renderRadiusBase,
+    scale,
+    surface: {
+      colorA: visualDNA.baseColor,
+      colorB: visualDNA.secondaryColor,
+      oceanColor: visualDNA.oceanColor,
+      reliefAmplitude: visualDNA.reliefAmplitude,
+      roughness: visualDNA.roughness,
+      specularStrength: visualDNA.specularStrength,
+      bandingStrength: visualDNA.bandingStrength,
+      noiseSeed: visualDNA.noiseSeeds.surface,
     },
-    relief: {
-      macroStrength: sampleBiasedRange(reliefRng, BOUNDS.macroStrength, archetype.reliefBias.macroStrength),
-      microStrength: sampleBiasedRange(reliefRng, BOUNDS.microStrength, archetype.reliefBias.microStrength),
-      roughness: sampleBiasedRange(reliefRng, BOUNDS.roughness, archetype.reliefBias.roughness),
-      craterDensity: sampleBiasedRange(reliefRng, BOUNDS.craterDensity, archetype.reliefBias.craterDensity),
-    },
-    color: {
-      hueShift: range(colorRng, BOUNDS.hueShift.min, BOUNDS.hueShift.max),
-      saturation: sampleBiasedRange(colorRng, BOUNDS.saturation, archetype.colorBias.saturation),
-      lightness: sampleBiasedRange(colorRng, BOUNDS.lightness, archetype.colorBias.lightness),
-      accentMix: sampleBiasedRange(colorRng, BOUNDS.accentMix, archetype.colorBias.accentMix),
+    clouds: {
+      enabled: classification.canHaveClouds,
+      color: visualDNA.cloudColor,
+      coverage: visualDNA.cloudCoverage,
+      opacity: clamp(visualDNA.cloudCoverage * 0.9, 0, 0.9),
+      speed: visualDNA.rotation.cloudSpeed,
+      noiseSeed: visualDNA.noiseSeeds.clouds,
     },
     atmosphere: {
-      enabled: atmosphereEnabled,
-      intensity: atmosphereEnabled
-        ? range(atmoRng, BOUNDS.atmosphereIntensity.min, BOUNDS.atmosphereIntensity.max)
-        : 0,
-      thickness: atmosphereEnabled
-        ? range(atmoRng, BOUNDS.atmosphereThickness.min, BOUNDS.atmosphereThickness.max)
-        : 0,
-      tintShift: atmosphereEnabled
-        ? range(atmoRng, BOUNDS.atmosphereTintShift.min, BOUNDS.atmosphereTintShift.max)
-        : 0,
+      enabled: classification.atmosphereClass !== 'none',
+      color: visualDNA.atmosphereTint,
+      density: visualDNA.atmosphereDensity,
+      thickness: clamp(visualDNA.atmosphereDensity * 0.15, 0, 0.14),
+      rimStrength: clamp(0.2 + visualDNA.atmosphereDensity * 0.8, 0.2, 1),
+    },
+    rings: {
+      enabled: generated.ring.enabled,
+      innerRadius: scale.renderRadiusBase * generated.ring.innerRadiusRatio,
+      outerRadius: scale.renderRadiusBase * generated.ring.outerRadiusRatio,
+      tilt: generated.ring.tilt,
+      opacity: generated.ring.opacity,
+      noiseSeed: visualDNA.noiseSeeds.rings,
+    },
+    debug: {
+      paletteId: visualDNA.paletteId,
+      activeNoiseFamilies: ['fbm', family === 'gas-dwarf' ? 'banding' : 'ridged'],
     },
   };
 
-  const identityIssues = validateProfileIdentity(profile);
-  if (identityIssues.length > 0) {
-    throw new Error(`invalid-planet-identity:${identityIssues.join('|')}`);
-  }
-
-  return profile;
+  return { identity, classification, visualDNA, generated, render };
 }
 
-export function isPlanetVisualProfileInBounds(profile: PlanetVisualProfile): boolean {
-  const radiusRange = SIZE_RADIUS_RANGES[profile.sizeCategory];
-
-  return (
-    profile.shape.radius >= radiusRange.min &&
-    profile.shape.radius <= radiusRange.max &&
-    profile.shape.wobbleFrequency >= BOUNDS.wobbleFrequency.min &&
-    profile.shape.wobbleFrequency <= BOUNDS.wobbleFrequency.max &&
-    profile.shape.wobbleAmplitude >= BOUNDS.wobbleAmplitude.min &&
-    profile.shape.wobbleAmplitude <= BOUNDS.wobbleAmplitude.max &&
-    profile.shape.ridgeWarp >= BOUNDS.ridgeWarp.min &&
-    profile.shape.ridgeWarp <= BOUNDS.ridgeWarp.max &&
-    profile.relief.macroStrength >= BOUNDS.macroStrength.min &&
-    profile.relief.macroStrength <= BOUNDS.macroStrength.max &&
-    profile.relief.microStrength >= BOUNDS.microStrength.min &&
-    profile.relief.microStrength <= BOUNDS.microStrength.max &&
-    profile.relief.roughness >= BOUNDS.roughness.min &&
-    profile.relief.roughness <= BOUNDS.roughness.max &&
-    profile.relief.craterDensity >= BOUNDS.craterDensity.min &&
-    profile.relief.craterDensity <= BOUNDS.craterDensity.max &&
-    profile.color.hueShift >= BOUNDS.hueShift.min &&
-    profile.color.hueShift <= BOUNDS.hueShift.max &&
-    profile.color.saturation >= BOUNDS.saturation.min &&
-    profile.color.saturation <= BOUNDS.saturation.max &&
-    profile.color.lightness >= BOUNDS.lightness.min &&
-    profile.color.lightness <= BOUNDS.lightness.max &&
-    profile.color.accentMix >= BOUNDS.accentMix.min &&
-    profile.color.accentMix <= BOUNDS.accentMix.max &&
-    profile.hydrology.oceanBias >= 0 &&
-    profile.hydrology.oceanBias <= 1 &&
-    profile.hydrology.minLandRatio >= MIN_GAMEPLAY_LAND_RATIO &&
-    profile.hydrology.minLandRatio <= 0.9 &&
-    profile.hydrology.maxOceanRatio >= 0.02 &&
-    profile.hydrology.maxOceanRatio <= 0.74 &&
-    (profile.atmosphere.enabled
-      ? profile.atmosphere.intensity >= BOUNDS.atmosphereIntensity.min &&
-        profile.atmosphere.intensity <= BOUNDS.atmosphereIntensity.max &&
-        profile.atmosphere.thickness >= BOUNDS.atmosphereThickness.min &&
-        profile.atmosphere.thickness <= BOUNDS.atmosphereThickness.max &&
-        profile.atmosphere.tintShift >= BOUNDS.atmosphereTintShift.min &&
-        profile.atmosphere.tintShift <= BOUNDS.atmosphereTintShift.max
-      : profile.atmosphere.intensity === 0 &&
-        profile.atmosphere.thickness === 0 &&
-        profile.atmosphere.tintShift === 0)
-  );
+export function generatePlanetVisualProfile(input: PlanetSeedInput): CanonicalPlanet {
+  return generateCanonicalPlanet(input);
 }
 
-export function profileSignature(profile: PlanetVisualProfile): string {
+export function createPlanetViewProfile(viewMode: PlanetViewProfile['viewMode']): PlanetViewProfile {
+  return buildViewProfile(viewMode);
+}
+
+export function isPlanetVisualProfileInBounds(planet: CanonicalPlanet): boolean {
+  const radius = planet.render.scale.renderRadiusBase;
+  return radius >= MIN_RENDER_RADIUS && radius <= MAX_RENDER_RADIUS;
+}
+
+export function profileSignature(planet: CanonicalPlanet): string {
   return [
-    profile.identity.archetype,
-    profile.identity.shapeFamily,
-    profile.identity.reliefFamily,
-    profile.identity.surfaceFamily,
-    profile.macroStyle,
-    profile.sizeCategory,
-    profile.materialFamily,
-    profile.paletteFamily,
-    profile.shape.radius.toFixed(3),
-    profile.relief.macroStrength.toFixed(3),
-    profile.hydrology.minLandRatio.toFixed(3),
-    profile.color.hueShift.toFixed(2),
-    profile.atmosphere.enabled ? 'atmo:on' : 'atmo:off',
+    planet.identity.planetId,
+    planet.identity.family,
+    planet.identity.radiusClass,
+    planet.visualDNA.paletteId,
+    planet.render.renderRadius.toFixed(3),
   ].join('|');
 }
