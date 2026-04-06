@@ -29,9 +29,9 @@ export const DEFAULT_GALAXY_LAYOUT_CONFIG: Required<GalaxyLayoutBaseConfig> = {
 
 const EDGE_PADDING_FACTOR = 0.997;
 
-interface ArmBand {
-  phase: number;
-  twist: number;
+interface LaneBand {
+  angle: number;
+  offset: number;
   width: number;
   strength: number;
 }
@@ -44,40 +44,51 @@ interface DensityVoid {
 }
 
 interface GalaxyStructure {
-  arms: ArmBand[];
+  lanes: LaneBand[];
   voids: DensityVoid[];
+  noiseWeights: {
+    ax: number;
+    ay: number;
+    bx: number;
+    by: number;
+  };
 }
 
 function createGalaxyStructure(rng: () => number, fieldRadius: number): GalaxyStructure {
-  const armCount = 4 + Math.floor(rng() * 2);
-  const arms: ArmBand[] = Array.from({ length: armCount }, (_, index) => ({
-    phase: (index / armCount) * Math.PI * 2 + (rng() - 0.5) * 0.52,
-    twist: 0.0044 + rng() * 0.0036,
-    width: fieldRadius * (0.06 + rng() * 0.05),
-    strength: 0.68 + rng() * 0.58,
+  const laneCount = 4 + Math.floor(rng() * 3);
+  const lanes: LaneBand[] = Array.from({ length: laneCount }, () => ({
+    angle: rng() * Math.PI,
+    offset: (rng() - 0.5) * fieldRadius * 1.4,
+    width: fieldRadius * (0.08 + rng() * 0.07),
+    strength: 0.56 + rng() * 0.5,
   }));
 
   const voidCount = 3 + Math.floor(rng() * 2);
   const voids: DensityVoid[] = Array.from({ length: voidCount }, () => {
-    const angle = rng() * Math.PI * 2;
-    const distance = fieldRadius * (0.26 + rng() * 0.58);
     return {
-      x: Math.cos(angle) * distance,
-      y: Math.sin(angle) * distance,
+      x: (rng() - 0.5) * fieldRadius * 1.7,
+      y: (rng() - 0.5) * fieldRadius * 1.7,
       radius: fieldRadius * (0.12 + rng() * 0.13),
       softness: 0.74 + rng() * 0.2,
     };
   });
 
-  return { arms, voids };
+  return {
+    lanes,
+    voids,
+    noiseWeights: {
+      ax: 0.0068 + rng() * 0.0042,
+      ay: 0.0064 + rng() * 0.004,
+      bx: 0.013 + rng() * 0.007,
+      by: 0.012 + rng() * 0.007,
+    },
+  };
 }
 
-function closestSpiralDistance(x: number, y: number, arm: ArmBand): number {
-  const angle = Math.atan2(y, x);
-  const radius = Math.hypot(x, y);
-  const expectedAngle = arm.phase + radius * arm.twist;
-  const wrapped = Math.atan2(Math.sin(angle - expectedAngle), Math.cos(angle - expectedAngle));
-  return Math.abs(wrapped) * Math.max(radius, 16);
+function laneDistance(x: number, y: number, lane: LaneBand): number {
+  const normalX = -Math.sin(lane.angle);
+  const normalY = Math.cos(lane.angle);
+  return Math.abs(x * normalX + y * normalY - lane.offset);
 }
 
 function sampleUniverseDensity(
@@ -86,17 +97,21 @@ function sampleUniverseDensity(
   fieldRadius: number,
   structure: GalaxyStructure,
 ): number {
-  const radius = Math.hypot(x, y);
-  const normalizedRadius = radius / Math.max(1, fieldRadius);
-  const halo = Math.exp(-Math.pow((normalizedRadius - 0.68) / 0.46, 2));
-  const core = Math.exp(-Math.pow(normalizedRadius / 0.2, 2));
-  const edgeHalo = Math.exp(-Math.pow((normalizedRadius - 0.9) / 0.22, 2));
+  const normalizedX = x / Math.max(1, fieldRadius);
+  const normalizedY = y / Math.max(1, fieldRadius);
+  const maxAxisNorm = Math.max(Math.abs(normalizedX), Math.abs(normalizedY));
+  const edgeOccupancyBoost = Math.max(0, (maxAxisNorm - 0.72) / 0.28);
+  const centerPenalty = Math.max(0, 1 - maxAxisNorm / 0.32);
 
-  let armSignal = 0;
-  for (const arm of structure.arms) {
-    const distanceToArm = closestSpiralDistance(x, y, arm);
-    const armDensity = Math.exp(-Math.pow(distanceToArm / arm.width, 2)) * arm.strength;
-    armSignal = Math.max(armSignal, armDensity);
+  const { ax, ay, bx, by } = structure.noiseWeights;
+  const coarseNoise = Math.sin(x * ax + y * ay) * 0.5 + 0.5;
+  const fineNoise = Math.sin(x * bx - y * by) * 0.5 + 0.5;
+
+  let laneSignal = 0;
+  for (const lane of structure.lanes) {
+    const distanceToLane = laneDistance(x, y, lane);
+    const laneDensity = Math.exp(-Math.pow(distanceToLane / lane.width, 2)) * lane.strength;
+    laneSignal = Math.max(laneSignal, laneDensity);
   }
 
   let voidAttenuation = 1;
@@ -109,7 +124,13 @@ function sampleUniverseDensity(
     }
   }
 
-  const baseDensity = 0.09 + halo * 0.18 + edgeHalo * 0.12 + core * 0.12 + armSignal * 0.64;
+  const baseDensity =
+    0.22 +
+    coarseNoise * 0.16 +
+    fineNoise * 0.1 +
+    laneSignal * 0.5 +
+    edgeOccupancyBoost * 0.13 -
+    centerPenalty * 0.08;
   return Math.max(0, Math.min(1, baseDensity * voidAttenuation));
 }
 
@@ -118,48 +139,58 @@ function sampleStructuredCandidate(
   fieldRadius: number,
   structure: GalaxyStructure,
 ): { x: number; y: number; distanceFromCenter: number; density: number } {
+  const usableRadius = fieldRadius * EDGE_PADDING_FACTOR;
+
   for (let attempt = 0; attempt < 18; attempt += 1) {
     const modeRoll = rng();
 
     let x = 0;
     let y = 0;
 
-    if (modeRoll < 0.56) {
-      const arm = structure.arms[Math.floor(rng() * structure.arms.length)]!;
-      const radius = fieldRadius * (0.1 + 0.88 * Math.pow(rng(), 1.2));
-      const angle = arm.phase + radius * arm.twist + (rng() - 0.5) * 0.62;
-      const radialJitter = (rng() - 0.5) * arm.width * 0.9;
-      x = Math.cos(angle) * (radius + radialJitter);
-      y = Math.sin(angle) * (radius + radialJitter);
-    } else if (modeRoll < 0.78) {
-      const angle = rng() * Math.PI * 2;
-      const radius = fieldRadius * (0.06 + 0.86 * Math.pow(rng(), 1.2));
-      x = Math.cos(angle) * radius;
-      y = Math.sin(angle) * radius;
-    } else if (modeRoll < 0.92) {
-      const angle = rng() * Math.PI * 2;
-      const radius = fieldRadius * (0.72 + 0.27 * Math.pow(rng(), 0.42));
-      x = Math.cos(angle) * radius;
-      y = Math.sin(angle) * radius;
+    if (modeRoll < 0.52) {
+      const lane = structure.lanes[Math.floor(rng() * structure.lanes.length)]!;
+      const along = (rng() - 0.5) * usableRadius * 2;
+      const jitter = (rng() - 0.5) * lane.width * 1.5;
+      const dirX = Math.cos(lane.angle);
+      const dirY = Math.sin(lane.angle);
+      const normalX = -dirY;
+      const normalY = dirX;
+      x = dirX * along + normalX * (lane.offset + jitter);
+      y = dirY * along + normalY * (lane.offset + jitter);
+    } else if (modeRoll < 0.86) {
+      x = (rng() - 0.5) * usableRadius * 2;
+      y = (rng() - 0.5) * usableRadius * 2;
     } else {
-      const angle = rng() * Math.PI * 2;
-      const radius = fieldRadius * (0.04 + 0.95 * Math.sqrt(rng()));
-      x = Math.cos(angle) * radius;
-      y = Math.sin(angle) * radius;
+      const side = Math.floor(rng() * 4);
+      const edgeOffset = usableRadius * (0.78 + rng() * 0.22);
+      const tangent = (rng() - 0.5) * usableRadius * 2;
+      if (side === 0) {
+        x = edgeOffset;
+        y = tangent;
+      } else if (side === 1) {
+        x = -edgeOffset;
+        y = tangent;
+      } else if (side === 2) {
+        x = tangent;
+        y = edgeOffset;
+      } else {
+        x = tangent;
+        y = -edgeOffset;
+      }
     }
 
-    const distanceFromCenter = Math.hypot(x, y);
-    if (distanceFromCenter > fieldRadius * EDGE_PADDING_FACTOR) {
+    if (Math.abs(x) > usableRadius || Math.abs(y) > usableRadius) {
       continue;
     }
+    const distanceFromCenter = Math.hypot(x, y);
 
     const density = sampleUniverseDensity(x, y, fieldRadius, structure);
     if (density <= 0.03) {
       continue;
     }
 
-    const edgeRatio = distanceFromCenter / fieldRadius;
-    const edgeAcceptanceBoost = edgeRatio > 0.78 ? 0.12 : 0;
+    const edgeRatio = Math.max(Math.abs(x), Math.abs(y)) / fieldRadius;
+    const edgeAcceptanceBoost = edgeRatio > 0.78 ? 0.16 : 0;
     const accepted = rng() < 0.3 + density * 0.8 + edgeAcceptanceBoost;
     if (!accepted && attempt < 17) {
       continue;
@@ -168,10 +199,8 @@ function sampleStructuredCandidate(
     return { x, y, distanceFromCenter, density };
   }
 
-  const angle = rng() * Math.PI * 2;
-  const radius = fieldRadius * EDGE_PADDING_FACTOR * Math.sqrt(rng());
-  const x = Math.cos(angle) * radius;
-  const y = Math.sin(angle) * radius;
+  const x = (rng() - 0.5) * usableRadius * 2;
+  const y = (rng() - 0.5) * usableRadius * 2;
   return {
     x,
     y,
@@ -250,10 +279,10 @@ export function generateGalaxyLayout(
         nearestDistance = merged.fieldRadius;
       }
 
-      const edgeFactor = radiusFromCenter / merged.fieldRadius;
+      const edgeFactor = Math.max(Math.abs(candidate.x), Math.abs(candidate.y)) / merged.fieldRadius;
       const emptinessBoost = Math.pow(1 - candidate.density, 1.25) * merged.minSpacing * 0.46;
       const armPresenceBoost = candidate.density * merged.minSpacing * 0.42;
-      const edgeComposure = edgeFactor > 0.8 ? merged.minSpacing * 0.36 : 0;
+      const edgeComposure = edgeFactor > 0.8 ? merged.minSpacing * 0.42 : 0;
 
       const score = nearestDistance + emptinessBoost + armPresenceBoost + edgeComposure;
 
@@ -274,8 +303,9 @@ export function generateGalaxyLayout(
     const fillRatio = points.length / Math.max(1, merged.planetCount);
     const candidateRadius = merged.planetRadii?.[points.length] ?? 0;
     const densitySpacingMultiplier = 1.42 - bestCandidate.density * 0.5;
-    const edgeRatio = Math.hypot(bestCandidate.x, bestCandidate.y) / Math.max(1, merged.fieldRadius);
-    const edgePackingBoost = edgeRatio > 0.8 ? 0.09 : 0;
+    const edgeRatio =
+      Math.max(Math.abs(bestCandidate.x), Math.abs(bestCandidate.y)) / Math.max(1, merged.fieldRadius);
+    const edgePackingBoost = edgeRatio > 0.8 ? 0.13 : 0;
     const packingRelaxation = 1.06 - fillRatio * 0.2 - edgePackingBoost + rng() * 0.04;
     const dynamicMinSpacing = Math.max(
       merged.minSpacing,
@@ -302,7 +332,7 @@ export function generateGalaxyLayout(
     fallbackAttempts += 1;
     const candidate = sampleStructuredCandidate(rng, merged.fieldRadius, structure);
     const candidateRadius = merged.planetRadii?.[points.length] ?? 0;
-    const edgeRatio = Math.hypot(candidate.x, candidate.y) / Math.max(1, merged.fieldRadius);
+    const edgeRatio = Math.max(Math.abs(candidate.x), Math.abs(candidate.y)) / Math.max(1, merged.fieldRadius);
     const relaxedSpacing = Math.max(
       merged.minSpacing,
       merged.minSpacing * (1.14 - candidate.density * 0.34 - (edgeRatio > 0.82 ? 0.06 : 0)),
