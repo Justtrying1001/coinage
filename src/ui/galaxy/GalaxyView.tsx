@@ -24,11 +24,8 @@ interface PlanetRenderData {
 
 const FIELD_RADIUS = GALAXY_LAYOUT_RUNTIME_CONFIG.fieldRadius ?? 84;
 const MOVE_SPEED = Math.max(24, FIELD_RADIUS * 0.18);
-const BASE_VIEW_HEIGHT = Math.min(560, Math.max(120, FIELD_RADIUS * 0.95));
-const INITIAL_CAMERA_ZOOM = 2.2;
-const MIN_CAMERA_ZOOM = 1.1;
-const MAX_CAMERA_ZOOM = 5.5;
-const ZOOM_STEP = 0.0018;
+const BASE_VIEW_HEIGHT = Math.min(380, Math.max(140, FIELD_RADIUS * 0.58));
+const FIXED_CAMERA_ZOOM = 2.85;
 
 export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -74,7 +71,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     }
 
     camera.position.set(centralRegionTarget.x, centralRegionTarget.y, 60);
-    camera.zoom = INITIAL_CAMERA_ZOOM;
+    camera.zoom = FIXED_CAMERA_ZOOM;
     camera.updateProjectionMatrix();
     camera.lookAt(camera.position.x, camera.position.y, 0);
 
@@ -164,9 +161,9 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       lastX = event.clientX;
       lastY = event.clientY;
 
-      const zoomAdjustedPanFactor = 0.04 / camera.zoom;
-      camera.position.x -= dx * zoomAdjustedPanFactor;
-      camera.position.y += dy * zoomAdjustedPanFactor;
+      const panFactor = 0.0135 * BASE_VIEW_HEIGHT;
+      camera.position.x -= (dx / Math.max(1, mount.clientHeight)) * panFactor;
+      camera.position.y += (dy / Math.max(1, mount.clientHeight)) * panFactor;
     };
 
     const onPointerUp = () => {
@@ -177,12 +174,6 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       event.preventDefault();
     };
 
-    const onWheel = (event: WheelEvent) => {
-      event.preventDefault();
-      const nextZoom = camera.zoom - event.deltaY * ZOOM_STEP;
-      camera.zoom = THREE.MathUtils.clamp(nextZoom, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM);
-      camera.updateProjectionMatrix();
-    };
 
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
@@ -237,7 +228,6 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
     renderer.domElement.addEventListener('dblclick', onDoubleClick);
     renderer.domElement.addEventListener('contextmenu', onContextMenu);
-    renderer.domElement.addEventListener('wheel', onWheel, { passive: false });
 
     let previousTime = performance.now();
     let disposed = false;
@@ -290,7 +280,6 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       renderer.domElement.removeEventListener('dblclick', onDoubleClick);
       renderer.domElement.removeEventListener('contextmenu', onContextMenu);
-      renderer.domElement.removeEventListener('wheel', onWheel);
 
       for (const instance of instances) {
         instance.dispose();
@@ -312,9 +301,6 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         </p>
         <p className="mt-1 text-slate-100/90">
           <span className="font-semibold">Planet View:</span> double-click a planet
-        </p>
-        <p className="mt-1 text-slate-100/90">
-          <span className="font-semibold">Zoom:</span> mouse wheel
         </p>
         <p className="mt-1 text-slate-100/90">
           <span className="font-semibold">Planets:</span> {planetData.length}
