@@ -151,6 +151,56 @@ function minimumLandRatioForCategory(category: SurfaceCategoryKind): number {
   }
 }
 
+
+
+function archetypeColorPresence(archetype: PlanetVisualProfile['archetype']): number {
+  switch (archetype) {
+    case 'oceanic':
+    case 'lush':
+    case 'superterran':
+      return 0.34;
+    case 'volcanic':
+    case 'dead':
+    case 'mineral':
+      return 0.62;
+    case 'toxic':
+    case 'exotic':
+      return 0.52;
+    case 'fragmented':
+    case 'arid':
+      return 0.58;
+    case 'icy':
+    case 'clouded':
+      return 0.44;
+  }
+}
+
+function archetypeLandFloor(archetype: PlanetVisualProfile['archetype']): number {
+  switch (archetype) {
+    case 'oceanic':
+      return 0.44;
+    case 'icy':
+    case 'clouded':
+      return 0.5;
+    case 'lush':
+      return 0.54;
+    case 'superterran':
+      return 0.6;
+    case 'fragmented':
+      return 0.56;
+    case 'arid':
+      return 0.6;
+    case 'volcanic':
+      return 0.64;
+    case 'dead':
+    case 'mineral':
+      return 0.58;
+    case 'toxic':
+    case 'exotic':
+      return 0.52;
+  }
+}
+
 function applyMacroStyleToTerrain(
   terrain: TerrainProfileSettings,
   macroStyle: PlanetVisualProfile['macroStyle'],
@@ -611,8 +661,9 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
   const surfaceCategory = pickSurfaceCategory(profile, climate);
   const categoryColors = categoryPalette(surfaceCategory);
 
-  const landBase = new THREE.Color(pickLandColor(profile.paletteFamily)).lerp(new THREE.Color(categoryColors.land), 0.4);
-  const oceanBase = new THREE.Color(pickWaterColor(profile.paletteFamily)).lerp(new THREE.Color(categoryColors.water), 0.44);
+  const colorPresence = archetypeColorPresence(profile.archetype);
+  const landBase = new THREE.Color(pickLandColor(profile.paletteFamily)).lerp(new THREE.Color(categoryColors.land), colorPresence);
+  const oceanBase = new THREE.Color(pickWaterColor(profile.paletteFamily)).lerp(new THREE.Color(categoryColors.water), colorPresence + 0.08);
   const categoryMountain = new THREE.Color(categoryColors.mountain);
   const categoryIce = new THREE.Color(categoryColors.ice);
   const categoryShallow = new THREE.Color(categoryColors.shallow);
@@ -621,8 +672,8 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
   landBase.getHSL(hsl);
 
   const hue = (hsl.h + profile.color.hueShift / 360 + 1) % 1;
-  const saturation = clamp(hsl.s * 0.64 + profile.color.saturation * 0.6 + climate.mineral * 0.06 + climate.oddity * 0.08, 0.16, 1);
-  const lightness = clamp(hsl.l * 0.66 + profile.color.lightness * 0.46 - climate.dry * 0.06 + climate.cryo * 0.05, 0.12, 0.88);
+  const saturation = clamp(hsl.s * 0.52 + profile.color.saturation * 0.72 + climate.mineral * 0.06 + climate.oddity * 0.1, 0.14, 1);
+  const lightness = clamp(hsl.l * 0.58 + profile.color.lightness * 0.56 - climate.dry * 0.08 + climate.cryo * 0.06, 0.1, 0.9);
 
   const lowlandColor = new THREE.Color().setHSL(
     hue,
@@ -658,15 +709,15 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
   const terrainProfile = applyMacroStyleToTerrain(pickTerrainProfile(profile), profile.macroStyle);
 
   const categoryOceanLevel: Record<SurfaceCategoryKind, number> = {
-    ocean: 0.56,
-    desert: 0.23,
-    ice: 0.42,
-    volcanic: 0.17,
-    lush: 0.44,
-    mineral: 0.3,
-    barren: 0.15,
-    toxic: 0.32,
-    abyssal: 0.38,
+    ocean: 0.48,
+    desert: 0.18,
+    ice: 0.34,
+    volcanic: 0.12,
+    lush: 0.36,
+    mineral: 0.24,
+    barren: 0.14,
+    toxic: 0.24,
+    abyssal: 0.3,
   };
   const categoryMountainLevel: Record<SurfaceCategoryKind, number> = {
     ocean: 0.75,
@@ -702,28 +753,28 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     abyssal: 0.66,
   };
   const archetypeOceanOffset: Record<PlanetVisualProfile['archetype'], number> = {
-    oceanic: 0.09,
-    icy: 0.04,
-    arid: -0.1,
-    lush: 0.03,
-    volcanic: -0.13,
-    dead: -0.08,
-    toxic: -0.02,
-    mineral: -0.07,
-    clouded: 0.06,
-    exotic: -0.01,
-    fragmented: -0.11,
-    superterran: 0.05,
+    oceanic: 0.06,
+    icy: 0.02,
+    arid: -0.12,
+    lush: 0.01,
+    volcanic: -0.16,
+    dead: -0.1,
+    toxic: -0.03,
+    mineral: -0.09,
+    clouded: 0.03,
+    exotic: -0.02,
+    fragmented: -0.12,
+    superterran: -0.01,
   };
   const archetypeMountainOffset: Record<PlanetVisualProfile['archetype'], number> = {
     oceanic: -0.03,
     icy: -0.01,
     arid: 0.03,
     lush: 0.01,
-    volcanic: 0.07,
-    dead: 0.04,
-    toxic: 0.03,
-    mineral: 0.05,
+    volcanic: 0.08,
+    dead: 0.05,
+    toxic: 0.04,
+    mineral: 0.06,
     clouded: -0.02,
     exotic: 0.02,
     fragmented: 0.06,
@@ -742,14 +793,18 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
   const rawOceanLevel = clamp(
     categoryOceanLevel[surfaceCategory] +
       archetypeOceanOffset[profile.archetype] +
-      (profile.hydrology.oceanBias - 0.5) * 0.18 +
-      (0.5 - profile.color.accentMix) * 0.08 +
-      (isIcy ? 0.03 : 0) -
-      climate.dry * 0.03,
-    0.06,
-    0.68,
+      (profile.hydrology.oceanBias - 0.5) * 0.16 +
+      (0.5 - profile.color.accentMix) * 0.06 +
+      (isIcy ? 0.02 : 0) -
+      climate.dry * 0.04,
+    0.05,
+    0.62,
   );
-  const minLandRatio = Math.max(minimumLandRatioForCategory(surfaceCategory), profile.hydrology.minLandRatio);
+  const minLandRatio = clamp(
+    Math.max(minimumLandRatioForCategory(surfaceCategory), archetypeLandFloor(profile.archetype), profile.hydrology.minLandRatio),
+    0.4,
+    0.78,
+  );
   const estimatedLandRatio = estimateLandRatio(
     rawOceanLevel,
     profile.relief.macroStrength,
@@ -758,8 +813,13 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     terrainProfile.type,
   );
   const guardedOceanLevel = rawOceanLevel - Math.max(0, minLandRatio - estimatedLandRatio) * 1.18;
-  const maxOceanLevelFromHydrology = clamp(profile.hydrology.maxOceanRatio, 0.2, 0.68);
-  const finalOceanLevel = clamp(guardedOceanLevel, 0.06, Math.min(maxOceanLevelFromHydrology, rawMountainLevel - 0.16));
+  const maxOceanLevelFromHydrology = clamp(profile.hydrology.maxOceanRatio, 0.2, 0.62);
+  const hardOceanCapFromLand = clamp(1 - minLandRatio + 0.02, 0.18, 0.6);
+  const finalOceanLevel = clamp(
+    guardedOceanLevel,
+    0.05,
+    Math.min(maxOceanLevelFromHydrology, hardOceanCapFromLand, rawMountainLevel - 0.18),
+  );
 
   const landSurfaceColor = landColor.clone().lerp(new THREE.Color(categoryColors.land), 0.38).lerp(coastalColor, 0.14);
   const mountainSurfaceColor = mountainColor.clone().lerp(categoryMountain, 0.56);
@@ -778,6 +838,7 @@ export function mapProfileToProceduralUniforms(profile: PlanetVisualProfile): Pr
     meshResolution: Math.round(clamp(15 + profile.shape.radius * 3.6 + profile.relief.macroStrength * 7, 16, 25)),
     oceanLevel: finalOceanLevel,
     mountainLevel: rawMountainLevel,
+    minLandRatio,
     simpleFrequency: clamp(profile.shape.wobbleFrequency * 0.9 + 0.55, 0.8, 4.2),
     simpleStrength: clamp(
       (profile.relief.macroStrength * 0.62 + profile.shape.wobbleAmplitude * 0.35) *

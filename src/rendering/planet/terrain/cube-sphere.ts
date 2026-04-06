@@ -190,7 +190,12 @@ export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE
   }
 
   const elevationSpan = Math.max(0.0001, maxElevation - minElevation);
-  const effectiveOceanLevel = Math.min(params.oceanLevel, params.mountainLevel - 0.16);
+  const normalizedElevations = elevations.map((elevation) => (elevation - minElevation) / elevationSpan);
+  const sortedElevations = [...normalizedElevations].sort((a, b) => a - b);
+  const maxOceanCoverage = clamp(1 - params.minLandRatio, 0.22, 0.62);
+  const oceanQuantileIndex = Math.floor((sortedElevations.length - 1) * maxOceanCoverage);
+  const oceanQuantileCap = sortedElevations[Math.max(0, Math.min(sortedElevations.length - 1, oceanQuantileIndex))] - 0.002;
+  const effectiveOceanLevel = clamp(Math.min(params.oceanLevel, params.mountainLevel - 0.18, oceanQuantileCap), 0.03, 0.62);
   const categoryColorConfig = {
     ocean: { coastBoost: 0.24, mountainBoost: 0.16, iceBoost: 0.45, landToMountain: 0.42 },
     desert: { coastBoost: 0.05, mountainBoost: 0.2, iceBoost: 0.18, landToMountain: 0.6 },
@@ -205,7 +210,7 @@ export function createCubeSphereTerrain(params: ProceduralPlanetUniforms): THREE
 
   for (let i = 0; i < elevations.length; i += 1) {
     const elevation = elevations[i];
-    const normalized = (elevation - minElevation) / elevationSpan;
+    const normalized = normalizedElevations[i];
     const vx = vertices[i * 3];
     const vy = vertices[i * 3 + 1];
     const vz = vertices[i * 3 + 2];

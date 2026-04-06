@@ -86,6 +86,7 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
       'meshResolution',
       'oceanLevel',
       'mountainLevel',
+      'minLandRatio',
       'simpleFrequency',
       'simpleStrength',
       'ridgedFrequency',
@@ -116,7 +117,7 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
       `meshResolution out of range: ${uniforms.meshResolution}`,
     );
     assert.ok(
-      uniforms.oceanLevel >= 0.06 && uniforms.oceanLevel <= 0.68,
+      uniforms.oceanLevel >= 0.05 && uniforms.oceanLevel <= 0.62,
       `oceanLevel out of range: ${uniforms.oceanLevel}`,
     );
     assert.ok(
@@ -124,8 +125,16 @@ test('procedural uniforms contain no undefined/NaN values and remain in expected
       `mountainLevel out of range: ${uniforms.mountainLevel}`,
     );
     assert.ok(
-      uniforms.mountainLevel - uniforms.oceanLevel >= 0.16,
-      `expected land band gap >= 0.16, got ${uniforms.mountainLevel - uniforms.oceanLevel}`,
+      uniforms.minLandRatio >= 0.4 && uniforms.minLandRatio <= 0.78,
+      `minLandRatio out of range: ${uniforms.minLandRatio}`,
+    );
+    assert.ok(
+      uniforms.mountainLevel - uniforms.oceanLevel >= 0.18,
+      `expected land band gap >= 0.18, got ${uniforms.mountainLevel - uniforms.oceanLevel}`,
+    );
+    assert.ok(
+      uniforms.oceanLevel <= 1 - uniforms.minLandRatio + 0.03,
+      `expected ocean level to respect minLandRatio guardrail, got ocean=${uniforms.oceanLevel}, minLandRatio=${uniforms.minLandRatio}`,
     );
     assert.ok(
       uniforms.simpleFrequency >= 0.8 && uniforms.simpleFrequency <= 4.2,

@@ -25,6 +25,7 @@ export interface ProceduralPlanetUniforms {
   meshResolution: number;
   oceanLevel: number;
   mountainLevel: number;
+  minLandRatio: number;
   simpleFrequency: number;
   simpleStrength: number;
   ridgedFrequency: number;

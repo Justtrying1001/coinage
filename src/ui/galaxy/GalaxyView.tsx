@@ -26,6 +26,10 @@ const FIELD_RADIUS = GALAXY_LAYOUT_RUNTIME_CONFIG.fieldRadius ?? 84;
 const MOVE_SPEED = Math.max(24, FIELD_RADIUS * 0.18);
 const BASE_VIEW_HEIGHT = Math.min(380, Math.max(140, FIELD_RADIUS * 0.58));
 const FIXED_CAMERA_ZOOM = 2.85;
+const KEYBOARD_ACCELERATION = 15;
+const KEYBOARD_DECELERATION = 13;
+const CAMERA_FOLLOW_DAMPING = 16;
+const DRAG_PAN_FACTOR = 0.0135 * BASE_VIEW_HEIGHT;
 
 export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -74,6 +78,8 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     camera.zoom = FIXED_CAMERA_ZOOM;
     camera.updateProjectionMatrix();
     camera.lookAt(camera.position.x, camera.position.y, 0);
+    const cameraTarget = new THREE.Vector2(camera.position.x, camera.position.y);
+    const keyboardVelocity = new THREE.Vector2(0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setSize(mount.clientWidth, mount.clientHeight);
@@ -149,6 +155,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       dragging = true;
       lastX = event.clientX;
       lastY = event.clientY;
+      renderer.domElement.setPointerCapture(event.pointerId);
     };
 
     const onPointerMove = (event: PointerEvent) => {
@@ -161,13 +168,15 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       lastX = event.clientX;
       lastY = event.clientY;
 
-      const panFactor = 0.0135 * BASE_VIEW_HEIGHT;
-      camera.position.x -= (dx / Math.max(1, mount.clientHeight)) * panFactor;
-      camera.position.y += (dy / Math.max(1, mount.clientHeight)) * panFactor;
+      cameraTarget.x -= (dx / Math.max(1, mount.clientHeight)) * DRAG_PAN_FACTOR;
+      cameraTarget.y += (dy / Math.max(1, mount.clientHeight)) * DRAG_PAN_FACTOR;
     };
 
-    const onPointerUp = () => {
+    const onPointerUp = (event: PointerEvent) => {
       dragging = false;
+      if (renderer.domElement.hasPointerCapture(event.pointerId)) {
+        renderer.domElement.releasePointerCapture(event.pointerId);
+      }
     };
 
     const onContextMenu = (event: MouseEvent) => {
@@ -250,17 +259,24 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       if (keyState.ArrowDown || keyState.s) moveY -= 1;
 
       const length = Math.hypot(moveX, moveY) || 1;
-      if (moveX !== 0 || moveY !== 0) {
-        camera.position.x += (moveX / length) * MOVE_SPEED * delta;
-        camera.position.y += (moveY / length) * MOVE_SPEED * delta;
-      }
+      const desiredKeyboardVelocityX = moveX === 0 ? 0 : (moveX / length) * MOVE_SPEED;
+      const desiredKeyboardVelocityY = moveY === 0 ? 0 : (moveY / length) * MOVE_SPEED;
+      const keyboardResponse = 1 - Math.exp(-(moveX === 0 && moveY === 0 ? KEYBOARD_DECELERATION : KEYBOARD_ACCELERATION) * delta);
+      keyboardVelocity.x += (desiredKeyboardVelocityX - keyboardVelocity.x) * keyboardResponse;
+      keyboardVelocity.y += (desiredKeyboardVelocityY - keyboardVelocity.y) * keyboardResponse;
+      cameraTarget.x += keyboardVelocity.x * delta;
+      cameraTarget.y += keyboardVelocity.y * delta;
 
       const verticalHalfSpan = (camera.top - camera.bottom) / (2 * camera.zoom);
       const horizontalHalfSpan = (camera.right - camera.left) / (2 * camera.zoom);
       const clampedXRadius = Math.max(0, FIELD_RADIUS - horizontalHalfSpan * 0.4);
       const clampedYRadius = Math.max(0, FIELD_RADIUS - verticalHalfSpan * 0.4);
-      camera.position.x = Math.max(-clampedXRadius, Math.min(clampedXRadius, camera.position.x));
-      camera.position.y = Math.max(-clampedYRadius, Math.min(clampedYRadius, camera.position.y));
+      cameraTarget.x = Math.max(-clampedXRadius, Math.min(clampedXRadius, cameraTarget.x));
+      cameraTarget.y = Math.max(-clampedYRadius, Math.min(clampedYRadius, cameraTarget.y));
+
+      const followFactor = 1 - Math.exp(-CAMERA_FOLLOW_DAMPING * delta);
+      camera.position.x += (cameraTarget.x - camera.position.x) * followFactor;
+      camera.position.y += (cameraTarget.y - camera.position.y) * followFactor;
 
       renderer.render(scene, camera);
       frameId = requestAnimationFrame(animate);

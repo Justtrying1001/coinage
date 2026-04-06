@@ -51,6 +51,7 @@ function buildGeometryKey(params: ReturnType<typeof mapProfileToProceduralUnifor
     `res:${Math.round(params.meshResolution)}`,
     `o:${quantize(params.oceanLevel, 0.01).toFixed(2)}`,
     `m:${quantize(params.mountainLevel, 0.01).toFixed(2)}`,
+    `ml:${quantize(params.minLandRatio, 0.01).toFixed(2)}`,
     `sf:${quantize(params.simpleFrequency, 0.04).toFixed(2)}`,
     `ss:${quantize(params.simpleStrength, 0.02).toFixed(2)}`,
     `rf:${quantize(params.ridgedFrequency, 0.06).toFixed(2)}`,
