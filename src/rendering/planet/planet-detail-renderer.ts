@@ -387,7 +387,6 @@ function createSurfaceLayer(planetRadius: number, render: PlanetRenderInput['pla
     moistureSeed: render.surface.moistureSeed,
     thermalSeed: render.surface.thermalSeed,
     oceanLevel: render.surface.oceanLevel,
-    reliefAmplitude: render.surface.reliefAmplitude,
     bandingStrength: render.surface.bandingStrength,
     family: render.family,
     surfaceModel: render.surfaceModel,

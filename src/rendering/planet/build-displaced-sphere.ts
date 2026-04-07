@@ -12,7 +12,6 @@ export interface DisplacedSphereInput {
   moistureSeed: number;
   thermalSeed: number;
   oceanLevel: number;
-  reliefAmplitude: number;
   bandingStrength: number;
   family: PlanetFamily;
   surfaceModel: PlanetSurfaceModel;

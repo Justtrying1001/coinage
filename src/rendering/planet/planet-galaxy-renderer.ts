@@ -17,7 +17,6 @@ const galaxyThumbnailPerf = {
   cacheMisses: 0,
   generatedCount: 0,
   generatedTotalMs: 0,
-  instancesCreated: 0,
 };
 let ringMaskTexture: THREE.CanvasTexture | null = null;
 
@@ -42,7 +41,6 @@ export function __resetGalaxyThumbnailInternalsForTests(): void {
   galaxyThumbnailPerf.cacheMisses = 0;
   galaxyThumbnailPerf.generatedCount = 0;
   galaxyThumbnailPerf.generatedTotalMs = 0;
-  galaxyThumbnailPerf.instancesCreated = 0;
   if (ringMaskTexture) {
     ringMaskTexture.dispose();
     ringMaskTexture = null;
@@ -332,7 +330,6 @@ export function createPlanetGalaxyRenderInstance(input: PlanetRenderInput): Plan
   group.position.set(x, y, z);
 
   const { key, texture } = getThumbnailTexture(planet);
-  galaxyThumbnailPerf.instancesCreated += 1;
   const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false, alphaTest: 0.04, premultipliedAlpha: true });
   const sprite = new THREE.Sprite(spriteMaterial);
   const diameter = planet.render.renderRadius * 2;

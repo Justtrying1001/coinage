@@ -111,9 +111,6 @@ export interface PlanetRenderProfile {
     emissiveIntensity: number;
     bandingStrength: number;
     noiseScale: number;
-    noiseOctaves: number;
-    mountainHeight: number;
-    turbulence: number;
     oceanLevel: number;
     noiseSeed: number;
     moistureSeed: number;
