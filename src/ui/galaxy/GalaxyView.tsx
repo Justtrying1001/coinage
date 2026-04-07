@@ -6,13 +6,12 @@ import { useRouter } from 'next/navigation';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
 import { getGalaxyPlanetManifest } from '@/domain/world/build-galaxy-planet-manifest';
 import type { CanonicalPlanet } from '@/domain/world/planet-visual.types';
 import { GALAXY_LAYOUT_RUNTIME_CONFIG } from '@/domain/world/world.constants';
 import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
-import { PLANET_LIGHT_DIRECTION, PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
+import { PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
 import type { PlanetRenderInstance } from '@/rendering/planet/types';
 import { createNebulaBackground, createStarfield } from '@/rendering/space/create-starfield';
 import { computeGalaxyVisualRadius } from './planet-visual-scale';
@@ -310,23 +309,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     mount.appendChild(renderer.domElement);
     const composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
-    const bloomPass = new UnrealBloomPass(
-      new THREE.Vector2(mount.clientWidth, mount.clientHeight),
-      0.12,
-      0.4,
-      0.88,
-    );
-    composer.addPass(bloomPass);
-
-    scene.add(new THREE.AmbientLight('#b7d1ff', 1.9));
-
-    const keyLight = new THREE.DirectionalLight('#ffffff', 2.1);
-    keyLight.position.copy(PLANET_LIGHT_DIRECTION).multiplyScalar(52);
-    scene.add(keyLight);
-
-    const fillLight = new THREE.DirectionalLight('#b6ccff', 1.25);
-    fillLight.position.copy(PLANET_LIGHT_DIRECTION).multiplyScalar(-34).add(new THREE.Vector3(0, 6, 8));
-    scene.add(fillLight);
+    scene.add(new THREE.AmbientLight('#c5d7ff', 2.2));
 
     const planetGroup = new THREE.Group();
     const instances: PlanetRenderInstance[] = [];

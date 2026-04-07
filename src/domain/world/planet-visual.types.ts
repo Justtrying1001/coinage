@@ -154,7 +154,11 @@ export interface PlanetViewProfile {
   atmosphereSegments: number;
   ringSegments: number;
   enableRings: boolean;
+  enableClouds: boolean;
+  enableAtmosphere: boolean;
+  enableOceanLayer: boolean;
   lightingBoost: number;
+  shadingContrast: number;
 }
 
 export interface CanonicalPlanet {
