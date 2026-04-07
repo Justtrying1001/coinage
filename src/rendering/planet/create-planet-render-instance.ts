@@ -298,6 +298,7 @@ const RING_FRAGMENT_SHADER = `
     float fine = sin((uv.x + seed * 0.00000027) * 910.0) * 0.5 + 0.5;
     return coarse * 0.5 + medium * 0.33 + fine * 0.17;
   }
+`;
 
   void main() {
     float radial = abs(vUv.y - 0.5) * 2.0;

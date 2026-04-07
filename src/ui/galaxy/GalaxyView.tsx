@@ -294,9 +294,9 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.6;
+    renderer.outputColorSpace = PLANET_RENDER_PHOTOMETRY.outputColorSpace;
+    renderer.toneMapping = PLANET_RENDER_PHOTOMETRY.toneMapping;
+    renderer.toneMappingExposure = PLANET_RENDER_PHOTOMETRY.galaxyExposure;
     renderer.domElement.style.touchAction = 'none';
     renderer.domElement.style.cursor = 'grab';
     mount.appendChild(renderer.domElement);
@@ -304,11 +304,11 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     scene.add(new THREE.AmbientLight('#b7d1ff', 1.9));
 
     const keyLight = new THREE.DirectionalLight('#ffffff', 2.1);
-    keyLight.position.set(20, 26, 44);
+    keyLight.position.copy(PLANET_LIGHT_DIRECTION).multiplyScalar(52);
     scene.add(keyLight);
 
     const fillLight = new THREE.DirectionalLight('#b6ccff', 1.25);
-    fillLight.position.set(-24, -12, 32);
+    fillLight.position.copy(PLANET_LIGHT_DIRECTION).multiplyScalar(-34).add(new THREE.Vector3(0, 6, 8));
     scene.add(fillLight);
 
     const planetGroup = new THREE.Group();
