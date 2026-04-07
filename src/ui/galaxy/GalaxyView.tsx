@@ -6,12 +6,11 @@ import { useRouter } from 'next/navigation';
 import * as THREE from 'three';
 
 import { getGalaxyPlanetManifest } from '@/domain/world/build-galaxy-planet-manifest';
-import type { PlanetVisualProfile } from '@/domain/world/planet-visual.types';
+import type { CanonicalPlanet } from '@/domain/world/planet-visual.types';
 import { GALAXY_LAYOUT_RUNTIME_CONFIG } from '@/domain/world/world.constants';
-import { mapProfileToProceduralUniforms } from '@/rendering/planet/map-profile-to-procedural-uniforms';
-import { applyPlanetRenderLod, createPlanetRenderInstance } from '@/rendering/planet/create-planet-render-instance';
+import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
+import { PLANET_LIGHT_DIRECTION, PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
 import type { PlanetRenderInstance } from '@/rendering/planet/types';
-import { TerrainWorkerClient } from './terrain-worker-client';
 import { computeGalaxyVisualRadius } from './planet-visual-scale';
 
 const GalaxyHud = dynamic(() => import('./GalaxyHud'), {
@@ -28,7 +27,7 @@ interface PlanetRenderData {
   x: number;
   y: number;
   radius: number;
-  profile: PlanetVisualProfile;
+  planet: CanonicalPlanet;
 }
 
 interface GalaxyPerfCounters {
@@ -296,9 +295,9 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.6;
+    renderer.outputColorSpace = PLANET_RENDER_PHOTOMETRY.outputColorSpace;
+    renderer.toneMapping = PLANET_RENDER_PHOTOMETRY.toneMapping;
+    renderer.toneMappingExposure = PLANET_RENDER_PHOTOMETRY.galaxyExposure;
     renderer.domElement.style.touchAction = 'none';
     renderer.domElement.style.cursor = 'grab';
     mount.appendChild(renderer.domElement);
@@ -306,11 +305,11 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     scene.add(new THREE.AmbientLight('#b7d1ff', 1.9));
 
     const keyLight = new THREE.DirectionalLight('#ffffff', 2.1);
-    keyLight.position.set(20, 26, 44);
+    keyLight.position.copy(PLANET_LIGHT_DIRECTION).multiplyScalar(52);
     scene.add(keyLight);
 
     const fillLight = new THREE.DirectionalLight('#b6ccff', 1.25);
-    fillLight.position.set(-24, -12, 32);
+    fillLight.position.copy(PLANET_LIGHT_DIRECTION).multiplyScalar(-34).add(new THREE.Vector3(0, 6, 8));
     scene.add(fillLight);
 
     const planetGroup = new THREE.Group();
@@ -462,8 +461,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       4,
       Math.max(2, Math.floor((navigator.hardwareConcurrency || 4) / 2)),
     );
-    const terrainWorkerClient = new TerrainWorkerClient(workerConcurrency);
-
+    
     const MAX_PENDING_PLANET_JOBS = workerConcurrency * 6;
     let queueIndex = 0;
     let completedPlanetCount = 0;
@@ -502,7 +500,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       perfStore.counters.meanPlanetInstantiationMs =
         completedPlanetCount > 0 ? totalInstantiationMs / completedPlanetCount : 0;
       perfStore.counters.renderLoopMode = renderScheduled ? 'active' : 'idle';
-      perfStore.counters.workerQueueDepth = terrainWorkerClient.getQueueDepth() + terrainWorkerClient.getInFlightCount();
+      perfStore.counters.workerQueueDepth = pendingPlanetJobs;
       perfStore.counters.workerQueueDepthMax = Math.max(
         perfStore.counters.workerQueueDepthMax,
         perfStore.counters.workerQueueDepth,
@@ -579,34 +577,24 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         return;
       }
 
-      const params = applyPlanetRenderLod(mapProfileToProceduralUniforms(planet.profile), 'galaxy');
-      const visualRadius = computeGalaxyVisualRadius({
-        manifestRadius: planet.radius,
-        renderRadius: params.radius,
-      });
-      const workerResult = await terrainWorkerClient.enqueue(params);
-      totalWorkerJobMs += workerResult.generationMs;
+      const visualRadius = computeGalaxyVisualRadius(planet.planet.render.scale);
       if (perfStore) {
         perfStore.counters.workerJobsCompleted += 1;
-        if (workerResult.source === 'main-thread-fallback') {
-          perfStore.counters.workerJobsFallback += 1;
-        }
       }
 
       const startedAt = performance.now();
       const instance = createPlanetRenderInstance({
-        profile: planet.profile,
+        planet: planet.planet,
         x: planet.x,
         y: planet.y,
         z: 0,
-        options: { lod: 'galaxy' },
-        precomputedTerrainBuffers: workerResult.buffers,
+        options: { viewMode: 'galaxy' },
       });
-      const visualScale = visualRadius / Math.max(0.0001, params.radius);
+      const visualScale = visualRadius / Math.max(0.0001, planet.planet.render.renderRadius);
       instance.object.scale.setScalar(visualScale);
       const geometryBuildMs = performance.now() - startedAt;
       totalGeometryBuildMs += geometryBuildMs;
-      totalInstantiationMs += workerResult.generationMs + geometryBuildMs;
+      totalInstantiationMs += geometryBuildMs;
 
       instance.object.userData.planetId = planet.id;
       let localMeshCount = 0;
@@ -788,6 +776,10 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       camera.position.x += (cameraTarget.x - camera.position.x) * followFactor;
       camera.position.y += (cameraTarget.y - camera.position.y) * followFactor;
 
+      for (const instance of instances) {
+        updatePlanetLayerAnimation(instance.object, delta);
+      }
+
       renderer.render(scene, camera);
       renderInvalidated = false;
       if (pendingForcedFrames > 0) {
@@ -807,7 +799,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       if (renderFrameId != null) {
         cancelAnimationFrame(renderFrameId);
       }
-      terrainWorkerClient.dispose();
+
 
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);

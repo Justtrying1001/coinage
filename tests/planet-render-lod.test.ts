@@ -1,20 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { generatePlanetVisualProfile } from '@/domain/world/generate-planet-visual-profile';
-import { mapProfileToProceduralUniforms } from '@/rendering/planet/map-profile-to-procedural-uniforms';
-import { applyPlanetRenderLod } from '@/rendering/planet/create-planet-render-instance';
+import { createPlanetViewProfile } from '@/domain/world/generate-planet-visual-profile';
 
-test('LOD contract: planet close-up has higher geometric/detail budget than galaxy', () => {
-  const profile = generatePlanetVisualProfile({
-    worldSeed: 'coinage-mvp-seed',
-    planetSeed: 'planet-lod-contract',
-  });
+test('view strategy separates galaxy and planet budgets', () => {
+  const galaxy = createPlanetViewProfile('galaxy');
+  const planet = createPlanetViewProfile('planet');
 
-  const base = mapProfileToProceduralUniforms(profile);
-  const galaxy = applyPlanetRenderLod(base, 'galaxy');
-  const planet = applyPlanetRenderLod(base, 'planet');
-
-  assert.ok(planet.meshResolution >= galaxy.meshResolution);
-  assert.ok(planet.detailAttenuation > galaxy.detailAttenuation);
+  assert.ok(planet.meshSegments > galaxy.meshSegments);
+  assert.ok(planet.cloudSegments > galaxy.cloudSegments);
+  assert.equal(galaxy.lod, 'low');
+  assert.equal(planet.lod, 'high');
 });
