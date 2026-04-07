@@ -110,6 +110,10 @@ export interface PlanetRenderProfile {
     specularStrength: number;
     emissiveIntensity: number;
     bandingStrength: number;
+    noiseScale: number;
+    noiseOctaves: number;
+    mountainHeight: number;
+    turbulence: number;
     oceanLevel: number;
     noiseSeed: number;
     moistureSeed: number;
@@ -122,6 +126,7 @@ export interface PlanetRenderProfile {
     opacity: number;
     speed: number;
     stormBanding: number;
+    turbulence: number;
     noiseSeed: number;
   };
   atmosphere: {
@@ -130,6 +135,8 @@ export interface PlanetRenderProfile {
     density: number;
     thickness: number;
     rimStrength: number;
+    mieStrength: number;
+    rayleighStrength: number;
   };
   rings: {
     enabled: boolean;

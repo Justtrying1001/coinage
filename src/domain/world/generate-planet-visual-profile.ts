@@ -618,6 +618,10 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
       specularStrength: visualDNA.specularStrength,
       emissiveIntensity: visualDNA.emissiveIntensity,
       bandingStrength: visualDNA.bandingStrength,
+      noiseScale: range(rng, recipe.surfaceModel === 'gaseous' ? 1.2 : 1.8, recipe.surfaceModel === 'gaseous' ? 2.8 : 4.2),
+      noiseOctaves: recipe.surfaceModel === 'gaseous' ? 4 : 5,
+      mountainHeight: range(rng, recipe.surfaceModel === 'gaseous' ? 0.02 : 0.06, recipe.surfaceModel === 'gaseous' ? 0.08 : 0.24),
+      turbulence: range(rng, recipe.surfaceModel === 'gaseous' ? 0.28 : 0.18, recipe.surfaceModel === 'gaseous' ? 0.9 : 0.62),
       oceanLevel: clamp(1 - visualDNA.oceanCoverage * 0.88, 0.14, 0.94),
       noiseSeed: visualDNA.noiseSeeds.surface,
       moistureSeed: visualDNA.noiseSeeds.moisture,
@@ -630,6 +634,7 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
       opacity: clamp(visualDNA.cloudCoverage * 0.82, 0, 0.92),
       speed: visualDNA.rotation.cloudSpeed,
       stormBanding: recipe.surfaceModel === 'gaseous' ? visualDNA.bandingStrength : visualDNA.bandingStrength * 0.42,
+      turbulence: range(rng, recipe.surfaceModel === 'gaseous' ? 0.3 : 0.18, recipe.surfaceModel === 'gaseous' ? 0.95 : 0.5),
       noiseSeed: visualDNA.noiseSeeds.clouds,
     },
     atmosphere: {
@@ -638,6 +643,8 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
       density: visualDNA.atmosphereDensity,
       thickness: clamp(visualDNA.atmosphereDensity * (recipe.surfaceModel === 'gaseous' ? 0.18 : 0.14), 0, 0.22),
       rimStrength: clamp(0.3 + visualDNA.atmosphereDensity * 0.68, 0.3, 0.98),
+      mieStrength: range(rng, 0.18, 0.72),
+      rayleighStrength: range(rng, 0.35, 1.0),
     },
     rings: {
       enabled: generated.ring.enabled,

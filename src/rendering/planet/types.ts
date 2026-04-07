@@ -3,6 +3,7 @@ import type { CanonicalPlanet, PlanetDebugSnapshot, PlanetViewProfile } from '@/
 
 export interface PlanetRendererOptions {
   viewMode: PlanetViewProfile['viewMode'];
+  cameraPosition?: { x: number; y: number; z: number };
   debug?: {
     surfaceOnly?: boolean;
     cloudsOnly?: boolean;
