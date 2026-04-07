@@ -119,7 +119,7 @@ const SURFACE_FRAGMENT_SHADER_GALAXY = `
     float specular = pow(max(dot(normal, normalize(vec3(0.35, 0.75, 0.25))), 0.0), 10.0) * 0.08;
     float tonal = 1.08 + softShading + rim + specular;
     vec3 color = albedo * tonal + albedo * 0.05;
-    color = clamp(color * uLightingBoost, vec3(0.27), vec3(1.0));
+    color = clamp(color * uLightingBoost, vec3(0.3), vec3(1.0));
 
     gl_FragColor = vec4(color, 1.0);
   }
@@ -208,7 +208,7 @@ const SURFACE_FRAGMENT_SHADER_PLANET = `
 
     vec3 color = albedo * tonal;
     color += uAccentColor * (uEmissive * (vThermalMask * 0.65 + vBandMask * 0.16));
-    color = clamp(color * uLightingBoost, vec3(0.24), vec3(1.0));
+    color = clamp(color * uLightingBoost, vec3(0.3), vec3(1.0));
     gl_FragColor = vec4(color, 1.0);
   }
 `;
@@ -225,13 +225,19 @@ const OCEAN_FRAGMENT_SHADER = `
 
   void main() {
     vec3 normal = normalize(vWorldNormal);
-    float depthVar = abs(vUnitPos.y) * 0.25;
-    vec3 color = mix(uOceanColor, uOceanDeepColor, depthVar);
-    float hemisphere = (normal.y * 0.5 + 0.5 - 0.5) * uShadingContrast;
-    color *= (1.0 + hemisphere);
+    vec3 viewDir = normalize(cameraPosition - vWorldPos);
+    float latDepth = smoothstep(0.0, 1.0, abs(vUnitPos.y));
+    float radialDepth = smoothstep(0.15, 0.95, length(vUnitPos.xz));
+    float depthVar = clamp(latDepth * 0.32 + radialDepth * 0.38, 0.0, 1.0);
+    vec3 color = mix(uOceanColor * 1.22, uOceanDeepColor * 0.92, depthVar);
+    float hemisphere = (normal.y * 0.5 + 0.5) * uShadingContrast;
+    float fresnel = pow(1.0 - clamp(dot(normal, viewDir), 0.0, 1.0), 3.0) * 0.12;
+    float specular = pow(max(dot(normal, normalize(vec3(0.28, 0.86, 0.22))), 0.0), 18.0) * 0.09;
+    color *= (1.04 + hemisphere);
+    color += vec3(0.08, 0.10, 0.12) * (fresnel + specular);
     color *= uLightingBoost;
 
-    gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+    gl_FragColor = vec4(clamp(color, vec3(0.28), vec3(1.0)), 1.0);
   }
 `;
 
@@ -271,8 +277,8 @@ const RING_FRAGMENT_SHADER = `
     vec3 normal = normalize(vNormalW);
     float hemisphere = (normal.y * 0.5 + 0.5) * uShadingContrast;
 
-    float alpha = edgeFade * gap * grain * uOpacity;
-    vec3 color = uColor * (0.82 + grain * 0.42) * radialGlow * (1.0 + hemisphere);
+    float alpha = edgeFade * gap * grain * uOpacity * 1.12;
+    vec3 color = uColor * 1.12 * (0.86 + grain * 0.45) * radialGlow * (1.0 + hemisphere);
 
     gl_FragColor = vec4(color, clamp(alpha, 0.0, 0.85));
   }
@@ -374,7 +380,7 @@ function createRingLayer(
     fragmentShader: RING_FRAGMENT_SHADER,
     uniforms: {
       uColor: { value: toColor(render.rings.color) },
-      uOpacity: { value: render.rings.opacity },
+      uOpacity: { value: Math.min(0.9, render.rings.opacity * 1.15) },
       uSeed: { value: render.rings.noiseSeed },
       uShadingContrast: { value: shadingContrast * (highQuality ? 0.56 : 0.48) },
     },

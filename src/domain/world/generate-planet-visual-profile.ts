@@ -80,9 +80,9 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
     palettes: [
       {
         id: 'lush-emerald',
-        deep: [0.06, 0.16, 0.04],
-        mid: [0.14, 0.42, 0.10],
-        high: [0.45, 0.38, 0.20],
+        deep: [0.07, 0.15, 0.06],
+        mid: [0.16, 0.34, 0.14],
+        high: [0.42, 0.36, 0.24],
         ocean: [0.02, 0.05, 0.16],
         accent: [0.80, 0.74, 0.50],
         cloud: [0.94, 0.96, 1.0],
@@ -91,9 +91,9 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
       },
       {
         id: 'lush-boreal',
-        deep: [0.05, 0.12, 0.03],
-        mid: [0.11, 0.34, 0.09],
-        high: [0.40, 0.34, 0.22],
+        deep: [0.06, 0.12, 0.05],
+        mid: [0.13, 0.30, 0.12],
+        high: [0.36, 0.33, 0.24],
         ocean: [0.01, 0.04, 0.13],
         accent: [0.72, 0.68, 0.55],
         cloud: [0.93, 0.95, 0.98],
@@ -332,22 +332,22 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
     palettes: [
       {
         id: 'toxic-neon',
-        deep: [0.06, 0.18, 0.02],
-        mid: [0.18, 0.38, 0.06],
-        high: [0.40, 0.52, 0.10],
-        ocean: [0.03, 0.12, 0.02],
-        accent: [0.70, 0.92, 0.22],
+        deep: [0.08, 0.17, 0.07],
+        mid: [0.20, 0.34, 0.14],
+        high: [0.40, 0.48, 0.22],
+        ocean: [0.04, 0.11, 0.06],
+        accent: [0.66, 0.80, 0.36],
         cloud: [0.72, 0.82, 0.60],
         atmosphere: [0.46, 0.72, 0.20],
         ring: [0.58, 0.72, 0.36],
       },
       {
         id: 'toxic-violet',
-        deep: [0.20, 0.08, 0.24],
-        mid: [0.30, 0.16, 0.38],
-        high: [0.46, 0.28, 0.54],
-        ocean: [0.08, 0.04, 0.14],
-        accent: [0.30, 0.90, 0.72],
+        deep: [0.18, 0.10, 0.22],
+        mid: [0.30, 0.18, 0.34],
+        high: [0.44, 0.30, 0.50],
+        ocean: [0.08, 0.05, 0.12],
+        accent: [0.44, 0.74, 0.64],
         cloud: [0.74, 0.70, 0.84],
         atmosphere: [0.46, 0.32, 0.80],
         ring: [0.62, 0.53, 0.86],
@@ -445,7 +445,7 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function jitterColor(rng: () => number, base: [number, number, number], variance = 0.04): [number, number, number] {
+function jitterColor(rng: () => number, base: [number, number, number], variance = 0.02): [number, number, number] {
   return base.map((channel) => clamp(channel + (rng() - 0.5) * variance, 0, 1)) as [number, number, number];
 }
 
@@ -566,8 +566,8 @@ function buildViewProfile(viewMode: PlanetViewProfile['viewMode']): PlanetViewPr
     enableClouds: false,
     enableAtmosphere: false,
     enableOceanLayer: false,
-    lightingBoost: isGalaxy ? 1.32 : 1.48,
-    shadingContrast: isGalaxy ? 0.2 : 0.28,
+    lightingBoost: isGalaxy ? 1.38 : 1.55,
+    shadingContrast: isGalaxy ? 0.24 : 0.32,
   };
 }
 
@@ -611,8 +611,8 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
   const baseDeep = jitterColor(rng, palette.deep);
   const baseMid = jitterColor(rng, palette.mid);
   const baseHigh = jitterColor(rng, palette.high);
-  const baseOcean = jitterColor(rng, palette.ocean, 0.03);
-  const baseAccent = jitterColor(rng, palette.accent, 0.03);
+  const baseOcean = jitterColor(rng, palette.ocean, 0.02);
+  const baseAccent = jitterColor(rng, palette.accent, 0.02);
   const colorMid = blendHsl(baseDeep, baseMid, 0.74);
   const colorHigh = blendHsl(colorMid, baseHigh, 0.68);
 
@@ -704,7 +704,7 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
     },
     rings: {
       enabled: generated.ring.enabled,
-      color: palette.ring,
+      color: blendHsl(jitterColor(rng, palette.ring, 0.015), colorHigh, 0.3),
       innerRadius: scale.renderRadiusBase * generated.ring.innerRadiusRatio,
       outerRadius: scale.renderRadiusBase * generated.ring.outerRadiusRatio,
       tilt: generated.ring.tilt,
