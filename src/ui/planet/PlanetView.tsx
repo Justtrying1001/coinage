@@ -11,6 +11,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 
 import { resolvePlanetIdentity } from '@/domain/world/resolve-planet-identity';
 import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
+import { createNebulaBackground, createStarfield } from '@/rendering/space/create-starfield';
 
 interface PlanetViewProps {
   worldSeed: string;
@@ -33,7 +34,10 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     }
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#030712');
+    const nebulaBackground = createNebulaBackground();
+    const starfield = createStarfield(2500, 450);
+    scene.add(nebulaBackground);
+    scene.add(starfield);
 
     const camera = new THREE.PerspectiveCamera(34, mount.clientWidth / Math.max(1, mount.clientHeight), 0.1, 1200);
     camera.position.set(0, 0.22, 4.8);
@@ -183,6 +187,10 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
       window.removeEventListener('resize', onResize);
       controls.dispose();
       planetInstance.dispose();
+      (nebulaBackground.geometry as THREE.BufferGeometry).dispose();
+      (nebulaBackground.material as THREE.Material).dispose();
+      (starfield.geometry as THREE.BufferGeometry).dispose();
+      (starfield.material as THREE.Material).dispose();
 
       pmremGenerator.dispose();
       iblEnvironment.dispose();

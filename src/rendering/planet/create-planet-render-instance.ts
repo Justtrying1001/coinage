@@ -143,7 +143,9 @@ const SURFACE_FRAGMENT_SHADER = `
     baseLand *= mix(1.0, 0.78, vCraterMask * 0.85);
 
     vec3 waterColor = mix(uOceanColor * 1.2, uOceanColor * 0.44, vOceanDepth);
-    vec3 coastColor = mix(waterColor, baseLand, 0.48);
+    vec3 sandColor = uAccentColor * 1.1;
+    vec3 coastColor = mix(waterColor, sandColor, smoothstep(0.0, 0.5, vCoastMask));
+    coastColor = mix(coastColor, baseLand, smoothstep(0.5, 1.0, vCoastMask));
 
     vec3 solidAlbedo = mix(waterColor, baseLand, vLandMask);
     solidAlbedo = mix(solidAlbedo, coastColor, vCoastMask);
@@ -180,6 +182,7 @@ const SURFACE_FRAGMENT_SHADER = `
 
     float specPow = mix(44.0, 104.0, 1.0 - roughness);
     float spec = pow(max(dot(normal, halfVec), 0.0), specPow) * (0.1 + uSpecular * 0.9);
+    spec *= mix(1.0, 0.15, sat(uSurfaceModel));
     float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 4.0);
 
     float up = clamp(normal.y * 0.5 + 0.5, 0.0, 1.0);
@@ -191,6 +194,17 @@ const SURFACE_FRAGMENT_SHADER = `
     color += iblDiffuse * albedo * (0.2 + (1.0 - roughness) * 0.18) * uIblIntensity;
     color += iblDiffuse * (spec + fresnel * 0.28) * uIblIntensity;
     color += uAccentColor * (uEmissive * (vThermalMask * 0.9 + vBandMask * 0.2));
+
+    float cavityAO = 1.0;
+    cavityAO -= vOceanDepth * 0.3;
+    cavityAO -= vErosionMask * 0.15;
+    cavityAO += vMountainMask * 0.1;
+    cavityAO -= (1.0 - vLandMask) * 0.2;
+    cavityAO = clamp(cavityAO, 0.5, 1.15);
+
+    color *= cavityAO;
+    float rimLight = pow(1.0 - max(dot(normal, viewDir), 0.0), 3.0);
+    color += vec3(0.08, 0.12, 0.18) * rimLight * 0.6;
 
     color *= uLightingBoost;
     gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);

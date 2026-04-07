@@ -14,6 +14,7 @@ import { GALAXY_LAYOUT_RUNTIME_CONFIG } from '@/domain/world/world.constants';
 import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
 import { PLANET_LIGHT_DIRECTION, PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
 import type { PlanetRenderInstance } from '@/rendering/planet/types';
+import { createNebulaBackground, createStarfield } from '@/rendering/space/create-starfield';
 import { computeGalaxyVisualRadius } from './planet-visual-scale';
 
 const GalaxyHud = dynamic(() => import('./GalaxyHud'), {
@@ -261,7 +262,10 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     markPerf(perfStore, 'galaxy:scene:init:start');
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#020617');
+    const nebulaBackground = createNebulaBackground(860);
+    const starfield = createStarfield(3000, 800);
+    scene.add(nebulaBackground);
+    scene.add(starfield);
     const width = mount.clientWidth;
     const height = mount.clientHeight;
     const aspect = width / Math.max(1, height);
@@ -827,6 +831,10 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       for (const instance of instances) {
         instance.dispose();
       }
+      (nebulaBackground.geometry as THREE.BufferGeometry).dispose();
+      (nebulaBackground.material as THREE.Material).dispose();
+      (starfield.geometry as THREE.BufferGeometry).dispose();
+      (starfield.material as THREE.Material).dispose();
 
       composer.dispose();
       renderer.dispose();
