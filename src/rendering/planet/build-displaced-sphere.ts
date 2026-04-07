@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import type { PlanetFamily, PlanetSurfaceModel } from '@/domain/world/planet-visual.types';
 import { sampleTerrain } from './terrain-noise';
 
+const OCEAN_FAMILIES: string[] = ['terrestrial-lush', 'oceanic', 'toxic-alien'];
+
 export interface DisplacedSphereInput {
   radius: number;
   segments: number;
@@ -43,8 +45,7 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
   const thermalMask = new Float32Array(position.count);
   const bandMask = new Float32Array(position.count);
 
-  const displacementScale = input.radius * (input.surfaceModel === 'gaseous' ? 0.06 : 0.48);
-  const hasRealOcean = input.oceanLevel > 0.08 && input.surfaceModel !== 'gaseous';
+  const displacementScale = input.radius * (input.surfaceModel === 'gaseous' ? 0.04 : 0.30);
 
   for (let i = 0; i < position.count; i += 1) {
     const x = position.getX(i);
@@ -71,9 +72,14 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
 
     const signed = (terrain.height01 - 0.5) * 2;
     const landDisplacement = signed * input.reliefAmplitude * displacementScale;
-    const displacedRadius = hasRealOcean && terrain.landMask < 0.5
-      ? input.radius - 0.003
-      : input.radius + landDisplacement;
+    const hasOceanFamily = OCEAN_FAMILIES.includes(input.family);
+
+    let displacedRadius: number;
+    if (hasOceanFamily && terrain.landMask < 0.5) {
+      displacedRadius = input.radius * 0.997;
+    } else {
+      displacedRadius = input.radius + landDisplacement;
+    }
 
     position.setXYZ(i, px * displacedRadius, py * displacedRadius, pz * displacedRadius);
 

@@ -262,8 +262,8 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     markPerf(perfStore, 'galaxy:scene:init:start');
 
     const scene = new THREE.Scene();
-    const nebulaBackground = createNebulaBackground(860);
-    const starfield = createStarfield(3000, 800);
+    const nebulaBackground = createNebulaBackground(1200);
+    const starfield = createStarfield(3000, 1000);
     scene.add(nebulaBackground);
     scene.add(starfield);
     const width = mount.clientWidth;
@@ -312,9 +312,9 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     composer.addPass(new RenderPass(scene, camera));
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(mount.clientWidth, mount.clientHeight),
-      0.15,
+      0.12,
       0.4,
-      0.85,
+      0.88,
     );
     composer.addPass(bloomPass);
 

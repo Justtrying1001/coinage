@@ -34,8 +34,8 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     }
 
     const scene = new THREE.Scene();
-    const nebulaBackground = createNebulaBackground();
-    const starfield = createStarfield(2500, 450);
+    const nebulaBackground = createNebulaBackground(800);
+    const starfield = createStarfield(2000, 700);
     scene.add(nebulaBackground);
     scene.add(starfield);
 
@@ -53,9 +53,9 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     composer.addPass(new RenderPass(scene, camera));
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(mount.clientWidth, mount.clientHeight),
-      0.25,
-      0.6,
-      0.82,
+      0.2,
+      0.5,
+      0.84,
     );
     composer.addPass(bloomPass);
 
@@ -187,10 +187,14 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
       window.removeEventListener('resize', onResize);
       controls.dispose();
       planetInstance.dispose();
-      (nebulaBackground.geometry as THREE.BufferGeometry).dispose();
-      (nebulaBackground.material as THREE.Material).dispose();
-      (starfield.geometry as THREE.BufferGeometry).dispose();
-      (starfield.material as THREE.Material).dispose();
+      scene.traverse((child) => {
+        if (child instanceof THREE.Mesh || child instanceof THREE.Points) {
+          child.geometry?.dispose();
+          const mat = child.material;
+          if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
+          else if (mat) mat.dispose();
+        }
+      });
 
       pmremGenerator.dispose();
       iblEnvironment.dispose();

@@ -152,8 +152,8 @@ function sampleSolid(input: TerrainInput): TerrainSample {
   if (family === 'ice-frozen') height01 -= polarIce * 0.06;
   height01 = clamp(height01, 0, 1);
 
-  const landMask = smoothstep(oceanLevel - 0.005, oceanLevel + 0.005, height01);
-  const coastMask = smoothstep(oceanLevel - 0.008, oceanLevel + 0.003, height01) - smoothstep(oceanLevel + 0.003, oceanLevel + 0.025, height01);
+  const landMask = smoothstep(oceanLevel - 0.006, oceanLevel + 0.006, height01);
+  const coastMask = smoothstep(oceanLevel - 0.01, oceanLevel + 0.004, height01) - smoothstep(oceanLevel + 0.004, oceanLevel + 0.028, height01);
   const mountainMask = smoothstep(oceanLevel + 0.15, oceanLevel + 0.33, height01) * smoothstep(0.4, 0.94, mountainChains);
   const oceanDepth = 1 - smoothstep(oceanLevel - 0.2, oceanLevel + 0.02, height01);
 

@@ -24,11 +24,13 @@ export function createStarfield(count = 3000, radius = 500): THREE.Points {
     size: 0.5,
     sizeAttenuation: true,
     transparent: true,
-    opacity: 0.7,
+    opacity: 0.65,
     depthWrite: false,
   });
 
-  return new THREE.Points(geometry, material);
+  const points = new THREE.Points(geometry, material);
+  points.name = 'starfield';
+  return points;
 }
 
 export function createNebulaBackground(radius = 480): THREE.Mesh {
@@ -47,9 +49,9 @@ export function createNebulaBackground(radius = 480): THREE.Mesh {
         vec3 dir = normalize(vPos);
         float y = dir.y * 0.5 + 0.5;
 
-        vec3 baseColor = vec3(0.02, 0.03, 0.06);
-        vec3 nebulaBlue = vec3(0.04, 0.06, 0.12);
-        vec3 nebulaPurple = vec3(0.06, 0.03, 0.10);
+        vec3 baseColor = vec3(0.02, 0.025, 0.055);
+        vec3 nebulaBlue = vec3(0.035, 0.05, 0.10);
+        vec3 nebulaPurple = vec3(0.05, 0.025, 0.08);
 
         vec3 color = baseColor;
         color = mix(color, nebulaBlue, smoothstep(0.3, 0.7, y) * 0.5);
@@ -61,5 +63,7 @@ export function createNebulaBackground(radius = 480): THREE.Mesh {
     depthWrite: false,
   });
 
-  return new THREE.Mesh(geometry, material);
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = 'nebula';
+  return mesh;
 }
