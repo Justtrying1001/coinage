@@ -13,6 +13,8 @@ export interface TerrainSample {
   craterMask: number;
   thermalMask: number;
   biomeMask: number;
+  iceMask: number;
+  crackMask: number;
   bandMask: number;
 }
 
@@ -242,6 +244,10 @@ function ridged(x: number, y: number, z: number, seed: number, octaves = 5): num
   return total;
 }
 
+function ridgeD(x: number, y: number, z: number, seed: number): number {
+  return ridged(x * 14.0, y * 14.0, z * 14.0, seed + 211, 2);
+}
+
 function craterField(x: number, y: number, z: number, seed: number): number {
   const broad = noise3(x * 7.6, y * 7.6, z * 7.6, seed);
   const rim = ridged(x * 14.5, y * 14.5, z * 14.5, seed + 81, 3);
@@ -266,6 +272,7 @@ function sampleSolid(input: TerrainInput): TerrainSample {
   const macroWarp = fbm(px * 1.9, py * 1.9, pz * 1.9, seed + 27, 3, 2.22, 0.48);
   const macroField = macroBase + (macroWarp - 0.5) * recipe.macroWarp;
   const continentMask = smoothstep(recipe.continentThreshold[0], recipe.continentThreshold[1], macroField);
+  const continentCore = smoothstep(recipe.continentThreshold[0] + 0.06, recipe.continentThreshold[1] - 0.02, macroField);
 
   const midRelief = ridged(
     px * recipe.mountainFrequency,
@@ -274,7 +281,7 @@ function sampleSolid(input: TerrainInput): TerrainSample {
     seed + 73,
     5,
   );
-  const microRelief = ridged(px * 12.2, py * 12.2, pz * 12.2, seed + 121, 3) * 0.18;
+  const microRelief = ridged(px * 10.8, py * 10.8, pz * 10.8, seed + 121, 3) * (family === 'terrestrial-lush' || family === 'oceanic' ? 0.1 : 0.16);
   const mountainChains = midRelief * smoothstep(0.2, 0.88, continentMask) * recipe.mountainAmplitude;
 
   const erosionField = fbm(px * 7.8, py * 7.8, pz * 7.8, seed + 187, 4, 2.17, 0.53);
@@ -296,7 +303,7 @@ function sampleSolid(input: TerrainInput): TerrainSample {
       ? smoothstep(0.54, 0.9, thermalField * 0.68 + fractureNoise * 0.32) * recipe.thermalStrength
       : 0;
 
-  let baseElevation = continentMask * 0.56 + mountainChains + microRelief;
+  let baseElevation = continentMask * 0.52 + continentCore * 0.08 + mountainChains + microRelief;
   baseElevation -= erosionMask * recipe.erosionStrength;
   baseElevation -= craterMask * 0.22;
   baseElevation += (temperatureMask - 0.5) * 0.06;
@@ -317,14 +324,17 @@ function sampleSolid(input: TerrainInput): TerrainSample {
   }
 
   if (family === 'toxic-alien') {
-    baseElevation += Math.sin((px + pz + seed * 1e-6) * 8.0) * 0.03;
+    baseElevation += Math.sin((px + pz + seed * 1e-6) * 6.2) * 0.02;
   }
 
   if (family === 'volcanic-infernal') {
     baseElevation += thermalMask * 0.18;
   }
 
-  const biomeMask = clamp(temperatureMask * 0.55 + humidityMask * 0.45 - erosionMask * 0.18 + thermalMask * 0.08, 0, 1);
+  const iceSheetNoise = fbm(px * 3.1, py * 3.1, pz * 3.1, seed + 451, 3, 2.03, 0.55);
+  const iceMask = family === 'ice-frozen' ? clamp(smoothstep(0.42, 0.82, iceSheetNoise) * 0.72 + smoothstep(0.46, 0.94, lat) * 0.58, 0, 1) : smoothstep(0.76, 0.96, lat) * 0.16;
+  const crackMask = family === 'ice-frozen' ? smoothstep(0.58, 0.92, ridged(px * 18.0, py * 18.0, pz * 18.0, seed + 499, 3)) * iceMask : smoothstep(0.74, 0.94, ridgeD(px, py, pz, seed));
+  const biomeMask = clamp(temperatureMask * 0.55 + humidityMask * 0.45 - erosionMask * 0.18 + thermalMask * 0.08 + iceMask * 0.14, 0, 1);
   const height01 = clamp(baseElevation, 0, 1);
   const landMask = smoothstep(oceanLevel - 0.018, oceanLevel + 0.018, height01);
   const coastMask =
@@ -346,6 +356,8 @@ function sampleSolid(input: TerrainInput): TerrainSample {
     craterMask,
     thermalMask,
     biomeMask,
+    iceMask,
+    crackMask,
     bandMask: 0,
   };
 }
@@ -380,6 +392,8 @@ function sampleGaseous(input: TerrainInput): TerrainSample {
     craterMask: 0,
     thermalMask,
     biomeMask: clamp(temperatureMask * 0.6 + humidityMask * 0.4, 0, 1),
+    iceMask: 0,
+    crackMask: storms * 0.3,
     bandMask,
   };
 }

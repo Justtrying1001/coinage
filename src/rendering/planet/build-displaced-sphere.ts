@@ -41,6 +41,8 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
   const craterMask = new Float32Array(position.count);
   const thermalMask = new Float32Array(position.count);
   const biomeMask = new Float32Array(position.count);
+  const iceMask = new Float32Array(position.count);
+  const crackMask = new Float32Array(position.count);
   const bandMask = new Float32Array(position.count);
 
   const displacementScale = input.radius * (input.surfaceModel === 'gaseous' ? 0.06 : 0.34);
@@ -85,6 +87,8 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
     craterMask[i] = terrain.craterMask;
     thermalMask[i] = terrain.thermalMask;
     biomeMask[i] = terrain.biomeMask;
+    iceMask[i] = terrain.iceMask;
+    crackMask[i] = terrain.crackMask;
     bandMask[i] = terrain.bandMask;
   }
 
@@ -103,6 +107,8 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
   geometry.setAttribute('aCraterMask', new THREE.BufferAttribute(craterMask, 1));
   geometry.setAttribute('aThermalMask', new THREE.BufferAttribute(thermalMask, 1));
   geometry.setAttribute('aBiomeMask', new THREE.BufferAttribute(biomeMask, 1));
+  geometry.setAttribute('aIceMask', new THREE.BufferAttribute(iceMask, 1));
+  geometry.setAttribute('aCrackMask', new THREE.BufferAttribute(crackMask, 1));
   geometry.setAttribute('aBandMask', new THREE.BufferAttribute(bandMask, 1));
 
   return geometry;

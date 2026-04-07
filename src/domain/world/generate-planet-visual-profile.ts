@@ -450,6 +450,39 @@ function jitterColor(rng: () => number, base: [number, number, number], variance
   return base.map((channel) => clamp(channel + (rng() - 0.5) * variance, 0, 1)) as [number, number, number];
 }
 
+
+function tuneColor(color: [number, number, number], lift = 0, saturation = 1): [number, number, number] {
+  const luma = color[0] * 0.299 + color[1] * 0.587 + color[2] * 0.114;
+  const graded: [number, number, number] = [
+    clamp((luma + (color[0] - luma) * saturation) + lift, 0, 1),
+    clamp((luma + (color[1] - luma) * saturation) + lift, 0, 1),
+    clamp((luma + (color[2] - luma) * saturation) + lift, 0, 1),
+  ];
+  return graded;
+}
+
+function tunePaletteForFamily(family: PlanetFamily, dna: PlanetVisualDNA): PlanetVisualDNA {
+  if (family === 'ice-frozen') {
+    dna.colorDeep = tuneColor(dna.colorDeep, 0.04, 1.08);
+    dna.colorMid = tuneColor(dna.colorMid, 0.05, 1.05);
+    dna.colorHigh = tuneColor(dna.colorHigh, 0.06, 1.02);
+  } else if (family === 'terrestrial-lush') {
+    dna.colorDeep = tuneColor(dna.colorDeep, 0.01, 1.14);
+    dna.colorMid = tuneColor(dna.colorMid, 0.01, 1.12);
+  } else if (family === 'oceanic') {
+    dna.oceanColor = tuneColor(dna.oceanColor, 0.02, 1.15);
+    dna.colorMid = tuneColor(dna.colorMid, 0.01, 1.08);
+  } else if (family === 'volcanic-infernal') {
+    dna.colorDeep = tuneColor(dna.colorDeep, 0.05, 1.06);
+    dna.colorMid = tuneColor(dna.colorMid, 0.05, 1.05);
+    dna.accentColor = tuneColor(dna.accentColor, 0.0, 1.2);
+  } else if (family === 'gas-giant' || family === 'ringed-giant') {
+    dna.colorMid = tuneColor(dna.colorMid, 0.03, 1.08);
+    dna.colorHigh = tuneColor(dna.colorHigh, 0.03, 1.05);
+  }
+  return dna;
+}
+
 function weightedRecipe(rng: () => number): FamilyRecipe {
   const total = FAMILY_RECIPES.reduce((acc, recipe) => acc + recipe.weight, 0);
   let cursor = rng() * total;
@@ -622,6 +655,8 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
       axialTilt: range(rng, -0.42, 0.42),
     },
   };
+
+  tunePaletteForFamily(recipe.family, visualDNA);
 
   const generated: PlanetGeneratedProfile = {
     identity,

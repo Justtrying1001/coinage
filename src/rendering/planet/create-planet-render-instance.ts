@@ -49,6 +49,8 @@ const SURFACE_VERTEX_SHADER = `
   attribute float aCraterMask;
   attribute float aThermalMask;
   attribute float aBiomeMask;
+  attribute float aIceMask;
+  attribute float aCrackMask;
   attribute float aBandMask;
 
   varying vec3 vWorldPos;
@@ -66,6 +68,8 @@ const SURFACE_VERTEX_SHADER = `
   varying float vCraterMask;
   varying float vThermalMask;
   varying float vBiomeMask;
+  varying float vIceMask;
+  varying float vCrackMask;
   varying float vBandMask;
 
   void main() {
@@ -86,6 +90,8 @@ const SURFACE_VERTEX_SHADER = `
     vCraterMask = aCraterMask;
     vThermalMask = aThermalMask;
     vBiomeMask = aBiomeMask;
+    vIceMask = aIceMask;
+    vCrackMask = aCrackMask;
     vBandMask = aBandMask;
 
     gl_Position = projectionMatrix * viewMatrix * worldPos;
@@ -122,6 +128,8 @@ const SURFACE_FRAGMENT_SHADER = `
   varying float vCraterMask;
   varying float vThermalMask;
   varying float vBiomeMask;
+  varying float vIceMask;
+  varying float vCrackMask;
   varying float vBandMask;
 
   uniform vec3 uColorDeep;
@@ -145,6 +153,21 @@ const SURFACE_FRAGMENT_SHADER = `
   uniform float uIblIntensity;
 
   float sat(float x) { return clamp(x, 0.0, 1.0); }
+  float hash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+  float n3(vec3 p) {
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float n000 = hash(i + vec3(0.0,0.0,0.0));
+    float n100 = hash(i + vec3(1.0,0.0,0.0));
+    float n010 = hash(i + vec3(0.0,1.0,0.0));
+    float n110 = hash(i + vec3(1.0,1.0,0.0));
+    float n001 = hash(i + vec3(0.0,0.0,1.0));
+    float n101 = hash(i + vec3(1.0,0.0,1.0));
+    float n011 = hash(i + vec3(0.0,1.0,1.0));
+    float n111 = hash(i + vec3(1.0,1.0,1.0));
+    return mix(mix(mix(n000,n100,f.x), mix(n010,n110,f.x), f.y), mix(mix(n001,n101,f.x), mix(n011,n111,f.x), f.y), f.z);
+  }
 
   vec3 ramp(float t, vec3 a, vec3 b, vec3 c) {
     float low = smoothstep(0.0, 0.52, t);
@@ -172,16 +195,18 @@ const SURFACE_FRAGMENT_SHADER = `
     landBase = mix(landBase, uAccentColor, vThermalMask * 0.76);
     landBase *= mix(1.0, 0.8, vCraterMask * 0.72);
 
-    vec3 waterShallow = mix(uOceanColor * 0.92 + vec3(0.0, 0.05, 0.08), uOceanColor * 1.25, sat(1.0 - vOceanDepth));
-    vec3 waterDeep = mix(uOceanColor * 0.62, uOceanColor * 0.28, vOceanDepth);
+    vec3 waterShallow = mix(uOceanColor * 1.08 + vec3(0.03, 0.06, 0.08), uOceanColor * 1.34, sat(1.0 - vOceanDepth));
+    vec3 waterDeep = mix(uOceanColor * 0.66, uOceanColor * 0.32, vOceanDepth);
     vec3 water = mix(waterShallow, waterDeep, vOceanDepth);
 
     vec3 coast = mix(water * 1.14, landBase, 0.5);
 
-    vec3 gasBand = mix(uColorDeep, uColorMid, sat(vBandMask * 0.9 + vTemperatureMask * 0.2));
-    gasBand = mix(gasBand, uColorHigh, sat(vBandMask * 0.55 + vThermalMask * 0.45));
-    vec3 gasStorm = mix(gasBand, uAccentColor, sat(vThermalMask * 0.88));
-    vec3 gasAlbedo = mix(gasBand, gasStorm, sat(vBandMask * 0.5 + vThermalMask * 0.4));
+    float shear = n3(vUnitPos * vec3(9.0, 3.0, 9.0) + vec3(vBandMask * 2.2));
+    float cells = n3(vUnitPos * 16.0 + vec3(vThermalMask * 3.0));
+    vec3 gasBand = mix(uColorDeep, uColorMid, sat(vBandMask * 0.78 + shear * 0.22));
+    gasBand = mix(gasBand, uColorHigh, sat(vBandMask * 0.5 + vThermalMask * 0.34 + cells * 0.18));
+    vec3 gasStorm = mix(gasBand, uAccentColor, sat(vThermalMask * 0.72 + cells * 0.32));
+    vec3 gasAlbedo = mix(gasBand, gasStorm, sat(vBandMask * 0.44 + vThermalMask * 0.4 + shear * 0.2));
 
     vec3 solidAlbedo = mix(water, landBase, vLandMask);
     solidAlbedo = mix(solidAlbedo, coast, vCoastMask);
@@ -214,9 +239,15 @@ const SURFACE_FRAGMENT_SHADER = `
     } else if (uMaterialModel < 2.5) {
       albedo = mix(albedo, vec3(0.73, 0.62, 0.45), (1.0 - vHumidityMask) * 0.3);
     } else if (uMaterialModel < 3.5) {
-      albedo = mix(albedo, vec3(0.86, 0.93, 1.0), 0.34);
+      vec3 hardIce = vec3(0.72, 0.84, 0.96);
+      vec3 snow = vec3(0.94, 0.97, 1.0);
+      vec3 blueIce = vec3(0.62, 0.77, 0.93);
+      albedo = mix(albedo, hardIce, 0.28 + vIceMask * 0.32);
+      albedo = mix(albedo, snow, sat(vIceMask * 0.62 + vMountainMask * 0.22));
+      albedo = mix(albedo, blueIce, sat(vCrackMask * 0.66));
     } else if (uMaterialModel < 4.5) {
-      albedo = mix(albedo, uAccentColor, vThermalMask * 0.36);
+      albedo = max(albedo, vec3(0.12, 0.11, 0.1));
+      albedo = mix(albedo, uAccentColor, vThermalMask * 0.42 + vCrackMask * 0.16);
     } else if (uMaterialModel < 5.5) {
       albedo = mix(albedo, vec3(0.62, 0.6, 0.58), vCraterMask * 0.5);
     } else if (uMaterialModel < 6.5) {
@@ -224,7 +255,7 @@ const SURFACE_FRAGMENT_SHADER = `
     }
 
     float roughness = mix(
-      clamp(uRoughness + vMountainMask * 0.18 + vCraterMask * 0.22, 0.08, 0.99),
+      clamp(uRoughness + vMountainMask * 0.16 + vCraterMask * 0.18 - vIceMask * 0.12 + vCrackMask * 0.08, 0.06, 0.98),
       clamp(uRoughness * 0.86 + (1.0 - vBandMask) * 0.1, 0.08, 0.86),
       sat(uSurfaceModel)
     );
@@ -250,6 +281,7 @@ const SURFACE_FRAGMENT_SHADER = `
 
     color += uAccentColor * (uEmissive * (vThermalMask * 0.9 + vBandMask * 0.2));
     color *= uLightingBoost;
+    color = max(color, vec3(0.025));
 
     gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
   }
@@ -329,7 +361,8 @@ const CLOUD_FRAGMENT_SHADER = `
     else if (uCloudType < 4.5) { field = field * 0.8 + jet * 0.16; }
 
     float threshold = 1.0 - uCoverage;
-    float mask = smoothstep(threshold - 0.09, threshold + 0.06, field);
+    float softness = uCloudType < 2.5 ? 0.08 : 0.05;
+    float mask = smoothstep(threshold - softness, threshold + 0.05, field);
 
     float ndl = max(dot(n, l), 0.0);
     float wrapped = ndl * 0.6 + 0.4;
@@ -362,13 +395,14 @@ const ATMOSPHERE_FRAGMENT_SHADER = `
     float limb = pow(1.0 - max(dot(n, v), 0.0), 2.5);
     float forward = pow(max(dot(v, l), 0.0), 6.0);
 
-    vec3 dayColor = uColor * (0.84 + ndl * 0.56);
-    vec3 duskColor = mix(uColor * 0.7, vec3(1.0, 0.58, 0.3), 0.36);
+    vec3 cleanTint = mix(uColor, vec3(0.55, 0.68, 0.92), 0.22);
+    vec3 dayColor = cleanTint * (0.86 + ndl * 0.52);
+    vec3 duskColor = mix(cleanTint * 0.72, vec3(0.98, 0.56, 0.34), 0.28);
     vec3 scatter = mix(dayColor, duskColor, pow(1.0 - ndl, 1.8));
 
     float night = pow(1.0 - ndl, 2.2) * uNightGlow;
     scatter += uColor * (0.22 + night * 0.6) * night;
-    float alpha = clamp(limb * (0.14 + uRim * 0.36) + (1.0 - ndl) * uDensity * 0.06 + forward * 0.07, 0.0, 0.54);
+    float alpha = clamp(limb * (0.11 + uRim * 0.28) + (1.0 - ndl) * uDensity * 0.05 + forward * 0.05, 0.0, 0.44);
     gl_FragColor = vec4(scatter, alpha);
   }
 `;
@@ -397,17 +431,18 @@ const RING_FRAGMENT_SHADER = `
   uniform float uSeed;
   uniform vec3 uLightDirection;
 
+  float hash1(float n) { return fract(sin(n) * 43758.5453); }
   float bands(float x, float seed) {
-    float coarse = sin((x + seed * 0.00000011) * 84.0) * 0.5 + 0.5;
-    float medium = sin((x + seed * 0.00000017) * 232.0) * 0.5 + 0.5;
-    float fine = sin((x + seed * 0.00000023) * 770.0) * 0.5 + 0.5;
-    return coarse * 0.45 + medium * 0.35 + fine * 0.2;
+    float coarse = sin((x + seed * 0.00000011) * 76.0) * 0.5 + 0.5;
+    float medium = sin((x + seed * 0.00000017) * 201.0) * 0.5 + 0.5;
+    float grain = hash1(floor((x + seed * 0.00000019) * 380.0));
+    return coarse * 0.42 + medium * 0.36 + grain * 0.22;
   }
 
   void main() {
     float radial = abs(vUv.y - 0.5) * 2.0;
-    float edgeFade = 1.0 - smoothstep(0.72, 1.0, radial);
-    float innerGap = smoothstep(0.02, 0.1, radial);
+    float edgeFade = 1.0 - smoothstep(0.62, 0.98, radial);
+    float innerGap = smoothstep(0.04, 0.14, radial);
     float radialField = bands(vUv.x, uSeed);
 
     vec3 l = normalize(uLightDirection);
@@ -559,7 +594,7 @@ function createRingLayer(render: PlanetRenderInput['planet']['render'], segments
 
 function assertGeometryAttributes(mesh: THREE.Mesh): void {
   if (!(mesh.geometry instanceof THREE.BufferGeometry)) return;
-  const required = ['aHeight', 'aLandMask', 'aMountainMask', 'aCoastMask', 'aHumidityMask', 'aTemperatureMask', 'aBiomeMask'];
+  const required = ['aHeight', 'aLandMask', 'aMountainMask', 'aCoastMask', 'aHumidityMask', 'aTemperatureMask', 'aBiomeMask', 'aIceMask', 'aCrackMask'];
   for (const key of required) {
     if (!mesh.geometry.getAttribute(key)) {
       tracePlanetPipeline({ stage: 'assert:missing-attribute', mesh: mesh.name, attribute: key });
