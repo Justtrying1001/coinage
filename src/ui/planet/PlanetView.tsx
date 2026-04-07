@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 import { resolvePlanetIdentity } from '@/domain/world/resolve-planet-identity';
 import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
@@ -38,15 +39,27 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.NoToneMapping;
-    renderer.toneMappingExposure = 1;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.35;
     mount.appendChild(renderer.domElement);
 
-    const ambientLight = new THREE.AmbientLight('#ffffff', 1.95);
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const iblEnvironment = pmremGenerator.fromScene(new RoomEnvironment(), 0.035).texture;
+    scene.environment = iblEnvironment;
+
+    const ambientLight = new THREE.AmbientLight('#bcd1ff', 0.45);
     scene.add(ambientLight);
 
-    const hemiLight = new THREE.HemisphereLight('#e9edf8', '#d7dde8', 1.05);
+    const hemiLight = new THREE.HemisphereLight('#e8f2ff', '#111827', 0.6);
     scene.add(hemiLight);
+
+    const keyLight = new THREE.DirectionalLight('#ffffff', 1.6);
+    keyLight.position.set(15, 8, 22);
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight('#9db4ff', 0.55);
+    fillLight.position.set(-18, -12, 16);
+    scene.add(fillLight);
 
     const planetInstance = createPlanetRenderInstance({
       planet: resolved.planet,
@@ -157,6 +170,9 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
       window.removeEventListener('resize', onResize);
       controls.dispose();
       planetInstance.dispose();
+
+      pmremGenerator.dispose();
+      iblEnvironment.dispose();
       renderer.dispose();
       if (mount.contains(renderer.domElement)) {
         mount.removeChild(renderer.domElement);
