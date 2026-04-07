@@ -9,6 +9,7 @@ import { getGalaxyPlanetManifest } from '@/domain/world/build-galaxy-planet-mani
 import type { CanonicalPlanet } from '@/domain/world/planet-visual.types';
 import { GALAXY_LAYOUT_RUNTIME_CONFIG } from '@/domain/world/world.constants';
 import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
+import { PLANET_LIGHT_DIRECTION, PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
 import type { PlanetRenderInstance } from '@/rendering/planet/types';
 import { computeGalaxyVisualRadius } from './planet-visual-scale';
 
