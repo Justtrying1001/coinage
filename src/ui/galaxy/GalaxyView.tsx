@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
 import { getGalaxyPlanetManifest } from '@/domain/world/build-galaxy-planet-manifest';
 import type { CanonicalPlanet } from '@/domain/world/planet-visual.types';
@@ -11,6 +14,7 @@ import { GALAXY_LAYOUT_RUNTIME_CONFIG } from '@/domain/world/world.constants';
 import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
 import { PLANET_LIGHT_DIRECTION, PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
 import type { PlanetRenderInstance } from '@/rendering/planet/types';
+import { createNebulaBackground, createStarfield } from '@/rendering/space/create-starfield';
 import { computeGalaxyVisualRadius } from './planet-visual-scale';
 
 const GalaxyHud = dynamic(() => import('./GalaxyHud'), {
@@ -258,7 +262,10 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     markPerf(perfStore, 'galaxy:scene:init:start');
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#020617');
+    const nebulaBackground = createNebulaBackground(1200);
+    const starfield = createStarfield(3000, 1000);
+    scene.add(nebulaBackground);
+    scene.add(starfield);
     const width = mount.clientWidth;
     const height = mount.clientHeight;
     const aspect = width / Math.max(1, height);
@@ -301,6 +308,15 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     renderer.domElement.style.touchAction = 'none';
     renderer.domElement.style.cursor = 'grab';
     mount.appendChild(renderer.domElement);
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(mount.clientWidth, mount.clientHeight),
+      0.12,
+      0.4,
+      0.88,
+    );
+    composer.addPass(bloomPass);
 
     scene.add(new THREE.AmbientLight('#b7d1ff', 1.9));
 
@@ -445,6 +461,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       camera.bottom = -frustumHalfHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(currentWidth, currentHeight);
+      composer.setSize(currentWidth, currentHeight);
       invalidateRender();
     };
 
@@ -780,7 +797,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         updatePlanetLayerAnimation(instance.object, delta);
       }
 
-      renderer.render(scene, camera);
+      composer.render();
       renderInvalidated = false;
       if (pendingForcedFrames > 0) {
         pendingForcedFrames -= 1;
@@ -814,7 +831,12 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       for (const instance of instances) {
         instance.dispose();
       }
+      (nebulaBackground.geometry as THREE.BufferGeometry).dispose();
+      (nebulaBackground.material as THREE.Material).dispose();
+      (starfield.geometry as THREE.BufferGeometry).dispose();
+      (starfield.material as THREE.Material).dispose();
 
+      composer.dispose();
       renderer.dispose();
       if (mount.contains(renderer.domElement)) {
         mount.removeChild(renderer.domElement);
