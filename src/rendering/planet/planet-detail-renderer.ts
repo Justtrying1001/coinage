@@ -140,14 +140,28 @@ const SURFACE_FRAGMENT_SHADER = `
     vec3 lightDir = normalize(uLightDirection);
     vec3 viewDir = normalize(cameraPosition - vWorldPos);
 
+    vec3 dpdx = dFdx(vWorldPos);
+    vec3 dpdy = dFdy(vWorldPos);
+    float reliefField = vHeight * 0.7 + vMountainMask * 0.5 - vOceanDepth * 0.2;
+    vec2 reliefGrad = vec2(dFdx(reliefField), dFdy(reliefField));
+    normal = normalize(normal - (dpdx * reliefGrad.x + dpdy * reliefGrad.y) * 0.9);
+
     float ndl = max(dot(normal, lightDir), 0.0);
     float wrappedDiffuse = ndl * 0.74 + 0.26;
 
     vec3 baseLand = mix(uColorDeep, uColorMid, sat(vHeight * 1.5));
     baseLand = mix(baseLand, uColorHigh, sat(vMountainMask));
-    baseLand = mix(baseLand, uAccentColor, vThermalMask * 0.5);
+    baseLand = mix(baseLand, uAccentColor, vThermalMask * 0.35);
 
-    vec3 waterColor = mix(uOceanColor * 1.2, uOceanColor * 0.44, vOceanDepth);
+    float fertility = sat(vHumidityMask * (1.0 - abs(vTemperatureMask - 0.55) * 1.3));
+    vec3 fertileTint = mix(baseLand * 0.88, vec3(0.18, 0.42, 0.18), fertility * 0.6);
+    baseLand = mix(baseLand, fertileTint, sat(vLandMask * vContinentMask));
+
+    float snowMask = sat((1.0 - vTemperatureMask) * 0.8 + vMountainMask * 0.6);
+    baseLand = mix(baseLand, mix(vec3(0.78, 0.84, 0.92), uColorHigh, 0.4), snowMask * 0.38);
+
+    vec3 waterColor = mix(uOceanColor * 1.1, uOceanColor * 0.38, vOceanDepth);
+    waterColor = mix(waterColor, uOceanColor * 1.35, sat(pow(1.0 - vOceanDepth, 2.0) * 0.45));
     vec3 coastColor = mix(uAccentColor, baseLand, smoothstep(0.3, 0.8, vCoastMask));
 
     vec3 solidAlbedo = mix(waterColor, baseLand, vLandMask);
@@ -163,6 +177,8 @@ const SURFACE_FRAGMENT_SHADER = `
       albedo *= vec3(1.03, 0.98, 0.93);
     } else if (uFamilyCode > 2.5 && uFamilyCode < 3.5) {
       albedo = mix(albedo, vec3(0.9, 0.94, 0.98), vMountainMask * 0.2);
+    } else if (uFamilyCode > 3.5 && uFamilyCode < 4.5) {
+      albedo = mix(albedo, vec3(0.44, 0.2, 0.1), vThermalMask * 0.4);
     }
 
     vec3 halfVec = normalize(lightDir + viewDir);
@@ -212,7 +228,9 @@ const OCEAN_FRAGMENT_SHADER = `
     float wrapped = ndl * 0.7 + 0.3;
 
     float depthVar = abs(vUnitPos.y) * 0.25;
+    float wave = sin(vUnitPos.x * 28.0 + vUnitPos.y * 16.0) * 0.5 + 0.5;
     vec3 color = mix(uOceanColor, uOceanDeepColor, depthVar * uDepthFade);
+    color = mix(color, uOceanColor * 1.22, wave * 0.08);
 
     vec3 halfVec = normalize(lightDir + viewDir);
     float spec = pow(max(dot(normal, halfVec), 0.0), 80.0) * uSpecular * 0.5;

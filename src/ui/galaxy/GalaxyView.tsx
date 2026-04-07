@@ -322,9 +322,9 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     composer.addPass(new RenderPass(scene, camera));
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(mount.clientWidth, mount.clientHeight),
-      0.12,
-      0.4,
-      0.88,
+      0.08,
+      0.28,
+      0.94,
     );
     composer.addPass(bloomPass);
 

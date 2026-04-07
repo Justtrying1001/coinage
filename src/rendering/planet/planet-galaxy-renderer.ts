@@ -128,6 +128,14 @@ function buildThumbnailTexture(planet: PlanetRenderInput['planet']): THREE.Canva
     }
   }
 
+  if (planet.classification.hasOceans) {
+    ctx.strokeStyle = toCss(planet.render.surface.accentColor, 0.18);
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.arc(center + radius * 0.16, center + radius * 0.05, radius * 0.78, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
   if (family === 'volcanic-infernal') {
     ctx.strokeStyle = 'rgba(255,130,80,0.24)';
     ctx.lineWidth = 1;
@@ -141,7 +149,7 @@ function buildThumbnailTexture(planet: PlanetRenderInput['planet']): THREE.Canva
   }
 
   if (planet.render.clouds.enabled && planet.render.clouds.coverage > 0.08) {
-    ctx.strokeStyle = toCss(planet.render.clouds.color, 0.18 + planet.render.clouds.coverage * 0.24);
+    ctx.strokeStyle = toCss(planet.render.clouds.color, 0.12 + planet.render.clouds.coverage * 0.16);
     ctx.lineWidth = 1.2;
     for (let i = 0; i < 4; i += 1) {
       const y = center + (i - 1.5) * radius * 0.24;
