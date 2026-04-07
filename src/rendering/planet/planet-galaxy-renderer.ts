@@ -99,6 +99,7 @@ function buildThumbnailTexture(planet: PlanetRenderInput['planet']): THREE.Canva
   const rot = (planet.render.surface.noiseSeed % 360) * (Math.PI / 180);
   const sinR = Math.sin(rot);
   const cosR = Math.cos(rot);
+  const lightDir = new THREE.Vector3(0.52, 0.31, 0.79).normalize();
   for (let y = 0; y < size; y += 1) {
     for (let x = 0; x < size; x += 1) {
       const px = (x + 0.5 - center) / radius;
@@ -138,6 +139,10 @@ function buildThumbnailTexture(planet: PlanetRenderInput['planet']): THREE.Canva
         c = mix3(c, coast, terrain.coastMask);
       }
 
+      const ndl = Math.max(0, rx * lightDir.x + (-py) * lightDir.y + rz * lightDir.z);
+      const lit = 0.42 + ndl * 0.58;
+      c = [c[0] * lit, c[1] * lit, c[2] * lit];
+
       data[i] = Math.round(THREE.MathUtils.clamp(c[0], 0, 1) * 255);
       data[i + 1] = Math.round(THREE.MathUtils.clamp(c[1], 0, 1) * 255);
       data[i + 2] = Math.round(THREE.MathUtils.clamp(c[2], 0, 1) * 255);
@@ -157,45 +162,7 @@ function buildThumbnailTexture(planet: PlanetRenderInput['planet']): THREE.Canva
     ctx.fillRect(center - radius, bandY, radius * 2, bandH);
   }
 
-  if (planet.classification.hasOceans) {
-    ctx.globalCompositeOperation = 'source-atop';
-    ctx.fillStyle = toCss(planet.render.surface.oceanColor, 0.25);
-    ctx.beginPath();
-    ctx.arc(center + radius * 0.16, center + radius * 0.05, radius * 0.78, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalCompositeOperation = 'source-over';
-  }
-
-  if (family === 'terrestrial-lush' || family === 'oceanic') {
-    ctx.fillStyle = toCss(planet.render.surface.colorMid, 0.16);
-    for (let i = 0; i < 3; i += 1) {
-      const ox = ((seed + i * 29) % 100) / 100 - 0.5;
-      const oy = ((seed + i * 37) % 100) / 100 - 0.5;
-      ctx.beginPath();
-      ctx.ellipse(center + ox * radius * 0.9, center + oy * radius * 0.7, radius * 0.22, radius * 0.14, 0.3, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  if (planet.classification.hasOceans) {
-    ctx.strokeStyle = toCss(planet.render.surface.accentColor, 0.18);
-    ctx.lineWidth = 0.9;
-    ctx.beginPath();
-    ctx.arc(center + radius * 0.16, center + radius * 0.05, radius * 0.78, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-
-  if (family === 'volcanic-infernal') {
-    ctx.strokeStyle = 'rgba(255,130,80,0.24)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 3; i += 1) {
-      const y = center + ((seed + i * 41) % 100) / 100 * radius - radius * 0.5;
-      ctx.beginPath();
-      ctx.moveTo(center - radius * 0.55, y);
-      ctx.quadraticCurveTo(center, y + radius * 0.08, center + radius * 0.55, y - radius * 0.04);
-      ctx.stroke();
-    }
-  }
+  // Keep overlays minimal: geography should come from shared terrain sampling above.
 
   if (planet.render.clouds.enabled && planet.render.clouds.coverage > 0.08) {
     ctx.strokeStyle = toCss(planet.render.clouds.color, 0.12 + planet.render.clouds.coverage * 0.16);
