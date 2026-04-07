@@ -5,6 +5,9 @@ import Link from 'next/link';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
 import { resolvePlanetIdentity } from '@/domain/world/resolve-planet-identity';
 import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
@@ -42,6 +45,15 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.35;
     mount.appendChild(renderer.domElement);
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(mount.clientWidth, mount.clientHeight),
+      0.25,
+      0.6,
+      0.82,
+    );
+    composer.addPass(bloomPass);
 
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     const iblEnvironment = pmremGenerator.fromScene(new RoomEnvironment(), 0.035).texture;
@@ -142,6 +154,7 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
       camera.far = Math.max(1200, resizedMaxDistance * 6);
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
+      composer.setSize(width, height);
       controls.update();
     };
 
@@ -156,7 +169,7 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
       const delta = Math.min(0.05, animationClock.getDelta());
       updatePlanetLayerAnimation(planetInstance.object, delta);
       controls.update();
-      renderer.render(scene, camera);
+      composer.render();
       requestAnimationFrame(animate);
     };
 
@@ -173,6 +186,7 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
 
       pmremGenerator.dispose();
       iblEnvironment.dispose();
+      composer.dispose();
       renderer.dispose();
       if (mount.contains(renderer.domElement)) {
         mount.removeChild(renderer.domElement);

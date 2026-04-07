@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
 import { getGalaxyPlanetManifest } from '@/domain/world/build-galaxy-planet-manifest';
 import type { CanonicalPlanet } from '@/domain/world/planet-visual.types';
@@ -301,6 +304,15 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     renderer.domElement.style.touchAction = 'none';
     renderer.domElement.style.cursor = 'grab';
     mount.appendChild(renderer.domElement);
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(mount.clientWidth, mount.clientHeight),
+      0.15,
+      0.4,
+      0.85,
+    );
+    composer.addPass(bloomPass);
 
     scene.add(new THREE.AmbientLight('#b7d1ff', 1.9));
 
@@ -445,6 +457,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       camera.bottom = -frustumHalfHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(currentWidth, currentHeight);
+      composer.setSize(currentWidth, currentHeight);
       invalidateRender();
     };
 
@@ -780,7 +793,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         updatePlanetLayerAnimation(instance.object, delta);
       }
 
-      renderer.render(scene, camera);
+      composer.render();
       renderInvalidated = false;
       if (pendingForcedFrames > 0) {
         pendingForcedFrames -= 1;
@@ -815,6 +828,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         instance.dispose();
       }
 
+      composer.dispose();
       renderer.dispose();
       if (mount.contains(renderer.domElement)) {
         mount.removeChild(renderer.domElement);

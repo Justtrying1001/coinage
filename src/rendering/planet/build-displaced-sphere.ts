@@ -69,7 +69,11 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
     });
 
     const signed = (terrain.height01 - 0.5) * 2;
-    const displacedRadius = input.radius + signed * input.reliefAmplitude * displacementScale;
+    const isOcean = terrain.landMask < 0.5;
+    const landDisplacement = signed * input.reliefAmplitude * displacementScale;
+    const displacedRadius = isOcean
+      ? input.radius - 0.002
+      : input.radius + Math.max(0, landDisplacement);
 
     position.setXYZ(i, px * displacedRadius, py * displacedRadius, pz * displacedRadius);
 

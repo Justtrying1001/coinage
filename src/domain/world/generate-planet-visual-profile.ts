@@ -507,7 +507,7 @@ function buildViewProfile(viewMode: PlanetViewProfile['viewMode']): PlanetViewPr
   return {
     viewMode,
     lod: isGalaxy ? 'low' : 'high',
-    meshSegments: isGalaxy ? 30 : 132,
+    meshSegments: isGalaxy ? 48 : 160,
     cloudSegments: isGalaxy ? 24 : 96,
     atmosphereSegments: isGalaxy ? 22 : 84,
     ringSegments: isGalaxy ? 192 : 512,
