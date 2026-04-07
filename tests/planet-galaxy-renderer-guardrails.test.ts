@@ -18,6 +18,8 @@ type Ctx = {
   fill: () => void;
   fillRect: () => void;
   ellipse: () => void;
+  moveTo: () => void;
+  quadraticCurveTo: () => void;
   stroke: () => void;
   globalCompositeOperation: string;
   fillStyle: string;
@@ -36,6 +38,8 @@ function installCanvasStub() {
     fill: () => {},
     fillRect: () => {},
     ellipse: () => {},
+    moveTo: () => {},
+    quadraticCurveTo: () => {},
     stroke: () => {},
     globalCompositeOperation: 'source-over',
     fillStyle: '',

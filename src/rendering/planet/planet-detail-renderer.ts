@@ -168,8 +168,8 @@ const SURFACE_FRAGMENT_SHADER = `
     vec3 halfVec = normalize(lightDir + viewDir);
     float roughness = mix(clamp(uRoughness + vMountainMask * 0.2 + vCraterMask * 0.15, 0.12, 0.98), clamp(uRoughness * 0.82 + (1.0 - vBandMask) * 0.1, 0.08, 0.9), sat(uSurfaceModel));
     float specPow = mix(44.0, 104.0, 1.0 - roughness);
-    float spec = pow(max(dot(normal, halfVec), 0.0), specPow) * (0.08 + uSpecular * 0.92);
-    spec *= mix(0.85, 1.25, uMetalness);
+    float spec = pow(max(dot(normal, halfVec), 0.0), specPow) * (0.05 + uSpecular * 0.62);
+    spec *= mix(0.75, 1.02, uMetalness);
     spec *= mix(1.0, 0.12, sat(uSurfaceModel));
     float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 4.0);
 
@@ -180,8 +180,8 @@ const SURFACE_FRAGMENT_SHADER = `
 
     vec3 color = albedo * wrappedDiffuse;
     color += iblDiffuse * albedo * (0.2 + (1.0 - roughness) * 0.18) * uIblIntensity;
-    color += iblDiffuse * (spec + fresnel * 0.28) * uIblIntensity;
-    color += uAccentColor * (uEmissive * (vThermalMask * 0.9 + vBandMask * 0.2));
+    color += iblDiffuse * (spec + fresnel * 0.14) * uIblIntensity;
+    color += uAccentColor * (uEmissive * (vThermalMask * 0.62 + vBandMask * 0.12));
 
     float ao = 1.0 - vOceanDepth * 0.2 - vErosionMask * 0.08 + vMountainMask * 0.06;
     ao = clamp(ao, 0.6, 1.1);
@@ -220,7 +220,7 @@ const OCEAN_FRAGMENT_SHADER = `
 
     color = color * wrapped + vec3(1.0) * spec + uOceanColor * fresnel;
     color *= uLightingBoost;
-    float alpha = mix(0.58, 0.96, depthVar);
+    float alpha = mix(0.52, 0.78, depthVar);
     gl_FragColor = vec4(clamp(color, 0.0, 1.0), alpha);
   }
 `;
@@ -287,7 +287,7 @@ const CLOUD_FRAGMENT_SHADER = `
 
     float ndl = max(dot(normal, lightDir), 0.0);
     float wrapped = ndl * 0.5 + 0.5;
-    float alpha = clamp(mask * uOpacity * 0.7, 0.0, 0.75);
+    float alpha = clamp(mask * uOpacity * 0.55, 0.0, 0.56);
     gl_FragColor = vec4(uCloudColor * wrapped * uLightingBoost, alpha);
   }
 `;
@@ -312,14 +312,14 @@ const ATMOSPHERE_FRAGMENT_SHADER = `
     float rayleighPhase = 0.75 * (1.0 + mu * mu);
     float g = 0.76;
     float miePhase = (1.0 - g * g) / (4.0 * 3.14159265 * pow(1.0 + g * g - 2.0 * g * mu, 1.5));
-    float rim = pow(1.0 - max(dot(normal, viewDir), 0.0), mix(1.6, 2.8, uRim));
+    float rim = pow(1.0 - max(dot(normal, viewDir), 0.0), mix(2.1, 3.4, uRim));
     float day = max(dot(normal, lightDir), 0.0);
 
-    vec3 rayleighColor = uColor * (0.8 + 0.4 * day) * rayleighPhase * uRayleigh;
-    vec3 mieColor = mix(uColor, vec3(1.0, 0.72, 0.54), 0.4) * miePhase * uMie;
+    vec3 rayleighColor = uColor * (0.55 + 0.32 * day) * rayleighPhase * uRayleigh;
+    vec3 mieColor = mix(uColor, vec3(1.0, 0.72, 0.54), 0.25) * miePhase * uMie;
     vec3 color = rayleighColor + mieColor;
 
-    float alpha = clamp((rim * 0.8 + day * 0.2) * uDensity, 0.0, 0.92);
+    float alpha = clamp((rim * 0.42 + day * 0.08) * uDensity, 0.0, 0.34);
     gl_FragColor = vec4(color, alpha);
   }
 `;
@@ -355,9 +355,9 @@ const RING_FRAGMENT_SHADER = `
     vec3 lightDir = normalize(uLightDirection);
     vec3 normal = normalize(vNormalW);
     float ndl = max(dot(normal, lightDir), 0.0);
-    float alpha = edgeFade * gap * grain * uOpacity;
-    vec3 color = uColor * (0.6 + grain * 0.4) * (ndl * 0.4 + 0.6);
-    gl_FragColor = vec4(color, clamp(alpha, 0.0, 0.85));
+    float alpha = edgeFade * gap * grain * uOpacity * 0.58;
+    vec3 color = uColor * (0.48 + grain * 0.22) * (ndl * 0.26 + 0.48);
+    gl_FragColor = vec4(color, clamp(alpha, 0.0, 0.46));
   }
 `;
 
@@ -496,7 +496,7 @@ function createRingLayer(render: PlanetRenderInput['planet']['render'], segments
     fragmentShader: RING_FRAGMENT_SHADER,
     uniforms: {
       uColor: { value: toColor(render.rings.color) },
-      uOpacity: { value: render.rings.opacity },
+      uOpacity: { value: render.rings.opacity * 0.74 },
       uSeed: { value: render.rings.noiseSeed },
       uLightDirection: { value: new THREE.Vector3(0.52, 0.31, 0.79).normalize() },
     },

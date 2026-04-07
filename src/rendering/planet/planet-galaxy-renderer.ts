@@ -117,6 +117,29 @@ function buildThumbnailTexture(planet: PlanetRenderInput['planet']): THREE.Canva
     ctx.globalCompositeOperation = 'source-over';
   }
 
+  if (family === 'terrestrial-lush' || family === 'oceanic') {
+    ctx.fillStyle = toCss(planet.render.surface.colorMid, 0.16);
+    for (let i = 0; i < 3; i += 1) {
+      const ox = ((seed + i * 29) % 100) / 100 - 0.5;
+      const oy = ((seed + i * 37) % 100) / 100 - 0.5;
+      ctx.beginPath();
+      ctx.ellipse(center + ox * radius * 0.9, center + oy * radius * 0.7, radius * 0.22, radius * 0.14, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  if (family === 'volcanic-infernal') {
+    ctx.strokeStyle = 'rgba(255,130,80,0.24)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i += 1) {
+      const y = center + ((seed + i * 41) % 100) / 100 * radius - radius * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(center - radius * 0.55, y);
+      ctx.quadraticCurveTo(center, y + radius * 0.08, center + radius * 0.55, y - radius * 0.04);
+      ctx.stroke();
+    }
+  }
+
   if (planet.render.clouds.enabled && planet.render.clouds.coverage > 0.08) {
     ctx.strokeStyle = toCss(planet.render.clouds.color, 0.18 + planet.render.clouds.coverage * 0.24);
     ctx.lineWidth = 1.2;
@@ -154,9 +177,9 @@ function buildThumbnailTexture(planet: PlanetRenderInput['planet']): THREE.Canva
   ctx.fill();
 
   const lightGrad = ctx.createLinearGradient(center - radius, center - radius * 0.3, center + radius, center + radius * 0.45);
-  lightGrad.addColorStop(0, 'rgba(255,255,255,0.12)');
+  lightGrad.addColorStop(0, 'rgba(255,255,255,0.10)');
   lightGrad.addColorStop(0.58, 'rgba(255,255,255,0.0)');
-  lightGrad.addColorStop(1, 'rgba(0,0,0,0.28)');
+  lightGrad.addColorStop(1, 'rgba(0,0,0,0.32)');
   ctx.globalCompositeOperation = 'source-atop';
   ctx.fillStyle = lightGrad;
   ctx.fillRect(center - radius, center - radius, radius * 2, radius * 2);
@@ -164,7 +187,7 @@ function buildThumbnailTexture(planet: PlanetRenderInput['planet']): THREE.Canva
 
   const rim = ctx.createRadialGradient(center, center, radius * 0.84, center, center, radius * 1.08);
   rim.addColorStop(0, 'rgba(0,0,0,0)');
-  rim.addColorStop(1, toCss(planet.render.atmosphere.color, planet.render.atmosphere.enabled ? 0.22 : 0.06));
+  rim.addColorStop(1, toCss(planet.render.atmosphere.color, planet.render.atmosphere.enabled ? 0.14 : 0.04));
   ctx.fillStyle = rim;
   ctx.beginPath();
   ctx.arc(center, center, radius * 1.08, 0, Math.PI * 2);
@@ -188,7 +211,7 @@ function getRingMaskTexture(): THREE.CanvasTexture {
   if (!ctx) throw new Error('Canvas2D not available for ring texture.');
   const center = size * 0.5;
   ctx.clearRect(0, 0, size, size);
-  ctx.strokeStyle = 'rgba(255,255,255,1)';
+  ctx.strokeStyle = 'rgba(225,225,225,0.92)';
   ctx.lineWidth = 14;
   ctx.beginPath();
   ctx.ellipse(center, center, size * 0.44, size * 0.17, 0, 0, Math.PI * 2);
@@ -261,10 +284,10 @@ export function createPlanetGalaxyRenderInstance(input: PlanetRenderInput): Plan
   if (planet.render.rings.enabled) {
     const ringMaterial = new THREE.SpriteMaterial({
       map: getRingMaskTexture(),
-      color: new THREE.Color(...planet.render.rings.color),
+      color: new THREE.Color(...planet.render.rings.color).multiplyScalar(0.82),
       transparent: true,
       alphaTest: 0.08,
-      opacity: planet.render.rings.opacity * 0.42,
+      opacity: planet.render.rings.opacity * 0.28,
       depthWrite: false,
       premultipliedAlpha: true,
     });
