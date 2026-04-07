@@ -449,6 +449,57 @@ function jitterColor(rng: () => number, base: [number, number, number], variance
   return base.map((channel) => clamp(channel + (rng() - 0.5) * variance, 0, 1)) as [number, number, number];
 }
 
+function rgbToHsl(color: [number, number, number]): [number, number, number] {
+  const [r, g, b] = color;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const lightness = (max + min) * 0.5;
+  const delta = max - min;
+
+  if (delta < 1e-6) {
+    return [0, 0, lightness];
+  }
+
+  const saturation = lightness > 0.5 ? delta / (2 - max - min) : delta / (max + min);
+  let hue = 0;
+  if (max === r) hue = (g - b) / delta + (g < b ? 6 : 0);
+  else if (max === g) hue = (b - r) / delta + 2;
+  else hue = (r - g) / delta + 4;
+
+  return [hue / 6, saturation, lightness];
+}
+
+function hslToRgb(hsl: [number, number, number]): [number, number, number] {
+  const [h, s, l] = hsl;
+  if (s <= 1e-6) {
+    return [l, l, l];
+  }
+
+  const hue2rgb = (p: number, q: number, t: number): number => {
+    let tt = t;
+    if (tt < 0) tt += 1;
+    if (tt > 1) tt -= 1;
+    if (tt < 1 / 6) return p + (q - p) * 6 * tt;
+    if (tt < 1 / 2) return q;
+    if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
+    return p;
+  };
+
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  return [hue2rgb(p, q, h + 1 / 3), hue2rgb(p, q, h), hue2rgb(p, q, h - 1 / 3)];
+}
+
+function blendHsl(a: [number, number, number], b: [number, number, number], t: number): [number, number, number] {
+  const ah = rgbToHsl(a);
+  const bh = rgbToHsl(b);
+  const hueDelta = ((((bh[0] - ah[0]) % 1) + 1.5) % 1) - 0.5;
+  const hue = (ah[0] + hueDelta * t + 1) % 1;
+  const sat = clamp(ah[1] + (bh[1] - ah[1]) * t, 0, 1);
+  const light = clamp(ah[2] + (bh[2] - ah[2]) * t, 0, 1);
+  return hslToRgb([hue, sat, light]);
+}
+
 function weightedRecipe(rng: () => number): FamilyRecipe {
   const total = FAMILY_RECIPES.reduce((acc, recipe) => acc + recipe.weight, 0);
   let cursor = rng() * total;
@@ -507,16 +558,16 @@ function buildViewProfile(viewMode: PlanetViewProfile['viewMode']): PlanetViewPr
   return {
     viewMode,
     lod: isGalaxy ? 'low' : 'high',
-    meshSegments: isGalaxy ? 36 : 160,
+    meshSegments: isGalaxy ? 16 : 160,
     cloudSegments: isGalaxy ? 0 : 0,
     atmosphereSegments: isGalaxy ? 0 : 0,
-    ringSegments: isGalaxy ? 128 : 384,
+    ringSegments: isGalaxy ? 96 : 320,
     enableRings: true,
     enableClouds: false,
     enableAtmosphere: false,
     enableOceanLayer: false,
-    lightingBoost: isGalaxy ? 1.12 : 1.2,
-    shadingContrast: isGalaxy ? 0.08 : 0.14,
+    lightingBoost: isGalaxy ? 1.32 : 1.48,
+    shadingContrast: isGalaxy ? 0.2 : 0.28,
   };
 }
 
@@ -557,13 +608,21 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
     canHaveRings: recipe.forceRings === true ? true : recipe.surfaceModel === 'gaseous' || rng() > 0.9,
   };
 
+  const baseDeep = jitterColor(rng, palette.deep);
+  const baseMid = jitterColor(rng, palette.mid);
+  const baseHigh = jitterColor(rng, palette.high);
+  const baseOcean = jitterColor(rng, palette.ocean, 0.03);
+  const baseAccent = jitterColor(rng, palette.accent, 0.03);
+  const colorMid = blendHsl(baseDeep, baseMid, 0.74);
+  const colorHigh = blendHsl(colorMid, baseHigh, 0.68);
+
   const visualDNA: PlanetVisualDNA = {
     paletteId: palette.id,
-    colorDeep: jitterColor(rng, palette.deep),
-    colorMid: jitterColor(rng, palette.mid),
-    colorHigh: jitterColor(rng, palette.high),
-    oceanColor: jitterColor(rng, palette.ocean, 0.03),
-    accentColor: jitterColor(rng, palette.accent, 0.03),
+    colorDeep: baseDeep,
+    colorMid,
+    colorHigh,
+    oceanColor: blendHsl(baseOcean, baseDeep, 0.12),
+    accentColor: blendHsl(baseAccent, colorHigh, 0.22),
     cloudColor: jitterColor(rng, palette.cloud, 0.025),
     atmosphereTint: jitterColor(rng, palette.atmosphere, 0.035),
     oceanCoverage: classification.hasOceans ? range(rng, recipe.oceanCoverage[0], recipe.oceanCoverage[1]) : 0,
