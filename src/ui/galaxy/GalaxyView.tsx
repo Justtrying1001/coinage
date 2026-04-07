@@ -11,8 +11,8 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { getGalaxyPlanetManifest } from '@/domain/world/build-galaxy-planet-manifest';
 import type { CanonicalPlanet } from '@/domain/world/planet-visual.types';
 import { GALAXY_LAYOUT_RUNTIME_CONFIG } from '@/domain/world/world.constants';
-import { updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
-import { createPlanetGalaxyRenderInstance } from '@/rendering/planet/planet-galaxy-renderer';
+import { createPlanetGalaxyRenderInstance, getGalaxyThumbnailPerfStats } from '@/rendering/planet/planet-galaxy-renderer';
+import { updatePlanetLayerAnimation } from '@/rendering/planet/update-planet-layer-animation';
 import { PLANET_LIGHT_DIRECTION, PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
 import type { PlanetRenderInstance } from '@/rendering/planet/types';
 import { createNebulaBackground, createStarfield } from '@/rendering/space/create-starfield';
@@ -59,6 +59,10 @@ interface GalaxyPerfCounters {
   workerJobAvgMs: number;
   geometryBuildAvgMs: number;
   workerQueueDepthMax: number;
+  thumbnailCacheHits: number;
+  thumbnailCacheMisses: number;
+  thumbnailsGenerated: number;
+  thumbnailGenerationAvgMs: number;
 }
 
 interface GalaxyPerfStore {
@@ -111,6 +115,10 @@ function createDefaultCounters(totalPlanets = 0): GalaxyPerfCounters {
     workerJobAvgMs: 0,
     geometryBuildAvgMs: 0,
     workerQueueDepthMax: 0,
+    thumbnailCacheHits: 0,
+    thumbnailCacheMisses: 0,
+    thumbnailsGenerated: 0,
+    thumbnailGenerationAvgMs: 0,
   };
 }
 
@@ -529,6 +537,12 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
           : 0;
       perfStore.counters.geometryBuildAvgMs =
         completedPlanetCount > 0 ? totalGeometryBuildMs / completedPlanetCount : 0;
+      const thumbnailStats = getGalaxyThumbnailPerfStats();
+      perfStore.counters.thumbnailCacheHits = thumbnailStats.cacheHits;
+      perfStore.counters.thumbnailCacheMisses = thumbnailStats.cacheMisses;
+      perfStore.counters.thumbnailsGenerated = thumbnailStats.generatedCount;
+      perfStore.counters.thumbnailGenerationAvgMs =
+        thumbnailStats.generatedCount > 0 ? thumbnailStats.generatedTotalMs / thumbnailStats.generatedCount : 0;
     };
 
     const hasKeyboardInput = () =>
@@ -590,7 +604,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       perfStore.counters.frameIdleAvgMs = idleFrameDurationSum / perfStore.counters.framesIdle;
     };
 
-    const instantiatePlanet = async (planet: PlanetRenderData) => {
+    const instantiatePlanet = (planet: PlanetRenderData) => {
       if (instantiatedPlanetIds.has(planet.id)) {
         return;
       }
@@ -725,13 +739,15 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         if (perfStore) {
           perfStore.counters.workerJobsSent += 1;
         }
-        void instantiatePlanet(planet).catch((error) => {
+        try {
+          instantiatePlanet(planet);
+        } catch (error) {
           pendingPlanetJobs = Math.max(0, pendingPlanetJobs - 1);
           if (process.env.NODE_ENV !== 'production') {
             console.warn(`${PERF_LOG_PREFIX} planet job failed`, error);
           }
           scheduleNextBatch();
-        });
+        }
         createdInThisSlice += 1;
       }
 

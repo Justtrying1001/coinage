@@ -579,14 +579,6 @@ function shouldRenderLayer(layer: 'surface' | 'clouds' | 'atmosphere' | 'rings',
   return Boolean(toggles[layer]);
 }
 
-function updatePlanetLayerAnimation(object: THREE.Object3D, deltaSeconds: number, freezeRotation = false): void {
-  if (freezeRotation) return;
-  object.traverse((node) => {
-    const speed = typeof node.userData.rotationSpeed === 'number' ? node.userData.rotationSpeed : 0;
-    if (speed !== 0 && node instanceof THREE.Mesh) node.rotation.y += speed * deltaSeconds;
-  });
-}
-
 export function createPlanetDetailRenderInstance(input: PlanetRenderInput): PlanetRenderInstance {
   const { planet, x, y, z, options } = input;
   const view = createPlanetViewProfile(options.viewMode);

@@ -8,18 +8,32 @@ interface CachedThumbnail {
 }
 
 const thumbnailCache = new Map<string, CachedThumbnail>();
+const galaxyThumbnailPerf = {
+  cacheHits: 0,
+  cacheMisses: 0,
+  generatedCount: 0,
+  generatedTotalMs: 0,
+  instancesCreated: 0,
+};
+
+export function getGalaxyThumbnailPerfStats(): Readonly<typeof galaxyThumbnailPerf> {
+  return galaxyThumbnailPerf;
+}
 
 function cacheKey(planet: PlanetRenderInput['planet']): string {
   const p = planet.render;
   return [
-    planet.identity.planetId,
     p.family,
+    planet.visualDNA.paletteId,
     p.surface.colorDeep.join(','),
     p.surface.colorMid.join(','),
     p.surface.colorHigh.join(','),
     p.surface.oceanColor.join(','),
     p.clouds.coverage.toFixed(2),
+    p.clouds.enabled ? 'c' : 'nc',
+    p.surface.noiseSeed.toString(36),
     p.rings.enabled ? 'r' : 'n',
+    p.rings.enabled ? p.rings.color.join(',') : '',
   ].join('|');
 }
 
@@ -40,6 +54,7 @@ function buildThumbnailTexture(planet: PlanetRenderInput['planet']): THREE.Canva
 
   const center = size * 0.5;
   const radius = size * 0.42;
+  const isGaseous = planet.render.surfaceModel === 'gaseous';
 
   ctx.clearRect(0, 0, size, size);
 
@@ -55,11 +70,12 @@ function buildThumbnailTexture(planet: PlanetRenderInput['planet']): THREE.Canva
 
   // cheap macro variation baked in 2D, not per-frame.
   const seed = planet.render.surface.noiseSeed % 1024;
-  for (let i = 0; i < 6; i += 1) {
+  for (let i = 0; i < (isGaseous ? 9 : 6); i += 1) {
     const t = (seed * (i + 1) * 0.00017) % 1;
     const bandY = center + (t - 0.5) * radius * 1.3;
-    const bandH = radius * (0.08 + ((seed + i * 13) % 5) * 0.015);
-    ctx.fillStyle = toCss(i % 2 === 0 ? planet.render.surface.colorMid : planet.render.surface.colorHigh, 0.22);
+    const bandH = radius * (isGaseous ? 0.05 : 0.08) + ((seed + i * 13) % 5) * radius * 0.012;
+    const bandAlpha = isGaseous ? 0.28 : 0.22;
+    ctx.fillStyle = toCss(i % 2 === 0 ? planet.render.surface.colorMid : planet.render.surface.colorHigh, bandAlpha);
     ctx.fillRect(center - radius, bandY, radius * 2, bandH);
   }
 
@@ -83,6 +99,15 @@ function buildThumbnailTexture(planet: PlanetRenderInput['planet']): THREE.Canva
     }
   }
 
+  if (!isGaseous) {
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = 'rgba(12, 18, 28, 0.18)';
+    ctx.beginPath();
+    ctx.arc(center + radius * 0.36, center + radius * 0.14, radius * 0.95, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
   const rim = ctx.createRadialGradient(center, center, radius * 0.84, center, center, radius * 1.08);
   rim.addColorStop(0, 'rgba(0,0,0,0)');
   rim.addColorStop(1, toCss(planet.render.atmosphere.color, planet.render.atmosphere.enabled ? 0.22 : 0.06));
@@ -104,9 +129,14 @@ function getThumbnailTexture(planet: PlanetRenderInput['planet']): { key: string
   const cached = thumbnailCache.get(key);
   if (cached) {
     cached.refs += 1;
+    galaxyThumbnailPerf.cacheHits += 1;
     return { key, texture: cached.texture };
   }
+  galaxyThumbnailPerf.cacheMisses += 1;
+  const startedAt = performance.now();
   const texture = buildThumbnailTexture(planet);
+  galaxyThumbnailPerf.generatedCount += 1;
+  galaxyThumbnailPerf.generatedTotalMs += performance.now() - startedAt;
   thumbnailCache.set(key, { texture, refs: 1 });
   return { key, texture };
 }
@@ -127,6 +157,7 @@ export function createPlanetGalaxyRenderInstance(input: PlanetRenderInput): Plan
   group.position.set(x, y, z);
 
   const { key, texture } = getThumbnailTexture(planet);
+  galaxyThumbnailPerf.instancesCreated += 1;
   const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
   const sprite = new THREE.Sprite(spriteMaterial);
   const diameter = planet.render.renderRadius * 2;
