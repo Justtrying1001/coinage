@@ -52,6 +52,12 @@ const SURFACE_VERTEX_SHADER = `
   attribute float aIceMask;
   attribute float aCrackMask;
   attribute float aBandMask;
+  attribute float aWaterMask;
+  attribute float aSoilMask;
+  attribute float aSandMask;
+  attribute float aRockMask;
+  attribute float aLavaMask;
+  attribute float aGasMask;
 
   varying vec3 vWorldPos;
   varying vec3 vWorldNormal;
@@ -71,6 +77,12 @@ const SURFACE_VERTEX_SHADER = `
   varying float vIceMask;
   varying float vCrackMask;
   varying float vBandMask;
+  varying float vWaterMask;
+  varying float vSoilMask;
+  varying float vSandMask;
+  varying float vRockMask;
+  varying float vLavaMask;
+  varying float vGasMask;
 
   void main() {
     vec4 worldPos = modelMatrix * vec4(position, 1.0);
@@ -93,6 +105,12 @@ const SURFACE_VERTEX_SHADER = `
     vIceMask = aIceMask;
     vCrackMask = aCrackMask;
     vBandMask = aBandMask;
+    vWaterMask = aWaterMask;
+    vSoilMask = aSoilMask;
+    vSandMask = aSandMask;
+    vRockMask = aRockMask;
+    vLavaMask = aLavaMask;
+    vGasMask = aGasMask;
 
     gl_Position = projectionMatrix * viewMatrix * worldPos;
   }
@@ -131,6 +149,12 @@ const SURFACE_FRAGMENT_SHADER = `
   varying float vIceMask;
   varying float vCrackMask;
   varying float vBandMask;
+  varying float vWaterMask;
+  varying float vSoilMask;
+  varying float vSandMask;
+  varying float vRockMask;
+  varying float vLavaMask;
+  varying float vGasMask;
 
   uniform vec3 uColorDeep;
   uniform vec3 uColorMid;
@@ -199,19 +223,33 @@ const SURFACE_FRAGMENT_SHADER = `
     vec3 waterDeep = mix(uOceanColor * 0.66, uOceanColor * 0.32, vOceanDepth);
     vec3 water = mix(waterShallow, waterDeep, vOceanDepth);
 
-    vec3 coast = mix(water * 1.14, landBase, 0.5);
+    vec3 soil = mix(uColorDeep, uColorMid, sat(vBiomeMask * 0.8 + vHumidityMask * 0.2));
+    vec3 sand = mix(uColorMid, uColorHigh, 0.65) * vec3(1.06, 0.96, 0.82);
+    vec3 rock = mix(uColorDeep, uColorHigh, 0.38) * vec3(0.86, 0.86, 0.88);
+    vec3 lava = mix(uAccentColor * 0.9, vec3(1.0, 0.45, 0.14), sat(vThermalMask * 0.9 + vCrackMask * 0.4));
+
+    vec3 iceHard = vec3(0.72, 0.84, 0.96);
+    vec3 iceSnow = vec3(0.94, 0.97, 1.0);
+    vec3 iceBlue = vec3(0.62, 0.77, 0.93);
+    vec3 ice = mix(iceHard, iceSnow, sat(vIceMask * 0.72));
+    ice = mix(ice, iceBlue, sat(vCrackMask * 0.62));
 
     float shear = n3(vUnitPos * vec3(9.0, 3.0, 9.0) + vec3(vBandMask * 2.2));
     float cells = n3(vUnitPos * 16.0 + vec3(vThermalMask * 3.0));
     vec3 gasBand = mix(uColorDeep, uColorMid, sat(vBandMask * 0.78 + shear * 0.22));
     gasBand = mix(gasBand, uColorHigh, sat(vBandMask * 0.5 + vThermalMask * 0.34 + cells * 0.18));
     vec3 gasStorm = mix(gasBand, uAccentColor, sat(vThermalMask * 0.72 + cells * 0.32));
-    vec3 gasAlbedo = mix(gasBand, gasStorm, sat(vBandMask * 0.44 + vThermalMask * 0.4 + shear * 0.2));
+    vec3 gas = mix(gasBand, gasStorm, sat(vBandMask * 0.44 + vThermalMask * 0.4 + shear * 0.2));
 
-    vec3 solidAlbedo = mix(water, landBase, vLandMask);
-    solidAlbedo = mix(solidAlbedo, coast, vCoastMask);
+    vec3 solidAlbedo =
+      water * vWaterMask +
+      soil * vSoilMask +
+      sand * vSandMask +
+      rock * vRockMask +
+      ice * vIceMask +
+      lava * vLavaMask;
 
-    vec3 albedo = mix(solidAlbedo, gasAlbedo, sat(uSurfaceModel));
+    vec3 albedo = mix(solidAlbedo, gas, sat(vGasMask + uSurfaceModel * 0.9));
 
     if (uFamilyCode < 0.5) {
       albedo = mix(albedo, vec3(albedo.r * 0.82, albedo.g * 1.08, albedo.b * 0.86), sat(vHumidityMask * 0.28));
@@ -232,30 +270,12 @@ const SURFACE_FRAGMENT_SHADER = `
       albedo = mix(albedo, uColorHigh * 1.08, vBandMask * 0.35);
     }
 
-    if (uMaterialModel < 0.5) {
-      albedo = mix(albedo, albedo * vec3(0.88, 1.08, 0.9), biome * 0.2);
-    } else if (uMaterialModel < 1.5) {
-      albedo = mix(albedo, uOceanColor * 1.14, (1.0 - vLandMask) * 0.45);
-    } else if (uMaterialModel < 2.5) {
-      albedo = mix(albedo, vec3(0.73, 0.62, 0.45), (1.0 - vHumidityMask) * 0.3);
-    } else if (uMaterialModel < 3.5) {
-      vec3 hardIce = vec3(0.72, 0.84, 0.96);
-      vec3 snow = vec3(0.94, 0.97, 1.0);
-      vec3 blueIce = vec3(0.62, 0.77, 0.93);
-      albedo = mix(albedo, hardIce, 0.28 + vIceMask * 0.32);
-      albedo = mix(albedo, snow, sat(vIceMask * 0.62 + vMountainMask * 0.22));
-      albedo = mix(albedo, blueIce, sat(vCrackMask * 0.66));
-    } else if (uMaterialModel < 4.5) {
-      albedo = max(albedo, vec3(0.12, 0.11, 0.1));
-      albedo = mix(albedo, uAccentColor, vThermalMask * 0.42 + vCrackMask * 0.16);
-    } else if (uMaterialModel < 5.5) {
-      albedo = mix(albedo, vec3(0.62, 0.6, 0.58), vCraterMask * 0.5);
-    } else if (uMaterialModel < 6.5) {
-      albedo = mix(albedo, uAccentColor * 0.9, biome * 0.28 + vThermalMask * 0.18);
+    if (uMaterialModel < 4.5) {
+      albedo = mix(albedo, albedo * vec3(1.02, 1.01, 1.0), vBiomeMask * 0.12);
     }
 
     float roughness = mix(
-      clamp(uRoughness + vMountainMask * 0.16 + vCraterMask * 0.18 - vIceMask * 0.12 + vCrackMask * 0.08, 0.06, 0.98),
+      clamp(uRoughness + vMountainMask * 0.14 + vRockMask * 0.16 + vCraterMask * 0.12 - vWaterMask * 0.22 - vIceMask * 0.1 + vCrackMask * 0.06, 0.04, 0.98),
       clamp(uRoughness * 0.86 + (1.0 - vBandMask) * 0.1, 0.08, 0.86),
       sat(uSurfaceModel)
     );
@@ -276,10 +296,10 @@ const SURFACE_FRAGMENT_SHADER = `
     color += ibl * albedo * (0.16 + (1.0 - roughness) * 0.24) * uIblIntensity;
     color += ibl * (spec + fresnel * 0.24 + metalnessHack * 0.06) * uIblIntensity;
 
-    float oceanSpec = (1.0 - roughness) * (1.0 - sat(uSurfaceModel)) * (1.0 - vLandMask) * (0.42 + uOceanSpecBoost);
+    float oceanSpec = (1.0 - roughness) * (1.0 - sat(uSurfaceModel)) * vWaterMask * (0.36 + uOceanSpecBoost);
     color += vec3(oceanSpec * (spec * 1.3 + fresnel * 0.4));
 
-    color += uAccentColor * (uEmissive * (vThermalMask * 0.9 + vBandMask * 0.2));
+    color += uAccentColor * (uEmissive * (vLavaMask * 1.1 + vThermalMask * 0.5 + vBandMask * 0.18));
     color *= uLightingBoost;
     color = max(color, vec3(0.025));
 
@@ -594,7 +614,7 @@ function createRingLayer(render: PlanetRenderInput['planet']['render'], segments
 
 function assertGeometryAttributes(mesh: THREE.Mesh): void {
   if (!(mesh.geometry instanceof THREE.BufferGeometry)) return;
-  const required = ['aHeight', 'aLandMask', 'aMountainMask', 'aCoastMask', 'aHumidityMask', 'aTemperatureMask', 'aBiomeMask', 'aIceMask', 'aCrackMask'];
+  const required = ['aHeight', 'aLandMask', 'aMountainMask', 'aCoastMask', 'aHumidityMask', 'aTemperatureMask', 'aBiomeMask', 'aIceMask', 'aCrackMask', 'aWaterMask', 'aSoilMask', 'aSandMask', 'aRockMask', 'aLavaMask', 'aGasMask'];
   for (const key of required) {
     if (!mesh.geometry.getAttribute(key)) {
       tracePlanetPipeline({ stage: 'assert:missing-attribute', mesh: mesh.name, attribute: key });

@@ -44,6 +44,12 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
   const iceMask = new Float32Array(position.count);
   const crackMask = new Float32Array(position.count);
   const bandMask = new Float32Array(position.count);
+  const gasMask = new Float32Array(position.count);
+  const lavaMask = new Float32Array(position.count);
+  const rockMask = new Float32Array(position.count);
+  const sandMask = new Float32Array(position.count);
+  const soilMask = new Float32Array(position.count);
+  const waterMask = new Float32Array(position.count);
 
   const displacementScale = input.radius * (input.surfaceModel === 'gaseous' ? 0.06 : 0.34);
 
@@ -90,6 +96,12 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
     iceMask[i] = terrain.iceMask;
     crackMask[i] = terrain.crackMask;
     bandMask[i] = terrain.bandMask;
+    waterMask[i] = terrain.waterMask;
+    soilMask[i] = terrain.soilMask;
+    sandMask[i] = terrain.sandMask;
+    rockMask[i] = terrain.rockMask;
+    lavaMask[i] = terrain.lavaMask;
+    gasMask[i] = terrain.gasMask;
   }
 
   position.needsUpdate = true;
@@ -110,6 +122,12 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
   geometry.setAttribute('aIceMask', new THREE.BufferAttribute(iceMask, 1));
   geometry.setAttribute('aCrackMask', new THREE.BufferAttribute(crackMask, 1));
   geometry.setAttribute('aBandMask', new THREE.BufferAttribute(bandMask, 1));
+  geometry.setAttribute('aWaterMask', new THREE.BufferAttribute(waterMask, 1));
+  geometry.setAttribute('aSoilMask', new THREE.BufferAttribute(soilMask, 1));
+  geometry.setAttribute('aSandMask', new THREE.BufferAttribute(sandMask, 1));
+  geometry.setAttribute('aRockMask', new THREE.BufferAttribute(rockMask, 1));
+  geometry.setAttribute('aLavaMask', new THREE.BufferAttribute(lavaMask, 1));
+  geometry.setAttribute('aGasMask', new THREE.BufferAttribute(gasMask, 1));
 
   return geometry;
 }
