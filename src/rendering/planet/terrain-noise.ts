@@ -127,10 +127,10 @@ function sampleSolid(input: TerrainInput): TerrainSample {
   const { px, py, pz, seed, moistureSeed, thermalSeed, oceanLevel, family } = input;
   const lat = Math.abs(py);
 
-  const continentBase = fbm(px * 0.7, py * 0.7, pz * 0.7, seed + 11, 3, 2.0, 0.5);
-  const continentWarp = fbm(px * 1.2, py * 1.2, pz * 1.2, seed + 27, 2, 2.0, 0.45);
-  const continentField = continentBase + (continentWarp - 0.5) * 0.25;
-  const continentMask = smoothstep(0.35, 0.58, continentField);
+  const continentBase = fbm(px * 0.62, py * 0.62, pz * 0.62, seed + 11, 4, 1.96, 0.52);
+  const continentWarp = fbm(px * 1.35, py * 1.35, pz * 1.35, seed + 27, 3, 2.0, 0.48);
+  const continentField = continentBase + (continentWarp - 0.5) * 0.32;
+  const continentMask = smoothstep(0.33, 0.6, continentField);
 
   const mountainChains = ridged(px * 3.0, py * 3.0, pz * 3.0, seed + 61, 3) * smoothstep(0.4, 0.85, continentMask);
   const erosionField = fbm(px * 4.0, py * 4.0, pz * 4.0, seed + 117, 2, 2.0, 0.5);
@@ -157,8 +157,8 @@ function sampleSolid(input: TerrainInput): TerrainSample {
   height01 = clamp(height01, 0, 1);
 
   const landMask = smoothstep(oceanLevel - 0.005, oceanLevel + 0.005, height01);
-  const coastMask = smoothstep(oceanLevel - 0.008, oceanLevel + 0.003, height01)
-    - smoothstep(oceanLevel + 0.003, oceanLevel + 0.025, height01);
+  const coastMask = smoothstep(oceanLevel - 0.016, oceanLevel + 0.006, height01)
+    - smoothstep(oceanLevel + 0.006, oceanLevel + 0.038, height01);
   const mountainMask = smoothstep(oceanLevel + 0.12, oceanLevel + 0.28, height01) * smoothstep(0.4, 0.85, mountainChains);
   const oceanDepth = 1 - smoothstep(oceanLevel - 0.15, oceanLevel + 0.01, height01);
 

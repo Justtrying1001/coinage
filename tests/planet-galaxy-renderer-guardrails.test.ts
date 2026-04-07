@@ -13,6 +13,8 @@ type Ctx = {
   clearRect: () => void;
   createRadialGradient: () => { addColorStop: () => void };
   createLinearGradient: () => { addColorStop: () => void };
+  createImageData: (w: number, h: number) => { data: Uint8ClampedArray };
+  putImageData: () => void;
   beginPath: () => void;
   arc: () => void;
   fill: () => void;
@@ -33,6 +35,8 @@ function installCanvasStub() {
     clearRect: () => {},
     createRadialGradient: () => ({ addColorStop: () => {} }),
     createLinearGradient: () => ({ addColorStop: () => {} }),
+    createImageData: (w: number, h: number) => ({ data: new Uint8ClampedArray(w * h * 4) }),
+    putImageData: () => {},
     beginPath: () => {},
     arc: () => {},
     fill: () => {},

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 import type { PlanetRenderInput, PlanetRenderInstance } from './types';
+import { sampleTerrain } from './terrain-noise';
 
 interface CachedThumbnail {
   texture: THREE.CanvasTexture;
@@ -72,6 +73,14 @@ function toCss(color: [number, number, number], alpha = 1): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function mix3(a: [number, number, number], b: [number, number, number], t: number): [number, number, number] {
+  return [
+    a[0] + (b[0] - a[0]) * t,
+    a[1] + (b[1] - a[1]) * t,
+    a[2] + (b[2] - a[2]) * t,
+  ];
+}
+
 function buildThumbnailTexture(planet: PlanetRenderInput['planet']): THREE.CanvasTexture {
   const size = 96;
   const canvas = document.createElement('canvas');
@@ -87,15 +96,57 @@ function buildThumbnailTexture(planet: PlanetRenderInput['planet']): THREE.Canva
 
   ctx.clearRect(0, 0, size, size);
 
-  const base = ctx.createRadialGradient(center * 0.72, center * 0.74, radius * 0.15, center, center, radius);
-  base.addColorStop(0, toCss(planet.render.surface.colorHigh));
-  base.addColorStop(0.55, toCss(planet.render.surface.colorMid));
-  base.addColorStop(1, toCss(planet.render.surface.colorDeep));
+  const image = ctx.createImageData(size, size);
+  const { data } = image;
+  const rot = (planet.render.surface.noiseSeed % 360) * (Math.PI / 180);
+  const sinR = Math.sin(rot);
+  const cosR = Math.cos(rot);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const px = (x + 0.5 - center) / radius;
+      const py = (y + 0.5 - center) / radius;
+      const r2 = px * px + py * py;
+      const i = (y * size + x) * 4;
+      if (r2 > 1) {
+        data[i + 3] = 0;
+        continue;
+      }
+      const pz = Math.sqrt(Math.max(0, 1 - r2));
+      const rx = px * cosR - pz * sinR;
+      const rz = px * sinR + pz * cosR;
+      const terrain = sampleTerrain({
+        px: rx,
+        py: -py,
+        pz: rz,
+        seed: planet.render.surface.noiseSeed,
+        moistureSeed: planet.render.surface.moistureSeed,
+        thermalSeed: planet.render.surface.thermalSeed,
+        oceanLevel: planet.render.surface.oceanLevel,
+        bandingStrength: planet.render.surface.bandingStrength,
+        family: planet.render.family,
+        surfaceModel: planet.render.surfaceModel,
+      });
 
-  ctx.beginPath();
-  ctx.arc(center, center, radius, 0, Math.PI * 2);
-  ctx.fillStyle = base;
-  ctx.fill();
+      let c: [number, number, number];
+      if (isGaseous) {
+        const bands = mix3(planet.render.surface.colorDeep, planet.render.surface.colorMid, terrain.bandMask);
+        c = mix3(bands, planet.render.surface.colorHigh, terrain.thermalMask * 0.45);
+      } else {
+        const land = mix3(planet.render.surface.colorDeep, planet.render.surface.colorMid, terrain.height01);
+        const high = mix3(land, planet.render.surface.colorHigh, terrain.mountainMask * 0.75);
+        const ocean = mix3(planet.render.surface.oceanColor, planet.render.surface.colorDeep, terrain.oceanDepth * 0.72);
+        const coast = mix3(planet.render.surface.accentColor, high, 0.58);
+        c = mix3(ocean, high, terrain.landMask);
+        c = mix3(c, coast, terrain.coastMask);
+      }
+
+      data[i] = Math.round(THREE.MathUtils.clamp(c[0], 0, 1) * 255);
+      data[i + 1] = Math.round(THREE.MathUtils.clamp(c[1], 0, 1) * 255);
+      data[i + 2] = Math.round(THREE.MathUtils.clamp(c[2], 0, 1) * 255);
+      data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(image, 0, 0);
 
   // cheap macro variation baked in 2D, not per-frame.
   const seed = planet.render.surface.noiseSeed % 1024;
