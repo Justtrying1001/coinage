@@ -507,12 +507,12 @@ function buildViewProfile(viewMode: PlanetViewProfile['viewMode']): PlanetViewPr
   return {
     viewMode,
     lod: isGalaxy ? 'low' : 'high',
-    meshSegments: isGalaxy ? 30 : 132,
-    cloudSegments: isGalaxy ? 24 : 96,
-    atmosphereSegments: isGalaxy ? 22 : 84,
-    ringSegments: isGalaxy ? 192 : 512,
+    meshSegments: isGalaxy ? 36 : 180,
+    cloudSegments: isGalaxy ? 28 : 120,
+    atmosphereSegments: isGalaxy ? 24 : 112,
+    ringSegments: isGalaxy ? 224 : 640,
     enableRings: true,
-    lightingBoost: isGalaxy ? 1 : 1.16,
+    lightingBoost: isGalaxy ? 1.02 : 1.18,
   };
 }
 
@@ -627,7 +627,7 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
       enabled: classification.canHaveClouds,
       color: visualDNA.cloudColor,
       coverage: visualDNA.cloudCoverage,
-      opacity: clamp(visualDNA.cloudCoverage * 0.82, 0, 0.92),
+      opacity: clamp(visualDNA.cloudCoverage * (recipe.surfaceModel === 'gaseous' ? 0.76 : 0.68), 0, 0.9),
       speed: visualDNA.rotation.cloudSpeed,
       stormBanding: recipe.surfaceModel === 'gaseous' ? visualDNA.bandingStrength : visualDNA.bandingStrength * 0.42,
       noiseSeed: visualDNA.noiseSeeds.clouds,
@@ -636,8 +636,8 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
       enabled: classification.atmosphereClass !== 'none',
       color: visualDNA.atmosphereTint,
       density: visualDNA.atmosphereDensity,
-      thickness: clamp(visualDNA.atmosphereDensity * (recipe.surfaceModel === 'gaseous' ? 0.18 : 0.14), 0, 0.22),
-      rimStrength: clamp(0.3 + visualDNA.atmosphereDensity * 0.68, 0.3, 0.98),
+      thickness: clamp(visualDNA.atmosphereDensity * (recipe.surfaceModel === 'gaseous' ? 0.14 : 0.1), 0, 0.17),
+      rimStrength: clamp(0.22 + visualDNA.atmosphereDensity * 0.48, 0.22, 0.72),
     },
     rings: {
       enabled: generated.ring.enabled,
@@ -670,9 +670,6 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
   return { identity, classification, visualDNA, generated, render };
 }
 
-export function generatePlanetVisualProfile(input: PlanetSeedInput): CanonicalPlanet {
-  return generateCanonicalPlanet(input);
-}
 
 export function createPlanetViewProfile(viewMode: PlanetViewProfile['viewMode']): PlanetViewProfile {
   return buildViewProfile(viewMode);

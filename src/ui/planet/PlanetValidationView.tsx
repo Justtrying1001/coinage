@@ -5,6 +5,7 @@ import * as THREE from 'three';
 
 import { resolvePlanetIdentity } from '@/domain/world/resolve-planet-identity';
 import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
+import { PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
 
 interface PlanetValidationViewProps {
   worldSeed: string;
@@ -29,9 +30,9 @@ export default function PlanetValidationView({ worldSeed, planetId, mode }: Plan
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = mode === 'galaxy' ? 1.15 : 1.35;
+    renderer.outputColorSpace = PLANET_RENDER_PHOTOMETRY.outputColorSpace;
+    renderer.toneMapping = PLANET_RENDER_PHOTOMETRY.toneMapping;
+    renderer.toneMappingExposure = mode === 'galaxy' ? PLANET_RENDER_PHOTOMETRY.galaxyExposure : PLANET_RENDER_PHOTOMETRY.planetExposure;
     mount.appendChild(renderer.domElement);
 
     scene.add(new THREE.AmbientLight('#bcd1ff', 0.5));

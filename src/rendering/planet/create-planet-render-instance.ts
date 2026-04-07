@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 
 import { createPlanetViewProfile } from '@/domain/world/generate-planet-visual-profile';
+import type { PlanetFamily } from '@/domain/world/planet-visual.types';
+import { PLANET_LIGHT_DIRECTION } from './render-photometry';
 import type { PlanetRenderInput, PlanetRenderInstance } from './types';
 import { buildDisplacedSphereGeometry } from './build-displaced-sphere';
 
@@ -8,10 +10,8 @@ function toColor(value: [number, number, number]): THREE.Color {
   return new THREE.Color(value[0], value[1], value[2]);
 }
 
-function familyCode(
-  family: PlanetRenderInput['planet']['render']['family'],
-): number {
-  const mapping: Record<PlanetRenderInput['planet']['render']['family'], number> = {
+function familyCode(family: PlanetFamily): number {
+  const mapping: Record<PlanetFamily, number> = {
     'terrestrial-lush': 0,
     oceanic: 1,
     'desert-arid': 2,
@@ -128,79 +128,100 @@ const SURFACE_FRAGMENT_SHADER = `
 
   float sat(float x) { return clamp(x, 0.0, 1.0); }
 
+  vec3 ramp(float t, vec3 a, vec3 b, vec3 c) {
+    float low = smoothstep(0.0, 0.52, t);
+    float high = smoothstep(0.5, 1.0, t);
+    return mix(mix(a, b, low), c, high);
+  }
+
   void main() {
-    vec3 normal = normalize(vWorldNormal);
-    vec3 lightDir = normalize(uLightDirection);
-    vec3 viewDir = normalize(cameraPosition - vWorldPos);
+    vec3 n = normalize(vWorldNormal);
+    vec3 l = normalize(uLightDirection);
+    vec3 v = normalize(cameraPosition - vWorldPos);
 
-    float ndl = max(dot(normal, lightDir), 0.0);
-    float wrappedDiffuse = ndl * 0.74 + 0.26;
+    float ndl = max(dot(n, l), 0.0);
+    float diffuse = ndl * 0.78 + 0.22;
 
-    vec3 baseLand = mix(uColorDeep, uColorMid, sat(vHeight * 1.2));
-    baseLand = mix(baseLand, uColorHigh, sat(vMountainMask * 0.75 + vTemperatureMask * 0.2));
-    baseLand = mix(baseLand, uAccentColor, vThermalMask * 0.72);
-    baseLand *= mix(0.88, 1.1, vHumidityMask);
-    baseLand *= mix(1.0, 0.78, vCraterMask * 0.85);
+    float biomeWarm = sat(vTemperatureMask * 0.7 + (1.0 - vHumidityMask) * 0.3);
+    float biomeCold = sat((1.0 - vTemperatureMask) * 0.85 + vCraterMask * 0.2);
+    float biomeWet = sat(vHumidityMask * 0.9 + (1.0 - vErosionMask) * 0.25);
 
-    vec3 waterColor = mix(uOceanColor * 1.2, uOceanColor * 0.44, vOceanDepth);
-    vec3 coastColor = mix(waterColor, baseLand, 0.48);
+    vec3 landBase = ramp(vHeight, uColorDeep, uColorMid, uColorHigh);
+    landBase = mix(landBase, uColorMid * 1.07, biomeWet * 0.26);
+    landBase = mix(landBase, uColorHigh * vec3(1.06, 1.01, 0.95), biomeWarm * 0.34);
+    landBase = mix(landBase, uColorHigh * vec3(0.82, 0.9, 1.08), biomeCold * 0.42);
+    landBase = mix(landBase, uAccentColor, vThermalMask * 0.76);
+    landBase *= mix(1.0, 0.8, vCraterMask * 0.72);
 
-    vec3 solidAlbedo = mix(waterColor, baseLand, vLandMask);
-    solidAlbedo = mix(solidAlbedo, coastColor, vCoastMask);
+    vec3 waterShallow = mix(uOceanColor * 0.92 + vec3(0.0, 0.05, 0.08), uOceanColor * 1.25, sat(1.0 - vOceanDepth));
+    vec3 waterDeep = mix(uOceanColor * 0.62, uOceanColor * 0.28, vOceanDepth);
+    vec3 water = mix(waterShallow, waterDeep, vOceanDepth);
 
-    vec3 gasBands = mix(uColorDeep, uColorMid, sat(vBandMask));
-    gasBands = mix(gasBands, uColorHigh, sat(vThermalMask * 0.6 + vTemperatureMask * 0.25));
-    vec3 gasStorms = mix(gasBands, uAccentColor, sat(vThermalMask * 0.86));
-    vec3 gaseousAlbedo = mix(gasBands, gasStorms, sat(vBandMask * 0.8 + vThermalMask * 0.5));
+    vec3 coast = mix(water * 1.14, landBase, 0.5);
 
-    vec3 albedo = mix(solidAlbedo, gaseousAlbedo, sat(uSurfaceModel));
+    vec3 gasBand = mix(uColorDeep, uColorMid, sat(vBandMask * 0.9 + vTemperatureMask * 0.2));
+    gasBand = mix(gasBand, uColorHigh, sat(vBandMask * 0.55 + vThermalMask * 0.45));
+    vec3 gasStorm = mix(gasBand, uAccentColor, sat(vThermalMask * 0.88));
+    vec3 gasAlbedo = mix(gasBand, gasStorm, sat(vBandMask * 0.5 + vThermalMask * 0.4));
+
+    vec3 solidAlbedo = mix(water, landBase, vLandMask);
+    solidAlbedo = mix(solidAlbedo, coast, vCoastMask);
+
+    vec3 albedo = mix(solidAlbedo, gasAlbedo, sat(uSurfaceModel));
 
     if (uFamilyCode < 0.5) {
-      albedo = mix(albedo, vec3(albedo.g), vHumidityMask * 0.12);
+      albedo = mix(albedo, vec3(albedo.r * 0.82, albedo.g * 1.08, albedo.b * 0.86), sat(vHumidityMask * 0.28));
     } else if (uFamilyCode < 1.5) {
-      albedo = mix(albedo, uOceanColor * 1.14, 0.32 + (1.0 - vLandMask) * 0.4);
+      albedo = mix(albedo, uOceanColor * 1.2, 0.4 + (1.0 - vLandMask) * 0.36);
     } else if (uFamilyCode < 2.5) {
-      albedo = mix(albedo, vec3(dot(albedo, vec3(0.299, 0.587, 0.114))), 0.15);
-      albedo *= vec3(1.08, 0.94, 0.82);
+      albedo *= vec3(1.1, 0.97, 0.84);
+      albedo = mix(albedo, vec3(dot(albedo, vec3(0.299, 0.587, 0.114))), 0.11);
     } else if (uFamilyCode < 3.5) {
-      albedo = mix(albedo, vec3(0.82, 0.92, 1.0), 0.24 + vCraterMask * 0.25);
+      albedo = mix(albedo, vec3(0.84, 0.93, 1.0), 0.3 + biomeCold * 0.25);
     } else if (uFamilyCode < 4.5) {
-      albedo = mix(albedo, vec3(0.12, 0.09, 0.08), 0.2);
+      albedo = mix(albedo, vec3(0.1, 0.09, 0.08), 0.22);
     } else if (uFamilyCode < 5.5) {
-      albedo = mix(albedo, vec3(0.6, 0.58, 0.56), vCraterMask * 0.4);
+      albedo = mix(albedo, vec3(0.58, 0.57, 0.56), vCraterMask * 0.46);
     } else if (uFamilyCode < 6.5) {
-      albedo = mix(albedo, uAccentColor, 0.16 + vThermalMask * 0.18);
-    } else if (uFamilyCode < 8.5) {
-      albedo = mix(albedo, uColorHigh, vBandMask * 0.36);
+      albedo = mix(albedo, uAccentColor, 0.14 + vThermalMask * 0.24);
+    } else {
+      albedo = mix(albedo, uColorHigh * 1.08, vBandMask * 0.35);
     }
 
-    vec3 halfVec = normalize(lightDir + viewDir);
     float roughness = mix(
-      clamp(uRoughness + vMountainMask * 0.2 + vCraterMask * 0.15, 0.12, 0.98),
-      clamp(uRoughness * 0.82 + (1.0 - vBandMask) * 0.1, 0.08, 0.9),
+      clamp(uRoughness + vMountainMask * 0.18 + vCraterMask * 0.22, 0.08, 0.99),
+      clamp(uRoughness * 0.86 + (1.0 - vBandMask) * 0.1, 0.08, 0.86),
       sat(uSurfaceModel)
     );
 
-    float specPow = mix(44.0, 104.0, 1.0 - roughness);
-    float spec = pow(max(dot(normal, halfVec), 0.0), specPow) * (0.1 + uSpecular * 0.9);
-    float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 4.0);
+    float metalnessHack = mix(0.02, 0.11, sat(uSurfaceModel));
+    float specPow = mix(38.0, 122.0, 1.0 - roughness);
+    vec3 halfVec = normalize(l + v);
+    float spec = pow(max(dot(n, halfVec), 0.0), specPow) * (0.08 + uSpecular * 0.92);
 
-    float up = clamp(normal.y * 0.5 + 0.5, 0.0, 1.0);
-    float horizon = 1.0 - abs(normal.y);
-    vec3 iblDiffuse = mix(uIblGroundColor, uIblSkyColor, up);
-    iblDiffuse = mix(iblDiffuse, uIblHorizonColor, horizon * 0.65);
+    float fresnel = pow(1.0 - max(dot(n, v), 0.0), 4.4);
 
-    vec3 color = albedo * wrappedDiffuse;
-    color += iblDiffuse * albedo * (0.2 + (1.0 - roughness) * 0.18) * uIblIntensity;
-    color += iblDiffuse * (spec + fresnel * 0.28) * uIblIntensity;
+    float up = clamp(n.y * 0.5 + 0.5, 0.0, 1.0);
+    float horizon = 1.0 - abs(n.y);
+    vec3 ibl = mix(uIblGroundColor, uIblSkyColor, up);
+    ibl = mix(ibl, uIblHorizonColor, horizon * 0.72);
+
+    vec3 color = albedo * diffuse;
+    color += ibl * albedo * (0.16 + (1.0 - roughness) * 0.24) * uIblIntensity;
+    color += ibl * (spec + fresnel * 0.24 + metalnessHack * 0.06) * uIblIntensity;
+
+    float oceanSpec = (1.0 - roughness) * (1.0 - sat(uSurfaceModel)) * (1.0 - vLandMask) * 0.9;
+    color += vec3(oceanSpec * (spec * 1.3 + fresnel * 0.4));
+
     color += uAccentColor * (uEmissive * (vThermalMask * 0.9 + vBandMask * 0.2));
-
     color *= uLightingBoost;
+
     gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
   }
 `;
 
 const CLOUD_FRAGMENT_SHADER = `
+  varying vec3 vWorldPos;
   varying vec3 vWorldNormal;
   varying vec3 vUnitPos;
 
@@ -239,44 +260,49 @@ const CLOUD_FRAGMENT_SHADER = `
     float nx11 = mix(n011, n111, f.x);
     float nxy0 = mix(nx00, nx10, f.y);
     float nxy1 = mix(nx01, nx11, f.y);
-
     return mix(nxy0, nxy1, f.z);
   }
 
   float fbm(vec3 p) {
     float value = 0.0;
-    float amp = 0.56;
+    float amp = 0.58;
     float freq = 1.0;
     for (int i = 0; i < 5; i++) {
       value += noise(p * freq) * amp;
-      freq *= 2.06;
+      freq *= 2.05;
       amp *= 0.52;
     }
     return value;
   }
 
   void main() {
-    vec3 normal = normalize(vWorldNormal);
-    vec3 lightDir = normalize(uLightDirection);
+    vec3 n = normalize(vWorldNormal);
+    vec3 l = normalize(uLightDirection);
+    vec3 v = normalize(cameraPosition - vWorldPos);
     vec3 seedVec = vec3(uSeed * 0.00000017, uSeed * 0.00000023, uSeed * 0.00000029);
 
-    float macro = fbm((vUnitPos + seedVec) * mix(7.0, 4.4, uSurfaceModel));
-    float detail = fbm((vUnitPos + seedVec * 2.3) * mix(16.0, 9.8, uSurfaceModel));
-    float jets = sin((vUnitPos.y + uSeed * 0.00000011) * (16.0 + uBanding * 20.0)) * 0.5 + 0.5;
-    float field = mix(macro * 0.72 + detail * 0.28, jets * 0.55 + detail * 0.45, uSurfaceModel);
+    float macro = fbm((vUnitPos + seedVec) * mix(7.5, 4.3, uSurfaceModel));
+    float detail = fbm((vUnitPos + seedVec * 2.2) * mix(16.4, 9.7, uSurfaceModel));
+    float jet = sin((vUnitPos.y + uSeed * 0.00000012) * (17.0 + uBanding * 20.0)) * 0.5 + 0.5;
 
-    float threshold = 1.02 - uCoverage;
-    float mask = smoothstep(threshold - 0.08, threshold + 0.06, field);
+    float field = mix(macro * 0.62 + detail * 0.38, jet * 0.58 + detail * 0.42, uSurfaceModel);
+    float threshold = 1.0 - uCoverage;
+    float mask = smoothstep(threshold - 0.09, threshold + 0.06, field);
 
-    float ndl = max(dot(normal, lightDir), 0.0);
-    float wrapped = ndl * 0.56 + 0.44;
-    float alpha = clamp(mask * uOpacity * (0.66 + detail * 0.32), 0.0, 0.95);
+    float ndl = max(dot(n, l), 0.0);
+    float wrapped = ndl * 0.6 + 0.4;
+    float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0);
+    float alpha = clamp(mask * uOpacity * (0.62 + detail * 0.32), 0.0, 0.92);
 
-    gl_FragColor = vec4(uCloudColor * wrapped * uLightingBoost, alpha);
+    vec3 color = uCloudColor * (wrapped * 0.86 + 0.14) * uLightingBoost;
+    color += uCloudColor * rim * 0.22;
+
+    gl_FragColor = vec4(color, alpha);
   }
 `;
 
 const ATMOSPHERE_FRAGMENT_SHADER = `
+  varying vec3 vWorldPos;
   varying vec3 vWorldNormal;
 
   uniform vec3 uColor;
@@ -285,19 +311,20 @@ const ATMOSPHERE_FRAGMENT_SHADER = `
   uniform vec3 uLightDirection;
 
   void main() {
-    vec3 normal = normalize(vWorldNormal);
-    vec3 lightDir = normalize(uLightDirection);
-    vec3 viewDir = normalize(cameraPosition);
+    vec3 n = normalize(vWorldNormal);
+    vec3 l = normalize(uLightDirection);
+    vec3 v = normalize(cameraPosition - vWorldPos);
 
-    float rim = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.2);
-    float day = max(dot(normal, lightDir), 0.0);
+    float ndl = max(dot(n, l), 0.0);
+    float limb = pow(1.0 - max(dot(n, v), 0.0), 2.5);
+    float forward = pow(max(dot(v, l), 0.0), 6.0);
 
-    vec3 dayColor = uColor * 1.15;
-    vec3 duskColor = mix(uColor * 0.7, vec3(1.0, 0.54, 0.3), 0.28);
-    vec3 color = mix(dayColor, duskColor, pow(1.0 - day, 2.0));
+    vec3 dayColor = uColor * (0.84 + ndl * 0.56);
+    vec3 duskColor = mix(uColor * 0.7, vec3(1.0, 0.58, 0.3), 0.36);
+    vec3 scatter = mix(dayColor, duskColor, pow(1.0 - ndl, 1.8));
 
-    float alpha = clamp(rim * (0.32 + uRim * 0.72) + day * uDensity * 0.14, 0.0, 0.9);
-    gl_FragColor = vec4(color, alpha);
+    float alpha = clamp(limb * (0.16 + uRim * 0.46) + (1.0 - ndl) * uDensity * 0.07 + forward * 0.08, 0.0, 0.62);
+    gl_FragColor = vec4(scatter, alpha);
   }
 `;
 
@@ -325,30 +352,31 @@ const RING_FRAGMENT_SHADER = `
   uniform float uSeed;
   uniform vec3 uLightDirection;
 
-  float ringBands(float x, float seed) {
-    float coarse = sin((x + seed * 0.00000011) * 96.0) * 0.5 + 0.5;
-    float medium = sin((x + seed * 0.00000017) * 252.0) * 0.5 + 0.5;
-    float fine = sin((x + seed * 0.00000023) * 880.0) * 0.5 + 0.5;
-    return coarse * 0.5 + medium * 0.33 + fine * 0.17;
+  float bands(float x, float seed) {
+    float coarse = sin((x + seed * 0.00000011) * 84.0) * 0.5 + 0.5;
+    float medium = sin((x + seed * 0.00000017) * 232.0) * 0.5 + 0.5;
+    float fine = sin((x + seed * 0.00000023) * 770.0) * 0.5 + 0.5;
+    return coarse * 0.45 + medium * 0.35 + fine * 0.2;
   }
 
   void main() {
     float radial = abs(vUv.y - 0.5) * 2.0;
-    float edgeFade = 1.0 - smoothstep(0.73, 1.0, radial);
-    float centerGap = smoothstep(0.03, 0.1, radial);
-    float grain = ringBands(vUv.x, uSeed);
+    float edgeFade = 1.0 - smoothstep(0.72, 1.0, radial);
+    float innerGap = smoothstep(0.02, 0.1, radial);
+    float radialField = bands(vUv.x, uSeed);
 
-    vec3 lightDir = normalize(uLightDirection);
-    vec3 viewDir = normalize(cameraPosition - vWorldPos);
-    vec3 normal = normalize(vNormalW);
+    vec3 l = normalize(uLightDirection);
+    vec3 v = normalize(cameraPosition - vWorldPos);
+    vec3 n = normalize(vNormalW);
 
-    float ndl = max(dot(normal, lightDir), 0.0);
-    float forwardScatter = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.4) * 0.3;
+    float lit = max(dot(n, l), 0.0) * 0.44 + 0.5;
+    float scatter = pow(1.0 - abs(dot(n, v)), 1.9) * 0.46;
 
-    float alpha = edgeFade * centerGap * smoothstep(0.15, 0.85, grain) * uOpacity;
-    vec3 color = uColor * (0.7 + grain * 0.42) * (ndl * 0.38 + 0.52 + forwardScatter);
+    float ringStrata = smoothstep(0.12, 0.86, radialField);
+    float alpha = edgeFade * innerGap * ringStrata * uOpacity;
 
-    gl_FragColor = vec4(color, clamp(alpha, 0.0, 0.95));
+    vec3 color = uColor * (0.68 + radialField * 0.46) * (lit + scatter);
+    gl_FragColor = vec4(color, clamp(alpha, 0.0, 0.9));
   }
 `;
 
@@ -361,12 +389,12 @@ function createSurfaceLayer(
 ): THREE.Mesh {
   const geometry = buildDisplacedSphereGeometry({
     radius: planetRadius,
-    segments: highQuality ? segments : Math.max(20, Math.floor(segments * 0.52)),
+    segments: highQuality ? segments : Math.max(24, Math.floor(segments * 0.58)),
     seed: render.surface.noiseSeed,
     moistureSeed: render.surface.moistureSeed,
     thermalSeed: render.surface.thermalSeed,
     oceanLevel: render.surface.oceanLevel,
-    reliefAmplitude: highQuality ? render.surface.reliefAmplitude : render.surface.reliefAmplitude * 0.58,
+    reliefAmplitude: highQuality ? render.surface.reliefAmplitude : render.surface.reliefAmplitude * 0.62,
     bandingStrength: render.surface.bandingStrength,
     family: render.family,
     surfaceModel: render.surfaceModel,
@@ -386,18 +414,18 @@ function createSurfaceLayer(
       uEmissive: { value: render.surface.emissiveIntensity },
       uSurfaceModel: { value: render.surfaceModel === 'gaseous' ? 1 : 0 },
       uFamilyCode: { value: familyCode(render.family) },
-      uLightDirection: { value: new THREE.Vector3(0.52, 0.31, 0.79).normalize() },
+      uLightDirection: { value: PLANET_LIGHT_DIRECTION.clone() },
       uLightingBoost: { value: lightingBoost },
-      uIblSkyColor: { value: new THREE.Color('#7ea6ff') },
-      uIblGroundColor: { value: new THREE.Color('#1d212f') },
-      uIblHorizonColor: { value: new THREE.Color('#89a2d4') },
-      uIblIntensity: { value: 0.92 },
+      uIblSkyColor: { value: new THREE.Color('#85adff') },
+      uIblGroundColor: { value: new THREE.Color('#1b2130') },
+      uIblHorizonColor: { value: new THREE.Color('#94a8ca') },
+      uIblIntensity: { value: 0.88 },
     },
   });
 
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = 'surface';
-  mesh.userData.rotationSpeed = render.surfaceModel === 'gaseous' ? render.clouds.speed * 0.3 : 0;
+  mesh.userData.rotationSpeed = render.surfaceModel === 'gaseous' ? render.clouds.speed * 0.35 : 0;
   return mesh;
 }
 
@@ -407,7 +435,7 @@ function createCloudLayer(
   segments: number,
   lightingBoost: number,
 ): THREE.Mesh {
-  const geometry = new THREE.SphereGeometry(planetRadius * 1.03, segments, segments);
+  const geometry = new THREE.SphereGeometry(planetRadius * 1.026, segments, segments);
   const material = new THREE.ShaderMaterial({
     vertexShader: SHARED_SPHERE_VERTEX_SHADER,
     fragmentShader: CLOUD_FRAGMENT_SHADER,
@@ -418,7 +446,7 @@ function createCloudLayer(
       uBanding: { value: render.clouds.stormBanding },
       uSurfaceModel: { value: render.surfaceModel === 'gaseous' ? 1 : 0 },
       uSeed: { value: render.clouds.noiseSeed },
-      uLightDirection: { value: new THREE.Vector3(0.52, 0.31, 0.79).normalize() },
+      uLightDirection: { value: PLANET_LIGHT_DIRECTION.clone() },
       uLightingBoost: { value: lightingBoost },
     },
     transparent: true,
@@ -432,7 +460,7 @@ function createCloudLayer(
 }
 
 function createAtmosphereLayer(planetRadius: number, render: PlanetRenderInput['planet']['render'], segments: number): THREE.Mesh {
-  const geometry = new THREE.SphereGeometry(planetRadius * (1.03 + render.atmosphere.thickness), segments, segments);
+  const geometry = new THREE.SphereGeometry(planetRadius * (1.02 + render.atmosphere.thickness), segments, segments);
   const material = new THREE.ShaderMaterial({
     vertexShader: SHARED_SPHERE_VERTEX_SHADER,
     fragmentShader: ATMOSPHERE_FRAGMENT_SHADER,
@@ -440,11 +468,11 @@ function createAtmosphereLayer(planetRadius: number, render: PlanetRenderInput['
       uColor: { value: toColor(render.atmosphere.color) },
       uDensity: { value: render.atmosphere.density },
       uRim: { value: render.atmosphere.rimStrength },
-      uLightDirection: { value: new THREE.Vector3(0.52, 0.31, 0.79).normalize() },
+      uLightDirection: { value: PLANET_LIGHT_DIRECTION.clone() },
     },
     transparent: true,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
+    blending: THREE.NormalBlending,
     side: THREE.BackSide,
   });
 
@@ -455,7 +483,7 @@ function createAtmosphereLayer(planetRadius: number, render: PlanetRenderInput['
 }
 
 function createRingLayer(render: PlanetRenderInput['planet']['render'], segments: number): THREE.Mesh {
-  const geometry = new THREE.RingGeometry(render.rings.innerRadius, render.rings.outerRadius, segments);
+  const geometry = new THREE.RingGeometry(render.rings.innerRadius, render.rings.outerRadius, segments, 2);
   const material = new THREE.ShaderMaterial({
     vertexShader: RING_VERTEX_SHADER,
     fragmentShader: RING_FRAGMENT_SHADER,
@@ -463,7 +491,7 @@ function createRingLayer(render: PlanetRenderInput['planet']['render'], segments
       uColor: { value: toColor(render.rings.color) },
       uOpacity: { value: render.rings.opacity },
       uSeed: { value: render.rings.noiseSeed },
-      uLightDirection: { value: new THREE.Vector3(0.52, 0.31, 0.79).normalize() },
+      uLightDirection: { value: PLANET_LIGHT_DIRECTION.clone() },
     },
     transparent: true,
     side: THREE.DoubleSide,
@@ -473,7 +501,7 @@ function createRingLayer(render: PlanetRenderInput['planet']['render'], segments
   const ring = new THREE.Mesh(geometry, material);
   ring.name = 'rings';
   ring.rotation.x = Math.PI / 2 + render.rings.tilt;
-  ring.userData.rotationSpeed = 0.01;
+  ring.userData.rotationSpeed = 0.004;
   return ring;
 }
 
@@ -509,7 +537,11 @@ export function createPlanetRenderInstance(input: PlanetRenderInput): PlanetRend
   const { planet, x, y, z, options } = input;
   const view = createPlanetViewProfile(options.viewMode);
   const highQuality = options.viewMode === 'planet';
-  if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' && (window as { __COINAGE_PIPELINE_TRACE?: boolean }).__COINAGE_PIPELINE_TRACE) {
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    typeof window !== 'undefined' &&
+    (window as { __COINAGE_PIPELINE_TRACE?: boolean }).__COINAGE_PIPELINE_TRACE
+  ) {
     console.info('[PlanetPipelineTrace]', {
       stage: 'createPlanetRenderInstance',
       planetId: planet.identity.planetId,

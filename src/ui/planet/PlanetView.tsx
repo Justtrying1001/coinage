@@ -8,6 +8,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 
 import { resolvePlanetIdentity } from '@/domain/world/resolve-planet-identity';
 import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
+import { PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
 
 interface PlanetViewProps {
   worldSeed: string;
@@ -38,9 +39,9 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.35;
+    renderer.outputColorSpace = PLANET_RENDER_PHOTOMETRY.outputColorSpace;
+    renderer.toneMapping = PLANET_RENDER_PHOTOMETRY.toneMapping;
+    renderer.toneMappingExposure = PLANET_RENDER_PHOTOMETRY.planetExposure;
     mount.appendChild(renderer.domElement);
 
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
