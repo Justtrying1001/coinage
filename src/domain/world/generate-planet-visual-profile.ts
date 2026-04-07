@@ -80,9 +80,9 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
     palettes: [
       {
         id: 'lush-emerald',
-        deep: [0.06, 0.16, 0.04],
-        mid: [0.14, 0.42, 0.10],
-        high: [0.45, 0.38, 0.20],
+        deep: [0.07, 0.15, 0.06],
+        mid: [0.16, 0.34, 0.14],
+        high: [0.42, 0.36, 0.24],
         ocean: [0.02, 0.05, 0.16],
         accent: [0.80, 0.74, 0.50],
         cloud: [0.94, 0.96, 1.0],
@@ -91,9 +91,9 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
       },
       {
         id: 'lush-boreal',
-        deep: [0.05, 0.12, 0.03],
-        mid: [0.11, 0.34, 0.09],
-        high: [0.40, 0.34, 0.22],
+        deep: [0.06, 0.12, 0.05],
+        mid: [0.13, 0.30, 0.12],
+        high: [0.36, 0.33, 0.24],
         ocean: [0.01, 0.04, 0.13],
         accent: [0.72, 0.68, 0.55],
         cloud: [0.93, 0.95, 0.98],
@@ -248,9 +248,9 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
     palettes: [
       {
         id: 'infernal-basalts',
-        deep: [0.04, 0.04, 0.05],
-        mid: [0.12, 0.08, 0.06],
-        high: [0.28, 0.15, 0.08],
+        deep: [0.08, 0.06, 0.06],
+        mid: [0.20, 0.12, 0.08],
+        high: [0.36, 0.22, 0.12],
         ocean: [0.06, 0.04, 0.03],
         accent: [0.95, 0.36, 0.06],
         cloud: [0.40, 0.32, 0.28],
@@ -259,9 +259,9 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
       },
       {
         id: 'infernal-sulfur',
-        deep: [0.05, 0.05, 0.04],
-        mid: [0.15, 0.11, 0.05],
-        high: [0.32, 0.19, 0.07],
+        deep: [0.09, 0.08, 0.05],
+        mid: [0.22, 0.16, 0.08],
+        high: [0.40, 0.24, 0.10],
         ocean: [0.05, 0.04, 0.03],
         accent: [0.97, 0.46, 0.08],
         cloud: [0.46, 0.36, 0.26],
@@ -290,9 +290,9 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
     palettes: [
       {
         id: 'rocky-lunar',
-        deep: [0.2, 0.2, 0.22],
-        mid: [0.36, 0.35, 0.36],
-        high: [0.58, 0.56, 0.53],
+        deep: [0.22, 0.20, 0.18],
+        mid: [0.38, 0.34, 0.30],
+        high: [0.60, 0.53, 0.46],
         ocean: [0.16, 0.16, 0.17],
         accent: [0.74, 0.7, 0.64],
         cloud: [0.75, 0.75, 0.74],
@@ -301,9 +301,9 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
       },
       {
         id: 'rocky-basaltic',
-        deep: [0.16, 0.15, 0.16],
-        mid: [0.3, 0.29, 0.31],
-        high: [0.5, 0.48, 0.46],
+        deep: [0.15, 0.16, 0.18],
+        mid: [0.28, 0.30, 0.34],
+        high: [0.46, 0.50, 0.54],
         ocean: [0.14, 0.14, 0.15],
         accent: [0.68, 0.66, 0.62],
         cloud: [0.72, 0.72, 0.72],
@@ -332,22 +332,22 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
     palettes: [
       {
         id: 'toxic-neon',
-        deep: [0.06, 0.18, 0.02],
-        mid: [0.18, 0.38, 0.06],
-        high: [0.40, 0.52, 0.10],
-        ocean: [0.03, 0.12, 0.02],
-        accent: [0.70, 0.92, 0.22],
+        deep: [0.08, 0.17, 0.07],
+        mid: [0.20, 0.34, 0.14],
+        high: [0.40, 0.48, 0.22],
+        ocean: [0.04, 0.11, 0.06],
+        accent: [0.66, 0.80, 0.36],
         cloud: [0.72, 0.82, 0.60],
         atmosphere: [0.46, 0.72, 0.20],
         ring: [0.58, 0.72, 0.36],
       },
       {
         id: 'toxic-violet',
-        deep: [0.20, 0.08, 0.24],
-        mid: [0.30, 0.16, 0.38],
-        high: [0.46, 0.28, 0.54],
-        ocean: [0.08, 0.04, 0.14],
-        accent: [0.30, 0.90, 0.72],
+        deep: [0.18, 0.10, 0.22],
+        mid: [0.30, 0.18, 0.34],
+        high: [0.44, 0.30, 0.50],
+        ocean: [0.08, 0.05, 0.12],
+        accent: [0.44, 0.74, 0.64],
         cloud: [0.74, 0.70, 0.84],
         atmosphere: [0.46, 0.32, 0.80],
         ring: [0.62, 0.53, 0.86],
@@ -445,8 +445,59 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function jitterColor(rng: () => number, base: [number, number, number], variance = 0.04): [number, number, number] {
+function jitterColor(rng: () => number, base: [number, number, number], variance = 0.02): [number, number, number] {
   return base.map((channel) => clamp(channel + (rng() - 0.5) * variance, 0, 1)) as [number, number, number];
+}
+
+function rgbToHsl(color: [number, number, number]): [number, number, number] {
+  const [r, g, b] = color;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const lightness = (max + min) * 0.5;
+  const delta = max - min;
+
+  if (delta < 1e-6) {
+    return [0, 0, lightness];
+  }
+
+  const saturation = lightness > 0.5 ? delta / (2 - max - min) : delta / (max + min);
+  let hue = 0;
+  if (max === r) hue = (g - b) / delta + (g < b ? 6 : 0);
+  else if (max === g) hue = (b - r) / delta + 2;
+  else hue = (r - g) / delta + 4;
+
+  return [hue / 6, saturation, lightness];
+}
+
+function hslToRgb(hsl: [number, number, number]): [number, number, number] {
+  const [h, s, l] = hsl;
+  if (s <= 1e-6) {
+    return [l, l, l];
+  }
+
+  const hue2rgb = (p: number, q: number, t: number): number => {
+    let tt = t;
+    if (tt < 0) tt += 1;
+    if (tt > 1) tt -= 1;
+    if (tt < 1 / 6) return p + (q - p) * 6 * tt;
+    if (tt < 1 / 2) return q;
+    if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
+    return p;
+  };
+
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  return [hue2rgb(p, q, h + 1 / 3), hue2rgb(p, q, h), hue2rgb(p, q, h - 1 / 3)];
+}
+
+function blendHsl(a: [number, number, number], b: [number, number, number], t: number): [number, number, number] {
+  const ah = rgbToHsl(a);
+  const bh = rgbToHsl(b);
+  const hueDelta = ((((bh[0] - ah[0]) % 1) + 1.5) % 1) - 0.5;
+  const hue = (ah[0] + hueDelta * t + 1) % 1;
+  const sat = clamp(ah[1] + (bh[1] - ah[1]) * t, 0, 1);
+  const light = clamp(ah[2] + (bh[2] - ah[2]) * t, 0, 1);
+  return hslToRgb([hue, sat, light]);
 }
 
 function weightedRecipe(rng: () => number): FamilyRecipe {
@@ -507,16 +558,16 @@ function buildViewProfile(viewMode: PlanetViewProfile['viewMode']): PlanetViewPr
   return {
     viewMode,
     lod: isGalaxy ? 'low' : 'high',
-    meshSegments: isGalaxy ? 36 : 160,
+    meshSegments: isGalaxy ? 16 : 160,
     cloudSegments: isGalaxy ? 0 : 0,
     atmosphereSegments: isGalaxy ? 0 : 0,
-    ringSegments: isGalaxy ? 128 : 384,
+    ringSegments: isGalaxy ? 96 : 320,
     enableRings: true,
     enableClouds: false,
     enableAtmosphere: false,
     enableOceanLayer: false,
-    lightingBoost: isGalaxy ? 1.12 : 1.2,
-    shadingContrast: isGalaxy ? 0.08 : 0.14,
+    lightingBoost: isGalaxy ? 1.38 : 1.55,
+    shadingContrast: isGalaxy ? 0.24 : 0.32,
   };
 }
 
@@ -557,13 +608,21 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
     canHaveRings: recipe.forceRings === true ? true : recipe.surfaceModel === 'gaseous' || rng() > 0.9,
   };
 
+  const baseDeep = jitterColor(rng, palette.deep);
+  const baseMid = jitterColor(rng, palette.mid);
+  const baseHigh = jitterColor(rng, palette.high);
+  const baseOcean = jitterColor(rng, palette.ocean, 0.02);
+  const baseAccent = jitterColor(rng, palette.accent, 0.02);
+  const colorMid = blendHsl(baseDeep, baseMid, 0.74);
+  const colorHigh = blendHsl(colorMid, baseHigh, 0.68);
+
   const visualDNA: PlanetVisualDNA = {
     paletteId: palette.id,
-    colorDeep: jitterColor(rng, palette.deep),
-    colorMid: jitterColor(rng, palette.mid),
-    colorHigh: jitterColor(rng, palette.high),
-    oceanColor: jitterColor(rng, palette.ocean, 0.03),
-    accentColor: jitterColor(rng, palette.accent, 0.03),
+    colorDeep: baseDeep,
+    colorMid,
+    colorHigh,
+    oceanColor: blendHsl(baseOcean, baseDeep, 0.12),
+    accentColor: blendHsl(baseAccent, colorHigh, 0.22),
     cloudColor: jitterColor(rng, palette.cloud, 0.025),
     atmosphereTint: jitterColor(rng, palette.atmosphere, 0.035),
     oceanCoverage: classification.hasOceans ? range(rng, recipe.oceanCoverage[0], recipe.oceanCoverage[1]) : 0,
@@ -645,7 +704,7 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
     },
     rings: {
       enabled: generated.ring.enabled,
-      color: palette.ring,
+      color: blendHsl(jitterColor(rng, palette.ring, 0.015), colorHigh, 0.3),
       innerRadius: scale.renderRadiusBase * generated.ring.innerRadiusRatio,
       outerRadius: scale.renderRadiusBase * generated.ring.outerRadiusRatio,
       tilt: generated.ring.tilt,

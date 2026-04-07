@@ -80,9 +80,10 @@ const KEYBOARD_DECELERATION = 13;
 const CAMERA_FOLLOW_DAMPING = 16;
 const DRAG_PAN_SENSITIVITY = 1.18;
 const DRAG_DIRECT_RESPONSE = 0.58;
-const PLANET_BATCH_SIZE = 24;
+const PLANET_BATCH_SIZE = 10;
 const INITIAL_BATCH_CAP = 72;
 const PERF_LOG_PREFIX = '[GalaxyPerf]';
+const INSTANCED_RADIUS_THRESHOLD = 4.4;
 
 function createDefaultCounters(totalPlanets = 0): GalaxyPerfCounters {
   return {
@@ -311,20 +312,38 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     composer.addPass(new RenderPass(scene, camera));
     scene.add(new THREE.AmbientLight('#c5d7ff', 2.2));
 
-    const planetGroup = new THREE.Group();
-    const instances: PlanetRenderInstance[] = [];
-    const interactivePlanetMeshes: THREE.Mesh[] = [];
-    const instantiatedPlanetIds = new Set<string>();
-
-    scene.add(planetGroup);
-    markPerf(perfStore, 'galaxy:scene:init:end');
-    measurePerf(perfStore, 'galaxy:scene:init', 'galaxy:scene:init:start', 'galaxy:scene:init:end');
-
     const { queue: prioritizedQueue, prioritizedCount } = prioritizePlanets(
       planetData,
       cameraTarget,
       camera,
     );
+    const planetGroup = new THREE.Group();
+    const instances: PlanetRenderInstance[] = [];
+    const interactivePlanetMeshes: THREE.Mesh[] = [];
+    const instantiatedPlanetIds = new Set<string>();
+    const tinyPlanets = prioritizedQueue.filter(({ planet }) => computeGalaxyVisualRadius(planet.render.scale) <= INSTANCED_RADIUS_THRESHOLD);
+    const tinyPlanetMesh = tinyPlanets.length > 0
+      ? new THREE.InstancedMesh(
+        new THREE.SphereGeometry(1, 12, 12),
+        new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.76, metalness: 0.06 }),
+        tinyPlanets.length,
+      )
+      : null;
+    const tinyPlanetIds: string[] = [];
+    let tinyPlanetIndex = 0;
+
+    if (tinyPlanetMesh) {
+      tinyPlanetMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      tinyPlanetMesh.name = 'tiny-planets-instanced';
+      tinyPlanetMesh.userData.instancePlanetIds = tinyPlanetIds;
+      scene.add(tinyPlanetMesh);
+      interactivePlanetMeshes.push(tinyPlanetMesh);
+    }
+
+    scene.add(planetGroup);
+    markPerf(perfStore, 'galaxy:scene:init:end');
+    measurePerf(perfStore, 'galaxy:scene:init', 'galaxy:scene:init:start', 'galaxy:scene:init:end');
+
     const initialBatchTarget = Math.min(
       planetData.length,
       Math.max(PLANET_BATCH_SIZE, Math.min(INITIAL_BATCH_CAP, prioritizedCount || PLANET_BATCH_SIZE)),
@@ -420,7 +439,11 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         return;
       }
 
-      const planetId = firstHit.object.userData.planetId as string | undefined;
+      let planetId = firstHit.object.userData.planetId as string | undefined;
+      if (!planetId && firstHit.object instanceof THREE.InstancedMesh && firstHit.instanceId != null) {
+        const instancePlanetIds = firstHit.object.userData.instancePlanetIds as string[] | undefined;
+        planetId = instancePlanetIds?.[firstHit.instanceId];
+      }
       if (!planetId) {
         return;
       }
@@ -457,12 +480,9 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     renderer.domElement.addEventListener('dblclick', onDoubleClick);
     renderer.domElement.addEventListener('contextmenu', onContextMenu);
 
-    const workerConcurrency = Math.min(
-      4,
-      Math.max(2, Math.floor((navigator.hardwareConcurrency || 4) / 2)),
-    );
+    const workerConcurrency = Math.min(2, Math.max(1, Math.floor((navigator.hardwareConcurrency || 4) / 5)));
     
-    const MAX_PENDING_PLANET_JOBS = workerConcurrency * 6;
+    const MAX_PENDING_PLANET_JOBS = workerConcurrency * 3;
     let queueIndex = 0;
     let completedPlanetCount = 0;
     let pendingPlanetJobs = 0;
@@ -578,6 +598,46 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       }
 
       const visualRadius = computeGalaxyVisualRadius(planet.planet.render.scale);
+      if (tinyPlanetMesh && visualRadius <= INSTANCED_RADIUS_THRESHOLD && tinyPlanetIndex < tinyPlanetMesh.count) {
+        if (perfStore) {
+          perfStore.counters.workerJobsCompleted += 1;
+        }
+        const matrix = new THREE.Matrix4();
+        matrix.compose(
+          new THREE.Vector3(planet.x, planet.y, 0),
+          new THREE.Quaternion(),
+          new THREE.Vector3(visualRadius, visualRadius, visualRadius),
+        );
+        tinyPlanetMesh.setMatrixAt(tinyPlanetIndex, matrix);
+        tinyPlanetMesh.setColorAt(
+          tinyPlanetIndex,
+          new THREE.Color(
+            planet.planet.render.surface.colorMid[0],
+            planet.planet.render.surface.colorMid[1],
+            planet.planet.render.surface.colorMid[2],
+          ),
+        );
+        tinyPlanetIds[tinyPlanetIndex] = planet.id;
+        tinyPlanetIndex += 1;
+        tinyPlanetMesh.instanceMatrix.needsUpdate = true;
+        if (tinyPlanetMesh.instanceColor) {
+          tinyPlanetMesh.instanceColor.needsUpdate = true;
+        }
+        instantiatedPlanetIds.add(planet.id);
+        completedPlanetCount += 1;
+        pendingPlanetJobs = Math.max(0, pendingPlanetJobs - 1);
+        if (perfStore) {
+          perfStore.counters.meshCount += 1;
+        }
+        updatePerfCounters();
+        invalidateRender(2);
+        if (completedPlanetCount >= planetData.length && queueIndex >= prioritizedQueue.length) {
+          isBatching = false;
+        } else {
+          scheduleNextBatch();
+        }
+        return;
+      }
       if (perfStore) {
         perfStore.counters.workerJobsCompleted += 1;
       }
@@ -813,6 +873,10 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       interactivePlanetMeshes.length = 0;
       for (const instance of instances) {
         instance.dispose();
+      }
+      tinyPlanetMesh?.geometry.dispose();
+      if (tinyPlanetMesh?.material instanceof THREE.Material) {
+        tinyPlanetMesh.material.dispose();
       }
       (nebulaBackground.geometry as THREE.BufferGeometry).dispose();
       (nebulaBackground.material as THREE.Material).dispose();
