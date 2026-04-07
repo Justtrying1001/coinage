@@ -1,163 +1,158 @@
-export type PlanetSizeCategory = 'small' | 'medium' | 'large';
-
-export type MaterialFamily = 'rocky' | 'dusty' | 'metallic' | 'icy';
-
-export type PaletteFamily =
-  | 'ember-dust'
-  | 'basalt-moss'
-  | 'cobalt-ice'
-  | 'sulfur-stone'
-  | 'violet-ash'
-  | 'verdant-umber'
-  | 'rose-quartz'
-  | 'glacier-mint'
-  | 'arid-ochre'
-  | 'obsidian-lava'
-  | 'toxic-neon'
-  | 'amethyst-haze'
-  | 'emerald-sea'
-  | 'charcoal-abyss';
-
-export type PlanetArchetype =
-  | 'oceanic'
-  | 'icy'
-  | 'arid'
-  | 'lush'
-  | 'volcanic'
-  | 'dead'
-  | 'toxic'
-  | 'mineral'
-  | 'clouded'
-  | 'exotic'
-  | 'fragmented'
-  | 'superterran';
-
-export type PlanetMacroStyle =
-  | 'supercontinent'
-  | 'archipelago'
-  | 'island-chain'
-  | 'fractured'
-  | 'dual-hemisphere'
-  | 'basin';
-
-export type PlanetShapeFamily = 'stable-spheroid' | 'eroded' | 'tectonic' | 'fragmented-shell';
-export type PlanetReliefFamily = 'gentle' | 'moderate' | 'rugged' | 'extreme' | 'fragmented';
-export type PlanetHydrologyFamily = 'waterworld' | 'balanced' | 'arid' | 'dry' | 'cryo';
-export type PlanetSurfaceFamily =
-  | 'ocean'
-  | 'desert'
-  | 'ice'
-  | 'volcanic'
-  | 'lush'
-  | 'mineral'
-  | 'barren'
-  | 'toxic'
-  | 'abyssal';
-export type PlanetAtmosphereFamily = 'none' | 'thin' | 'standard' | 'dense' | 'reactive';
-export type PlanetTerrainFamily = 'smooth' | 'moderate' | 'rough' | 'extreme' | 'fragmented' | 'continental';
-export type PlanetEffect = 'craters' | 'thermal' | 'banding' | 'icecaps' | 'aurora';
-
-export interface PlanetRenderTuning {
-  colorPresence: number;
-  craterBoost: number;
-  thermalActivity: number;
-  bandingStrength: number;
-  bandingFrequency: number;
-  colorContrast: number;
-  oceanLevelOffset: number;
-  mountainLevelOffset: number;
-}
-
-export interface SeedInputs {
-  worldSeed: string;
-  planetSeed: string;
-}
-
-export interface DerivedSubSeeds {
-  baseSeed: number;
-  shapeSeed: number;
-  reliefSeed: number;
-  colorSeed: number;
-  atmoSeed: number;
-  hydroSeed: number;
-}
+export type PlanetFamily = 'terrestrial' | 'oceanic' | 'icy' | 'volcanic' | 'barren' | 'toxic' | 'gas-dwarf';
+export type PlanetBiomeArchetype = 'lush' | 'desert' | 'rocky' | 'ice' | 'molten' | 'toxic' | 'storm';
+export type PlanetAtmosphereClass = 'none' | 'thin' | 'standard' | 'dense' | 'reactive';
+export type PlanetReliefClass = 'flat' | 'gentle' | 'rugged' | 'extreme';
+export type PlanetRoughnessClass = 'polished' | 'balanced' | 'coarse';
+export type PlanetRadiusClass = 'dwarf' | 'standard' | 'giant';
 
 export interface PlanetIdentity {
-  archetype: PlanetArchetype;
-  sizeCategory: PlanetSizeCategory;
-  shapeFamily: PlanetShapeFamily;
-  reliefFamily: PlanetReliefFamily;
-  hydrologyFamily: PlanetHydrologyFamily;
-  surfaceFamily: PlanetSurfaceFamily;
-  paletteFamily: PaletteFamily;
-  atmosphereFamily: PlanetAtmosphereFamily;
-  targetLandRatio: number;
-  targetOceanRatio: number;
-  allowedTerrainProfiles: PlanetTerrainFamily[];
-  allowedEffects: PlanetEffect[];
-  forbiddenEffects: PlanetEffect[];
-  visualConstraints: {
-    minLandRatio: number;
-    maxOceanRatio: number;
-    minElevationCap: number;
-    maxElevationCap: number;
-  };
-  renderTuning: PlanetRenderTuning;
-  specialTraits: string[];
+  planetId: string;
+  planetSeed: string;
+  worldSeed: string;
+  canonicalSeed: number;
+  family: PlanetFamily;
+  radiusClass: PlanetRadiusClass;
+  worldPosition: { x: number; y: number; z: number };
 }
 
-export interface ShapeParameters {
-  radius: number;
-  wobbleFrequency: number;
-  wobbleAmplitude: number;
-  ridgeWarp: number;
+export interface PlanetClassification {
+  family: PlanetFamily;
+  biomeArchetype: PlanetBiomeArchetype;
+  atmosphereClass: PlanetAtmosphereClass;
+  roughnessClass: PlanetRoughnessClass;
+  reliefClass: PlanetReliefClass;
+  hasOceans: boolean;
+  canHaveClouds: boolean;
+  canHaveRings: boolean;
 }
 
-export interface ReliefParameters {
-  macroStrength: number;
-  microStrength: number;
+export interface PlanetVisualDNA {
+  paletteId: string;
+  baseColor: [number, number, number];
+  secondaryColor: [number, number, number];
+  oceanColor: [number, number, number];
+  cloudColor: [number, number, number];
+  atmosphereTint: [number, number, number];
+  oceanCoverage: number;
+  cloudCoverage: number;
+  atmosphereDensity: number;
+  reliefAmplitude: number;
   roughness: number;
-  craterDensity: number;
+  specularStrength: number;
+  emissiveIntensity: number;
+  bandingStrength: number;
+  noiseSeeds: {
+    surface: number;
+    clouds: number;
+    bands: number;
+    rings: number;
+  };
+  rotation: {
+    surfaceSpeed: number;
+    cloudSpeed: number;
+    axialTilt: number;
+  };
 }
 
-export interface ColorParameters {
-  hueShift: number;
-  saturation: number;
-  lightness: number;
-  accentMix: number;
-}
-
-export interface AtmosphereParameters {
-  enabled: boolean;
-  intensity: number;
-  thickness: number;
-  tintShift: number;
-}
-
-export interface HydrologyParameters {
-  oceanBias: number;
-  minLandRatio: number;
-  maxOceanRatio: number;
-}
-
-export interface PlanetVisualProfile {
-  id: string;
-  visualGenVersion: number;
-  seeds: SeedInputs;
-  derivedSubSeeds: DerivedSubSeeds;
+export interface PlanetGeneratedProfile {
   identity: PlanetIdentity;
-  archetype: PlanetArchetype;
-  macroStyle: PlanetMacroStyle;
-  sizeCategory: PlanetSizeCategory;
-  materialFamily: MaterialFamily;
-  paletteFamily: PaletteFamily;
-  hydrology: HydrologyParameters;
-  shape: ShapeParameters;
-  relief: ReliefParameters;
-  color: ColorParameters;
-  atmosphere: AtmosphereParameters;
+  classification: PlanetClassification;
+  visualDNA: PlanetVisualDNA;
+  physicalRadius: number;
+  ring: {
+    enabled: boolean;
+    innerRadiusRatio: number;
+    outerRadiusRatio: number;
+    tilt: number;
+    opacity: number;
+  };
 }
 
-export interface PlanetVisualGeneratorConfig {
-  visualGenVersion?: number;
+export interface PlanetScaleProfile {
+  physicalRadius: number;
+  renderRadiusBase: number;
+  normalizedRadius: number;
+  galaxyViewScaleMultiplier: number;
+  planetViewScaleMultiplier: number;
+  silhouetteProtectedRadius: number;
+  minRadiusGuardrail: number;
+  maxRadiusGuardrail: number;
+}
+
+export interface PlanetRenderProfile {
+  planetId: string;
+  renderRadius: number;
+  scale: PlanetScaleProfile;
+  surface: {
+    colorA: [number, number, number];
+    colorB: [number, number, number];
+    oceanColor: [number, number, number];
+    reliefAmplitude: number;
+    roughness: number;
+    specularStrength: number;
+    bandingStrength: number;
+    noiseSeed: number;
+  };
+  clouds: {
+    enabled: boolean;
+    color: [number, number, number];
+    coverage: number;
+    opacity: number;
+    speed: number;
+    noiseSeed: number;
+  };
+  atmosphere: {
+    enabled: boolean;
+    color: [number, number, number];
+    density: number;
+    thickness: number;
+    rimStrength: number;
+  };
+  rings: {
+    enabled: boolean;
+    innerRadius: number;
+    outerRadius: number;
+    tilt: number;
+    opacity: number;
+    noiseSeed: number;
+  };
+  debug: {
+    paletteId: string;
+    activeNoiseFamilies: string[];
+  };
+}
+
+export interface PlanetViewProfile {
+  viewMode: 'galaxy' | 'planet';
+  lod: 'low' | 'medium' | 'high';
+  meshSegments: number;
+  cloudSegments: number;
+  atmosphereSegments: number;
+  enableRings: boolean;
+  lightingBoost: number;
+}
+
+export interface CanonicalPlanet {
+  identity: PlanetIdentity;
+  classification: PlanetClassification;
+  visualDNA: PlanetVisualDNA;
+  generated: PlanetGeneratedProfile;
+  render: PlanetRenderProfile;
+}
+
+export interface PlanetDebugSnapshot {
+  planetId: string;
+  seed: string;
+  family: PlanetFamily;
+  radiusClass: PlanetRadiusClass;
+  physicalRadius: number;
+  renderRadiusBase: number;
+  finalMeshScale: number;
+  atmosphereThickness: number;
+  cloudCoverage: number;
+  hasRings: boolean;
+  paletteId: string;
+  activeNoiseFamilies: string[];
+  currentViewMode: PlanetViewProfile['viewMode'];
+  currentLOD: PlanetViewProfile['lod'];
 }

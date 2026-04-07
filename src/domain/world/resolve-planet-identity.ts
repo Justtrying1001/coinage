@@ -1,10 +1,10 @@
-import type { PlanetVisualProfile } from './planet-visual.types';
+import type { CanonicalPlanet } from './planet-visual.types';
 import { getGalaxyPlanetManifest } from './build-galaxy-planet-manifest';
 
 export interface ResolvedPlanetIdentity {
   planetId: string;
   planetSeed: string;
-  profile: PlanetVisualProfile;
+  planet: CanonicalPlanet;
 }
 
 export function resolvePlanetIdentity(worldSeed: string, planetId: string): ResolvedPlanetIdentity | null {
@@ -17,6 +17,6 @@ export function resolvePlanetIdentity(worldSeed: string, planetId: string): Reso
   return {
     planetId: matchedPlanet.id,
     planetSeed: matchedPlanet.planetSeed,
-    profile: matchedPlanet.profile,
+    planet: matchedPlanet.planet,
   };
 }

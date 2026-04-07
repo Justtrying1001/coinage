@@ -6,7 +6,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import { resolvePlanetIdentity } from '@/domain/world/resolve-planet-identity';
-import { createPlanetRenderInstance } from '@/rendering/planet/create-planet-render-instance';
+import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
+import { PLANET_LIGHT_DIRECTION, PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
 
 interface PlanetViewProps {
   worldSeed: string;
@@ -37,23 +38,28 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.NoToneMapping;
-    renderer.toneMappingExposure = 1;
+    renderer.outputColorSpace = PLANET_RENDER_PHOTOMETRY.outputColorSpace;
+    renderer.toneMapping = PLANET_RENDER_PHOTOMETRY.toneMapping;
+    renderer.toneMappingExposure = PLANET_RENDER_PHOTOMETRY.planetExposure;
     mount.appendChild(renderer.domElement);
 
-    const ambientLight = new THREE.AmbientLight('#ffffff', 1.95);
+    const ambientLight = new THREE.AmbientLight('#b7d1ff', 1.9);
     scene.add(ambientLight);
 
-    const hemiLight = new THREE.HemisphereLight('#e9edf8', '#d7dde8', 1.05);
-    scene.add(hemiLight);
+    const keyLight = new THREE.DirectionalLight('#ffffff', 2.1);
+    keyLight.position.copy(PLANET_LIGHT_DIRECTION).multiplyScalar(52);
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight('#b6ccff', 1.25);
+    fillLight.position.copy(PLANET_LIGHT_DIRECTION).multiplyScalar(-34).add(new THREE.Vector3(0, 6, 8));
+    scene.add(fillLight);
 
     const planetInstance = createPlanetRenderInstance({
-      profile: resolved.profile,
+      planet: resolved.planet,
       x: 0,
       y: 0,
       z: 0,
-      options: { lod: 'planet' },
+      options: { viewMode: 'planet' },
     });
 
     scene.add(planetInstance.object);
@@ -140,11 +146,15 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
         return;
       }
 
+      const delta = Math.min(0.05, animationClock.getDelta());
+      updatePlanetLayerAnimation(planetInstance.object, delta);
       controls.update();
       renderer.render(scene, camera);
       requestAnimationFrame(animate);
     };
 
+
+    const animationClock = new THREE.Clock();
     const raf = requestAnimationFrame(animate);
 
     return () => {

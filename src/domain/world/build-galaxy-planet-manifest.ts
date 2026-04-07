@@ -1,6 +1,6 @@
 import { generateGalaxyLayout } from './generate-galaxy-layout';
-import { generatePlanetVisualProfile } from './generate-planet-visual-profile';
-import type { PlanetVisualProfile } from './planet-visual.types';
+import { generateCanonicalPlanet } from './generate-planet-visual-profile';
+import type { CanonicalPlanet } from './planet-visual.types';
 import { GALAXY_LAYOUT_RUNTIME_CONFIG } from './world.constants';
 
 export interface GalaxyPlanetManifestItem {
@@ -9,30 +9,36 @@ export interface GalaxyPlanetManifestItem {
   x: number;
   y: number;
   radius: number;
-  profile: PlanetVisualProfile;
+  planet: CanonicalPlanet;
 }
 
 const MANIFEST_CACHE = new Map<string, GalaxyPlanetManifestItem[]>();
 
 export function buildGalaxyPlanetManifest(worldSeed: string): GalaxyPlanetManifestItem[] {
   const planetCount = GALAXY_LAYOUT_RUNTIME_CONFIG.planetCount ?? 0;
-  const profiles = Array.from({ length: planetCount }, (_, index) =>
-    generatePlanetVisualProfile({ worldSeed, planetSeed: `planet-${index}` }),
+  const planets = Array.from({ length: planetCount }, (_, index) =>
+    generateCanonicalPlanet({ worldSeed, planetSeed: `planet-${index}`, planetId: `planet-${index}` }),
   );
-  const estimatedRadii = profiles.map((profile) => profile.shape.radius * 0.97);
+  const estimatedRadii = planets.map((planet) => planet.render.scale.silhouetteProtectedRadius);
+
   const layout = generateGalaxyLayout(worldSeed, {
     ...GALAXY_LAYOUT_RUNTIME_CONFIG,
     planetRadii: estimatedRadii,
   });
 
-  return layout.map((planet, index) => ({
-    id: planet.id,
-    planetSeed: planet.planetSeed,
-    x: planet.x,
-    y: planet.y,
-    radius: estimatedRadii[index] ?? 1,
-    profile: profiles[index]!,
-  }));
+  return layout.map((entry, index) => {
+    const current = planets[index]!;
+    current.identity.worldPosition = { x: entry.x, y: entry.y, z: 0 };
+
+    return {
+      id: entry.id,
+      planetSeed: entry.planetSeed,
+      x: entry.x,
+      y: entry.y,
+      radius: estimatedRadii[index] ?? current.render.renderRadius,
+      planet: current,
+    };
+  });
 }
 
 export function getGalaxyPlanetManifest(worldSeed: string): GalaxyPlanetManifestItem[] {
