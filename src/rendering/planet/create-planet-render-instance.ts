@@ -98,8 +98,8 @@ const SURFACE_FRAGMENT_SHADER_GALAXY = `
   void main() {
     vec3 normal = normalize(vWorldNormal);
     vec3 p = normalize(vUnitPos);
-    float continents = smoothstep(0.4, 0.62, n3(p * 2.0) * 0.65 + n3(p * 4.1) * 0.35);
-    float mountains = smoothstep(0.56, 0.84, n3(p * 7.5) * continents + continents * 0.28);
+    float continents = smoothstep(0.42, 0.66, n3(p * 1.8) * 0.7 + n3(p * 3.9) * 0.3);
+    float mountains = smoothstep(0.52, 0.82, n3(p * 6.8) * continents + continents * 0.34);
     float coasts = smoothstep(0.38, 0.62, continents) - smoothstep(0.62, 0.78, continents);
     float oceanDepth = 1.0 - continents;
     float bands = smoothstep(0.3, 0.76, sin((p.y + uSeed * 0.00000011) * 17.0) * 0.5 + 0.5);
@@ -108,7 +108,7 @@ const SURFACE_FRAGMENT_SHADER_GALAXY = `
     land = mix(land, uColorHigh, mountains * 0.72);
     land = mix(land, uAccentColor, coasts * 0.34);
 
-    vec3 ocean = mix(uOceanColor * 1.4, uOceanColor * 0.92, sat(oceanDepth));
+    vec3 ocean = mix(uOceanColor * 1.32, uOceanColor * 0.94, sat(oceanDepth));
     vec3 coast = mix(ocean * 1.12, land, smoothstep(0.2, 0.8, coasts));
 
     vec3 albedo = mix(ocean, land, continents);
@@ -120,13 +120,13 @@ const SURFACE_FRAGMENT_SHADER_GALAXY = `
 
     vec3 viewDir = normalize(cameraPosition - vWorldPos);
     float softShading = (normal.y * 0.5 + 0.5) * uShadingContrast;
-    float rim = pow(1.0 - sat(dot(normal, viewDir)), 2.2) * 0.12;
-    float specular = pow(max(dot(normal, normalize(vec3(0.35, 0.75, 0.25))), 0.0), 10.0) * 0.08;
-    float tonal = 1.08 + softShading + rim + specular;
+    float rim = pow(1.0 - sat(dot(normal, viewDir)), 2.0) * 0.08;
+    float specular = pow(max(dot(normal, normalize(vec3(0.35, 0.75, 0.25))), 0.0), 10.0) * 0.05;
+    float tonal = 1.1 + softShading + rim + specular;
     float luma = dot(albedo, vec3(0.2126, 0.7152, 0.0722));
     vec3 saturated = mix(vec3(luma), albedo, 1.18);
-    vec3 color = saturated * tonal + saturated * 0.06;
-    color = clamp(color * uLightingBoost, vec3(0.32), vec3(1.0));
+    vec3 color = saturated * tonal + saturated * 0.08;
+    color = clamp(color * uLightingBoost, vec3(0.37), vec3(1.0));
 
     gl_FragColor = vec4(color, 1.0);
   }
@@ -163,33 +163,33 @@ const SURFACE_FRAGMENT_SHADER_PLANET = `
 
   void main() {
     vec3 normal = normalize(vWorldNormal);
-    float continent = sat(vContinentMask * 0.82 + vLandMask * 0.18 - vErosionMask * 0.08);
+    float continent = sat(vContinentMask * 0.86 + vLandMask * 0.2 - vErosionMask * 0.06);
     float humidity = sat(vHumidityMask * 0.84 + 0.16);
     float temperature = sat(vTemperatureMask * 0.8 + 0.2);
-    float heightNorm = sat(vHeight * 1.08 + vMountainMask * 0.22);
+    float heightNorm = sat(vHeight * 1.12 + vMountainMask * 0.26);
 
-    vec3 oceanEdge = uOceanColor * vec3(1.45, 1.38, 1.30);
-    vec3 oceanDeep = uOceanColor * vec3(0.78, 0.84, 0.94);
-    float oceanT = sat(vOceanDepth * 0.92 + (1.0 - continent) * 0.18);
-    float oceanVariation = sin(vUnitPos.x * 10.0 + vUnitPos.z * 8.0 + vOceanDepth * 3.2) * 0.03;
+    vec3 oceanEdge = uOceanColor * vec3(1.52, 1.45, 1.36);
+    vec3 oceanDeep = uOceanColor * vec3(0.72, 0.82, 0.95);
+    float oceanT = sat(vOceanDepth * 0.88 + (1.0 - continent) * 0.24);
+    float oceanVariation = sin(vUnitPos.x * 12.0 + vUnitPos.z * 9.0 + vOceanDepth * 3.4) * 0.032;
     vec3 oceanColor = mix(oceanEdge, oceanDeep, oceanT + oceanVariation);
 
     float coastMask = smoothstep(0.18, 0.76, vCoastMask);
     float coastBlend = smoothstep(0.0, 0.12, coastMask);
-    float plainsMask = smoothstep(0.18, 0.5, heightNorm);
-    float plateauMask = smoothstep(0.42, 0.74, heightNorm);
-    float mountainPeak = smoothstep(0.68, 0.94, heightNorm + vMountainMask * 0.42);
+    float plainsMask = smoothstep(0.16, 0.48, heightNorm);
+    float plateauMask = smoothstep(0.38, 0.72, heightNorm);
+    float mountainPeak = smoothstep(0.64, 0.92, heightNorm + vMountainMask * 0.45);
 
     vec3 coast = mix(oceanColor * 1.14, uColorMid * 1.08, coastBlend);
-    vec3 plains = mix(uColorDeep * 1.08, uColorMid * 1.18, humidity * 0.55);
+    vec3 plains = mix(uColorDeep * 1.1, uColorMid * 1.2, humidity * 0.58);
     vec3 plateau = mix(plains, uColorHigh * 1.08, plateauMask * 0.72 + continent * 0.18);
     vec3 mountain = mix(plateau, uColorHigh * 1.18 + vec3(0.05), mountainPeak);
 
     float biomeHot = smoothstep(0.62, 0.9, temperature);
     float biomeCold = smoothstep(0.08, 0.34, 1.0 - temperature);
     float biomeDry = smoothstep(0.52, 0.9, 1.0 - humidity);
-    vec3 biomeTint = mix(vec3(0.96, 1.02, 0.98), vec3(1.05, 0.98, 0.92), biomeHot * biomeDry);
-    biomeTint = mix(biomeTint, vec3(0.94, 0.98, 1.06), biomeCold * (0.45 + humidity * 0.25));
+    vec3 biomeTint = mix(vec3(0.97, 1.03, 0.99), vec3(1.04, 0.99, 0.93), biomeHot * biomeDry);
+    biomeTint = mix(biomeTint, vec3(0.95, 0.99, 1.05), biomeCold * (0.42 + humidity * 0.25));
 
     vec3 landBase = mix(plains, plateau, plainsMask);
     landBase = mix(landBase, mountain, sat(vMountainMask * 0.82 + mountainPeak * 0.52));
@@ -206,18 +206,18 @@ const SURFACE_FRAGMENT_SHADER_PLANET = `
 
     vec3 albedo = mix(solidAlbedo, gaseousAlbedo, sat(uSurfaceModel));
 
-    float reliefShade = (heightNorm * 0.13) + (vMountainMask * 0.12) - (vOceanDepth * 0.02);
+    float reliefShade = (heightNorm * 0.16) + (vMountainMask * 0.14) - (vOceanDepth * 0.015);
     float hemisphere = (normal.y * 0.5 + 0.5) * uShadingContrast;
     vec3 viewDir = normalize(cameraPosition - vWorldPos);
-    float rim = pow(1.0 - sat(dot(normal, viewDir)), 2.4) * 0.1;
-    float specular = pow(max(dot(normal, normalize(vec3(0.34, 0.77, 0.18))), 0.0), 12.0) * 0.07;
-    float tonal = clamp(1.08 + hemisphere + reliefShade + rim + specular, 0.98, 1.34);
+    float rim = pow(1.0 - sat(dot(normal, viewDir)), 2.3) * 0.08;
+    float specular = pow(max(dot(normal, normalize(vec3(0.34, 0.77, 0.18))), 0.0), 12.0) * 0.08;
+    float tonal = clamp(1.1 + hemisphere + reliefShade + rim + specular, 1.0, 1.38);
 
     float luma = dot(albedo, vec3(0.2126, 0.7152, 0.0722));
     vec3 saturated = mix(vec3(luma), albedo, 1.16);
     vec3 color = saturated * tonal;
     color += uAccentColor * (uEmissive * (vThermalMask * 0.65 + vBandMask * 0.16));
-    color = clamp(color * uLightingBoost, vec3(0.32), vec3(1.0));
+    color = clamp(color * uLightingBoost, vec3(0.36), vec3(1.0));
     gl_FragColor = vec4(color, 1.0);
   }
 `;
@@ -237,16 +237,16 @@ const OCEAN_FRAGMENT_SHADER = `
     vec3 viewDir = normalize(cameraPosition - vWorldPos);
     float latDepth = smoothstep(0.0, 1.0, abs(vUnitPos.y));
     float radialDepth = smoothstep(0.15, 0.95, length(vUnitPos.xz));
-    float depthVar = clamp(latDepth * 0.32 + radialDepth * 0.38, 0.0, 1.0);
-    vec3 color = mix(uOceanColor * 1.22, uOceanDeepColor * 0.92, depthVar);
+    float depthVar = clamp(latDepth * 0.28 + radialDepth * 0.44, 0.0, 1.0);
+    vec3 color = mix(uOceanColor * 1.3, uOceanDeepColor * 0.86, depthVar);
     float hemisphere = (normal.y * 0.5 + 0.5) * uShadingContrast;
-    float fresnel = pow(1.0 - clamp(dot(normal, viewDir), 0.0, 1.0), 3.0) * 0.12;
-    float specular = pow(max(dot(normal, normalize(vec3(0.28, 0.86, 0.22))), 0.0), 18.0) * 0.09;
-    color *= (1.04 + hemisphere);
-    color += vec3(0.08, 0.10, 0.12) * (fresnel + specular);
+    float fresnel = pow(1.0 - clamp(dot(normal, viewDir), 0.0, 1.0), 2.8) * 0.14;
+    float specular = pow(max(dot(normal, normalize(vec3(0.28, 0.86, 0.22))), 0.0), 18.0) * 0.11;
+    color *= (1.06 + hemisphere);
+    color += vec3(0.10, 0.12, 0.14) * (fresnel + specular);
     color *= uLightingBoost;
 
-    gl_FragColor = vec4(clamp(color, vec3(0.3), vec3(1.0)), 1.0);
+    gl_FragColor = vec4(clamp(color, vec3(0.34), vec3(1.0)), 1.0);
   }
 `;
 
@@ -281,15 +281,15 @@ const RING_FRAGMENT_SHADER = `
     float grain = band1 * 0.54 + band2 * 0.46;
     float edgeFade = smoothstep(0.0, 0.08, radial) * smoothstep(1.0, 0.92, radial);
     float gap = 1.0 - smoothstep(0.44, 0.46, radial) * (1.0 - smoothstep(0.48, 0.50, radial)) * 0.6;
-    float radialGlow = 0.78 + smoothstep(0.15, 0.72, radial) * 0.34 + (1.0 - smoothstep(0.78, 1.0, radial)) * 0.18;
+    float radialGlow = 0.86 + smoothstep(0.18, 0.72, radial) * 0.36 + (1.0 - smoothstep(0.82, 1.0, radial)) * 0.22;
 
     vec3 normal = normalize(vNormalW);
     float hemisphere = (normal.y * 0.5 + 0.5) * uShadingContrast;
 
-    float alpha = edgeFade * gap * grain * uOpacity * 1.12;
-    vec3 color = uColor * 1.12 * (0.86 + grain * 0.45) * radialGlow * (1.0 + hemisphere);
+    float alpha = edgeFade * gap * grain * uOpacity * 1.2;
+    vec3 color = uColor * 1.18 * (0.9 + grain * 0.42) * radialGlow * (1.0 + hemisphere);
 
-    gl_FragColor = vec4(color, clamp(alpha, 0.0, 0.85));
+    gl_FragColor = vec4(color, clamp(alpha, 0.0, 0.9));
   }
 `;
 
@@ -455,7 +455,7 @@ export function createPlanetRenderInstance(input: PlanetRenderInput): PlanetRend
   const group = new THREE.Group();
   group.position.set(x, y, z);
   const galaxySegments = options.viewMode === 'galaxy'
-    ? Math.max(12, Math.min(16, Math.round(12 + planet.render.scale.normalizedRadius * 4)))
+    ? Math.max(8, Math.min(14, Math.round(8 + planet.render.scale.normalizedRadius * 6)))
     : view.meshSegments;
   const ringSegments = options.viewMode === 'galaxy' ? 64 : view.ringSegments;
 

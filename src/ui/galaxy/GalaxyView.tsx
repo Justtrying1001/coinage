@@ -80,10 +80,10 @@ const KEYBOARD_DECELERATION = 13;
 const CAMERA_FOLLOW_DAMPING = 16;
 const DRAG_PAN_SENSITIVITY = 1.18;
 const DRAG_DIRECT_RESPONSE = 0.58;
-const PLANET_BATCH_SIZE = 10;
+const PLANET_BATCH_SIZE = 8;
 const INITIAL_BATCH_CAP = 72;
 const PERF_LOG_PREFIX = '[GalaxyPerf]';
-const INSTANCED_RADIUS_THRESHOLD = 4.4;
+const INSTANCED_RADIUS_THRESHOLD = 5.2;
 
 function createDefaultCounters(totalPlanets = 0): GalaxyPerfCounters {
   return {
@@ -324,7 +324,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     const tinyPlanets = prioritizedQueue.filter(({ planet }) => computeGalaxyVisualRadius(planet.render.scale) <= INSTANCED_RADIUS_THRESHOLD);
     const tinyPlanetMesh = tinyPlanets.length > 0
       ? new THREE.InstancedMesh(
-        new THREE.SphereGeometry(1, 12, 12),
+        new THREE.SphereGeometry(1, 10, 10),
         new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.76, metalness: 0.06 }),
         tinyPlanets.length,
       )
@@ -480,7 +480,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     renderer.domElement.addEventListener('dblclick', onDoubleClick);
     renderer.domElement.addEventListener('contextmenu', onContextMenu);
 
-    const workerConcurrency = Math.min(2, Math.max(1, Math.floor((navigator.hardwareConcurrency || 4) / 5)));
+    const workerConcurrency = Math.min(3, Math.max(1, Math.floor((navigator.hardwareConcurrency || 4) / 4)));
     
     const MAX_PENDING_PLANET_JOBS = workerConcurrency * 3;
     let queueIndex = 0;
