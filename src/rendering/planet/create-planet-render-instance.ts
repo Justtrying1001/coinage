@@ -8,6 +8,23 @@ function toColor(value: [number, number, number]): THREE.Color {
   return new THREE.Color(value[0], value[1], value[2]);
 }
 
+function familyCode(
+  family: PlanetRenderInput['planet']['render']['family'],
+): number {
+  const mapping: Record<PlanetRenderInput['planet']['render']['family'], number> = {
+    'terrestrial-lush': 0,
+    oceanic: 1,
+    'desert-arid': 2,
+    'ice-frozen': 3,
+    'volcanic-infernal': 4,
+    'barren-rocky': 5,
+    'toxic-alien': 6,
+    'gas-giant': 7,
+    'ringed-giant': 8,
+  };
+  return mapping[family];
+}
+
 const SURFACE_VERTEX_SHADER = `
   attribute float aHeight;
   attribute float aLandMask;
@@ -101,6 +118,7 @@ const SURFACE_FRAGMENT_SHADER = `
   uniform float uSpecular;
   uniform float uEmissive;
   uniform float uSurfaceModel;
+  uniform float uFamilyCode;
   uniform vec3 uLightDirection;
   uniform float uLightingBoost;
   uniform vec3 uIblSkyColor;
@@ -136,6 +154,25 @@ const SURFACE_FRAGMENT_SHADER = `
     vec3 gaseousAlbedo = mix(gasBands, gasStorms, sat(vBandMask * 0.8 + vThermalMask * 0.5));
 
     vec3 albedo = mix(solidAlbedo, gaseousAlbedo, sat(uSurfaceModel));
+
+    if (uFamilyCode < 0.5) {
+      albedo = mix(albedo, vec3(albedo.g), vHumidityMask * 0.12);
+    } else if (uFamilyCode < 1.5) {
+      albedo = mix(albedo, uOceanColor * 1.14, 0.32 + (1.0 - vLandMask) * 0.4);
+    } else if (uFamilyCode < 2.5) {
+      albedo = mix(albedo, vec3(dot(albedo, vec3(0.299, 0.587, 0.114))), 0.15);
+      albedo *= vec3(1.08, 0.94, 0.82);
+    } else if (uFamilyCode < 3.5) {
+      albedo = mix(albedo, vec3(0.82, 0.92, 1.0), 0.24 + vCraterMask * 0.25);
+    } else if (uFamilyCode < 4.5) {
+      albedo = mix(albedo, vec3(0.12, 0.09, 0.08), 0.2);
+    } else if (uFamilyCode < 5.5) {
+      albedo = mix(albedo, vec3(0.6, 0.58, 0.56), vCraterMask * 0.4);
+    } else if (uFamilyCode < 6.5) {
+      albedo = mix(albedo, uAccentColor, 0.16 + vThermalMask * 0.18);
+    } else if (uFamilyCode < 8.5) {
+      albedo = mix(albedo, uColorHigh, vBandMask * 0.36);
+    }
 
     vec3 halfVec = normalize(lightDir + viewDir);
     float roughness = mix(
@@ -348,6 +385,7 @@ function createSurfaceLayer(
       uSpecular: { value: render.surface.specularStrength },
       uEmissive: { value: render.surface.emissiveIntensity },
       uSurfaceModel: { value: render.surfaceModel === 'gaseous' ? 1 : 0 },
+      uFamilyCode: { value: familyCode(render.family) },
       uLightDirection: { value: new THREE.Vector3(0.52, 0.31, 0.79).normalize() },
       uLightingBoost: { value: lightingBoost },
       uIblSkyColor: { value: new THREE.Color('#7ea6ff') },
@@ -471,6 +509,17 @@ export function createPlanetRenderInstance(input: PlanetRenderInput): PlanetRend
   const { planet, x, y, z, options } = input;
   const view = createPlanetViewProfile(options.viewMode);
   const highQuality = options.viewMode === 'planet';
+  if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' && (window as { __COINAGE_PIPELINE_TRACE?: boolean }).__COINAGE_PIPELINE_TRACE) {
+    console.info('[PlanetPipelineTrace]', {
+      stage: 'createPlanetRenderInstance',
+      planetId: planet.identity.planetId,
+      family: planet.render.family,
+      surfaceModel: planet.render.surfaceModel,
+      viewMode: options.viewMode,
+      meshSegments: view.meshSegments,
+      noiseSeed: planet.render.surface.noiseSeed,
+    });
+  }
 
   const group = new THREE.Group();
   group.position.set(x, y, z);

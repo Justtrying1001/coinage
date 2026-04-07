@@ -657,6 +657,16 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
     },
   };
 
+  if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' && (window as { __COINAGE_PIPELINE_TRACE?: boolean }).__COINAGE_PIPELINE_TRACE) {
+    console.info('[PlanetPipelineTrace]', {
+      stage: 'generateCanonicalPlanet',
+      planetId: identity.planetId,
+      family: recipe.family,
+      surfaceModel: recipe.surfaceModel,
+      palette: visualDNA.paletteId,
+    });
+  }
+
   return { identity, classification, visualDNA, generated, render };
 }
 
