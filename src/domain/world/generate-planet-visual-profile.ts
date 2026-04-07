@@ -508,13 +508,48 @@ function buildViewProfile(viewMode: PlanetViewProfile['viewMode']): PlanetViewPr
   return {
     viewMode,
     lod: isGalaxy ? 'low' : 'high',
-    meshSegments: isGalaxy ? 36 : 180,
-    cloudSegments: isGalaxy ? 28 : 120,
-    atmosphereSegments: isGalaxy ? 24 : 112,
-    ringSegments: isGalaxy ? 224 : 640,
+    meshSegments: isGalaxy ? 40 : 224,
+    cloudSegments: isGalaxy ? 32 : 144,
+    atmosphereSegments: isGalaxy ? 28 : 128,
+    ringSegments: isGalaxy ? 256 : 768,
     enableRings: true,
-    lightingBoost: isGalaxy ? 1.02 : 1.18,
+    lightingBoost: isGalaxy ? 1.06 : 1.24,
   };
+}
+
+
+function resolveMaterialModel(family: PlanetFamily): PlanetRenderProfile['surface']['materialModel'] {
+  switch (family) {
+    case 'terrestrial-lush': return 'lush';
+    case 'oceanic': return 'oceanic';
+    case 'desert-arid': return 'arid';
+    case 'ice-frozen': return 'ice';
+    case 'volcanic-infernal': return 'volcanic';
+    case 'barren-rocky': return 'rocky';
+    case 'toxic-alien': return 'toxic';
+    case 'gas-giant':
+    case 'ringed-giant':
+      return 'gaseous';
+  }
+}
+
+function resolveCloudType(family: PlanetFamily): PlanetRenderProfile['clouds']['type'] {
+  switch (family) {
+    case 'terrestrial-lush':
+    case 'oceanic':
+      return 'terrestrial';
+    case 'ice-frozen':
+      return 'ice';
+    case 'desert-arid':
+      return 'dust';
+    case 'toxic-alien':
+      return 'toxic';
+    case 'gas-giant':
+    case 'ringed-giant':
+      return 'gaseous';
+    default:
+      return 'none';
+  }
 }
 
 export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet {
@@ -525,6 +560,8 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
 
   const recipe = weightedRecipe(rng);
   const palette = pickPalette(recipe, rng);
+  const materialModel = resolveMaterialModel(recipe.family);
+  const cloudType = resolveCloudType(recipe.family);
   const radiusClass = pickRadiusClass(recipe, rng);
   const radiusRange = radiusRangeForClass(radiusClass, recipe.surfaceModel);
   const physicalRadius = range(rng, radiusRange.min, radiusRange.max);
@@ -623,6 +660,9 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
       noiseSeed: visualDNA.noiseSeeds.surface,
       moistureSeed: visualDNA.noiseSeeds.moisture,
       thermalSeed: visualDNA.noiseSeeds.thermal,
+      biomeContrast: clamp(0.72 + visualDNA.bandingStrength * 0.5 + (recipe.surfaceModel === 'gaseous' ? 0.08 : 0), 0.7, 1.32),
+      oceanSpecularBoost: clamp(0.2 + visualDNA.specularStrength * (recipe.family === 'oceanic' ? 1.15 : 0.65), 0.18, 1.08),
+      materialModel,
     },
     clouds: {
       enabled: classification.canHaveClouds,
@@ -632,6 +672,7 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
       speed: visualDNA.rotation.cloudSpeed,
       stormBanding: recipe.surfaceModel === 'gaseous' ? visualDNA.bandingStrength : visualDNA.bandingStrength * 0.42,
       noiseSeed: visualDNA.noiseSeeds.clouds,
+      type: cloudType,
     },
     atmosphere: {
       enabled: classification.atmosphereClass !== 'none',
@@ -639,6 +680,7 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
       density: visualDNA.atmosphereDensity,
       thickness: clamp(visualDNA.atmosphereDensity * (recipe.surfaceModel === 'gaseous' ? 0.14 : 0.1), 0, 0.17),
       rimStrength: clamp(0.22 + visualDNA.atmosphereDensity * 0.48, 0.22, 0.72),
+      nightGlow: clamp(visualDNA.emissiveIntensity * (recipe.family === 'volcanic-infernal' || recipe.family === 'toxic-alien' ? 1.8 : 0.6), 0, 0.82),
     },
     rings: {
       enabled: generated.ring.enabled,
@@ -648,6 +690,7 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
       tilt: generated.ring.tilt,
       opacity: generated.ring.opacity,
       noiseSeed: visualDNA.noiseSeeds.rings,
+      density: clamp((recipe.surfaceModel === 'gaseous' ? 0.58 : 0.34) + visualDNA.bandingStrength * 0.22, 0.24, 0.88),
     },
     debug: {
       paletteId: visualDNA.paletteId,

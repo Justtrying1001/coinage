@@ -12,6 +12,7 @@ export interface TerrainSample {
   erosionMask: number;
   craterMask: number;
   thermalMask: number;
+  biomeMask: number;
   bandMask: number;
 }
 
@@ -323,6 +324,7 @@ function sampleSolid(input: TerrainInput): TerrainSample {
     baseElevation += thermalMask * 0.18;
   }
 
+  const biomeMask = clamp(temperatureMask * 0.55 + humidityMask * 0.45 - erosionMask * 0.18 + thermalMask * 0.08, 0, 1);
   const height01 = clamp(baseElevation, 0, 1);
   const landMask = smoothstep(oceanLevel - 0.018, oceanLevel + 0.018, height01);
   const coastMask =
@@ -343,6 +345,7 @@ function sampleSolid(input: TerrainInput): TerrainSample {
     erosionMask,
     craterMask,
     thermalMask,
+    biomeMask,
     bandMask: 0,
   };
 }
@@ -376,6 +379,7 @@ function sampleGaseous(input: TerrainInput): TerrainSample {
     erosionMask: turbulence,
     craterMask: 0,
     thermalMask,
+    biomeMask: clamp(temperatureMask * 0.6 + humidityMask * 0.4, 0, 1),
     bandMask,
   };
 }

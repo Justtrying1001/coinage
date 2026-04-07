@@ -11,6 +11,16 @@ function toColor(value: [number, number, number]): THREE.Color {
   return new THREE.Color(value[0], value[1], value[2]);
 }
 
+function materialModelCode(model: PlanetRenderInput['planet']['render']['surface']['materialModel']): number {
+  const mapping = { lush: 0, oceanic: 1, arid: 2, ice: 3, volcanic: 4, rocky: 5, toxic: 6, gaseous: 7 } as const;
+  return mapping[model];
+}
+
+function cloudTypeCode(type: PlanetRenderInput['planet']['render']['clouds']['type']): number {
+  const mapping = { none: 0, terrestrial: 1, ice: 2, dust: 3, toxic: 4, gaseous: 5 } as const;
+  return mapping[type];
+}
+
 function familyCode(family: PlanetFamily): number {
   const mapping: Record<PlanetFamily, number> = {
     'terrestrial-lush': 0,
@@ -38,6 +48,7 @@ const SURFACE_VERTEX_SHADER = `
   attribute float aErosionMask;
   attribute float aCraterMask;
   attribute float aThermalMask;
+  attribute float aBiomeMask;
   attribute float aBandMask;
 
   varying vec3 vWorldPos;
@@ -54,6 +65,7 @@ const SURFACE_VERTEX_SHADER = `
   varying float vErosionMask;
   varying float vCraterMask;
   varying float vThermalMask;
+  varying float vBiomeMask;
   varying float vBandMask;
 
   void main() {
@@ -73,6 +85,7 @@ const SURFACE_VERTEX_SHADER = `
     vErosionMask = aErosionMask;
     vCraterMask = aCraterMask;
     vThermalMask = aThermalMask;
+    vBiomeMask = aBiomeMask;
     vBandMask = aBandMask;
 
     gl_Position = projectionMatrix * viewMatrix * worldPos;
@@ -108,6 +121,7 @@ const SURFACE_FRAGMENT_SHADER = `
   varying float vErosionMask;
   varying float vCraterMask;
   varying float vThermalMask;
+  varying float vBiomeMask;
   varying float vBandMask;
 
   uniform vec3 uColorDeep;
@@ -120,6 +134,9 @@ const SURFACE_FRAGMENT_SHADER = `
   uniform float uEmissive;
   uniform float uSurfaceModel;
   uniform float uFamilyCode;
+  uniform float uBiomeContrast;
+  uniform float uOceanSpecBoost;
+  uniform float uMaterialModel;
   uniform vec3 uLightDirection;
   uniform float uLightingBoost;
   uniform vec3 uIblSkyColor;
@@ -146,9 +163,10 @@ const SURFACE_FRAGMENT_SHADER = `
     float biomeWarm = sat(vTemperatureMask * 0.7 + (1.0 - vHumidityMask) * 0.3);
     float biomeCold = sat((1.0 - vTemperatureMask) * 0.85 + vCraterMask * 0.2);
     float biomeWet = sat(vHumidityMask * 0.9 + (1.0 - vErosionMask) * 0.25);
+    float biome = sat(pow(vBiomeMask, mix(1.35, 0.82, uBiomeContrast - 0.7)));
 
     vec3 landBase = ramp(vHeight, uColorDeep, uColorMid, uColorHigh);
-    landBase = mix(landBase, uColorMid * 1.07, biomeWet * 0.26);
+    landBase = mix(landBase, uColorMid * 1.07, biomeWet * 0.26 + biome * 0.14);
     landBase = mix(landBase, uColorHigh * vec3(1.06, 1.01, 0.95), biomeWarm * 0.34);
     landBase = mix(landBase, uColorHigh * vec3(0.82, 0.9, 1.08), biomeCold * 0.42);
     landBase = mix(landBase, uAccentColor, vThermalMask * 0.76);
@@ -189,6 +207,22 @@ const SURFACE_FRAGMENT_SHADER = `
       albedo = mix(albedo, uColorHigh * 1.08, vBandMask * 0.35);
     }
 
+    if (uMaterialModel < 0.5) {
+      albedo = mix(albedo, albedo * vec3(0.88, 1.08, 0.9), biome * 0.2);
+    } else if (uMaterialModel < 1.5) {
+      albedo = mix(albedo, uOceanColor * 1.14, (1.0 - vLandMask) * 0.45);
+    } else if (uMaterialModel < 2.5) {
+      albedo = mix(albedo, vec3(0.73, 0.62, 0.45), (1.0 - vHumidityMask) * 0.3);
+    } else if (uMaterialModel < 3.5) {
+      albedo = mix(albedo, vec3(0.86, 0.93, 1.0), 0.34);
+    } else if (uMaterialModel < 4.5) {
+      albedo = mix(albedo, uAccentColor, vThermalMask * 0.36);
+    } else if (uMaterialModel < 5.5) {
+      albedo = mix(albedo, vec3(0.62, 0.6, 0.58), vCraterMask * 0.5);
+    } else if (uMaterialModel < 6.5) {
+      albedo = mix(albedo, uAccentColor * 0.9, biome * 0.28 + vThermalMask * 0.18);
+    }
+
     float roughness = mix(
       clamp(uRoughness + vMountainMask * 0.18 + vCraterMask * 0.22, 0.08, 0.99),
       clamp(uRoughness * 0.86 + (1.0 - vBandMask) * 0.1, 0.08, 0.86),
@@ -211,7 +245,7 @@ const SURFACE_FRAGMENT_SHADER = `
     color += ibl * albedo * (0.16 + (1.0 - roughness) * 0.24) * uIblIntensity;
     color += ibl * (spec + fresnel * 0.24 + metalnessHack * 0.06) * uIblIntensity;
 
-    float oceanSpec = (1.0 - roughness) * (1.0 - sat(uSurfaceModel)) * (1.0 - vLandMask) * 0.9;
+    float oceanSpec = (1.0 - roughness) * (1.0 - sat(uSurfaceModel)) * (1.0 - vLandMask) * (0.42 + uOceanSpecBoost);
     color += vec3(oceanSpec * (spec * 1.3 + fresnel * 0.4));
 
     color += uAccentColor * (uEmissive * (vThermalMask * 0.9 + vBandMask * 0.2));
@@ -231,6 +265,7 @@ const CLOUD_FRAGMENT_SHADER = `
   uniform float uOpacity;
   uniform float uBanding;
   uniform float uSurfaceModel;
+  uniform float uCloudType;
   uniform float uSeed;
   uniform vec3 uLightDirection;
   uniform float uLightingBoost;
@@ -287,6 +322,12 @@ const CLOUD_FRAGMENT_SHADER = `
     float jet = sin((vUnitPos.y + uSeed * 0.00000012) * (17.0 + uBanding * 20.0)) * 0.5 + 0.5;
 
     float field = mix(macro * 0.62 + detail * 0.38, jet * 0.58 + detail * 0.42, uSurfaceModel);
+    if (uCloudType < 0.5) { field *= 0.82; }
+    else if (uCloudType < 1.5) { field = field * 0.9 + detail * 0.08; }
+    else if (uCloudType < 2.5) { field = field * 0.7 + macro * 0.24; }
+    else if (uCloudType < 3.5) { field = field * 0.84 + (1.0 - detail) * 0.09; }
+    else if (uCloudType < 4.5) { field = field * 0.8 + jet * 0.16; }
+
     float threshold = 1.0 - uCoverage;
     float mask = smoothstep(threshold - 0.09, threshold + 0.06, field);
 
@@ -309,6 +350,7 @@ const ATMOSPHERE_FRAGMENT_SHADER = `
   uniform vec3 uColor;
   uniform float uDensity;
   uniform float uRim;
+  uniform float uNightGlow;
   uniform vec3 uLightDirection;
 
   void main() {
@@ -324,7 +366,9 @@ const ATMOSPHERE_FRAGMENT_SHADER = `
     vec3 duskColor = mix(uColor * 0.7, vec3(1.0, 0.58, 0.3), 0.36);
     vec3 scatter = mix(dayColor, duskColor, pow(1.0 - ndl, 1.8));
 
-    float alpha = clamp(limb * (0.16 + uRim * 0.46) + (1.0 - ndl) * uDensity * 0.07 + forward * 0.08, 0.0, 0.62);
+    float night = pow(1.0 - ndl, 2.2) * uNightGlow;
+    scatter += uColor * (0.22 + night * 0.6) * night;
+    float alpha = clamp(limb * (0.14 + uRim * 0.36) + (1.0 - ndl) * uDensity * 0.06 + forward * 0.07, 0.0, 0.54);
     gl_FragColor = vec4(scatter, alpha);
   }
 `;
@@ -373,8 +417,8 @@ const RING_FRAGMENT_SHADER = `
     float lit = max(dot(n, l), 0.0) * 0.44 + 0.5;
     float scatter = pow(1.0 - abs(dot(n, v)), 1.9) * 0.46;
 
-    float ringStrata = smoothstep(0.12, 0.86, radialField);
-    float alpha = edgeFade * innerGap * ringStrata * uOpacity;
+    float ringStrata = smoothstep(0.12, 0.86, radialField * (0.78 + uRingDensity * 0.32));
+    float alpha = edgeFade * innerGap * ringStrata * uOpacity * (0.72 + uRingDensity * 0.46);
 
     vec3 color = uColor * (0.68 + radialField * 0.46) * (lit + scatter);
     gl_FragColor = vec4(color, clamp(alpha, 0.0, 0.9));
@@ -415,6 +459,9 @@ function createSurfaceLayer(
       uEmissive: { value: render.surface.emissiveIntensity },
       uSurfaceModel: { value: render.surfaceModel === 'gaseous' ? 1 : 0 },
       uFamilyCode: { value: familyCode(render.family) },
+      uBiomeContrast: { value: render.surface.biomeContrast },
+      uOceanSpecBoost: { value: render.surface.oceanSpecularBoost },
+      uMaterialModel: { value: materialModelCode(render.surface.materialModel) },
       uLightDirection: { value: PLANET_LIGHT_DIRECTION.clone() },
       uLightingBoost: { value: lightingBoost },
       uIblSkyColor: { value: new THREE.Color('#85adff') },
@@ -446,6 +493,7 @@ function createCloudLayer(
       uOpacity: { value: render.clouds.opacity },
       uBanding: { value: render.clouds.stormBanding },
       uSurfaceModel: { value: render.surfaceModel === 'gaseous' ? 1 : 0 },
+      uCloudType: { value: cloudTypeCode(render.clouds.type) },
       uSeed: { value: render.clouds.noiseSeed },
       uLightDirection: { value: PLANET_LIGHT_DIRECTION.clone() },
       uLightingBoost: { value: lightingBoost },
@@ -469,6 +517,7 @@ function createAtmosphereLayer(planetRadius: number, render: PlanetRenderInput['
       uColor: { value: toColor(render.atmosphere.color) },
       uDensity: { value: render.atmosphere.density },
       uRim: { value: render.atmosphere.rimStrength },
+      uNightGlow: { value: render.atmosphere.nightGlow },
       uLightDirection: { value: PLANET_LIGHT_DIRECTION.clone() },
     },
     transparent: true,
@@ -492,6 +541,7 @@ function createRingLayer(render: PlanetRenderInput['planet']['render'], segments
       uColor: { value: toColor(render.rings.color) },
       uOpacity: { value: render.rings.opacity },
       uSeed: { value: render.rings.noiseSeed },
+      uRingDensity: { value: render.rings.density },
       uLightDirection: { value: PLANET_LIGHT_DIRECTION.clone() },
     },
     transparent: true,
@@ -509,7 +559,7 @@ function createRingLayer(render: PlanetRenderInput['planet']['render'], segments
 
 function assertGeometryAttributes(mesh: THREE.Mesh): void {
   if (!(mesh.geometry instanceof THREE.BufferGeometry)) return;
-  const required = ['aHeight', 'aLandMask', 'aMountainMask', 'aCoastMask', 'aHumidityMask', 'aTemperatureMask'];
+  const required = ['aHeight', 'aLandMask', 'aMountainMask', 'aCoastMask', 'aHumidityMask', 'aTemperatureMask', 'aBiomeMask'];
   for (const key of required) {
     if (!mesh.geometry.getAttribute(key)) {
       tracePlanetPipeline({ stage: 'assert:missing-attribute', mesh: mesh.name, attribute: key });

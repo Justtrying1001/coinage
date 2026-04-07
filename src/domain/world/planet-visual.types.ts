@@ -114,6 +114,9 @@ export interface PlanetRenderProfile {
     noiseSeed: number;
     moistureSeed: number;
     thermalSeed: number;
+    biomeContrast: number;
+    oceanSpecularBoost: number;
+    materialModel: 'lush' | 'oceanic' | 'arid' | 'ice' | 'volcanic' | 'rocky' | 'toxic' | 'gaseous';
   };
   clouds: {
     enabled: boolean;
@@ -123,6 +126,7 @@ export interface PlanetRenderProfile {
     speed: number;
     stormBanding: number;
     noiseSeed: number;
+    type: 'none' | 'terrestrial' | 'ice' | 'dust' | 'toxic' | 'gaseous';
   };
   atmosphere: {
     enabled: boolean;
@@ -130,6 +134,7 @@ export interface PlanetRenderProfile {
     density: number;
     thickness: number;
     rimStrength: number;
+    nightGlow: number;
   };
   rings: {
     enabled: boolean;
@@ -139,6 +144,7 @@ export interface PlanetRenderProfile {
     tilt: number;
     opacity: number;
     noiseSeed: number;
+    density: number;
   };
   debug: {
     paletteId: string;
