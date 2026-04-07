@@ -2,9 +2,7 @@ import * as THREE from 'three';
 
 import { createPlanetViewProfile } from '@/domain/world/generate-planet-visual-profile';
 import type { PlanetRenderInput, PlanetRenderInstance } from './types';
-import { buildDisplacedSphereGeometry } from './build-displaced-sphere';
-
-const OCEAN_FAMILIES: string[] = ['terrestrial-lush', 'oceanic', 'toxic-alien'];
+import { buildDisplacedSphereGeometry, OCEAN_FAMILIES } from './build-displaced-sphere';
 
 function toColor(value: [number, number, number]): THREE.Color {
   return new THREE.Color(value[0], value[1], value[2]);
@@ -138,15 +136,12 @@ const SURFACE_FRAGMENT_SHADER = `
     float ndl = max(dot(normal, lightDir), 0.0);
     float wrappedDiffuse = ndl * 0.74 + 0.26;
 
-    vec3 baseLand = mix(uColorDeep, uColorMid, sat(vHeight * 1.2));
-    baseLand = mix(baseLand, uColorHigh, sat(vMountainMask * 0.75 + vTemperatureMask * 0.2));
-    baseLand = mix(baseLand, uAccentColor, vThermalMask * 0.72);
-    baseLand *= mix(0.88, 1.1, vHumidityMask);
-    baseLand *= mix(1.0, 0.78, vCraterMask * 0.85);
+    vec3 baseLand = mix(uColorDeep, uColorMid, sat(vHeight * 1.5));
+    baseLand = mix(baseLand, uColorHigh, sat(vMountainMask));
+    baseLand = mix(baseLand, uAccentColor, vThermalMask * 0.5);
 
     vec3 waterColor = mix(uOceanColor * 1.2, uOceanColor * 0.44, vOceanDepth);
-    vec3 sandColor = uAccentColor * 1.05;
-    vec3 coastColor = mix(sandColor, baseLand, smoothstep(0.3, 0.8, vCoastMask));
+    vec3 coastColor = mix(uAccentColor, baseLand, smoothstep(0.3, 0.8, vCoastMask));
 
     vec3 solidAlbedo = mix(waterColor, baseLand, vLandMask);
     solidAlbedo = mix(solidAlbedo, coastColor, vCoastMask);
@@ -158,26 +153,10 @@ const SURFACE_FRAGMENT_SHADER = `
 
     vec3 albedo = mix(solidAlbedo, gaseousAlbedo, sat(uSurfaceModel));
 
-    if (uFamilyCode < 0.5) {
-      // terrestrial-lush : rien
-    } else if (uFamilyCode < 1.5) {
-      // oceanic : rien
-    } else if (uFamilyCode < 2.5) {
-      // desert-arid : warm shift
-      albedo *= vec3(1.04, 0.98, 0.92);
-    } else if (uFamilyCode < 3.5) {
-      // ice-frozen : cool highlights
-      albedo = mix(albedo, vec3(0.88, 0.93, 0.98), vMountainMask * 0.25);
-    } else if (uFamilyCode < 4.5) {
-      // volcanic-infernal : darken
-      albedo *= mix(vec3(1.0), vec3(0.85, 0.82, 0.8), 0.12);
-    } else if (uFamilyCode < 5.5) {
-      // barren-rocky : rien
-    } else if (uFamilyCode < 6.5) {
-      // toxic-alien : accent boost
-      albedo = mix(albedo, uAccentColor, vThermalMask * 0.10);
-    } else {
-      // gas-giant & ringed-giant : rien
+    if (uFamilyCode > 1.5 && uFamilyCode < 2.5) {
+      albedo *= vec3(1.03, 0.98, 0.93);
+    } else if (uFamilyCode > 2.5 && uFamilyCode < 3.5) {
+      albedo = mix(albedo, vec3(0.9, 0.94, 0.98), vMountainMask * 0.2);
     }
 
     vec3 halfVec = normalize(lightDir + viewDir);
@@ -189,7 +168,7 @@ const SURFACE_FRAGMENT_SHADER = `
 
     float specPow = mix(44.0, 104.0, 1.0 - roughness);
     float spec = pow(max(dot(normal, halfVec), 0.0), specPow) * (0.1 + uSpecular * 0.9);
-    spec *= mix(1.0, 0.15, sat(uSurfaceModel));
+    spec *= mix(1.0, 0.12, sat(uSurfaceModel));
     float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 4.0);
 
     float up = clamp(normal.y * 0.5 + 0.5, 0.0, 1.0);
@@ -202,16 +181,12 @@ const SURFACE_FRAGMENT_SHADER = `
     color += iblDiffuse * (spec + fresnel * 0.28) * uIblIntensity;
     color += uAccentColor * (uEmissive * (vThermalMask * 0.9 + vBandMask * 0.2));
 
-    float cavityAO = 1.0;
-    cavityAO -= vOceanDepth * 0.25;
-    cavityAO -= vErosionMask * 0.12;
-    cavityAO += vMountainMask * 0.08;
-    cavityAO -= (1.0 - vLandMask) * 0.15;
-    cavityAO = clamp(cavityAO, 0.55, 1.12);
+    float ao = 1.0 - vOceanDepth * 0.2 - vErosionMask * 0.08 + vMountainMask * 0.06;
+    ao = clamp(ao, 0.6, 1.1);
+    color *= ao;
 
-    color *= cavityAO;
-    float rimLight = pow(1.0 - max(dot(normal, viewDir), 0.0), 3.0);
-    color += vec3(0.06, 0.10, 0.16) * rimLight * 0.5;
+    float rim = pow(1.0 - max(dot(normal, viewDir), 0.0), 3.0);
+    color += vec3(0.05, 0.08, 0.14) * rim * 0.4;
 
     color *= uLightingBoost;
     gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
@@ -237,16 +212,15 @@ const OCEAN_FRAGMENT_SHADER = `
     float ndl = max(dot(normal, lightDir), 0.0);
     float wrapped = ndl * 0.7 + 0.3;
 
-    float depthFactor = abs(vUnitPos.y) * 0.3;
-    vec3 oceanColor = mix(uOceanColor, uOceanDeepColor, depthFactor);
+    float depthVar = abs(vUnitPos.y) * 0.25;
+    vec3 color = mix(uOceanColor, uOceanDeepColor, depthVar);
 
     vec3 halfVec = normalize(lightDir + viewDir);
-    float spec = pow(max(dot(normal, halfVec), 0.0), 64.0) * uSpecular;
-    float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 4.0);
+    float spec = pow(max(dot(normal, halfVec), 0.0), 80.0) * uSpecular * 0.5;
 
-    vec3 color = oceanColor * wrapped;
-    color += vec3(1.0) * spec * 0.5;
-    color += oceanColor * fresnel * 0.12;
+    float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 4.0) * 0.1;
+
+    color = color * wrapped + vec3(1.0) * spec + uOceanColor * fresnel;
     color *= uLightingBoost;
 
     gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
@@ -277,7 +251,7 @@ const CLOUD_FRAGMENT_SHADER = `
     vec3 f = fract(x);
     f = f * f * (3.0 - 2.0 * f);
 
-    float n000 = hash(i + vec3(0.0));
+    float n000 = hash(i);
     float n100 = hash(i + vec3(1.0, 0.0, 0.0));
     float n010 = hash(i + vec3(0.0, 1.0, 0.0));
     float n110 = hash(i + vec3(1.0, 1.0, 0.0));
@@ -286,24 +260,21 @@ const CLOUD_FRAGMENT_SHADER = `
     float n011 = hash(i + vec3(0.0, 1.0, 1.0));
     float n111 = hash(i + vec3(1.0));
 
-    float nx00 = mix(n000, n100, f.x);
-    float nx10 = mix(n010, n110, f.x);
-    float nx01 = mix(n001, n101, f.x);
-    float nx11 = mix(n011, n111, f.x);
-    float nxy0 = mix(nx00, nx10, f.y);
-    float nxy1 = mix(nx01, nx11, f.y);
-
-    return mix(nxy0, nxy1, f.z);
+    return mix(
+      mix(mix(n000, n100, f.x), mix(n010, n110, f.x), f.y),
+      mix(mix(n001, n101, f.x), mix(n011, n111, f.x), f.y),
+      f.z
+    );
   }
 
   float fbm(vec3 p) {
     float value = 0.0;
-    float amp = 0.56;
+    float amp = 0.5;
     float freq = 1.0;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 3; i++) {
       value += noise(p * freq) * amp;
-      freq *= 2.06;
-      amp *= 0.52;
+      freq *= 2.0;
+      amp *= 0.5;
     }
     return value;
   }
@@ -313,17 +284,18 @@ const CLOUD_FRAGMENT_SHADER = `
     vec3 lightDir = normalize(uLightDirection);
     vec3 seedVec = vec3(uSeed * 0.00000017, uSeed * 0.00000023, uSeed * 0.00000029);
 
-    float macro = fbm((vUnitPos + seedVec) * mix(7.0, 4.4, uSurfaceModel));
-    float detail = fbm((vUnitPos + seedVec * 2.3) * mix(16.0, 9.8, uSurfaceModel));
-    float jets = sin((vUnitPos.y + uSeed * 0.00000011) * (16.0 + uBanding * 20.0)) * 0.5 + 0.5;
-    float field = mix(macro * 0.72 + detail * 0.28, jets * 0.55 + detail * 0.45, uSurfaceModel);
+    float macro = fbm((vUnitPos + seedVec) * mix(4.0, 3.0, uSurfaceModel));
+    float detail = fbm((vUnitPos + seedVec * 2.3) * mix(8.0, 5.0, uSurfaceModel));
 
-    float threshold = 1.02 - uCoverage;
-    float mask = smoothstep(threshold - 0.08, threshold + 0.06, field);
+    float jets = sin((vUnitPos.y + uSeed * 0.00000011) * (12.0 + uBanding * 16.0)) * 0.5 + 0.5;
+    float field = mix(macro * 0.75 + detail * 0.25, jets * 0.5 + detail * 0.5, uSurfaceModel);
+
+    float threshold = 1.0 - uCoverage;
+    float mask = smoothstep(threshold - 0.15, threshold + 0.1, field);
 
     float ndl = max(dot(normal, lightDir), 0.0);
-    float wrapped = ndl * 0.56 + 0.44;
-    float alpha = clamp(mask * uOpacity * (0.66 + detail * 0.32), 0.0, 0.95);
+    float wrapped = ndl * 0.5 + 0.5;
+    float alpha = clamp(mask * uOpacity * 0.7, 0.0, 0.75);
 
     gl_FragColor = vec4(uCloudColor * wrapped * uLightingBoost, alpha);
   }
@@ -408,12 +380,12 @@ function createSurfaceLayer(
 ): THREE.Mesh {
   const geometry = buildDisplacedSphereGeometry({
     radius: planetRadius,
-    segments: highQuality ? segments : Math.max(32, Math.floor(segments * 0.7)),
+    segments: highQuality ? segments : Math.max(36, Math.floor(segments * 0.75)),
     seed: render.surface.noiseSeed,
     moistureSeed: render.surface.moistureSeed,
     thermalSeed: render.surface.thermalSeed,
     oceanLevel: render.surface.oceanLevel,
-    reliefAmplitude: highQuality ? render.surface.reliefAmplitude : render.surface.reliefAmplitude * 0.8,
+    reliefAmplitude: highQuality ? render.surface.reliefAmplitude : render.surface.reliefAmplitude * 0.85,
     bandingStrength: render.surface.bandingStrength,
     family: render.family,
     surfaceModel: render.surfaceModel,
@@ -492,12 +464,10 @@ function createOceanLayer(
     uniforms: {
       uOceanColor: { value: toColor(render.surface.oceanColor) },
       uOceanDeepColor: { value: toColor(render.surface.colorDeep) },
-      uSpecular: { value: Math.max(render.surface.specularStrength, 0.35) },
+      uSpecular: { value: Math.max(render.surface.specularStrength, 0.3) },
       uLightDirection: { value: new THREE.Vector3(0.52, 0.31, 0.79).normalize() },
       uLightingBoost: { value: lightingBoost },
     },
-    transparent: false,
-    depthWrite: true,
   });
 
   const mesh = new THREE.Mesh(geometry, material);
