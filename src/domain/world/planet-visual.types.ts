@@ -1,5 +1,15 @@
-export type PlanetFamily = 'terrestrial' | 'oceanic' | 'icy' | 'volcanic' | 'barren' | 'toxic' | 'gas-dwarf';
-export type PlanetBiomeArchetype = 'lush' | 'desert' | 'rocky' | 'ice' | 'molten' | 'toxic' | 'storm';
+export type PlanetFamily =
+  | 'terrestrial-lush'
+  | 'oceanic'
+  | 'desert-arid'
+  | 'ice-frozen'
+  | 'volcanic-infernal'
+  | 'barren-rocky'
+  | 'toxic-alien'
+  | 'gas-giant'
+  | 'ringed-giant';
+
+export type PlanetSurfaceModel = 'solid' | 'frozen' | 'volatile' | 'gaseous';
 export type PlanetAtmosphereClass = 'none' | 'thin' | 'standard' | 'dense' | 'reactive';
 export type PlanetReliefClass = 'flat' | 'gentle' | 'rugged' | 'extreme';
 export type PlanetRoughnessClass = 'polished' | 'balanced' | 'coarse';
@@ -17,7 +27,7 @@ export interface PlanetIdentity {
 
 export interface PlanetClassification {
   family: PlanetFamily;
-  biomeArchetype: PlanetBiomeArchetype;
+  surfaceModel: PlanetSurfaceModel;
   atmosphereClass: PlanetAtmosphereClass;
   roughnessClass: PlanetRoughnessClass;
   reliefClass: PlanetReliefClass;
@@ -28,9 +38,11 @@ export interface PlanetClassification {
 
 export interface PlanetVisualDNA {
   paletteId: string;
-  baseColor: [number, number, number];
-  secondaryColor: [number, number, number];
+  colorDeep: [number, number, number];
+  colorMid: [number, number, number];
+  colorHigh: [number, number, number];
   oceanColor: [number, number, number];
+  accentColor: [number, number, number];
   cloudColor: [number, number, number];
   atmosphereTint: [number, number, number];
   oceanCoverage: number;
@@ -43,6 +55,8 @@ export interface PlanetVisualDNA {
   bandingStrength: number;
   noiseSeeds: {
     surface: number;
+    moisture: number;
+    thermal: number;
     clouds: number;
     bands: number;
     rings: number;
@@ -83,15 +97,23 @@ export interface PlanetRenderProfile {
   planetId: string;
   renderRadius: number;
   scale: PlanetScaleProfile;
+  family: PlanetFamily;
+  surfaceModel: PlanetSurfaceModel;
   surface: {
-    colorA: [number, number, number];
-    colorB: [number, number, number];
+    colorDeep: [number, number, number];
+    colorMid: [number, number, number];
+    colorHigh: [number, number, number];
     oceanColor: [number, number, number];
+    accentColor: [number, number, number];
     reliefAmplitude: number;
     roughness: number;
     specularStrength: number;
+    emissiveIntensity: number;
     bandingStrength: number;
+    oceanLevel: number;
     noiseSeed: number;
+    moistureSeed: number;
+    thermalSeed: number;
   };
   clouds: {
     enabled: boolean;
@@ -99,6 +121,7 @@ export interface PlanetRenderProfile {
     coverage: number;
     opacity: number;
     speed: number;
+    stormBanding: number;
     noiseSeed: number;
   };
   atmosphere: {
@@ -110,6 +133,7 @@ export interface PlanetRenderProfile {
   };
   rings: {
     enabled: boolean;
+    color: [number, number, number];
     innerRadius: number;
     outerRadius: number;
     tilt: number;
@@ -128,6 +152,7 @@ export interface PlanetViewProfile {
   meshSegments: number;
   cloudSegments: number;
   atmosphereSegments: number;
+  ringSegments: number;
   enableRings: boolean;
   lightingBoost: number;
 }

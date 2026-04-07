@@ -1,3 +1,5 @@
+import type { PlanetFamily, PlanetSurfaceModel } from '@/domain/world/planet-visual.types';
+
 export interface TerrainSample {
   height01: number;
   continentMask: number;
@@ -5,14 +7,37 @@ export interface TerrainSample {
   landMask: number;
   coastMask: number;
   oceanDepth: number;
+  humidityMask: number;
+  temperatureMask: number;
+  erosionMask: number;
+  craterMask: number;
+  thermalMask: number;
+  bandMask: number;
+}
+
+export interface TerrainInput {
+  px: number;
+  py: number;
+  pz: number;
+  seed: number;
+  moistureSeed: number;
+  thermalSeed: number;
+  oceanLevel: number;
+  bandingStrength: number;
+  family: PlanetFamily;
+  surfaceModel: PlanetSurfaceModel;
 }
 
 function fract(value: number): number {
   return value - Math.floor(value);
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
 function smoothstep(edge0: number, edge1: number, x: number): number {
-  const t = Math.max(0, Math.min(1, (x - edge0) / Math.max(1e-6, edge1 - edge0)));
+  const t = clamp((x - edge0) / Math.max(1e-6, edge1 - edge0), 0, 1);
   return t * t * (3 - 2 * t);
 }
 
@@ -21,7 +46,7 @@ function lerp(a: number, b: number, t: number): number {
 }
 
 function hash3(x: number, y: number, z: number, seed: number): number {
-  const h = Math.sin(x * 127.1 + y * 311.7 + z * 74.7 + seed * 0.0000013) * 43758.5453;
+  const h = Math.sin(x * 127.1 + y * 311.7 + z * 74.7 + seed * 0.0000017) * 43758.5453123;
   return fract(h);
 }
 
@@ -58,32 +83,23 @@ function noise3(x: number, y: number, z: number, seed: number): number {
   return lerp(nxy0, nxy1, uz);
 }
 
-function fbm(
-  x: number,
-  y: number,
-  z: number,
-  seed: number,
-  octaves: number,
-  lacunarity: number,
-  persistence: number,
-  startAmp = 0.5,
-): number {
+function fbm(x: number, y: number, z: number, seed: number, octaves = 5, lacunarity = 2.07, persistence = 0.5): number {
   let value = 0;
-  let amplitude = startAmp;
-  let frequency = 1;
+  let amp = 0.58;
+  let freq = 1;
 
   for (let i = 0; i < octaves; i += 1) {
-    value += noise3(x * frequency, y * frequency, z * frequency, seed) * amplitude;
-    frequency *= lacunarity;
-    amplitude *= persistence;
+    value += noise3(x * freq, y * freq, z * freq, seed) * amp;
+    freq *= lacunarity;
+    amp *= persistence;
   }
 
   return value;
 }
 
-function ridged(x: number, y: number, z: number, seed: number, octaves: number): number {
+function ridged(x: number, y: number, z: number, seed: number, octaves = 5): number {
   let total = 0;
-  let amp = 0.65;
+  let amp = 0.66;
   let freq = 1;
   let weight = 1;
 
@@ -92,36 +108,54 @@ function ridged(x: number, y: number, z: number, seed: number, octaves: number):
     let ridge = 1 - Math.abs(n * 2 - 1);
     ridge *= ridge;
     ridge *= weight;
-    weight = Math.max(0.15, Math.min(1, ridge * 1.8));
-
+    weight = clamp(ridge * 1.75, 0.1, 1);
     total += ridge * amp;
-    freq *= 2.08;
-    amp *= 0.55;
+    freq *= 2.03;
+    amp *= 0.53;
   }
 
   return total;
 }
 
-export function sampleTerrain(px: number, py: number, pz: number, seed: number, banding: number): TerrainSample {
-  const continentBase = fbm(px * 0.9, py * 0.9, pz * 0.9, seed + 11, 5, 2.01, 0.5, 0.72);
-  const continentWarp = fbm(px * 1.7, py * 1.7, pz * 1.7, seed + 19, 3, 2.2, 0.48, 0.34);
-  const continentField = continentBase + (continentWarp - 0.22) * 0.26;
-  const continentMask = smoothstep(0.36, 0.63, continentField);
+function craterField(x: number, y: number, z: number, seed: number): number {
+  const broad = noise3(x * 7.2, y * 7.2, z * 7.2, seed);
+  const detail = noise3(x * 16.0, y * 16.0, z * 16.0, seed + 81);
+  return smoothstep(0.74, 0.92, broad) * smoothstep(0.35, 0.72, detail);
+}
 
-  const seaLevel = 0.5 - banding * 0.05;
+function sampleSolid(input: TerrainInput): TerrainSample {
+  const { px, py, pz, seed, moistureSeed, thermalSeed, oceanLevel, family } = input;
+  const lat = Math.abs(py);
 
-  const foothills = fbm(px * 2.6, py * 2.6, pz * 2.6, seed + 31, 4, 2.05, 0.52, 0.38);
-  const mountainChains = ridged(px * 4.6, py * 4.6, pz * 4.6, seed + 67, 5) * smoothstep(0.45, 0.9, continentMask);
-  const alpineDetail = ridged(px * 10.4, py * 10.4, pz * 10.4, seed + 97, 3) * mountainChains * 0.42;
+  const continentBase = fbm(px * 0.92, py * 0.92, pz * 0.92, seed + 11, 5, 2.04, 0.52);
+  const continentWarp = fbm(px * 1.8, py * 1.8, pz * 1.8, seed + 27, 3, 2.18, 0.48);
+  const continentField = continentBase + (continentWarp - 0.5) * 0.34;
+  const continentMask = smoothstep(0.38, 0.63, continentField);
 
-  const landElevation = continentMask * 0.46 + foothills * 0.2 + mountainChains * 0.34 + alpineDetail * 0.08;
-  const abyss = fbm(px * 2.2, py * 2.2, pz * 2.2, seed + 131, 3, 2.2, 0.5, 0.28) * 0.14;
-  const height01 = Math.max(0, Math.min(1, landElevation + (continentMask - 0.5) * 0.1 - abyss));
+  const mountainChains = ridged(px * 4.7, py * 4.7, pz * 4.7, seed + 61, 5) * smoothstep(0.35, 0.9, continentMask);
+  const highFreq = ridged(px * 10.3, py * 10.3, pz * 10.3, seed + 89, 3) * 0.22;
+  const erosionField = fbm(px * 8.8, py * 8.8, pz * 8.8, seed + 117, 3, 2.15, 0.53);
 
-  const landMask = smoothstep(seaLevel - 0.02, seaLevel + 0.02, height01);
-  const coastMask = smoothstep(seaLevel - 0.016, seaLevel + 0.008, height01) - smoothstep(seaLevel + 0.008, seaLevel + 0.035, height01);
-  const mountainMask = smoothstep(seaLevel + 0.14, seaLevel + 0.32, height01) * smoothstep(0.45, 0.95, mountainChains);
-  const oceanDepth = 1 - smoothstep(seaLevel - 0.2, seaLevel + 0.01, height01);
+  const baseElevation = continentMask * 0.5 + mountainChains * 0.32 + highFreq;
+  const erosionMask = smoothstep(0.34, 0.71, erosionField);
+  const erodedElevation = baseElevation - erosionMask * 0.1;
+
+  const craterMask = family === 'barren-rocky' ? craterField(px, py, pz, seed + 333) : craterField(px, py, pz, seed + 333) * 0.18;
+  const thermalMask = family === 'volcanic-infernal' ? smoothstep(0.55, 0.86, fbm(px * 6.2, py * 6.2, pz * 6.2, thermalSeed, 4)) : 0;
+
+  const polarIce = smoothstep(0.64, 0.94, lat);
+  const humidityMask = smoothstep(0.28, 0.78, fbm(px * 2.3, py * 2.3, pz * 2.3, moistureSeed, 4));
+  const temperatureMask = clamp((1 - lat) * 0.7 + fbm(px * 1.6, py * 1.6, pz * 1.6, thermalSeed, 3) * 0.3, 0, 1);
+
+  let height01 = erodedElevation + (temperatureMask - 0.5) * 0.08 - craterMask * 0.12 + thermalMask * 0.1;
+  if (family === 'desert-arid') height01 += (1 - humidityMask) * 0.08;
+  if (family === 'ice-frozen') height01 -= polarIce * 0.06;
+  height01 = clamp(height01, 0, 1);
+
+  const landMask = smoothstep(oceanLevel - 0.015, oceanLevel + 0.015, height01);
+  const coastMask = smoothstep(oceanLevel - 0.02, oceanLevel + 0.01, height01) - smoothstep(oceanLevel + 0.01, oceanLevel + 0.04, height01);
+  const mountainMask = smoothstep(oceanLevel + 0.15, oceanLevel + 0.33, height01) * smoothstep(0.4, 0.94, mountainChains);
+  const oceanDepth = 1 - smoothstep(oceanLevel - 0.2, oceanLevel + 0.02, height01);
 
   return {
     height01,
@@ -130,5 +164,47 @@ export function sampleTerrain(px: number, py: number, pz: number, seed: number, 
     landMask,
     coastMask,
     oceanDepth,
+    humidityMask,
+    temperatureMask,
+    erosionMask,
+    craterMask,
+    thermalMask,
+    bandMask: 0,
   };
+}
+
+function sampleGaseous(input: TerrainInput): TerrainSample {
+  const { px, py, pz, seed, moistureSeed, thermalSeed, bandingStrength } = input;
+  const latitude = py * 0.5 + 0.5;
+
+  const jets = Math.sin((latitude + seed * 0.00000013) * (12 + bandingStrength * 34)) * 0.5 + 0.5;
+  const turbulence = fbm(px * 3.2, py * 3.2, pz * 3.2, seed + 19, 4, 2.2, 0.54);
+  const storms = smoothstep(0.62, 0.92, fbm(px * 8.3, py * 8.3, pz * 8.3, thermalSeed + 77, 3));
+  const humidityMask = smoothstep(0.22, 0.86, fbm(px * 4.4, py * 4.4, pz * 4.4, moistureSeed, 3));
+  const temperatureMask = smoothstep(0.18, 0.82, fbm(px * 2.1, py * 2.1, pz * 2.1, thermalSeed, 3));
+
+  const bandMask = clamp(jets * 0.62 + turbulence * 0.28 + storms * 0.2, 0, 1);
+  const height01 = clamp(0.5 + (turbulence - 0.5) * 0.08, 0.44, 0.56);
+
+  return {
+    height01,
+    continentMask: 0,
+    mountainMask: 0,
+    landMask: 0,
+    coastMask: 0,
+    oceanDepth: 0,
+    humidityMask,
+    temperatureMask,
+    erosionMask: turbulence,
+    craterMask: 0,
+    thermalMask: storms,
+    bandMask,
+  };
+}
+
+export function sampleTerrain(input: TerrainInput): TerrainSample {
+  if (input.surfaceModel === 'gaseous') {
+    return sampleGaseous(input);
+  }
+  return sampleSolid(input);
 }

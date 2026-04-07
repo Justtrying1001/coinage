@@ -1,13 +1,19 @@
 import * as THREE from 'three';
 
+import type { PlanetFamily, PlanetSurfaceModel } from '@/domain/world/planet-visual.types';
 import { sampleTerrain } from './terrain-noise';
 
 export interface DisplacedSphereInput {
   radius: number;
   segments: number;
   seed: number;
+  moistureSeed: number;
+  thermalSeed: number;
+  oceanLevel: number;
   reliefAmplitude: number;
   bandingStrength: number;
+  family: PlanetFamily;
+  surfaceModel: PlanetSurfaceModel;
 }
 
 export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE.SphereGeometry {
@@ -20,8 +26,14 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
   const coastMask = new Float32Array(position.count);
   const oceanDepth = new Float32Array(position.count);
   const continentMask = new Float32Array(position.count);
+  const humidityMask = new Float32Array(position.count);
+  const temperatureMask = new Float32Array(position.count);
+  const erosionMask = new Float32Array(position.count);
+  const craterMask = new Float32Array(position.count);
+  const thermalMask = new Float32Array(position.count);
+  const bandMask = new Float32Array(position.count);
 
-  const displacementScale = input.radius * 0.38;
+  const displacementScale = input.radius * (input.surfaceModel === 'gaseous' ? 0.06 : 0.34);
 
   for (let i = 0; i < position.count; i += 1) {
     const x = position.getX(i);
@@ -33,7 +45,19 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
     const py = y * invLen;
     const pz = z * invLen;
 
-    const terrain = sampleTerrain(px, py, pz, input.seed, input.bandingStrength);
+    const terrain = sampleTerrain({
+      px,
+      py,
+      pz,
+      seed: input.seed,
+      moistureSeed: input.moistureSeed,
+      thermalSeed: input.thermalSeed,
+      oceanLevel: input.oceanLevel,
+      bandingStrength: input.bandingStrength,
+      family: input.family,
+      surfaceModel: input.surfaceModel,
+    });
+
     const signed = (terrain.height01 - 0.5) * 2;
     const displacedRadius = input.radius + signed * input.reliefAmplitude * displacementScale;
 
@@ -45,6 +69,12 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
     coastMask[i] = terrain.coastMask;
     oceanDepth[i] = terrain.oceanDepth;
     continentMask[i] = terrain.continentMask;
+    humidityMask[i] = terrain.humidityMask;
+    temperatureMask[i] = terrain.temperatureMask;
+    erosionMask[i] = terrain.erosionMask;
+    craterMask[i] = terrain.craterMask;
+    thermalMask[i] = terrain.thermalMask;
+    bandMask[i] = terrain.bandMask;
   }
 
   position.needsUpdate = true;
@@ -56,6 +86,12 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
   geometry.setAttribute('aCoastMask', new THREE.BufferAttribute(coastMask, 1));
   geometry.setAttribute('aOceanDepth', new THREE.BufferAttribute(oceanDepth, 1));
   geometry.setAttribute('aContinentMask', new THREE.BufferAttribute(continentMask, 1));
+  geometry.setAttribute('aHumidityMask', new THREE.BufferAttribute(humidityMask, 1));
+  geometry.setAttribute('aTemperatureMask', new THREE.BufferAttribute(temperatureMask, 1));
+  geometry.setAttribute('aErosionMask', new THREE.BufferAttribute(erosionMask, 1));
+  geometry.setAttribute('aCraterMask', new THREE.BufferAttribute(craterMask, 1));
+  geometry.setAttribute('aThermalMask', new THREE.BufferAttribute(thermalMask, 1));
+  geometry.setAttribute('aBandMask', new THREE.BufferAttribute(bandMask, 1));
 
   return geometry;
 }
