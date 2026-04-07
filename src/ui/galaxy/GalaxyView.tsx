@@ -80,10 +80,10 @@ const KEYBOARD_DECELERATION = 13;
 const CAMERA_FOLLOW_DAMPING = 16;
 const DRAG_PAN_SENSITIVITY = 1.18;
 const DRAG_DIRECT_RESPONSE = 0.58;
-const PLANET_BATCH_SIZE = 14;
+const PLANET_BATCH_SIZE = 10;
 const INITIAL_BATCH_CAP = 72;
 const PERF_LOG_PREFIX = '[GalaxyPerf]';
-const INSTANCED_RADIUS_THRESHOLD = 3.35;
+const INSTANCED_RADIUS_THRESHOLD = 4.4;
 
 function createDefaultCounters(totalPlanets = 0): GalaxyPerfCounters {
   return {
@@ -480,9 +480,9 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     renderer.domElement.addEventListener('dblclick', onDoubleClick);
     renderer.domElement.addEventListener('contextmenu', onContextMenu);
 
-    const workerConcurrency = Math.min(3, Math.max(2, Math.floor((navigator.hardwareConcurrency || 4) / 4)));
+    const workerConcurrency = Math.min(2, Math.max(1, Math.floor((navigator.hardwareConcurrency || 4) / 5)));
     
-    const MAX_PENDING_PLANET_JOBS = workerConcurrency * 4;
+    const MAX_PENDING_PLANET_JOBS = workerConcurrency * 3;
     let queueIndex = 0;
     let completedPlanetCount = 0;
     let pendingPlanetJobs = 0;

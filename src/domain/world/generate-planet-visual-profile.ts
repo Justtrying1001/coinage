@@ -248,9 +248,9 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
     palettes: [
       {
         id: 'infernal-basalts',
-        deep: [0.04, 0.04, 0.05],
-        mid: [0.12, 0.08, 0.06],
-        high: [0.28, 0.15, 0.08],
+        deep: [0.08, 0.06, 0.06],
+        mid: [0.20, 0.12, 0.08],
+        high: [0.36, 0.22, 0.12],
         ocean: [0.06, 0.04, 0.03],
         accent: [0.95, 0.36, 0.06],
         cloud: [0.40, 0.32, 0.28],
@@ -259,9 +259,9 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
       },
       {
         id: 'infernal-sulfur',
-        deep: [0.05, 0.05, 0.04],
-        mid: [0.15, 0.11, 0.05],
-        high: [0.32, 0.19, 0.07],
+        deep: [0.09, 0.08, 0.05],
+        mid: [0.22, 0.16, 0.08],
+        high: [0.40, 0.24, 0.10],
         ocean: [0.05, 0.04, 0.03],
         accent: [0.97, 0.46, 0.08],
         cloud: [0.46, 0.36, 0.26],
@@ -290,9 +290,9 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
     palettes: [
       {
         id: 'rocky-lunar',
-        deep: [0.2, 0.2, 0.22],
-        mid: [0.36, 0.35, 0.36],
-        high: [0.58, 0.56, 0.53],
+        deep: [0.22, 0.20, 0.18],
+        mid: [0.38, 0.34, 0.30],
+        high: [0.60, 0.53, 0.46],
         ocean: [0.16, 0.16, 0.17],
         accent: [0.74, 0.7, 0.64],
         cloud: [0.75, 0.75, 0.74],
@@ -301,9 +301,9 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
       },
       {
         id: 'rocky-basaltic',
-        deep: [0.16, 0.15, 0.16],
-        mid: [0.3, 0.29, 0.31],
-        high: [0.5, 0.48, 0.46],
+        deep: [0.15, 0.16, 0.18],
+        mid: [0.28, 0.30, 0.34],
+        high: [0.46, 0.50, 0.54],
         ocean: [0.14, 0.14, 0.15],
         accent: [0.68, 0.66, 0.62],
         cloud: [0.72, 0.72, 0.72],
