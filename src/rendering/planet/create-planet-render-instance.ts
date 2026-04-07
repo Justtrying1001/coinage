@@ -12,6 +12,9 @@ const SURFACE_VERTEX_SHADER = `
   attribute float aHeight;
   attribute float aLandMask;
   attribute float aMountainMask;
+  attribute float aCoastMask;
+  attribute float aOceanDepth;
+  attribute float aContinentMask;
 
   varying vec3 vWorldPos;
   varying vec3 vWorldNormal;
@@ -19,6 +22,9 @@ const SURFACE_VERTEX_SHADER = `
   varying float vHeight;
   varying float vLandMask;
   varying float vMountainMask;
+  varying float vCoastMask;
+  varying float vOceanDepth;
+  varying float vContinentMask;
 
   void main() {
     vec4 worldPos = modelMatrix * vec4(position, 1.0);
@@ -28,6 +34,9 @@ const SURFACE_VERTEX_SHADER = `
     vHeight = aHeight;
     vLandMask = aLandMask;
     vMountainMask = aMountainMask;
+    vCoastMask = aCoastMask;
+    vOceanDepth = aOceanDepth;
+    vContinentMask = aContinentMask;
 
     gl_Position = projectionMatrix * viewMatrix * worldPos;
   }
@@ -54,6 +63,9 @@ const SURFACE_FRAGMENT_SHADER = `
   varying float vHeight;
   varying float vLandMask;
   varying float vMountainMask;
+  varying float vCoastMask;
+  varying float vOceanDepth;
+  varying float vContinentMask;
 
   uniform vec3 uColorA;
   uniform vec3 uColorB;
@@ -63,6 +75,10 @@ const SURFACE_FRAGMENT_SHADER = `
   uniform vec3 uLightDirection;
   uniform float uLightingBoost;
   uniform float uSeed;
+  uniform vec3 uIblSkyColor;
+  uniform vec3 uIblGroundColor;
+  uniform vec3 uIblHorizonColor;
+  uniform float uIblIntensity;
 
   float hash(vec3 p) {
     p = fract(p * 0.3183099 + vec3(0.11, 0.17, 0.13));
@@ -99,36 +115,56 @@ const SURFACE_FRAGMENT_SHADER = `
     vec3 normal = normalize(vWorldNormal);
     vec3 lightDir = normalize(uLightDirection);
     vec3 viewDir = normalize(cameraPosition - vWorldPos);
+    vec3 reflectDir = reflect(-viewDir, normal);
 
     float lat = abs(vUnitPos.y);
-    float biome = noise(vUnitPos * 5.3 + vec3(uSeed * 0.000001));
-    float humidity = noise(vUnitPos * 2.7 + vec3(uSeed * 0.000002));
+    float biome = noise(vUnitPos * 4.3 + vec3(uSeed * 0.000001));
+    float humidity = noise(vUnitPos * 2.1 + vec3(uSeed * 0.000002));
 
-    vec3 lowLand = mix(uColorA * 0.84, uColorA * 1.14, humidity);
-    vec3 midLand = mix(lowLand, uColorB, biome);
-    vec3 mountainColor = mix(midLand, uColorB * 1.22, vMountainMask);
-    vec3 landColor = mountainColor * mix(vec3(1.0), vec3(0.86, 0.92, 1.04), smoothstep(0.62, 0.92, lat));
+    vec3 lowLand = mix(uColorA * 0.76, uColorA * 1.16, humidity);
+    vec3 continentColor = mix(lowLand, uColorB, biome * (0.55 + vContinentMask * 0.45));
+    vec3 mountainColor = mix(continentColor, uColorB * 1.35, vMountainMask);
+    vec3 polarTint = mix(vec3(1.0), vec3(0.84, 0.92, 1.08), smoothstep(0.62, 0.94, lat));
+    vec3 landColor = mountainColor * polarTint;
 
-    float coastMask = smoothstep(0.48, 0.51, vHeight) - smoothstep(0.51, 0.56, vHeight);
-    vec3 coastColor = mix(uOceanColor, landColor, 0.5) * 1.1;
+    vec3 deepOcean = uOceanColor * 0.46;
+    vec3 shallowOcean = uOceanColor * 1.22;
+    vec3 waterColor = mix(shallowOcean, deepOcean, vOceanDepth);
+    vec3 coastColor = mix(waterColor, landColor, 0.42) * 1.15;
 
-    vec3 albedo = mix(uOceanColor, landColor, vLandMask);
-    albedo = mix(albedo, coastColor, coastMask);
+    vec3 albedo = mix(waterColor, landColor, vLandMask);
+    albedo = mix(albedo, coastColor, vCoastMask);
 
     float ndl = max(dot(normal, lightDir), 0.0);
-    float wrappedDiffuse = ndl * 0.78 + 0.22;
+    float wrappedDiffuse = ndl * 0.76 + 0.24;
 
     vec3 halfVec = normalize(lightDir + viewDir);
-    float oceanSpec = pow(max(dot(normal, halfVec), 0.0), 125.0) * (0.2 + uSpecular * 0.9);
-    float landSpec = pow(max(dot(normal, halfVec), 0.0), 30.0) * (0.05 + (1.0 - uRoughness) * 0.25);
+    float oceanRoughness = mix(0.05, 0.22, vOceanDepth);
+    float landRoughness = clamp(uRoughness + vMountainMask * 0.25, 0.28, 0.98);
+    float roughness = mix(oceanRoughness, landRoughness, vLandMask);
+
+    float oceanSpec = pow(max(dot(normal, halfVec), 0.0), mix(260.0, 110.0, vOceanDepth)) * (0.35 + uSpecular * 1.1);
+    float landSpec = pow(max(dot(normal, halfVec), 0.0), mix(36.0, 14.0, roughness)) * (0.08 + (1.0 - roughness) * 0.24);
     float spec = mix(oceanSpec, landSpec, vLandMask);
 
     float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 4.0);
-    float ao = clamp(0.82 + (vHeight - 0.45) * 0.28, 0.58, 1.1);
 
-    vec3 color = albedo * wrappedDiffuse * ao + vec3(spec) + albedo * fresnel * 0.08;
+    float up = clamp(normal.y * 0.5 + 0.5, 0.0, 1.0);
+    float horizon = 1.0 - abs(normal.y);
+    vec3 iblDiffuse = mix(uIblGroundColor, uIblSkyColor, up);
+    iblDiffuse = mix(iblDiffuse, uIblHorizonColor, horizon * 0.6);
+
+    float reflUp = clamp(reflectDir.y * 0.5 + 0.5, 0.0, 1.0);
+    vec3 iblSpec = mix(uIblGroundColor * 0.65, uIblSkyColor * 1.2, reflUp);
+
+    float ao = clamp(0.86 + (vHeight - 0.5) * 0.24, 0.62, 1.12);
+    vec3 diffuse = albedo * wrappedDiffuse * ao;
+
+    vec3 color = diffuse;
+    color += iblDiffuse * albedo * (0.2 + (1.0 - roughness) * 0.2) * uIblIntensity;
+    color += iblSpec * (spec + fresnel * (0.1 + (1.0 - roughness) * 0.3)) * uIblIntensity;
+
     color *= uLightingBoost;
-
     gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
   }
 `;
@@ -318,6 +354,10 @@ function createSurfaceLayer(
       uSeed: { value: render.surface.noiseSeed },
       uLightDirection: { value: new THREE.Vector3(0.52, 0.31, 0.79).normalize() },
       uLightingBoost: { value: lightingBoost },
+      uIblSkyColor: { value: new THREE.Color('#7ea6ff') },
+      uIblGroundColor: { value: new THREE.Color('#1d212f') },
+      uIblHorizonColor: { value: new THREE.Color('#89a2d4') },
+      uIblIntensity: { value: 0.92 },
     },
   });
 

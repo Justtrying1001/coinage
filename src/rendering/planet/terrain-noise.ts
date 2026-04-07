@@ -1,7 +1,10 @@
 export interface TerrainSample {
   height01: number;
-  landMask: number;
+  continentMask: number;
   mountainMask: number;
+  landMask: number;
+  coastMask: number;
+  oceanDepth: number;
 }
 
 function fract(value: number): number {
@@ -55,9 +58,18 @@ function noise3(x: number, y: number, z: number, seed: number): number {
   return lerp(nxy0, nxy1, uz);
 }
 
-function fbm(x: number, y: number, z: number, seed: number, octaves: number, lacunarity: number, persistence: number): number {
+function fbm(
+  x: number,
+  y: number,
+  z: number,
+  seed: number,
+  octaves: number,
+  lacunarity: number,
+  persistence: number,
+  startAmp = 0.5,
+): number {
   let value = 0;
-  let amplitude = 0.56;
+  let amplitude = startAmp;
   let frequency = 1;
 
   for (let i = 0; i < octaves; i += 1) {
@@ -69,16 +81,21 @@ function fbm(x: number, y: number, z: number, seed: number, octaves: number, lac
   return value;
 }
 
-function ridged(x: number, y: number, z: number, seed: number): number {
+function ridged(x: number, y: number, z: number, seed: number, octaves: number): number {
   let total = 0;
-  let amp = 0.62;
+  let amp = 0.65;
   let freq = 1;
+  let weight = 1;
 
-  for (let i = 0; i < 4; i += 1) {
+  for (let i = 0; i < octaves; i += 1) {
     const n = noise3(x * freq, y * freq, z * freq, seed);
-    const ridge = 1 - Math.abs(n * 2 - 1);
-    total += ridge * ridge * amp;
-    freq *= 2.1;
+    let ridge = 1 - Math.abs(n * 2 - 1);
+    ridge *= ridge;
+    ridge *= weight;
+    weight = Math.max(0.15, Math.min(1, ridge * 1.8));
+
+    total += ridge * amp;
+    freq *= 2.08;
     amp *= 0.55;
   }
 
@@ -86,17 +103,32 @@ function ridged(x: number, y: number, z: number, seed: number): number {
 }
 
 export function sampleTerrain(px: number, py: number, pz: number, seed: number, banding: number): TerrainSample {
-  const continents = smoothstep(0.32, 0.68, fbm(px * 1.2, py * 1.2, pz * 1.2, seed + 13, 6, 2.03, 0.52));
-  const erosion = fbm(px * 2.4, py * 2.4, pz * 2.4, seed + 37, 5, 2.1, 0.5);
-  const mountains = ridged(px * 4.8, py * 4.8, pz * 4.8, seed + 73) * smoothstep(0.44, 0.78, continents);
-  const detail = fbm(px * 9.2, py * 9.2, pz * 9.2, seed + 131, 3, 2.4, 0.5) * 0.08;
+  const continentBase = fbm(px * 0.9, py * 0.9, pz * 0.9, seed + 11, 5, 2.01, 0.5, 0.72);
+  const continentWarp = fbm(px * 1.7, py * 1.7, pz * 1.7, seed + 19, 3, 2.2, 0.48, 0.34);
+  const continentField = continentBase + (continentWarp - 0.22) * 0.26;
+  const continentMask = smoothstep(0.36, 0.63, continentField);
 
-  const height01 = continents * 0.58 + erosion * 0.23 + mountains * 0.42 + detail;
-  const oceanThreshold = 0.5 - banding * 0.06;
+  const seaLevel = 0.5 - banding * 0.05;
+
+  const foothills = fbm(px * 2.6, py * 2.6, pz * 2.6, seed + 31, 4, 2.05, 0.52, 0.38);
+  const mountainChains = ridged(px * 4.6, py * 4.6, pz * 4.6, seed + 67, 5) * smoothstep(0.45, 0.9, continentMask);
+  const alpineDetail = ridged(px * 10.4, py * 10.4, pz * 10.4, seed + 97, 3) * mountainChains * 0.42;
+
+  const landElevation = continentMask * 0.46 + foothills * 0.2 + mountainChains * 0.34 + alpineDetail * 0.08;
+  const abyss = fbm(px * 2.2, py * 2.2, pz * 2.2, seed + 131, 3, 2.2, 0.5, 0.28) * 0.14;
+  const height01 = Math.max(0, Math.min(1, landElevation + (continentMask - 0.5) * 0.1 - abyss));
+
+  const landMask = smoothstep(seaLevel - 0.02, seaLevel + 0.02, height01);
+  const coastMask = smoothstep(seaLevel - 0.016, seaLevel + 0.008, height01) - smoothstep(seaLevel + 0.008, seaLevel + 0.035, height01);
+  const mountainMask = smoothstep(seaLevel + 0.14, seaLevel + 0.32, height01) * smoothstep(0.45, 0.95, mountainChains);
+  const oceanDepth = 1 - smoothstep(seaLevel - 0.2, seaLevel + 0.01, height01);
 
   return {
     height01,
-    landMask: smoothstep(oceanThreshold - 0.03, oceanThreshold + 0.02, height01),
-    mountainMask: smoothstep(0.64, 0.87, height01),
+    continentMask,
+    mountainMask,
+    landMask,
+    coastMask,
+    oceanDepth,
   };
 }

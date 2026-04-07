@@ -17,8 +17,11 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
   const heights = new Float32Array(position.count);
   const landMask = new Float32Array(position.count);
   const mountainMask = new Float32Array(position.count);
+  const coastMask = new Float32Array(position.count);
+  const oceanDepth = new Float32Array(position.count);
+  const continentMask = new Float32Array(position.count);
 
-  const displacementScale = input.radius * 0.36;
+  const displacementScale = input.radius * 0.38;
 
   for (let i = 0; i < position.count; i += 1) {
     const x = position.getX(i);
@@ -35,9 +38,13 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
     const displacedRadius = input.radius + signed * input.reliefAmplitude * displacementScale;
 
     position.setXYZ(i, px * displacedRadius, py * displacedRadius, pz * displacedRadius);
+
     heights[i] = terrain.height01;
     landMask[i] = terrain.landMask;
     mountainMask[i] = terrain.mountainMask;
+    coastMask[i] = terrain.coastMask;
+    oceanDepth[i] = terrain.oceanDepth;
+    continentMask[i] = terrain.continentMask;
   }
 
   position.needsUpdate = true;
@@ -46,6 +53,9 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
   geometry.setAttribute('aHeight', new THREE.BufferAttribute(heights, 1));
   geometry.setAttribute('aLandMask', new THREE.BufferAttribute(landMask, 1));
   geometry.setAttribute('aMountainMask', new THREE.BufferAttribute(mountainMask, 1));
+  geometry.setAttribute('aCoastMask', new THREE.BufferAttribute(coastMask, 1));
+  geometry.setAttribute('aOceanDepth', new THREE.BufferAttribute(oceanDepth, 1));
+  geometry.setAttribute('aContinentMask', new THREE.BufferAttribute(continentMask, 1));
 
   return geometry;
 }

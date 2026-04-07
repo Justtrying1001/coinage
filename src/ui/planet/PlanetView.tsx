@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 import { resolvePlanetIdentity } from '@/domain/world/resolve-planet-identity';
 import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
@@ -41,6 +42,10 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.35;
     mount.appendChild(renderer.domElement);
+
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const iblEnvironment = pmremGenerator.fromScene(new RoomEnvironment(), 0.035).texture;
+    scene.environment = iblEnvironment;
 
     const ambientLight = new THREE.AmbientLight('#bcd1ff', 0.45);
     scene.add(ambientLight);
@@ -165,6 +170,9 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
       window.removeEventListener('resize', onResize);
       controls.dispose();
       planetInstance.dispose();
+
+      pmremGenerator.dispose();
+      iblEnvironment.dispose();
       renderer.dispose();
       if (mount.contains(renderer.domElement)) {
         mount.removeChild(renderer.domElement);
