@@ -1,0 +1,175 @@
+import * as THREE from 'three';
+
+import type { PlanetRenderInput, PlanetRenderInstance } from './types';
+
+interface CachedThumbnail {
+  texture: THREE.CanvasTexture;
+  refs: number;
+}
+
+const thumbnailCache = new Map<string, CachedThumbnail>();
+
+function cacheKey(planet: PlanetRenderInput['planet']): string {
+  const p = planet.render;
+  return [
+    planet.identity.planetId,
+    p.family,
+    p.surface.colorDeep.join(','),
+    p.surface.colorMid.join(','),
+    p.surface.colorHigh.join(','),
+    p.surface.oceanColor.join(','),
+    p.clouds.coverage.toFixed(2),
+    p.rings.enabled ? 'r' : 'n',
+  ].join('|');
+}
+
+function toCss(color: [number, number, number], alpha = 1): string {
+  const r = Math.round(THREE.MathUtils.clamp(color[0], 0, 1) * 255);
+  const g = Math.round(THREE.MathUtils.clamp(color[1], 0, 1) * 255);
+  const b = Math.round(THREE.MathUtils.clamp(color[2], 0, 1) * 255);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function buildThumbnailTexture(planet: PlanetRenderInput['planet']): THREE.CanvasTexture {
+  const size = 96;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas2D not available');
+
+  const center = size * 0.5;
+  const radius = size * 0.42;
+
+  ctx.clearRect(0, 0, size, size);
+
+  const base = ctx.createRadialGradient(center * 0.72, center * 0.74, radius * 0.15, center, center, radius);
+  base.addColorStop(0, toCss(planet.render.surface.colorHigh));
+  base.addColorStop(0.55, toCss(planet.render.surface.colorMid));
+  base.addColorStop(1, toCss(planet.render.surface.colorDeep));
+
+  ctx.beginPath();
+  ctx.arc(center, center, radius, 0, Math.PI * 2);
+  ctx.fillStyle = base;
+  ctx.fill();
+
+  // cheap macro variation baked in 2D, not per-frame.
+  const seed = planet.render.surface.noiseSeed % 1024;
+  for (let i = 0; i < 6; i += 1) {
+    const t = (seed * (i + 1) * 0.00017) % 1;
+    const bandY = center + (t - 0.5) * radius * 1.3;
+    const bandH = radius * (0.08 + ((seed + i * 13) % 5) * 0.015);
+    ctx.fillStyle = toCss(i % 2 === 0 ? planet.render.surface.colorMid : planet.render.surface.colorHigh, 0.22);
+    ctx.fillRect(center - radius, bandY, radius * 2, bandH);
+  }
+
+  if (planet.classification.hasOceans) {
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.fillStyle = toCss(planet.render.surface.oceanColor, 0.25);
+    ctx.beginPath();
+    ctx.arc(center + radius * 0.16, center + radius * 0.05, radius * 0.78, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  if (planet.render.clouds.enabled && planet.render.clouds.coverage > 0.08) {
+    ctx.strokeStyle = toCss(planet.render.clouds.color, 0.18 + planet.render.clouds.coverage * 0.24);
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 4; i += 1) {
+      const y = center + (i - 1.5) * radius * 0.24;
+      ctx.beginPath();
+      ctx.ellipse(center, y, radius * 0.94, radius * 0.2, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  const rim = ctx.createRadialGradient(center, center, radius * 0.84, center, center, radius * 1.08);
+  rim.addColorStop(0, 'rgba(0,0,0,0)');
+  rim.addColorStop(1, toCss(planet.render.atmosphere.color, planet.render.atmosphere.enabled ? 0.22 : 0.06));
+  ctx.fillStyle = rim;
+  ctx.beginPath();
+  ctx.arc(center, center, radius * 1.08, 0, Math.PI * 2);
+  ctx.fill();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  return texture;
+}
+
+function getThumbnailTexture(planet: PlanetRenderInput['planet']): { key: string; texture: THREE.CanvasTexture } {
+  const key = cacheKey(planet);
+  const cached = thumbnailCache.get(key);
+  if (cached) {
+    cached.refs += 1;
+    return { key, texture: cached.texture };
+  }
+  const texture = buildThumbnailTexture(planet);
+  thumbnailCache.set(key, { texture, refs: 1 });
+  return { key, texture };
+}
+
+function releaseThumbnailTexture(key: string): void {
+  const cached = thumbnailCache.get(key);
+  if (!cached) return;
+  cached.refs -= 1;
+  if (cached.refs <= 0) {
+    cached.texture.dispose();
+    thumbnailCache.delete(key);
+  }
+}
+
+export function createPlanetGalaxyRenderInstance(input: PlanetRenderInput): PlanetRenderInstance {
+  const { planet, x, y, z, options } = input;
+  const group = new THREE.Group();
+  group.position.set(x, y, z);
+
+  const { key, texture } = getThumbnailTexture(planet);
+  const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
+  const sprite = new THREE.Sprite(spriteMaterial);
+  const diameter = planet.render.renderRadius * 2;
+  sprite.scale.set(diameter, diameter, 1);
+  sprite.name = 'planet-impostor';
+  group.add(sprite);
+
+  if (planet.render.rings.enabled) {
+    const ringMaterial = new THREE.SpriteMaterial({ color: new THREE.Color(...planet.render.rings.color), transparent: true, opacity: planet.render.rings.opacity * 0.45, depthWrite: false });
+    const ring = new THREE.Sprite(ringMaterial);
+    ring.scale.set(planet.render.rings.outerRadius * 2, planet.render.rings.outerRadius * 0.7, 1);
+    ring.material.rotation = planet.render.rings.tilt;
+    ring.name = 'planet-ring-impostor';
+    group.add(ring);
+  }
+
+  const debugSnapshot = {
+    planetId: planet.identity.planetId,
+    seed: planet.identity.planetSeed,
+    family: planet.identity.family,
+    radiusClass: planet.identity.radiusClass,
+    physicalRadius: planet.generated.physicalRadius,
+    renderRadiusBase: planet.render.scale.renderRadiusBase,
+    finalMeshScale: planet.render.scale.galaxyViewScaleMultiplier,
+    atmosphereThickness: planet.render.atmosphere.thickness,
+    cloudCoverage: planet.render.clouds.coverage,
+    hasRings: planet.render.rings.enabled,
+    paletteId: planet.visualDNA.paletteId,
+    activeNoiseFamilies: ['thumbnail-baked'],
+    currentViewMode: options.viewMode,
+    currentLOD: 'low' as const,
+  };
+
+  return {
+    object: group,
+    debugSnapshot,
+    dispose: () => {
+      releaseThumbnailTexture(key);
+      for (const child of group.children) {
+        if (child instanceof THREE.Sprite) {
+          child.material.dispose();
+        }
+      }
+    },
+  };
+}

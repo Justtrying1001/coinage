@@ -11,7 +11,8 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { getGalaxyPlanetManifest } from '@/domain/world/build-galaxy-planet-manifest';
 import type { CanonicalPlanet } from '@/domain/world/planet-visual.types';
 import { GALAXY_LAYOUT_RUNTIME_CONFIG } from '@/domain/world/world.constants';
-import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
+import { updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
+import { createPlanetGalaxyRenderInstance } from '@/rendering/planet/planet-galaxy-renderer';
 import { PLANET_LIGHT_DIRECTION, PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
 import type { PlanetRenderInstance } from '@/rendering/planet/types';
 import { createNebulaBackground, createStarfield } from '@/rendering/space/create-starfield';
@@ -330,7 +331,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
 
     const planetGroup = new THREE.Group();
     const instances: PlanetRenderInstance[] = [];
-    const interactivePlanetMeshes: THREE.Mesh[] = [];
+    const interactivePlanetObjects: THREE.Object3D[] = [];
     const instantiatedPlanetIds = new Set<string>();
 
     scene.add(planetGroup);
@@ -431,7 +432,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
       raycaster.setFromCamera(pointer, camera);
 
-      const intersections = raycaster.intersectObjects(interactivePlanetMeshes, false);
+      const intersections = raycaster.intersectObjects(interactivePlanetObjects, false);
       const firstHit = intersections[0];
       if (!firstHit) {
         return;
@@ -600,7 +601,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       }
 
       const startedAt = performance.now();
-      const instance = createPlanetRenderInstance({
+      const instance = createPlanetGalaxyRenderInstance({
         planet: planet.planet,
         x: planet.x,
         y: planet.y,
@@ -617,16 +618,18 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       let localMeshCount = 0;
       let localAtmosphereCount = 0;
       instance.object.traverse((node) => {
-        if (node instanceof THREE.Mesh) {
+        if (node instanceof THREE.Mesh || node instanceof THREE.Sprite) {
           node.userData.planetId = planet.id;
-          interactivePlanetMeshes.push(node);
-          localMeshCount += 1;
-          const nodeMaterial = node.material as THREE.Material | THREE.Material[];
-          const hasShaderMaterial = Array.isArray(nodeMaterial)
-            ? nodeMaterial.some((material) => material.type === 'ShaderMaterial')
-            : nodeMaterial.type === 'ShaderMaterial';
-          if (hasShaderMaterial) {
-            localAtmosphereCount += 1;
+          interactivePlanetObjects.push(node);
+          if (node instanceof THREE.Mesh) {
+            localMeshCount += 1;
+            const nodeMaterial = node.material as THREE.Material | THREE.Material[];
+            const hasShaderMaterial = Array.isArray(nodeMaterial)
+              ? nodeMaterial.some((material) => material.type === 'ShaderMaterial')
+              : nodeMaterial.type === 'ShaderMaterial';
+            if (hasShaderMaterial) {
+              localAtmosphereCount += 1;
+            }
           }
         }
       });
@@ -827,7 +830,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       renderer.domElement.removeEventListener('dblclick', onDoubleClick);
       renderer.domElement.removeEventListener('contextmenu', onContextMenu);
 
-      interactivePlanetMeshes.length = 0;
+      interactivePlanetObjects.length = 0;
       for (const instance of instances) {
         instance.dispose();
       }
