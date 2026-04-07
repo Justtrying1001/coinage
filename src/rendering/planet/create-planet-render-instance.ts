@@ -8,23 +8,6 @@ function toColor(value: [number, number, number]): THREE.Color {
   return new THREE.Color(value[0], value[1], value[2]);
 }
 
-function familyCode(
-  family: PlanetRenderInput['planet']['render']['family'],
-): number {
-  const mapping: Record<PlanetRenderInput['planet']['render']['family'], number> = {
-    'terrestrial-lush': 0,
-    oceanic: 1,
-    'desert-arid': 2,
-    'ice-frozen': 3,
-    'volcanic-infernal': 4,
-    'barren-rocky': 5,
-    'toxic-alien': 6,
-    'gas-giant': 7,
-    'ringed-giant': 8,
-  };
-  return mapping[family];
-}
-
 const SURFACE_VERTEX_SHADER = `
   attribute float aHeight;
   attribute float aLandMask;
@@ -92,7 +75,52 @@ const SHARED_SPHERE_VERTEX_SHADER = `
   }
 `;
 
-const SURFACE_FRAGMENT_SHADER = `
+const SURFACE_FRAGMENT_SHADER_GALAXY = `
+  varying vec3 vWorldNormal;
+  varying float vHeight;
+  varying float vLandMask;
+  varying float vMountainMask;
+  varying float vCoastMask;
+  varying float vOceanDepth;
+  varying float vBandMask;
+
+  uniform vec3 uColorDeep;
+  uniform vec3 uColorMid;
+  uniform vec3 uColorHigh;
+  uniform vec3 uOceanColor;
+  uniform vec3 uAccentColor;
+  uniform float uSurfaceModel;
+  uniform float uLightingBoost;
+  uniform float uShadingContrast;
+
+  float sat(float x) { return clamp(x, 0.0, 1.0); }
+
+  void main() {
+    vec3 normal = normalize(vWorldNormal);
+
+    vec3 land = mix(uColorDeep, uColorMid, sat(vHeight * 1.35 + 0.2));
+    land = mix(land, uColorHigh, sat(vMountainMask * 0.55));
+    land = mix(land, uAccentColor, vCoastMask * 0.25);
+
+    vec3 ocean = mix(uOceanColor * 1.35, uOceanColor * 0.88, sat(vOceanDepth * 0.9));
+    vec3 coast = mix(ocean * 1.08, land, smoothstep(0.25, 0.85, vCoastMask));
+
+    vec3 albedo = mix(ocean, land, vLandMask);
+    albedo = mix(albedo, coast, vCoastMask);
+
+    vec3 gas = mix(uColorDeep, uColorMid, sat(vBandMask));
+    gas = mix(gas, uColorHigh, sat(vBandMask * 0.45));
+    albedo = mix(albedo, gas, sat(uSurfaceModel));
+
+    float softShading = (normal.y * 0.5 + 0.5 - 0.5) * uShadingContrast;
+    vec3 color = albedo * (1.05 + softShading);
+    color = clamp(color * uLightingBoost, vec3(0.16), vec3(1.0));
+
+    gl_FragColor = vec4(color, 1.0);
+  }
+`;
+
+const SURFACE_FRAGMENT_SHADER_PLANET = `
   varying vec3 vWorldPos;
   varying vec3 vWorldNormal;
   varying vec3 vUnitPos;
@@ -116,7 +144,6 @@ const SURFACE_FRAGMENT_SHADER = `
   uniform vec3 uAccentColor;
   uniform float uEmissive;
   uniform float uSurfaceModel;
-  uniform float uFamilyCode;
   uniform float uLightingBoost;
   uniform float uShadingContrast;
 
@@ -124,43 +151,51 @@ const SURFACE_FRAGMENT_SHADER = `
 
   void main() {
     vec3 normal = normalize(vWorldNormal);
-    vec3 baseLand = mix(uColorDeep, uColorMid, sat(vHeight * 1.5));
-    baseLand = mix(baseLand, uColorHigh, sat(vMountainMask));
-    baseLand = mix(baseLand, uAccentColor, vThermalMask * 0.5);
-    baseLand = mix(baseLand, uColorHigh, sat(vContinentMask * 0.22 + vErosionMask * 0.18));
+    float continent = sat(vContinentMask * 0.82 + vLandMask * 0.18 - vErosionMask * 0.08);
+    float humidity = sat(vHumidityMask * 0.78 + 0.22);
+    float temperature = sat(vTemperatureMask * 0.76 + 0.24);
+    float heightNorm = sat(vHeight * 1.08 + vMountainMask * 0.22);
 
-    vec3 waterColor = mix(uOceanColor * 1.2, uOceanColor * 0.44, vOceanDepth);
-    vec3 coastColor = mix(uAccentColor, baseLand, smoothstep(0.3, 0.8, vCoastMask));
+    vec3 oceanEdge = uOceanColor * vec3(1.45, 1.38, 1.30);
+    vec3 oceanDeep = uOceanColor * vec3(0.78, 0.84, 0.94);
+    float oceanT = sat(vOceanDepth * 0.92 + (1.0 - continent) * 0.18);
+    float oceanVariation = sin(vUnitPos.x * 10.0 + vUnitPos.z * 8.0 + vOceanDepth * 3.2) * 0.03;
+    vec3 oceanColor = mix(oceanEdge, oceanDeep, oceanT + oceanVariation);
 
-    vec3 solidAlbedo = mix(waterColor, baseLand, vLandMask);
-    solidAlbedo = mix(solidAlbedo, coastColor, vCoastMask);
+    vec3 plains = mix(uColorMid * 1.22, uColorHigh * 1.08, humidity * 0.45);
+    vec3 plateau = mix(plains, uColorHigh * 1.14, sat(heightNorm * 0.72 + continent * 0.16));
+    vec3 mountain = mix(plateau, uColorHigh * 1.28 + vec3(0.06), sat(vMountainMask * 0.92));
 
-    vec3 gasBands = mix(uColorDeep, uColorMid, sat(vBandMask));
-    gasBands = mix(gasBands, uColorHigh, sat(vThermalMask * 0.6 + vTemperatureMask * 0.25));
-    vec3 gasStorms = mix(gasBands, uAccentColor, sat(vThermalMask * 0.86));
-    vec3 gaseousAlbedo = mix(gasBands, gasStorms, sat(vBandMask * 0.8 + vThermalMask * 0.5));
+    float coastMask = smoothstep(0.22, 0.82, vCoastMask);
+    vec3 coast = mix(oceanColor * 1.06, plains * 1.1, coastMask);
+
+    float biomeHot = smoothstep(0.58, 0.92, temperature);
+    float biomeDry = 1.0 - humidity;
+    vec3 biomeTint = mix(vec3(0.92, 1.02, 1.0), vec3(1.08, 1.0, 0.9), biomeHot * biomeDry);
+
+    vec3 landBase = mix(plains, plateau, sat(heightNorm * 0.62 + continent * 0.22));
+    landBase = mix(landBase, mountain, sat(vMountainMask * 0.85 + heightNorm * 0.25));
+    landBase *= biomeTint;
+    landBase = mix(landBase, coast, coastMask * 0.58);
+
+    vec3 solidAlbedo = mix(oceanColor, landBase, vLandMask);
+    solidAlbedo = mix(solidAlbedo, coast, coastMask);
+
+    vec3 gasBands = mix(uColorDeep * 1.05, uColorMid * 1.1, sat(vBandMask * 0.92));
+    gasBands = mix(gasBands, uColorHigh * 1.15, sat(vThermalMask * 0.48 + vTemperatureMask * 0.26));
+    vec3 gasStorms = mix(gasBands, uAccentColor * 1.08, sat(vThermalMask * 0.7));
+    vec3 gaseousAlbedo = mix(gasBands, gasStorms, sat(vBandMask * 0.56 + vThermalMask * 0.42));
 
     vec3 albedo = mix(solidAlbedo, gaseousAlbedo, sat(uSurfaceModel));
 
-    if (uFamilyCode > 1.5 && uFamilyCode < 2.5) {
-      albedo *= vec3(1.03, 0.98, 0.93);
-    } else if (uFamilyCode > 2.5 && uFamilyCode < 3.5) {
-      albedo = mix(albedo, vec3(0.9, 0.94, 0.98), vMountainMask * 0.2);
-    }
-
-    float softRelief = (vMountainMask * 0.18) - (vOceanDepth * 0.06) + (vCraterMask * 0.08) + (vBandMask * 0.04);
+    float reliefShade = (heightNorm * 0.11) + (vMountainMask * 0.1) - (vOceanDepth * 0.03);
     float hemisphere = (normal.y * 0.5 + 0.5 - 0.5) * uShadingContrast;
-    float tonal = clamp(1.0 + softRelief + hemisphere, 0.88, 1.16);
+    float tonal = clamp(1.06 + hemisphere + reliefShade, 0.94, 1.26);
 
     vec3 color = albedo * tonal;
-    color += uAccentColor * (uEmissive * (vThermalMask * 0.9 + vBandMask * 0.2));
-
-    float ao = 1.0 - vOceanDepth * 0.2 - vErosionMask * 0.08 + vMountainMask * 0.06;
-    ao = clamp(ao, 0.6, 1.1);
-    color *= ao;
-
-    color *= uLightingBoost;
-    gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+    color += uAccentColor * (uEmissive * (vThermalMask * 0.65 + vBandMask * 0.16));
+    color = clamp(color * uLightingBoost, vec3(0.18), vec3(1.0));
+    gl_FragColor = vec4(color, 1.0);
   }
 `;
 
@@ -251,7 +286,7 @@ function createSurfaceLayer(
 
   const material = new THREE.ShaderMaterial({
     vertexShader: SURFACE_VERTEX_SHADER,
-    fragmentShader: SURFACE_FRAGMENT_SHADER,
+    fragmentShader: highQuality ? SURFACE_FRAGMENT_SHADER_PLANET : SURFACE_FRAGMENT_SHADER_GALAXY,
     uniforms: {
       uColorDeep: { value: toColor(render.surface.colorDeep) },
       uColorMid: { value: toColor(render.surface.colorMid) },
@@ -260,7 +295,6 @@ function createSurfaceLayer(
       uAccentColor: { value: toColor(render.surface.accentColor) },
       uEmissive: { value: render.surface.emissiveIntensity },
       uSurfaceModel: { value: render.surfaceModel === 'gaseous' ? 1 : 0 },
-      uFamilyCode: { value: familyCode(render.family) },
       uLightingBoost: { value: lightingBoost },
       uShadingContrast: { value: shadingContrast },
     },

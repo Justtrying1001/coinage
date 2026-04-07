@@ -515,7 +515,7 @@ function buildViewProfile(viewMode: PlanetViewProfile['viewMode']): PlanetViewPr
     enableClouds: false,
     enableAtmosphere: false,
     enableOceanLayer: false,
-    lightingBoost: isGalaxy ? 1.02 : 1.05,
+    lightingBoost: isGalaxy ? 1.12 : 1.2,
     shadingContrast: isGalaxy ? 0.08 : 0.14,
   };
 }
