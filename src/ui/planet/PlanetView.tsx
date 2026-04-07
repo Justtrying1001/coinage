@@ -4,10 +4,10 @@ import { useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 import { resolvePlanetIdentity } from '@/domain/world/resolve-planet-identity';
 import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
-import { PLANET_LIGHT_DIRECTION, PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
 
 interface PlanetViewProps {
   worldSeed: string;
@@ -38,20 +38,27 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
-    renderer.outputColorSpace = PLANET_RENDER_PHOTOMETRY.outputColorSpace;
-    renderer.toneMapping = PLANET_RENDER_PHOTOMETRY.toneMapping;
-    renderer.toneMappingExposure = PLANET_RENDER_PHOTOMETRY.planetExposure;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.35;
     mount.appendChild(renderer.domElement);
 
-    const ambientLight = new THREE.AmbientLight('#b7d1ff', 1.9);
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const iblEnvironment = pmremGenerator.fromScene(new RoomEnvironment(), 0.035).texture;
+    scene.environment = iblEnvironment;
+
+    const ambientLight = new THREE.AmbientLight('#bcd1ff', 0.45);
     scene.add(ambientLight);
 
-    const keyLight = new THREE.DirectionalLight('#ffffff', 2.1);
-    keyLight.position.copy(PLANET_LIGHT_DIRECTION).multiplyScalar(52);
+    const hemiLight = new THREE.HemisphereLight('#e8f2ff', '#111827', 0.6);
+    scene.add(hemiLight);
+
+    const keyLight = new THREE.DirectionalLight('#ffffff', 1.6);
+    keyLight.position.set(15, 8, 22);
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight('#b6ccff', 1.25);
-    fillLight.position.copy(PLANET_LIGHT_DIRECTION).multiplyScalar(-34).add(new THREE.Vector3(0, 6, 8));
+    const fillLight = new THREE.DirectionalLight('#9db4ff', 0.55);
+    fillLight.position.set(-18, -12, 16);
     scene.add(fillLight);
 
     const planetInstance = createPlanetRenderInstance({
@@ -163,6 +170,9 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
       window.removeEventListener('resize', onResize);
       controls.dispose();
       planetInstance.dispose();
+
+      pmremGenerator.dispose();
+      iblEnvironment.dispose();
       renderer.dispose();
       if (mount.contains(renderer.domElement)) {
         mount.removeChild(renderer.domElement);
