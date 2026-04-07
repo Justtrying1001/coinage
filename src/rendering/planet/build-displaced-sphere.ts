@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 import type { PlanetFamily, PlanetSurfaceModel } from '@/domain/world/planet-visual.types';
 import { sampleTerrain } from './terrain-noise';
+import { tracePlanetPipeline } from './runtime-audit';
 
 export interface DisplacedSphereInput {
   radius: number;
@@ -17,16 +18,14 @@ export interface DisplacedSphereInput {
 }
 
 export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE.SphereGeometry {
-  if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' && (window as { __COINAGE_PIPELINE_TRACE?: boolean }).__COINAGE_PIPELINE_TRACE) {
-    console.info('[PlanetPipelineTrace]', {
-      stage: 'buildDisplacedSphereGeometry',
-      family: input.family,
-      surfaceModel: input.surfaceModel,
-      segments: input.segments,
-      reliefAmplitude: input.reliefAmplitude,
-      oceanLevel: input.oceanLevel,
-    });
-  }
+  tracePlanetPipeline({
+    stage: 'buildDisplacedSphereGeometry',
+    family: input.family,
+    surfaceModel: input.surfaceModel,
+    segments: input.segments,
+    reliefAmplitude: input.reliefAmplitude,
+    oceanLevel: input.oceanLevel,
+  });
   const geometry = new THREE.SphereGeometry(input.radius, input.segments, input.segments);
   const position = geometry.attributes.position;
 

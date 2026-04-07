@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createPlanetViewProfile } from '@/domain/world/generate-planet-visual-profile';
 import type { PlanetFamily } from '@/domain/world/planet-visual.types';
 import { PLANET_LIGHT_DIRECTION } from './render-photometry';
+import { PLANET_PIPELINE_VERSION, tracePlanetPipeline } from './runtime-audit';
 import type { PlanetRenderInput, PlanetRenderInstance } from './types';
 import { buildDisplacedSphereGeometry } from './build-displaced-sphere';
 
@@ -505,6 +506,17 @@ function createRingLayer(render: PlanetRenderInput['planet']['render'], segments
   return ring;
 }
 
+
+function assertGeometryAttributes(mesh: THREE.Mesh): void {
+  if (!(mesh.geometry instanceof THREE.BufferGeometry)) return;
+  const required = ['aHeight', 'aLandMask', 'aMountainMask', 'aCoastMask', 'aHumidityMask', 'aTemperatureMask'];
+  for (const key of required) {
+    if (!mesh.geometry.getAttribute(key)) {
+      tracePlanetPipeline({ stage: 'assert:missing-attribute', mesh: mesh.name, attribute: key });
+    }
+  }
+}
+
 function shouldRenderLayer(
   layer: 'surface' | 'clouds' | 'atmosphere' | 'rings',
   debug: NonNullable<PlanetRenderInput['options']['debug']> | undefined,
@@ -537,21 +549,15 @@ export function createPlanetRenderInstance(input: PlanetRenderInput): PlanetRend
   const { planet, x, y, z, options } = input;
   const view = createPlanetViewProfile(options.viewMode);
   const highQuality = options.viewMode === 'planet';
-  if (
-    process.env.NODE_ENV !== 'production' &&
-    typeof window !== 'undefined' &&
-    (window as { __COINAGE_PIPELINE_TRACE?: boolean }).__COINAGE_PIPELINE_TRACE
-  ) {
-    console.info('[PlanetPipelineTrace]', {
-      stage: 'createPlanetRenderInstance',
-      planetId: planet.identity.planetId,
-      family: planet.render.family,
-      surfaceModel: planet.render.surfaceModel,
-      viewMode: options.viewMode,
-      meshSegments: view.meshSegments,
-      noiseSeed: planet.render.surface.noiseSeed,
-    });
-  }
+  tracePlanetPipeline({
+    stage: 'createPlanetRenderInstance',
+    planetId: planet.identity.planetId,
+    family: planet.render.family,
+    surfaceModel: planet.render.surfaceModel,
+    viewMode: options.viewMode,
+    meshSegments: view.meshSegments,
+    noiseSeed: planet.render.surface.noiseSeed,
+  });
 
   const group = new THREE.Group();
   group.position.set(x, y, z);
@@ -560,29 +566,35 @@ export function createPlanetRenderInstance(input: PlanetRenderInput): PlanetRend
 
   if (shouldRenderLayer('surface', options.debug)) {
     const surface = createSurfaceLayer(planet.render.renderRadius, planet.render, view.meshSegments, view.lightingBoost, highQuality);
+    surface.userData.pipelineVersion = PLANET_PIPELINE_VERSION;
     group.add(surface);
+    assertGeometryAttributes(surface);
     disposeTargets.push(surface.geometry, surface.material);
   }
 
   if (planet.render.clouds.enabled && shouldRenderLayer('clouds', options.debug)) {
     const clouds = createCloudLayer(planet.render.renderRadius, planet.render, view.cloudSegments, view.lightingBoost);
+    clouds.userData.pipelineVersion = PLANET_PIPELINE_VERSION;
     group.add(clouds);
     disposeTargets.push(clouds.geometry, clouds.material);
   }
 
   if (planet.render.atmosphere.enabled && shouldRenderLayer('atmosphere', options.debug)) {
     const atmosphere = createAtmosphereLayer(planet.render.renderRadius, planet.render, view.atmosphereSegments);
+    atmosphere.userData.pipelineVersion = PLANET_PIPELINE_VERSION;
     group.add(atmosphere);
     disposeTargets.push(atmosphere.geometry, atmosphere.material);
   }
 
   if (view.enableRings && planet.render.rings.enabled && shouldRenderLayer('rings', options.debug)) {
     const rings = createRingLayer(planet.render, view.ringSegments);
+    rings.userData.pipelineVersion = PLANET_PIPELINE_VERSION;
     group.add(rings);
     disposeTargets.push(rings.geometry, rings.material);
   }
 
   group.rotation.z = planet.visualDNA.rotation.axialTilt;
+  group.userData.pipelineVersion = PLANET_PIPELINE_VERSION;
 
   const debugSnapshot = {
     planetId: planet.identity.planetId,
@@ -600,7 +612,15 @@ export function createPlanetRenderInstance(input: PlanetRenderInput): PlanetRend
     activeNoiseFamilies: planet.render.debug.activeNoiseFamilies,
     currentViewMode: view.viewMode,
     currentLOD: view.lod,
+    pipelineVersion: PLANET_PIPELINE_VERSION,
   };
+
+  tracePlanetPipeline({
+    stage: 'createPlanetRenderInstance:layers',
+    planetId: planet.identity.planetId,
+    viewMode: options.viewMode,
+    layers: group.children.map((child) => child.name),
+  });
 
   return {
     object: group,

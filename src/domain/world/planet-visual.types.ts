@@ -180,4 +180,5 @@ export interface PlanetDebugSnapshot {
   activeNoiseFamilies: string[];
   currentViewMode: PlanetViewProfile['viewMode'];
   currentLOD: PlanetViewProfile['lod'];
+  pipelineVersion?: string;
 }

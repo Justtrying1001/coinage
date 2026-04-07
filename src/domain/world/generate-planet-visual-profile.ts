@@ -15,6 +15,7 @@ import type {
   PlanetViewProfile,
   PlanetVisualDNA,
 } from './planet-visual.types';
+import { PLANET_PIPELINE_VERSION, tracePlanetPipeline } from '@/rendering/planet/runtime-audit';
 
 export interface PlanetSeedInput {
   worldSeed: string;
@@ -519,7 +520,7 @@ function buildViewProfile(viewMode: PlanetViewProfile['viewMode']): PlanetViewPr
 export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet {
   const worldSeed = input.worldSeed.trim();
   const planetSeed = input.planetSeed.trim();
-  const canonicalSeed = deriveSeed(`${worldSeed}::${planetSeed}`, 'planet-canonical-v2');
+  const canonicalSeed = deriveSeed(`${PLANET_PIPELINE_VERSION}::${worldSeed}::${planetSeed}`, 'planet-canonical-v3');
   const rng = createSeededRng(canonicalSeed);
 
   const recipe = weightedRecipe(rng);
@@ -657,15 +658,13 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
     },
   };
 
-  if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' && (window as { __COINAGE_PIPELINE_TRACE?: boolean }).__COINAGE_PIPELINE_TRACE) {
-    console.info('[PlanetPipelineTrace]', {
-      stage: 'generateCanonicalPlanet',
-      planetId: identity.planetId,
-      family: recipe.family,
-      surfaceModel: recipe.surfaceModel,
-      palette: visualDNA.paletteId,
-    });
-  }
+  tracePlanetPipeline({
+    stage: 'generateCanonicalPlanet',
+    planetId: identity.planetId,
+    family: recipe.family,
+    surfaceModel: recipe.surfaceModel,
+    palette: visualDNA.paletteId,
+  });
 
   return { identity, classification, visualDNA, generated, render };
 }

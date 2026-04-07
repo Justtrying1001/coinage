@@ -9,6 +9,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { resolvePlanetIdentity } from '@/domain/world/resolve-planet-identity';
 import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
 import { PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
+import { PLANET_PIPELINE_VERSION } from '@/rendering/planet/runtime-audit';
 
 interface PlanetViewProps {
   worldSeed: string;
@@ -21,6 +22,10 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
   const resolved = useMemo(() => resolvePlanetIdentity(worldSeed, planetId), [planetId, worldSeed]);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as { __COINAGE_PIPELINE_TRACE?: boolean }).__COINAGE_PIPELINE_TRACE =
+        new URLSearchParams(window.location.search).get('pipelineTrace') === '1';
+    }
     if (!resolved) {
       return;
     }
@@ -212,6 +217,9 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
         </p>
         <p className="mt-1 text-slate-100/90">
           <span className="font-semibold">Inspecter:</span> glisser pour orbiter, molette pour zoom
+        </p>
+        <p className="mt-1 text-slate-100/90">
+          <span className="font-semibold">Pipeline:</span> {PLANET_PIPELINE_VERSION}
         </p>
       </div>
       <div className="pointer-events-auto absolute left-4 top-28 z-10">

@@ -18,6 +18,10 @@ export default function PlanetValidationView({ worldSeed, planetId, mode }: Plan
   const resolved = useMemo(() => resolvePlanetIdentity(worldSeed, planetId), [planetId, worldSeed]);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as { __COINAGE_PIPELINE_TRACE?: boolean }).__COINAGE_PIPELINE_TRACE =
+        new URLSearchParams(window.location.search).get('pipelineTrace') === '1';
+    }
     if (!resolved || !mountRef.current) return;
 
     const mount = mountRef.current;

@@ -242,6 +242,10 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
   }, [worldSeed]);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as { __COINAGE_PIPELINE_TRACE?: boolean }).__COINAGE_PIPELINE_TRACE =
+        new URLSearchParams(window.location.search).get('pipelineTrace') === '1';
+    }
     const mount = mountRef.current;
 
     if (!mount) {
