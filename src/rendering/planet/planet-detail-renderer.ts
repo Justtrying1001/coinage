@@ -580,6 +580,9 @@ function shouldRenderLayer(layer: 'surface' | 'clouds' | 'atmosphere' | 'rings',
 }
 
 export function createPlanetDetailRenderInstance(input: PlanetRenderInput): PlanetRenderInstance {
+  if (process.env.NODE_ENV !== 'production' && input.options.viewMode === 'galaxy') {
+    throw new Error('createPlanetDetailRenderInstance cannot be used for galaxy view.');
+  }
   const { planet, x, y, z, options } = input;
   const view = createPlanetViewProfile(options.viewMode);
   const meshSegments = resolveAdaptiveSegments(view.meshSegments, input);

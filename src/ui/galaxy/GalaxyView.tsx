@@ -11,6 +11,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { getGalaxyPlanetManifest } from '@/domain/world/build-galaxy-planet-manifest';
 import type { CanonicalPlanet } from '@/domain/world/planet-visual.types';
 import { GALAXY_LAYOUT_RUNTIME_CONFIG } from '@/domain/world/world.constants';
+// Galaxy map must stay on the cheap impostor pipeline (never detail renderer).
 import { createPlanetGalaxyRenderInstance, getGalaxyThumbnailPerfStats } from '@/rendering/planet/planet-galaxy-renderer';
 import { updatePlanetLayerAnimation } from '@/rendering/planet/update-planet-layer-animation';
 import { PLANET_LIGHT_DIRECTION, PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';

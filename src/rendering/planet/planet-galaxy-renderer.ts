@@ -5,9 +5,12 @@ import type { PlanetRenderInput, PlanetRenderInstance } from './types';
 interface CachedThumbnail {
   texture: THREE.CanvasTexture;
   refs: number;
+  lastUsedTick: number;
 }
 
 const thumbnailCache = new Map<string, CachedThumbnail>();
+const MAX_THUMBNAIL_CACHE_ENTRIES = 256;
+let usageTick = 0;
 const galaxyThumbnailPerf = {
   cacheHits: 0,
   cacheMisses: 0,
@@ -18,6 +21,26 @@ const galaxyThumbnailPerf = {
 
 export function getGalaxyThumbnailPerfStats(): Readonly<typeof galaxyThumbnailPerf> {
   return galaxyThumbnailPerf;
+}
+
+export function getGalaxyThumbnailCacheSize(): number {
+  return thumbnailCache.size;
+}
+
+/**
+ * Test-only helper to keep cache assertions deterministic.
+ */
+export function __resetGalaxyThumbnailInternalsForTests(): void {
+  for (const entry of thumbnailCache.values()) {
+    entry.texture.dispose();
+  }
+  thumbnailCache.clear();
+  usageTick = 0;
+  galaxyThumbnailPerf.cacheHits = 0;
+  galaxyThumbnailPerf.cacheMisses = 0;
+  galaxyThumbnailPerf.generatedCount = 0;
+  galaxyThumbnailPerf.generatedTotalMs = 0;
+  galaxyThumbnailPerf.instancesCreated = 0;
 }
 
 function cacheKey(planet: PlanetRenderInput['planet']): string {
@@ -55,6 +78,7 @@ function buildThumbnailTexture(planet: PlanetRenderInput['planet']): THREE.Canva
   const center = size * 0.5;
   const radius = size * 0.42;
   const isGaseous = planet.render.surfaceModel === 'gaseous';
+  const family = planet.render.family;
 
   ctx.clearRect(0, 0, size, size);
 
@@ -108,6 +132,22 @@ function buildThumbnailTexture(planet: PlanetRenderInput['planet']): THREE.Canva
     ctx.globalCompositeOperation = 'source-over';
   }
 
+  const familyTint: Record<typeof family, string> = {
+    'terrestrial-lush': 'rgba(120, 200, 120, 0.06)',
+    oceanic: 'rgba(100, 180, 255, 0.07)',
+    'desert-arid': 'rgba(235, 180, 90, 0.09)',
+    'ice-frozen': 'rgba(170, 220, 255, 0.09)',
+    'volcanic-infernal': 'rgba(255, 110, 70, 0.08)',
+    'barren-rocky': 'rgba(170, 150, 130, 0.06)',
+    'toxic-alien': 'rgba(140, 255, 180, 0.08)',
+    'gas-giant': 'rgba(245, 200, 150, 0.07)',
+    'ringed-giant': 'rgba(245, 210, 160, 0.08)',
+  };
+  ctx.fillStyle = familyTint[family];
+  ctx.beginPath();
+  ctx.arc(center, center, radius, 0, Math.PI * 2);
+  ctx.fill();
+
   const rim = ctx.createRadialGradient(center, center, radius * 0.84, center, center, radius * 1.08);
   rim.addColorStop(0, 'rgba(0,0,0,0)');
   rim.addColorStop(1, toCss(planet.render.atmosphere.color, planet.render.atmosphere.enabled ? 0.22 : 0.06));
@@ -129,6 +169,8 @@ function getThumbnailTexture(planet: PlanetRenderInput['planet']): { key: string
   const cached = thumbnailCache.get(key);
   if (cached) {
     cached.refs += 1;
+    usageTick += 1;
+    cached.lastUsedTick = usageTick;
     galaxyThumbnailPerf.cacheHits += 1;
     return { key, texture: cached.texture };
   }
@@ -137,17 +179,31 @@ function getThumbnailTexture(planet: PlanetRenderInput['planet']): { key: string
   const texture = buildThumbnailTexture(planet);
   galaxyThumbnailPerf.generatedCount += 1;
   galaxyThumbnailPerf.generatedTotalMs += performance.now() - startedAt;
-  thumbnailCache.set(key, { texture, refs: 1 });
+  usageTick += 1;
+  thumbnailCache.set(key, { texture, refs: 1, lastUsedTick: usageTick });
   return { key, texture };
+}
+
+function enforceCacheLimit(): void {
+  if (thumbnailCache.size <= MAX_THUMBNAIL_CACHE_ENTRIES) return;
+  const releasable = [...thumbnailCache.entries()]
+    .filter(([, entry]) => entry.refs <= 0)
+    .sort((a, b) => a[1].lastUsedTick - b[1].lastUsedTick);
+  while (thumbnailCache.size > MAX_THUMBNAIL_CACHE_ENTRIES && releasable.length > 0) {
+    const [oldestKey, oldest] = releasable.shift()!;
+    oldest.texture.dispose();
+    thumbnailCache.delete(oldestKey);
+  }
 }
 
 function releaseThumbnailTexture(key: string): void {
   const cached = thumbnailCache.get(key);
   if (!cached) return;
   cached.refs -= 1;
+  usageTick += 1;
+  cached.lastUsedTick = usageTick;
   if (cached.refs <= 0) {
-    cached.texture.dispose();
-    thumbnailCache.delete(key);
+    enforceCacheLimit();
   }
 }
 
