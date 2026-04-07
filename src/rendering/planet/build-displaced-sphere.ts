@@ -18,57 +18,12 @@ export interface DisplacedSphereInput {
   surfaceModel: PlanetSurfaceModel;
 }
 
-function buildCubeSphere(radius: number, segments: number): THREE.BufferGeometry {
-  const plane = new THREE.PlaneGeometry(2, 2, segments, segments);
-  const faces = [
-    new THREE.Matrix4().makeRotationY(Math.PI / 2),
-    new THREE.Matrix4().makeRotationY(-Math.PI / 2),
-    new THREE.Matrix4().makeRotationX(-Math.PI / 2),
-    new THREE.Matrix4().makeRotationX(Math.PI / 2),
-    new THREE.Matrix4().identity(),
-    new THREE.Matrix4().makeRotationY(Math.PI),
-  ];
-
-  const merged = new THREE.BufferGeometry();
-  const positions: number[] = [];
-  const normals: number[] = [];
-  const uvs: number[] = [];
-  const indices: number[] = [];
-
-  for (const faceMatrix of faces) {
-    const local = plane.clone();
-    local.applyMatrix4(faceMatrix);
-    const localPos = local.getAttribute('position') as THREE.BufferAttribute;
-    const localUv = local.getAttribute('uv') as THREE.BufferAttribute;
-    const vertexOffset = positions.length / 3;
-
-    for (let i = 0; i < localPos.count; i += 1) {
-      const v = new THREE.Vector3(localPos.getX(i), localPos.getY(i), localPos.getZ(i)).normalize();
-      positions.push(v.x * radius, v.y * radius, v.z * radius);
-      normals.push(v.x, v.y, v.z);
-      uvs.push(localUv.getX(i), localUv.getY(i));
-    }
-
-    const localIndex = local.getIndex();
-    if (localIndex) {
-      for (let i = 0; i < localIndex.count; i += 1) {
-        indices.push(localIndex.getX(i) + vertexOffset);
-      }
-    }
-    local.dispose();
-  }
-
-  plane.dispose();
-  merged.setIndex(indices);
-  merged.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  merged.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-  merged.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  return merged;
-}
-
-export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE.BufferGeometry {
-  const geometry = buildCubeSphere(input.radius, input.segments);
-  const position = geometry.attributes.position as THREE.BufferAttribute;
+/**
+ * Stable detail-view geometry: keep a true sphere and move visual relief to shading.
+ */
+export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE.SphereGeometry {
+  const geometry = new THREE.SphereGeometry(input.radius, input.segments, input.segments);
+  const position = geometry.attributes.position;
 
   const heights = new Float32Array(position.count);
   const landMask = new Float32Array(position.count);
@@ -87,8 +42,8 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
     const x = position.getX(i);
     const y = position.getY(i);
     const z = position.getZ(i);
-    const invLen = 1 / Math.max(1e-6, Math.sqrt(x * x + y * y + z * z));
 
+    const invLen = 1 / Math.max(1e-6, Math.sqrt(x * x + y * y + z * z));
     const terrain = sampleTerrain({
       px: x * invLen,
       py: y * invLen,

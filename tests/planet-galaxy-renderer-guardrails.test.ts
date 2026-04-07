@@ -12,6 +12,7 @@ import {
 type Ctx = {
   clearRect: () => void;
   createRadialGradient: () => { addColorStop: () => void };
+  createLinearGradient: () => { addColorStop: () => void };
   beginPath: () => void;
   arc: () => void;
   fill: () => void;
@@ -29,6 +30,7 @@ function installCanvasStub() {
   const ctx: Ctx = {
     clearRect: () => {},
     createRadialGradient: () => ({ addColorStop: () => {} }),
+    createLinearGradient: () => ({ addColorStop: () => {} }),
     beginPath: () => {},
     arc: () => {},
     fill: () => {},

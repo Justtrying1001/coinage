@@ -61,67 +61,13 @@ const SURFACE_VERTEX_SHADER = `
   varying float vThermalMask;
   varying float vBandMask;
 
-  uniform float uNoiseScale;
-  uniform float uNoiseOctaves;
-  uniform float uMountainHeight;
-  uniform float uTurbulence;
-  uniform float uSeaLevel;
-  uniform float uSeed;
-
-  float hash(vec3 p) {
-    p = fract(p * 0.3183099 + vec3(0.11, 0.23, 0.37) + uSeed * 0.00000013);
-    p *= 17.0;
-    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
-  }
-
-  float noise3(vec3 x) {
-    vec3 i = floor(x);
-    vec3 f = fract(x);
-    vec3 c = (1.0 - cos(f * 3.14159265)) * 0.5;
-    float n000 = hash(i);
-    float n100 = hash(i + vec3(1.0, 0.0, 0.0));
-    float n010 = hash(i + vec3(0.0, 1.0, 0.0));
-    float n110 = hash(i + vec3(1.0, 1.0, 0.0));
-    float n001 = hash(i + vec3(0.0, 0.0, 1.0));
-    float n101 = hash(i + vec3(1.0, 0.0, 1.0));
-    float n011 = hash(i + vec3(0.0, 1.0, 1.0));
-    float n111 = hash(i + vec3(1.0));
-    float nx00 = mix(n000, n100, c.x);
-    float nx10 = mix(n010, n110, c.x);
-    float nx01 = mix(n001, n101, c.x);
-    float nx11 = mix(n011, n111, c.x);
-    float nxy0 = mix(nx00, nx10, c.y);
-    float nxy1 = mix(nx01, nx11, c.y);
-    return mix(nxy0, nxy1, c.z);
-  }
-
-  float fbm3(vec3 p) {
-    float total = 0.0;
-    float amp = 0.55;
-    float freq = 1.0;
-    for (int i = 0; i < 7; i++) {
-      if (float(i) >= uNoiseOctaves) break;
-      total += noise3(p * freq) * amp;
-      amp *= mix(0.52, 0.6, uTurbulence);
-      freq *= 2.0;
-    }
-    return total;
-  }
-
   void main() {
-    vec3 unit = normalize(position);
-    float procedural = fbm3(unit * uNoiseScale);
-    float signedHeight = procedural * 2.0 - 1.0;
-    float landBoost = mix(0.22, 1.0, smoothstep(uSeaLevel - 0.05, uSeaLevel + 0.1, procedural));
-    float displacement = signedHeight * uMountainHeight * landBoost;
-    vec3 displaced = position + unit * displacement;
-
-    vec4 worldPos = modelMatrix * vec4(displaced, 1.0);
+    vec4 worldPos = modelMatrix * vec4(position, 1.0);
     vWorldPos = worldPos.xyz;
-    vWorldNormal = normalize(mat3(modelMatrix) * normalize(normal + unit * displacement));
-    vUnitPos = normalize(displaced);
+    vWorldNormal = normalize(mat3(modelMatrix) * normal);
+    vUnitPos = normalize(position);
 
-    vHeight = mix(aHeight, procedural, 0.65);
+    vHeight = aHeight;
     vLandMask = aLandMask;
     vMountainMask = aMountainMask;
     vCoastMask = aCoastMask;
@@ -446,12 +392,6 @@ function createSurfaceLayer(planetRadius: number, render: PlanetRenderInput['pla
       uFamilyCode: { value: familyCode(render.family) },
       uLightDirection: { value: new THREE.Vector3(0.52, 0.31, 0.79).normalize() },
       uLightingBoost: { value: lightingBoost },
-      uNoiseScale: { value: render.surface.noiseScale },
-      uNoiseOctaves: { value: render.surface.noiseOctaves },
-      uMountainHeight: { value: render.surface.mountainHeight * planetRadius * 0.3 },
-      uTurbulence: { value: render.surface.turbulence },
-      uSeaLevel: { value: render.surface.oceanLevel },
-      uSeed: { value: render.surface.noiseSeed },
       uIblSkyColor: { value: new THREE.Color('#7ea6ff') },
       uIblGroundColor: { value: new THREE.Color('#1d212f') },
       uIblHorizonColor: { value: new THREE.Color('#89a2d4') },

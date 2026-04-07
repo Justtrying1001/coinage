@@ -18,6 +18,7 @@ const galaxyThumbnailPerf = {
   generatedTotalMs: 0,
   instancesCreated: 0,
 };
+let ringMaskTexture: THREE.CanvasTexture | null = null;
 
 export function getGalaxyThumbnailPerfStats(): Readonly<typeof galaxyThumbnailPerf> {
   return galaxyThumbnailPerf;
@@ -41,6 +42,10 @@ export function __resetGalaxyThumbnailInternalsForTests(): void {
   galaxyThumbnailPerf.generatedCount = 0;
   galaxyThumbnailPerf.generatedTotalMs = 0;
   galaxyThumbnailPerf.instancesCreated = 0;
+  if (ringMaskTexture) {
+    ringMaskTexture.dispose();
+    ringMaskTexture = null;
+  }
 }
 
 function cacheKey(planet: PlanetRenderInput['planet']): string {
@@ -148,6 +153,15 @@ function buildThumbnailTexture(planet: PlanetRenderInput['planet']): THREE.Canva
   ctx.arc(center, center, radius, 0, Math.PI * 2);
   ctx.fill();
 
+  const lightGrad = ctx.createLinearGradient(center - radius, center - radius * 0.3, center + radius, center + radius * 0.45);
+  lightGrad.addColorStop(0, 'rgba(255,255,255,0.12)');
+  lightGrad.addColorStop(0.58, 'rgba(255,255,255,0.0)');
+  lightGrad.addColorStop(1, 'rgba(0,0,0,0.28)');
+  ctx.globalCompositeOperation = 'source-atop';
+  ctx.fillStyle = lightGrad;
+  ctx.fillRect(center - radius, center - radius, radius * 2, radius * 2);
+  ctx.globalCompositeOperation = 'source-over';
+
   const rim = ctx.createRadialGradient(center, center, radius * 0.84, center, center, radius * 1.08);
   rim.addColorStop(0, 'rgba(0,0,0,0)');
   rim.addColorStop(1, toCss(planet.render.atmosphere.color, planet.render.atmosphere.enabled ? 0.22 : 0.06));
@@ -162,6 +176,29 @@ function buildThumbnailTexture(planet: PlanetRenderInput['planet']): THREE.Canva
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
   return texture;
+}
+
+function getRingMaskTexture(): THREE.CanvasTexture {
+  if (ringMaskTexture) return ringMaskTexture;
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas2D not available for ring texture.');
+  const center = size * 0.5;
+  ctx.clearRect(0, 0, size, size);
+  ctx.strokeStyle = 'rgba(255,255,255,1)';
+  ctx.lineWidth = 14;
+  ctx.beginPath();
+  ctx.ellipse(center, center, size * 0.44, size * 0.17, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ringMaskTexture = new THREE.CanvasTexture(canvas);
+  ringMaskTexture.colorSpace = THREE.SRGBColorSpace;
+  ringMaskTexture.minFilter = THREE.LinearFilter;
+  ringMaskTexture.magFilter = THREE.LinearFilter;
+  ringMaskTexture.needsUpdate = true;
+  return ringMaskTexture;
 }
 
 function getThumbnailTexture(planet: PlanetRenderInput['planet']): { key: string; texture: THREE.CanvasTexture } {
@@ -214,7 +251,7 @@ export function createPlanetGalaxyRenderInstance(input: PlanetRenderInput): Plan
 
   const { key, texture } = getThumbnailTexture(planet);
   galaxyThumbnailPerf.instancesCreated += 1;
-  const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
+  const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false, alphaTest: 0.04, premultipliedAlpha: true });
   const sprite = new THREE.Sprite(spriteMaterial);
   const diameter = planet.render.renderRadius * 2;
   sprite.scale.set(diameter, diameter, 1);
@@ -222,7 +259,15 @@ export function createPlanetGalaxyRenderInstance(input: PlanetRenderInput): Plan
   group.add(sprite);
 
   if (planet.render.rings.enabled) {
-    const ringMaterial = new THREE.SpriteMaterial({ color: new THREE.Color(...planet.render.rings.color), transparent: true, opacity: planet.render.rings.opacity * 0.45, depthWrite: false });
+    const ringMaterial = new THREE.SpriteMaterial({
+      map: getRingMaskTexture(),
+      color: new THREE.Color(...planet.render.rings.color),
+      transparent: true,
+      alphaTest: 0.08,
+      opacity: planet.render.rings.opacity * 0.42,
+      depthWrite: false,
+      premultipliedAlpha: true,
+    });
     const ring = new THREE.Sprite(ringMaterial);
     ring.scale.set(planet.render.rings.outerRadius * 2, planet.render.rings.outerRadius * 0.7, 1);
     ring.material.rotation = planet.render.rings.tilt;
