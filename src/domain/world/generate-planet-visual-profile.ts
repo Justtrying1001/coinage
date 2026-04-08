@@ -565,7 +565,6 @@ function buildViewProfile(viewMode: PlanetViewProfile['viewMode']): PlanetViewPr
     enableRings: !isGalaxy,
     enableClouds: !isGalaxy,
     enableAtmosphere: !isGalaxy,
-    enableOceanLayer: !isGalaxy,
     lightingBoost: isGalaxy ? 1.26 : 1.38,
   };
 }

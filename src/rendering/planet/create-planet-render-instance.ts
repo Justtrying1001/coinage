@@ -2,12 +2,12 @@ import * as THREE from 'three';
 
 import { createPlanetViewProfile } from '@/domain/world/generate-planet-visual-profile';
 import type { PlanetRenderInput, PlanetRenderInstance } from './types';
-import { buildDisplacedSphereGeometry, OCEAN_FAMILIES } from './build-displaced-sphere';
+import { buildDisplacedSphereGeometry } from './build-displaced-sphere';
 import {
   SURFACE_FRAGMENT_SHADER_PLANET,
   SURFACE_VERTEX_SHADER_PLANET,
 } from './surface/surface-shader-assembly';
-import { getPlanetMaterialTextureStack } from './surface/material-textures';
+import { getFamilyGradients } from './core/planet-core-xeno';
 
 function toColor(value: [number, number, number]): THREE.Color {
   return new THREE.Color(value[0], value[1], value[2]);
@@ -29,151 +29,40 @@ function createSurfaceLayer(
   planetRadius: number,
   render: PlanetRenderInput['planet']['render'],
   segments: number,
-  lightingBoost: number,
 ): THREE.Mesh {
-  const geometry = buildDisplacedSphereGeometry({
+  const built = buildDisplacedSphereGeometry({
     radius: planetRadius,
     segments,
     seed: render.surface.noiseSeed,
-    moistureSeed: render.surface.moistureSeed,
-    thermalSeed: render.surface.thermalSeed,
     oceanLevel: render.surface.oceanLevel,
     reliefAmplitude: render.surface.reliefAmplitude,
-    bandingStrength: render.surface.bandingStrength,
     family: render.family,
-    surfaceModel: render.surfaceModel,
   });
 
-  const tex = getPlanetMaterialTextureStack();
+  const gradients = getFamilyGradients(render.family);
+  const maxStops = 6;
+  const landStops = [...gradients.land];
+  const depthStops = [...gradients.depth];
+  while (landStops.length < maxStops) landStops.push({ anchor: 1, color: landStops[landStops.length - 1].color });
+  while (depthStops.length < maxStops) depthStops.push({ anchor: 1, color: depthStops[depthStops.length - 1].color });
 
   const material = new THREE.ShaderMaterial({
     vertexShader: SURFACE_VERTEX_SHADER_PLANET,
     fragmentShader: SURFACE_FRAGMENT_SHADER_PLANET,
     uniforms: {
-      uColorDeep: { value: toColor(render.surface.colorDeep) },
-      uColorMid: { value: toColor(render.surface.colorMid) },
-      uColorHigh: { value: toColor(render.surface.colorHigh) },
-      uOceanColor: { value: toColor(render.surface.oceanColor) },
-      uAccentColor: { value: toColor(render.surface.accentColor) },
-      uEmissive: { value: render.surface.emissiveIntensity },
-      uRoughness: { value: render.surface.roughness },
-      uSpecularStrength: { value: render.surface.specularStrength },
-      uLightingBoost: { value: lightingBoost },
+      uMinMax: { value: new THREE.Vector2(built.minMax.min, built.minMax.max) },
+      uSeaLevel: { value: 1.0 },
       uLightDirection: { value: new THREE.Vector3(0.38, 0.76, 0.52).normalize() },
-      uFamilyType: { value: FAMILY_INDEX[render.family] ?? 0 },
-
-      uRockAlbedo: { value: tex.rock.albedo },
-      uRockNormal: { value: tex.rock.normal },
-      uRockRoughness: { value: tex.rock.roughness },
-      uRockAo: { value: tex.rock.ao },
-
-      uSedimentAlbedo: { value: tex.sediment.albedo },
-      uSedimentNormal: { value: tex.sediment.normal },
-      uSedimentRoughness: { value: tex.sediment.roughness },
-      uSedimentAo: { value: tex.sediment.ao },
-
-      uSnowAlbedo: { value: tex.snow.albedo },
-      uSnowNormal: { value: tex.snow.normal },
-      uSnowRoughness: { value: tex.snow.roughness },
-      uSnowAo: { value: tex.snow.ao },
-
-      uLavaAlbedo: { value: tex.lava.albedo },
-      uLavaNormal: { value: tex.lava.normal },
-      uLavaRoughness: { value: tex.lava.roughness },
-      uLavaAo: { value: tex.lava.ao },
-
-      uWetnessAlbedo: { value: tex.wetness.albedo },
-      uWetnessNormal: { value: tex.wetness.normal },
-      uWetnessRoughness: { value: tex.wetness.roughness },
-      uWetnessAo: { value: tex.wetness.ao },
+      uLandGradientSize: { value: gradients.land.length },
+      uDepthGradientSize: { value: gradients.depth.length },
+      uLandGradient: { value: landStops.map((s) => ({ anchor: s.anchor, color: toColor(s.color) })) },
+      uDepthGradient: { value: depthStops.map((s) => ({ anchor: s.anchor, color: toColor(s.color) })) },
     },
   });
 
-  const mesh = new THREE.Mesh(geometry, material);
+  const mesh = new THREE.Mesh(built.geometry, material);
   mesh.name = 'surface';
-  mesh.userData.rotationSpeed = render.surfaceModel === 'gaseous' ? 0.012 : 0.018;
-  return mesh;
-}
-
-function createOceanLayer(
-  planetRadius: number,
-  render: PlanetRenderInput['planet']['render'],
-): THREE.Mesh {
-  const geometry = new THREE.SphereGeometry(planetRadius * 1.0025, 176, 176);
-  const tex = getPlanetMaterialTextureStack();
-
-  const material = new THREE.ShaderMaterial({
-    transparent: true,
-    depthWrite: false,
-    uniforms: {
-      uOceanColor: { value: toColor(render.surface.oceanColor) },
-      uDeepColor: { value: toColor(render.surface.colorDeep) },
-      uTime: { value: 0 },
-      uWaterNormal: { value: tex.waterNormal },
-      uLightDirection: { value: new THREE.Vector3(0.38, 0.76, 0.52).normalize() },
-      uFamilyType: { value: FAMILY_INDEX[render.family] ?? 0 },
-    },
-    vertexShader: `
-      varying vec3 vWorldPos;
-      varying vec3 vNormalW;
-      varying vec3 vUnitPos;
-      void main() {
-        vec4 wp = modelMatrix * vec4(position, 1.0);
-        vWorldPos = wp.xyz;
-        vNormalW = normalize(mat3(modelMatrix) * normal);
-        vUnitPos = normalize(position);
-        gl_Position = projectionMatrix * viewMatrix * wp;
-      }
-    `,
-    fragmentShader: `
-      varying vec3 vWorldPos;
-      varying vec3 vNormalW;
-      varying vec3 vUnitPos;
-
-      uniform vec3 uOceanColor;
-      uniform vec3 uDeepColor;
-      uniform float uTime;
-      uniform sampler2D uWaterNormal;
-      uniform vec3 uLightDirection;
-      uniform float uFamilyType;
-
-      vec3 unpackNormal(vec3 n) { return normalize(n * 2.0 - 1.0); }
-
-      void main() {
-        vec3 normal = normalize(vNormalW);
-        vec3 viewDir = normalize(cameraPosition - vWorldPos);
-        vec3 lightDir = normalize(uLightDirection);
-
-        vec2 uvA = vUnitPos.xz * 2.8 + vec2(uTime * 0.018, -uTime * 0.013);
-        vec2 uvB = vUnitPos.yz * 2.1 + vec2(-uTime * 0.015, uTime * 0.02);
-        vec3 nA = unpackNormal(texture2D(uWaterNormal, uvA).xyz);
-        vec3 nB = unpackNormal(texture2D(uWaterNormal, uvB).xyz);
-        vec3 waterN = normalize(normal + nA * 0.22 + nB * 0.18);
-
-        float depth = smoothstep(0.0, 1.0, abs(vUnitPos.y) * 0.45 + length(vUnitPos.xz) * 0.55);
-        vec3 shallow = uOceanColor * vec3(1.12, 1.10, 1.05);
-        vec3 deep = mix(uOceanColor * vec3(0.54, 0.72, 0.95), uDeepColor * vec3(0.42, 0.6, 0.86), 0.4);
-        vec3 color = mix(shallow, deep, depth);
-
-        float ndl = max(dot(waterN, lightDir), 0.0);
-        float fresnel = pow(1.0 - max(dot(waterN, viewDir), 0.0), 3.4);
-        float spec = pow(max(dot(waterN, normalize(lightDir + viewDir)), 0.0), 82.0) * (0.28 + fresnel * 0.7);
-
-        float coastal = smoothstep(0.45, 0.9, depth) * (1.0 - smoothstep(0.9, 1.0, depth));
-        float foam = coastal * (0.06 + sin((vUnitPos.x + vUnitPos.z + uTime * 0.35) * 44.0) * 0.03);
-
-        color *= (0.4 + ndl * 0.85);
-        color += vec3(0.9, 0.96, 1.0) * (foam + spec * 0.85);
-
-        float alpha = clamp(0.48 + fresnel * 0.24, 0.42, 0.86);
-        gl_FragColor = vec4(color, alpha);
-      }
-    `,
-  });
-
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.name = 'ocean';
-  mesh.userData.rotationSpeed = 0.006;
+  mesh.userData.rotationSpeed = render.surfaceModel === 'gaseous' ? 0.01 : 0.016;
   return mesh;
 }
 
@@ -414,17 +303,10 @@ export function createPlanetRenderInstance(input: PlanetRenderInput): PlanetRend
     planet.render.renderRadius,
     planet.render,
     view.meshSegments,
-    view.lightingBoost,
   );
   group.add(surface);
 
   const disposeTargets: Array<THREE.BufferGeometry | THREE.Material | THREE.Material[]> = [surface.geometry, surface.material];
-
-  if (view.enableOceanLayer && OCEAN_FAMILIES.includes(planet.render.family)) {
-    const ocean = createOceanLayer(planet.render.renderRadius, planet.render);
-    group.add(ocean);
-    disposeTargets.push(ocean.geometry, ocean.material);
-  }
 
   if (view.enableClouds && planet.render.clouds.enabled && shouldRenderLayer('clouds', options.debug)) {
     const lowClouds = createCloudLayer('clouds-low', planet.render.renderRadius, planet.render, Math.max(64, Math.floor(view.cloudSegments)), 1.03, 0.025);

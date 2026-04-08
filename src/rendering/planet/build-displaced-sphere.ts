@@ -1,21 +1,24 @@
 import * as THREE from 'three';
 
-import type { PlanetFamily, PlanetSurfaceModel } from '@/domain/world/planet-visual.types';
-import { sampleTerrainFields } from './terrain-fields';
-
-export const OCEAN_FAMILIES: ReadonlyArray<PlanetFamily> = ['terrestrial-lush', 'oceanic', 'toxic-alien'];
+import type { PlanetFamily } from '@/domain/world/planet-visual.types';
+import {
+  createMinMaxTracker,
+  getFamilyXenoLayers,
+  sampleXenoElevation,
+} from './core/planet-core-xeno';
 
 export interface DisplacedSphereInput {
   radius: number;
   segments: number;
   seed: number;
-  moistureSeed: number;
-  thermalSeed: number;
   oceanLevel: number;
   reliefAmplitude: number;
-  bandingStrength: number;
   family: PlanetFamily;
-  surfaceModel: PlanetSurfaceModel;
+}
+
+export interface DisplacedSphereBuildResult {
+  geometry: THREE.BufferGeometry;
+  minMax: { min: number; max: number };
 }
 
 const FACE_DIRS: Array<THREE.Vector3> = [
@@ -33,26 +36,15 @@ function buildFaceBasis(localUp: THREE.Vector3): { axisA: THREE.Vector3; axisB: 
   return { axisA, axisB };
 }
 
-function pushTri(indices: number[], a: number, b: number, c: number): void {
-  indices.push(a, b, c);
-}
-
-export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE.BufferGeometry {
-  const resolution = Math.max(16, Math.floor(input.segments / 2));
+export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): DisplacedSphereBuildResult {
+  const resolution = Math.max(20, Math.floor(input.segments / 2));
 
   const positions: number[] = [];
   const indices: number[] = [];
+  const unscaledElevation: number[] = [];
 
-  const elevation: number[] = [];
-  const waterMask: number[] = [];
-  const slopeMask: number[] = [];
-  const humidity: number[] = [];
-  const temperature: number[] = [];
-  const thermal: number[] = [];
-  const rockMask: number[] = [];
-  const sedimentMask: number[] = [];
-  const snowMask: number[] = [];
-  const lavaMask: number[] = [];
+  const minMax = createMinMaxTracker();
+  const layers = getFamilyXenoLayers(input.family);
 
   let vertexOffset = 0;
 
@@ -70,22 +62,18 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
           .addScaledVector(axisB, (py - 0.5) * 2);
 
         const pointOnUnitSphere = pointOnCube.normalize();
+        const elevation = sampleXenoElevation(
+          {
+            seed: input.seed,
+            radius: input.radius,
+            reliefAmplitude: input.reliefAmplitude,
+            oceanLevel: input.oceanLevel,
+            layers,
+          },
+          pointOnUnitSphere,
+        );
 
-        const fields = sampleTerrainFields({
-          x: pointOnUnitSphere.x,
-          y: pointOnUnitSphere.y,
-          z: pointOnUnitSphere.z,
-          seed: input.seed,
-          moistureSeed: input.moistureSeed,
-          thermalSeed: input.thermalSeed,
-          oceanLevel: input.oceanLevel,
-          family: input.family,
-          surfaceModel: input.surfaceModel,
-          bandingStrength: input.bandingStrength,
-        });
-
-        const maxAmplitude = input.surfaceModel === 'gaseous' ? input.radius * 0.028 : input.radius * 0.18;
-        const displacedRadius = input.radius + fields.elevation * maxAmplitude * input.reliefAmplitude;
+        const displacedRadius = input.radius * (1 + elevation.scaledElevation);
 
         positions.push(
           pointOnUnitSphere.x * displacedRadius,
@@ -93,24 +81,16 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
           pointOnUnitSphere.z * displacedRadius,
         );
 
-        elevation.push(fields.elevation);
-        waterMask.push(fields.waterMask);
-        slopeMask.push(fields.slope);
-        humidity.push(fields.humidity);
-        temperature.push(fields.temperature);
-        thermal.push(fields.thermal);
-        rockMask.push(fields.rockMask);
-        sedimentMask.push(fields.sedimentMask);
-        snowMask.push(fields.snowMask);
-        lavaMask.push(fields.lavaMask);
+        unscaledElevation.push(1 + elevation.unscaledElevation);
+        minMax.add(1 + elevation.unscaledElevation);
       }
     }
 
     for (let y = 0; y < resolution - 1; y += 1) {
       for (let x = 0; x < resolution - 1; x += 1) {
         const i = vertexOffset + x + y * resolution;
-        pushTri(indices, i, i + 1, i + resolution + 1);
-        pushTri(indices, i, i + resolution + 1, i + resolution);
+        indices.push(i + resolution + 1, i + 1, i);
+        indices.push(i + resolution, i + resolution + 1, i);
       }
     }
 
@@ -119,19 +99,9 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('aUnscaledElevation', new THREE.Float32BufferAttribute(unscaledElevation, 1));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
 
-  geometry.setAttribute('aElevation', new THREE.Float32BufferAttribute(elevation, 1));
-  geometry.setAttribute('aWaterMask', new THREE.Float32BufferAttribute(waterMask, 1));
-  geometry.setAttribute('aSlopeMask', new THREE.Float32BufferAttribute(slopeMask, 1));
-  geometry.setAttribute('aHumidityMask', new THREE.Float32BufferAttribute(humidity, 1));
-  geometry.setAttribute('aTemperatureMask', new THREE.Float32BufferAttribute(temperature, 1));
-  geometry.setAttribute('aThermalMask', new THREE.Float32BufferAttribute(thermal, 1));
-  geometry.setAttribute('aRockMask', new THREE.Float32BufferAttribute(rockMask, 1));
-  geometry.setAttribute('aSedimentMask', new THREE.Float32BufferAttribute(sedimentMask, 1));
-  geometry.setAttribute('aSnowMask', new THREE.Float32BufferAttribute(snowMask, 1));
-  geometry.setAttribute('aLavaMask', new THREE.Float32BufferAttribute(lavaMask, 1));
-
-  return geometry;
+  return { geometry, minMax: minMax.get() };
 }

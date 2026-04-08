@@ -154,7 +154,6 @@ export interface PlanetViewProfile {
   enableRings: boolean;
   enableClouds: boolean;
   enableAtmosphere: boolean;
-  enableOceanLayer: boolean;
   lightingBoost: number;
 }
 
