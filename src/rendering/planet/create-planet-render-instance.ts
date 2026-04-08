@@ -4,140 +4,36 @@ import { createPlanetViewProfile } from '@/domain/world/generate-planet-visual-p
 import type { PlanetRenderInput, PlanetRenderInstance } from './types';
 import { buildDisplacedSphereGeometry, OCEAN_FAMILIES } from './build-displaced-sphere';
 import {
-  SURFACE_FRAGMENT_SHADER_GALAXY,
-  SURFACE_VERTEX_SHADER_GALAXY,
+  SURFACE_FRAGMENT_SHADER_PLANET,
   SURFACE_VERTEX_SHADER_PLANET,
-  getSurfacePlanetFragmentShader,
 } from './surface/surface-shader-assembly';
 
 function toColor(value: [number, number, number]): THREE.Color {
   return new THREE.Color(value[0], value[1], value[2]);
 }
 
-const SURFACE_FRAGMENT_SHADER_PLANET = getSurfacePlanetFragmentShader();
-
-const FAMILY_INDEX: Record<PlanetRenderInput['planet']['render']['family'], number> = {
-  'terrestrial-lush': 0,
-  oceanic: 1,
-  'desert-arid': 2,
-  'ice-frozen': 3,
-  'volcanic-infernal': 4,
-  'barren-rocky': 5,
-  'toxic-alien': 6,
-  'gas-giant': 7,
-  'ringed-giant': 8,
-};
-
-const SHARED_SPHERE_VERTEX_SHADER = `
-  varying vec3 vWorldPos;
-  varying vec3 vWorldNormal;
-  varying vec3 vUnitPos;
-
-  void main() {
-    vec4 worldPos = modelMatrix * vec4(position, 1.0);
-    vWorldPos = worldPos.xyz;
-    vWorldNormal = normalize(mat3(modelMatrix) * normal);
-    vUnitPos = normalize(position);
-    gl_Position = projectionMatrix * viewMatrix * worldPos;
-  }
-`;
-const OCEAN_FRAGMENT_SHADER = `
-  varying vec3 vWorldPos;
-  varying vec3 vWorldNormal;
-  varying vec3 vUnitPos;
-
-  uniform vec3 uOceanColor;
-  uniform vec3 uOceanDeepColor;
-  uniform float uShadingContrast;
-  uniform float uLightingBoost;
-
-  void main() {
-    vec3 normal = normalize(vWorldNormal);
-    vec3 viewDir = normalize(cameraPosition - vWorldPos);
-    float latDepth = smoothstep(0.0, 1.0, abs(vUnitPos.y));
-    float radialDepth = smoothstep(0.15, 0.95, length(vUnitPos.xz));
-    float depthVar = clamp(latDepth * 0.32 + radialDepth * 0.38, 0.0, 1.0);
-    vec3 color = mix(uOceanColor * 1.22, uOceanDeepColor * 0.92, depthVar);
-    float hemisphere = (normal.y * 0.5 + 0.5) * uShadingContrast;
-    float fresnel = pow(1.0 - clamp(dot(normal, viewDir), 0.0, 1.0), 3.0) * 0.12;
-    float specular = pow(max(dot(normal, normalize(vec3(0.28, 0.86, 0.22))), 0.0), 18.0) * 0.09;
-    color *= (1.04 + hemisphere);
-    color += vec3(0.08, 0.10, 0.12) * (fresnel + specular);
-    color *= uLightingBoost;
-
-    gl_FragColor = vec4(clamp(color, vec3(0.3), vec3(1.0)), 1.0);
-  }
-`;
-
-const RING_VERTEX_SHADER = `
-  varying vec2 vUv;
-  varying vec3 vWorldPos;
-  varying vec3 vNormalW;
-
-  void main() {
-    vUv = uv;
-    vec4 worldPos = modelMatrix * vec4(position, 1.0);
-    vWorldPos = worldPos.xyz;
-    vNormalW = normalize(mat3(modelMatrix) * normal);
-    gl_Position = projectionMatrix * viewMatrix * worldPos;
-  }
-`;
-
-const RING_FRAGMENT_SHADER = `
-  varying vec2 vUv;
-  varying vec3 vWorldPos;
-  varying vec3 vNormalW;
-
-  uniform vec3 uColor;
-  uniform float uOpacity;
-  uniform float uSeed;
-  uniform float uShadingContrast;
-
-  void main() {
-    float radial = vUv.x;
-    float band1 = sin(radial * 14.0 + uSeed * 0.0001) * 0.5 + 0.5;
-    float band2 = sin(radial * 32.0 + uSeed * 0.00017) * 0.5 + 0.5;
-    float grain = band1 * 0.54 + band2 * 0.46;
-    float edgeFade = smoothstep(0.0, 0.08, radial) * smoothstep(1.0, 0.92, radial);
-    float gap = 1.0 - smoothstep(0.44, 0.46, radial) * (1.0 - smoothstep(0.48, 0.50, radial)) * 0.6;
-    float radialGlow = 0.78 + smoothstep(0.15, 0.72, radial) * 0.34 + (1.0 - smoothstep(0.78, 1.0, radial)) * 0.18;
-
-    vec3 normal = normalize(vNormalW);
-    float hemisphere = (normal.y * 0.5 + 0.5) * uShadingContrast;
-
-    float alpha = edgeFade * gap * grain * uOpacity * 1.12;
-    vec3 color = uColor * 1.12 * (0.86 + grain * 0.45) * radialGlow * (1.0 + hemisphere);
-
-    gl_FragColor = vec4(color, clamp(alpha, 0.0, 0.85));
-  }
-`;
-
 function createSurfaceLayer(
   planetRadius: number,
   render: PlanetRenderInput['planet']['render'],
   segments: number,
   lightingBoost: number,
-  shadingContrast: number,
-  highQuality: boolean,
 ): THREE.Mesh {
-  const geometry = highQuality
-    ? buildDisplacedSphereGeometry({
-      radius: planetRadius,
-      segments,
-      seed: render.surface.noiseSeed,
-      moistureSeed: render.surface.moistureSeed,
-      thermalSeed: render.surface.thermalSeed,
-      oceanLevel: render.surface.oceanLevel,
-      reliefAmplitude: render.surface.reliefAmplitude,
-      bandingStrength: render.surface.bandingStrength,
-      family: render.family,
-      surfaceModel: render.surfaceModel,
-    })
-    : new THREE.SphereGeometry(planetRadius, Math.max(12, Math.floor(segments)), Math.max(12, Math.floor(segments)));
+  const geometry = buildDisplacedSphereGeometry({
+    radius: planetRadius,
+    segments,
+    seed: render.surface.noiseSeed,
+    moistureSeed: render.surface.moistureSeed,
+    thermalSeed: render.surface.thermalSeed,
+    oceanLevel: render.surface.oceanLevel,
+    reliefAmplitude: render.surface.reliefAmplitude,
+    bandingStrength: render.surface.bandingStrength,
+    family: render.family,
+    surfaceModel: render.surfaceModel,
+  });
 
   const material = new THREE.ShaderMaterial({
-    vertexShader: highQuality ? SURFACE_VERTEX_SHADER_PLANET : SURFACE_VERTEX_SHADER_GALAXY,
-    fragmentShader: highQuality ? SURFACE_FRAGMENT_SHADER_PLANET : SURFACE_FRAGMENT_SHADER_GALAXY,
+    vertexShader: SURFACE_VERTEX_SHADER_PLANET,
+    fragmentShader: SURFACE_FRAGMENT_SHADER_PLANET,
     uniforms: {
       uColorDeep: { value: toColor(render.surface.colorDeep) },
       uColorMid: { value: toColor(render.surface.colorMid) },
@@ -145,86 +41,185 @@ function createSurfaceLayer(
       uOceanColor: { value: toColor(render.surface.oceanColor) },
       uAccentColor: { value: toColor(render.surface.accentColor) },
       uEmissive: { value: render.surface.emissiveIntensity },
-      uSurfaceModel: { value: render.surfaceModel === 'gaseous' ? 1 : 0 },
-      uSeed: { value: render.surface.noiseSeed },
       uRoughness: { value: render.surface.roughness },
       uSpecularStrength: { value: render.surface.specularStrength },
-      uBandingStrength: { value: render.surface.bandingStrength },
-      uBandSeed: { value: render.surface.bandSeed },
-      uFamilyType: { value: FAMILY_INDEX[render.family] ?? 0 },
       uLightingBoost: { value: lightingBoost },
-      uShadingContrast: { value: shadingContrast },
+      uLightDirection: { value: new THREE.Vector3(0.38, 0.76, 0.52).normalize() },
     },
   });
 
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = 'surface';
-  mesh.userData.rotationSpeed = 0;
+  mesh.userData.rotationSpeed = render.surfaceModel === 'gaseous' ? 0.013 : 0.02;
   return mesh;
 }
 
 function createOceanLayer(
   planetRadius: number,
   render: PlanetRenderInput['planet']['render'],
-  segments: number,
-  lightingBoost: number,
-  shadingContrast: number,
-  highQuality: boolean,
 ): THREE.Mesh {
-  const oceanRadius = planetRadius * (highQuality ? 0.998 : 0.999);
-  const geometry = new THREE.SphereGeometry(oceanRadius, segments, segments);
+  const geometry = new THREE.SphereGeometry(planetRadius * 0.9978, 128, 128);
 
-  const material = new THREE.ShaderMaterial({
-    vertexShader: SHARED_SPHERE_VERTEX_SHADER,
-    fragmentShader: OCEAN_FRAGMENT_SHADER,
-    uniforms: {
-      uOceanColor: { value: toColor(render.surface.oceanColor) },
-      uOceanDeepColor: { value: toColor(render.surface.colorDeep) },
-      uShadingContrast: { value: shadingContrast * (highQuality ? 0.86 : 0.72) },
-      uLightingBoost: { value: lightingBoost },
-    },
+  const material = new THREE.MeshPhysicalMaterial({
+    color: toColor(render.surface.oceanColor),
+    transmission: 0.15,
+    roughness: 0.1,
+    metalness: 0.02,
     transparent: true,
-    opacity: highQuality ? 0.84 : 0.7,
+    opacity: 0.48,
+    clearcoat: 0.3,
+    clearcoatRoughness: 0.1,
     depthWrite: false,
   });
 
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = 'ocean';
+  mesh.userData.rotationSpeed = 0.007;
+  return mesh;
+}
+
+function createCloudLayer(
+  planetRadius: number,
+  render: PlanetRenderInput['planet']['render'],
+  segments: number,
+): THREE.Mesh {
+  const geometry = new THREE.SphereGeometry(planetRadius * (1 + Math.max(0.012, render.atmosphere.thickness * 0.45)), segments, segments);
+
+  const vertexShader = `
+    varying vec3 vWorldPos;
+    varying vec3 vNormalW;
+    varying vec3 vUnitPos;
+    void main() {
+      vec4 wp = modelMatrix * vec4(position, 1.0);
+      vWorldPos = wp.xyz;
+      vNormalW = normalize(mat3(modelMatrix) * normal);
+      vUnitPos = normalize(position);
+      gl_Position = projectionMatrix * viewMatrix * wp;
+    }
+  `;
+
+  const fragmentShader = `
+    varying vec3 vWorldPos;
+    varying vec3 vNormalW;
+    varying vec3 vUnitPos;
+    uniform vec3 uCloudColor;
+    uniform float uCoverage;
+    uniform float uOpacity;
+    uniform float uSeed;
+    uniform float uTime;
+    uniform vec3 uLightDirection;
+
+    float hash(vec3 p){ return fract(sin(dot(p, vec3(127.1,311.7,74.7))) * 43758.5453); }
+    float noise(vec3 p){
+      vec3 i = floor(p);
+      vec3 f = fract(p);
+      f = f*f*(3.0-2.0*f);
+      float n000 = hash(i + vec3(0,0,0));
+      float n100 = hash(i + vec3(1,0,0));
+      float n010 = hash(i + vec3(0,1,0));
+      float n110 = hash(i + vec3(1,1,0));
+      float n001 = hash(i + vec3(0,0,1));
+      float n101 = hash(i + vec3(1,0,1));
+      float n011 = hash(i + vec3(0,1,1));
+      float n111 = hash(i + vec3(1,1,1));
+      float nx00 = mix(n000, n100, f.x);
+      float nx10 = mix(n010, n110, f.x);
+      float nx01 = mix(n001, n101, f.x);
+      float nx11 = mix(n011, n111, f.x);
+      float nxy0 = mix(nx00, nx10, f.y);
+      float nxy1 = mix(nx01, nx11, f.y);
+      return mix(nxy0, nxy1, f.z);
+    }
+
+    void main() {
+      vec3 p = vUnitPos * 5.4 + vec3(uTime * 0.02, 0.0, -uTime * 0.015) + uSeed * 0.0001;
+      float n = noise(p) * 0.7 + noise(p * 2.0) * 0.3;
+      float alpha = smoothstep(1.0 - uCoverage, 1.0, n) * uOpacity;
+      vec3 normal = normalize(vNormalW);
+      float light = max(dot(normal, normalize(uLightDirection)), 0.0);
+      float rim = pow(1.0 - max(dot(normal, normalize(cameraPosition - vWorldPos)), 0.0), 2.8) * 0.25;
+      vec3 col = uCloudColor * (0.46 + light * 0.84 + rim);
+      gl_FragColor = vec4(col, alpha);
+    }
+  `;
+
+  const material = new THREE.ShaderMaterial({
+    vertexShader,
+    fragmentShader,
+    uniforms: {
+      uCloudColor: { value: toColor(render.clouds.color) },
+      uCoverage: { value: Math.min(0.86, Math.max(0.2, render.clouds.coverage)) },
+      uOpacity: { value: Math.min(0.9, Math.max(0.15, render.clouds.opacity)) },
+      uSeed: { value: render.clouds.noiseSeed },
+      uTime: { value: 0 },
+      uLightDirection: { value: new THREE.Vector3(0.38, 0.76, 0.52).normalize() },
+    },
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = 'clouds';
+  mesh.userData.rotationSpeed = Math.max(0.006, render.clouds.speed * 0.06);
+  return mesh;
+}
+
+function createAtmosphereLayer(
+  planetRadius: number,
+  render: PlanetRenderInput['planet']['render'],
+  segments: number,
+): THREE.Mesh {
+  const geometry = new THREE.SphereGeometry(planetRadius * (1 + Math.max(0.04, render.atmosphere.thickness + 0.02)), segments, segments);
+
+  const material = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    uniforms: {
+      uAtmosphereColor: { value: toColor(render.atmosphere.color) },
+      uDensity: { value: Math.max(0.18, render.atmosphere.density) },
+      uRimStrength: { value: render.atmosphere.rimStrength },
+    },
+    vertexShader: `
+      varying vec3 vNormalW;
+      varying vec3 vWorldPos;
+      void main() {
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vWorldPos = wp.xyz;
+        vNormalW = normalize(mat3(modelMatrix) * normal);
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }
+    `,
+    fragmentShader: `
+      varying vec3 vNormalW;
+      varying vec3 vWorldPos;
+      uniform vec3 uAtmosphereColor;
+      uniform float uDensity;
+      uniform float uRimStrength;
+      void main() {
+        vec3 normal = normalize(vNormalW);
+        vec3 viewDir = normalize(cameraPosition - vWorldPos);
+        float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.8);
+        float alpha = clamp(fresnel * uRimStrength * uDensity, 0.0, 0.75);
+        gl_FragColor = vec4(uAtmosphereColor, alpha);
+      }
+    `,
+  });
+
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = 'atmosphere';
   mesh.userData.rotationSpeed = 0;
   return mesh;
 }
 
-function createRingLayer(
-  render: PlanetRenderInput['planet']['render'],
-  segments: number,
-  shadingContrast: number,
-  highQuality: boolean,
-): THREE.Mesh {
+function createRingLayer(render: PlanetRenderInput['planet']['render'], segments: number): THREE.Mesh {
   const geometry = new THREE.RingGeometry(render.rings.innerRadius, render.rings.outerRadius, segments, 1);
-  const pos = geometry.attributes.position;
-  const uvs = geometry.attributes.uv;
-  const innerR = render.rings.innerRadius;
-  const outerR = render.rings.outerRadius;
-  const rangeR = Math.max(0.001, outerR - innerR);
-  for (let i = 0; i < pos.count; i += 1) {
-    const x = pos.getX(i);
-    const y = pos.getY(i);
-    const r = Math.sqrt(x * x + y * y);
-    const radialT = Math.max(0, Math.min(1, (r - innerR) / rangeR));
-    const angle = Math.atan2(y, x);
-    uvs.setXY(i, radialT, angle / (2 * Math.PI) + 0.5);
-  }
-  uvs.needsUpdate = true;
-  const material = new THREE.ShaderMaterial({
-    vertexShader: RING_VERTEX_SHADER,
-    fragmentShader: RING_FRAGMENT_SHADER,
-    uniforms: {
-      uColor: { value: toColor(render.rings.color) },
-      uOpacity: { value: Math.min(0.94, render.rings.opacity * 1.32) },
-      uSeed: { value: render.rings.noiseSeed },
-      uShadingContrast: { value: shadingContrast * (highQuality ? 0.56 : 0.48) },
-    },
+  const material = new THREE.MeshBasicMaterial({
+    color: toColor(render.rings.color),
     transparent: true,
+    opacity: Math.min(0.88, render.rings.opacity * 1.25),
     side: THREE.DoubleSide,
     depthWrite: false,
   });
@@ -232,7 +227,7 @@ function createRingLayer(
   const ring = new THREE.Mesh(geometry, material);
   ring.name = 'rings';
   ring.rotation.x = Math.PI / 2 + render.rings.tilt;
-  ring.userData.rotationSpeed = 0.01;
+  ring.userData.rotationSpeed = 0.008;
   return ring;
 }
 
@@ -261,100 +256,79 @@ export function updatePlanetLayerAnimation(object: THREE.Object3D, deltaSeconds:
     if (speed !== 0 && node instanceof THREE.Mesh) {
       node.rotation.y += speed * deltaSeconds;
     }
+    if (node instanceof THREE.Mesh && node.material instanceof THREE.ShaderMaterial && node.name === 'clouds') {
+      const timeUniform = node.material.uniforms.uTime;
+      if (timeUniform) timeUniform.value += deltaSeconds;
+    }
   });
 }
 
 export function createPlanetRenderInstance(input: PlanetRenderInput): PlanetRenderInstance {
   const { planet, x, y, z, options } = input;
   const view = createPlanetViewProfile(options.viewMode);
-  const highQuality = options.viewMode === 'planet';
-  if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' && (window as { __COINAGE_PIPELINE_TRACE?: boolean }).__COINAGE_PIPELINE_TRACE) {
-    console.info('[PlanetPipelineTrace]', {
-      stage: 'createPlanetRenderInstance',
-      planetId: planet.identity.planetId,
-      family: planet.render.family,
-      surfaceModel: planet.render.surfaceModel,
-      viewMode: options.viewMode,
-      meshSegments: view.meshSegments,
-      noiseSeed: planet.render.surface.noiseSeed,
-    });
-  }
 
   const group = new THREE.Group();
   group.position.set(x, y, z);
-  const galaxySegments = options.viewMode === 'galaxy'
-    ? Math.max(12, Math.min(16, Math.round(12 + planet.render.scale.normalizedRadius * 4)))
-    : view.meshSegments;
-  const ringSegments = options.viewMode === 'galaxy' ? 64 : view.ringSegments;
 
-  const disposeTargets: Array<THREE.BufferGeometry | THREE.Material | THREE.Material[]> = [];
+  const surface = createSurfaceLayer(
+    planet.render.renderRadius,
+    planet.render,
+    view.meshSegments,
+    view.lightingBoost,
+  );
+  group.add(surface);
 
-  if (shouldRenderLayer('surface', options.debug)) {
-    const hasVisibleOcean = view.enableOceanLayer && OCEAN_FAMILIES.includes(planet.render.family);
-    if (hasVisibleOcean) {
-      const ocean = createOceanLayer(
-        planet.render.renderRadius,
-        planet.render,
-        galaxySegments,
-        view.lightingBoost,
-        view.shadingContrast,
-        highQuality,
-      );
-      group.add(ocean);
-      disposeTargets.push(ocean.geometry, ocean.material);
-    }
+  const disposeTargets: Array<THREE.BufferGeometry | THREE.Material | THREE.Material[]> = [surface.geometry, surface.material];
 
-    const surface = createSurfaceLayer(
-      planet.render.renderRadius,
-      planet.render,
-      galaxySegments,
-      view.lightingBoost,
-      view.shadingContrast,
-      highQuality,
-    );
-    group.add(surface);
-    disposeTargets.push(surface.geometry, surface.material);
+  if (view.enableOceanLayer && OCEAN_FAMILIES.includes(planet.render.family)) {
+    const ocean = createOceanLayer(planet.render.renderRadius, planet.render);
+    group.add(ocean);
+    disposeTargets.push(ocean.geometry, ocean.material);
   }
 
-  const renderClouds = false;
-  const renderAtmosphere = false;
+  if (view.enableClouds && planet.render.clouds.enabled && shouldRenderLayer('clouds', options.debug)) {
+    const clouds = createCloudLayer(planet.render.renderRadius, planet.render, Math.max(72, Math.floor(view.cloudSegments)));
+    group.add(clouds);
+    disposeTargets.push(clouds.geometry, clouds.material);
+  }
+
+  if (view.enableAtmosphere && planet.render.atmosphere.enabled && shouldRenderLayer('atmosphere', options.debug)) {
+    const atmosphere = createAtmosphereLayer(planet.render.renderRadius, planet.render, Math.max(72, Math.floor(view.atmosphereSegments)));
+    group.add(atmosphere);
+    disposeTargets.push(atmosphere.geometry, atmosphere.material);
+  }
 
   if (view.enableRings && planet.render.rings.enabled && shouldRenderLayer('rings', options.debug)) {
-    const rings = createRingLayer(planet.render, ringSegments, view.shadingContrast, highQuality);
+    const rings = createRingLayer(planet.render, view.ringSegments);
     group.add(rings);
     disposeTargets.push(rings.geometry, rings.material);
   }
 
   group.rotation.z = planet.visualDNA.rotation.axialTilt;
 
-  const debugSnapshot = {
-    planetId: planet.identity.planetId,
-    seed: planet.identity.planetSeed,
-    family: planet.identity.family,
-    radiusClass: planet.identity.radiusClass,
-    physicalRadius: planet.generated.physicalRadius,
-    renderRadiusBase: planet.render.scale.renderRadiusBase,
-    finalMeshScale:
-      options.viewMode === 'galaxy' ? planet.render.scale.galaxyViewScaleMultiplier : planet.render.scale.planetViewScaleMultiplier,
-    atmosphereThickness: renderAtmosphere ? planet.render.atmosphere.thickness : 0,
-    cloudCoverage: renderClouds ? planet.render.clouds.coverage : 0,
-    hasRings: planet.render.rings.enabled,
-    paletteId: planet.visualDNA.paletteId,
-    activeNoiseFamilies: planet.render.debug.activeNoiseFamilies,
-    currentViewMode: view.viewMode,
-    currentLOD: view.lod,
-  };
-
   return {
     object: group,
-    debugSnapshot,
+    debugSnapshot: {
+      planetId: planet.identity.planetId,
+      seed: planet.identity.planetSeed,
+      family: planet.identity.family,
+      radiusClass: planet.identity.radiusClass,
+      physicalRadius: planet.generated.physicalRadius,
+      renderRadiusBase: planet.render.scale.renderRadiusBase,
+      finalMeshScale:
+        options.viewMode === 'galaxy' ? planet.render.scale.galaxyViewScaleMultiplier : planet.render.scale.planetViewScaleMultiplier,
+      atmosphereThickness: planet.render.atmosphere.thickness,
+      cloudCoverage: planet.render.clouds.coverage,
+      hasRings: planet.render.rings.enabled,
+      paletteId: planet.visualDNA.paletteId,
+      activeNoiseFamilies: planet.render.debug.activeNoiseFamilies,
+      currentViewMode: view.viewMode,
+      currentLOD: view.lod,
+    },
     dispose: () => {
       for (const target of disposeTargets) {
-        if (Array.isArray(target)) {
-          for (const mat of target) mat.dispose();
-        } else {
-          target.dispose();
-        }
+        if (Array.isArray(target)) target.forEach((m) => m.dispose());
+        else target.dispose();
       }
     },
   };

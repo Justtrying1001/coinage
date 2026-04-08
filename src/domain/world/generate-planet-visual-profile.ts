@@ -558,16 +558,16 @@ function buildViewProfile(viewMode: PlanetViewProfile['viewMode']): PlanetViewPr
   return {
     viewMode,
     lod: isGalaxy ? 'low' : 'high',
-    meshSegments: isGalaxy ? 16 : 160,
-    cloudSegments: isGalaxy ? 0 : 0,
-    atmosphereSegments: isGalaxy ? 0 : 0,
-    ringSegments: isGalaxy ? 96 : 320,
+    meshSegments: isGalaxy ? 48 : 180,
+    cloudSegments: isGalaxy ? 0 : 132,
+    atmosphereSegments: isGalaxy ? 0 : 132,
+    ringSegments: isGalaxy ? 72 : 280,
     enableRings: !isGalaxy,
-    enableClouds: false,
-    enableAtmosphere: false,
+    enableClouds: !isGalaxy,
+    enableAtmosphere: !isGalaxy,
     enableOceanLayer: !isGalaxy,
-    lightingBoost: isGalaxy ? 1.38 : 1.55,
-    shadingContrast: isGalaxy ? 0.24 : 0.32,
+    lightingBoost: isGalaxy ? 1.26 : 1.38,
+    shadingContrast: isGalaxy ? 0.2 : 0.34,
   };
 }
 

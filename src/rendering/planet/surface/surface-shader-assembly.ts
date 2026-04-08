@@ -1,39 +1,28 @@
-import { SURFACE_BIOME_GLSL } from './surface-biome.glsl';
-import { SURFACE_CORE_GLSL } from './surface-core.glsl';
-import { SURFACE_LIGHTING_GLSL } from './surface-lighting.glsl';
-
-// Responsibility: wire shader modules together and expose final shader strings.
 export const SURFACE_VERTEX_SHADER_PLANET = `
-  attribute float aHeight;
-  attribute float aLandMask;
-  attribute float aOceanDepth;
+  attribute float aElevation;
+  attribute float aWaterMask;
+  attribute float aSlopeMask;
   attribute float aHumidityMask;
   attribute float aTemperatureMask;
   attribute float aThermalMask;
-  attribute float aErosionMask;
-  attribute float aCraterMask;
-  attribute float aBandMask;
-  attribute float aMacroRelief;
-  attribute float aMidRelief;
-  attribute float aMicroRelief;
-  attribute float aSilhouetteMask;
+  attribute float aRockMask;
+  attribute float aSedimentMask;
+  attribute float aSnowMask;
+  attribute float aLavaMask;
 
   varying vec3 vWorldPos;
   varying vec3 vWorldNormal;
   varying vec3 vUnitPos;
-  varying float vHeight;
-  varying float vLandMask;
-  varying float vOceanDepth;
+  varying float vElevation;
+  varying float vWaterMask;
+  varying float vSlopeMask;
   varying float vHumidityMask;
   varying float vTemperatureMask;
   varying float vThermalMask;
-  varying float vErosionMask;
-  varying float vCraterMask;
-  varying float vBandMask;
-  varying float vMacroRelief;
-  varying float vMidRelief;
-  varying float vMicroRelief;
-  varying float vSilhouetteMask;
+  varying float vRockMask;
+  varying float vSedimentMask;
+  varying float vSnowMask;
+  varying float vLavaMask;
 
   void main() {
     vec4 worldPos = modelMatrix * vec4(position, 1.0);
@@ -41,156 +30,123 @@ export const SURFACE_VERTEX_SHADER_PLANET = `
     vWorldNormal = normalize(mat3(modelMatrix) * normal);
     vUnitPos = normalize(position);
 
-    vHeight = aHeight;
-    vLandMask = aLandMask;
-    vOceanDepth = aOceanDepth;
+    vElevation = aElevation;
+    vWaterMask = aWaterMask;
+    vSlopeMask = aSlopeMask;
     vHumidityMask = aHumidityMask;
     vTemperatureMask = aTemperatureMask;
     vThermalMask = aThermalMask;
-    vErosionMask = aErosionMask;
-    vCraterMask = aCraterMask;
-    vBandMask = aBandMask;
-    vMacroRelief = aMacroRelief;
-    vMidRelief = aMidRelief;
-    vMicroRelief = aMicroRelief;
-    vSilhouetteMask = aSilhouetteMask;
+    vRockMask = aRockMask;
+    vSedimentMask = aSedimentMask;
+    vSnowMask = aSnowMask;
+    vLavaMask = aLavaMask;
 
     gl_Position = projectionMatrix * viewMatrix * worldPos;
   }
 `;
 
-export const SURFACE_VERTEX_SHADER_GALAXY = `
+export const SURFACE_FRAGMENT_SHADER_PLANET = `
   varying vec3 vWorldPos;
   varying vec3 vWorldNormal;
   varying vec3 vUnitPos;
-
-  void main() {
-    vec4 worldPos = modelMatrix * vec4(position, 1.0);
-    vWorldPos = worldPos.xyz;
-    vWorldNormal = normalize(mat3(modelMatrix) * normal);
-    vUnitPos = normalize(position);
-    gl_Position = projectionMatrix * viewMatrix * worldPos;
-  }
-`;
-
-export const SURFACE_FRAGMENT_SHADER_GALAXY = `
-  varying vec3 vWorldPos;
-  varying vec3 vWorldNormal;
-  varying vec3 vUnitPos;
+  varying float vElevation;
+  varying float vWaterMask;
+  varying float vSlopeMask;
+  varying float vHumidityMask;
+  varying float vTemperatureMask;
+  varying float vThermalMask;
+  varying float vRockMask;
+  varying float vSedimentMask;
+  varying float vSnowMask;
+  varying float vLavaMask;
 
   uniform vec3 uColorDeep;
   uniform vec3 uColorMid;
   uniform vec3 uColorHigh;
   uniform vec3 uOceanColor;
   uniform vec3 uAccentColor;
-  uniform float uSurfaceModel;
-  uniform float uSeed;
+  uniform float uEmissive;
   uniform float uRoughness;
   uniform float uSpecularStrength;
-  uniform float uBandingStrength;
   uniform float uLightingBoost;
-  uniform float uShadingContrast;
+  uniform vec3 uLightDirection;
 
   float sat(float x) { return clamp(x, 0.0, 1.0); }
-  float n3(vec3 p) {
-    return fract(sin(dot(p, vec3(127.1, 311.7, 74.7)) + uSeed * 0.0000013) * 43758.5453);
+
+  vec3 triplanarShade(vec3 normal, vec3 worldPos, vec3 baseA, vec3 baseB, float scale, float contrast) {
+    vec3 blend = abs(normal);
+    blend = pow(blend, vec3(contrast));
+    blend /= max(0.0001, blend.x + blend.y + blend.z);
+
+    vec2 uvX = worldPos.yz * scale;
+    vec2 uvY = worldPos.xz * scale;
+    vec2 uvZ = worldPos.xy * scale;
+
+    float nX = sin(uvX.x * 6.0) * cos(uvX.y * 6.0) * 0.5 + 0.5;
+    float nY = sin(uvY.x * 6.0 + 1.2) * cos(uvY.y * 6.0 + 0.7) * 0.5 + 0.5;
+    float nZ = sin(uvZ.x * 6.0 - 0.8) * cos(uvZ.y * 6.0 + 1.1) * 0.5 + 0.5;
+
+    vec3 cx = mix(baseA * 0.82, baseB * 1.12, nX);
+    vec3 cy = mix(baseA * 0.82, baseB * 1.12, nY);
+    vec3 cz = mix(baseA * 0.82, baseB * 1.12, nZ);
+
+    return cx * blend.x + cy * blend.y + cz * blend.z;
   }
 
   void main() {
     vec3 normal = normalize(vWorldNormal);
-    vec3 p = normalize(vUnitPos);
-    float continents = smoothstep(0.4, 0.62, n3(p * 2.0) * 0.65 + n3(p * 4.1) * 0.35);
-    float mountains = smoothstep(0.56, 0.84, n3(p * 7.5) * continents + continents * 0.28);
-    float coasts = smoothstep(0.38, 0.62, continents) - smoothstep(0.62, 0.78, continents);
-    float oceanDepth = 1.0 - continents;
-    float bands = smoothstep(0.3, 0.76, sin((p.y + uSeed * 0.00000011) * 17.0) * 0.5 + 0.5);
-
-    vec3 land = mix(uColorDeep, uColorMid, continents);
-    land = mix(land, uColorHigh, mountains * 0.72);
-    land = mix(land, uAccentColor, coasts * 0.34);
-
-    vec3 ocean = mix(uOceanColor * 1.4, uOceanColor * 0.92, sat(oceanDepth));
-    vec3 coast = mix(ocean * 1.12, land, smoothstep(0.2, 0.8, coasts));
-
-    vec3 albedo = mix(ocean, land, continents);
-    albedo = mix(albedo, coast, coasts);
-
-    vec3 gas = mix(uColorDeep, uColorMid, bands);
-    gas = mix(gas, uColorHigh, bands * 0.54);
-    albedo = mix(albedo, gas, sat(uSurfaceModel));
-
     vec3 viewDir = normalize(cameraPosition - vWorldPos);
-    float softShading = (normal.y * 0.5 + 0.5) * uShadingContrast;
-    float rim = pow(1.0 - sat(dot(normal, viewDir)), 2.2) * 0.12;
-    float gloss = clamp(1.0 - uRoughness, 0.05, 0.98);
-    float specPower = mix(6.0, 32.0, gloss);
-    float specular = pow(max(dot(normal, normalize(vec3(0.35, 0.75, 0.25))), 0.0), specPower) * (0.03 + uSpecularStrength * 0.11 + uBandingStrength * 0.04);
-    float tonal = 1.08 + softShading + rim + specular;
-    float luma = dot(albedo, vec3(0.2126, 0.7152, 0.0722));
-    vec3 saturated = mix(vec3(luma), albedo, 1.18);
-    vec3 color = saturated * tonal + saturated * 0.06;
-    color = clamp(color * uLightingBoost, vec3(0.32), vec3(1.0));
+    vec3 lightDir = normalize(uLightDirection);
 
-    gl_FragColor = vec4(color, 1.0);
+    float ndl = max(dot(normal, lightDir), 0.0);
+    float wrap = smoothstep(0.0, 1.0, ndl * 0.84 + 0.08);
+
+    float rock = sat(vRockMask);
+    float sediment = sat(vSedimentMask);
+    float snow = sat(vSnowMask);
+    float lava = sat(vLavaMask);
+    float water = sat(vWaterMask);
+
+    vec3 sedimentCol = triplanarShade(normal, vWorldPos, uColorDeep, uColorMid, 0.7, 3.0);
+    vec3 rockCol = triplanarShade(normal, vWorldPos, uColorMid * 0.8, uColorHigh * 1.05, 1.35, 2.2);
+    vec3 snowCol = triplanarShade(normal, vWorldPos, uColorHigh * 1.08, vec3(0.95, 0.98, 1.0), 1.8, 1.4);
+    vec3 lavaCol = triplanarShade(normal, vWorldPos, uAccentColor * vec3(1.20, 0.58, 0.22), uAccentColor * vec3(1.40, 0.38, 0.12), 2.3, 1.2);
+
+    float solidSum = max(0.0001, rock + sediment + snow + lava * 1.2);
+    vec3 landCol = (
+      rockCol * rock +
+      sedimentCol * sediment +
+      snowCol * snow +
+      lavaCol * lava * 1.2
+    ) / solidSum;
+
+    float oceanDepth = sat(1.0 - vElevation * 0.7);
+    vec3 shallowWater = uOceanColor * vec3(1.18, 1.12, 1.04);
+    vec3 deepWater = uOceanColor * vec3(0.62, 0.76, 0.96);
+    vec3 waterCol = mix(shallowWater, deepWater, smoothstep(0.1, 0.9, oceanDepth));
+
+    vec3 albedo = mix(landCol, waterCol, water);
+
+    float fresnel = pow(1.0 - sat(dot(normal, viewDir)), 3.0);
+    float halfSpec = max(dot(normal, normalize(lightDir + viewDir)), 0.0);
+    float localRoughness = clamp(uRoughness + rock * 0.12 + sediment * 0.18 - water * 0.34 - snow * 0.12, 0.08, 0.96);
+    float specPower = mix(10.0, 82.0, 1.0 - localRoughness);
+    float spec = pow(halfSpec, specPower) * (uSpecularStrength * (0.16 + water * 1.1 + snow * 0.24));
+
+    float slopeShadow = (1.0 - dot(normal, normalize(vUnitPos))) * 0.16;
+    float thermalLift = vThermalMask * 0.22;
+    float tonal = clamp(0.42 + wrap * 0.9 - slopeShadow + spec + fresnel * (0.04 + water * 0.10), 0.2, 1.75);
+
+    vec3 color = albedo * tonal;
+    color += uAccentColor * (uEmissive * (thermalLift + lava * 0.48));
+
+    gl_FragColor = vec4(clamp(color * uLightingBoost, vec3(0.03), vec3(1.0)), 1.0);
   }
 `;
+
+export const SURFACE_VERTEX_SHADER_GALAXY = SURFACE_VERTEX_SHADER_PLANET;
+export const SURFACE_FRAGMENT_SHADER_GALAXY = SURFACE_FRAGMENT_SHADER_PLANET;
 
 export function getSurfacePlanetFragmentShader(): string {
-  return `
-${SURFACE_CORE_GLSL}
-${SURFACE_BIOME_GLSL}
-${SURFACE_LIGHTING_GLSL}
-
-  void main() {
-    SurfaceState state = buildSurfaceState();
-    state.landBase = applyBiomeTint(
-      state.landBase,
-      state.humidity,
-      state.temperature,
-      state.rockyMask,
-      state.lowlandMask,
-      state.highlandMask
-    );
-
-    vec3 litColor = applySurfaceLighting(
-      state.albedo,
-      state.normal,
-      vUnitPos,
-      state.heightNorm,
-      state.reliefShade,
-      vSilhouetteMask,
-      vThermalMask,
-      vBandMask,
-      uAccentColor,
-      uEmissive,
-      uRoughness,
-      uSpecularStrength,
-      uBandingStrength,
-      uShadingContrast,
-      uLightingBoost
-    );
-
-    vec3 landLitColor = applySurfaceLighting(
-      state.landBase,
-      state.normal,
-      vUnitPos,
-      state.heightNorm,
-      state.reliefShade,
-      vSilhouetteMask,
-      vThermalMask,
-      vBandMask,
-      uAccentColor,
-      uEmissive,
-      uRoughness,
-      uSpecularStrength,
-      uBandingStrength,
-      uShadingContrast,
-      uLightingBoost
-    );
-
-    vec3 color = mix(litColor, landLitColor, sat(vLandMask) * (1.0 - sat(uSurfaceModel)));
-
-    gl_FragColor = vec4(color, 1.0);
-  }
-`;
+  return SURFACE_FRAGMENT_SHADER_PLANET;
 }
