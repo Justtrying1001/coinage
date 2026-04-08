@@ -198,6 +198,17 @@ function distanceSq(planet: PlanetRenderData, origin: THREE.Vector2): number {
   return dx * dx + dy * dy;
 }
 
+function boostGalaxyInstanceColor(color: [number, number, number]): THREE.Color {
+  const boosted = new THREE.Color(color[0], color[1], color[2]);
+  const luminance = 0.2126 * boosted.r + 0.7152 * boosted.g + 0.0722 * boosted.b;
+  const minLuminance = 0.34;
+  if (luminance < minLuminance) {
+    const blend = Math.min(0.6, (minLuminance - luminance) / Math.max(0.0001, minLuminance));
+    boosted.lerp(new THREE.Color(0.78, 0.84, 1), blend);
+  }
+  return boosted;
+}
+
 function prioritizePlanets(
   planets: PlanetRenderData[],
   cameraOrigin: THREE.Vector2,
@@ -297,6 +308,24 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     camera.zoom = FIXED_CAMERA_ZOOM;
     camera.updateProjectionMatrix();
     camera.lookAt(camera.position.x, camera.position.y, 0);
+    if (planetData.length > 0) {
+      const initialTarget = new THREE.Vector2(camera.position.x, camera.position.y);
+      const initialVisibleCount = planetData.filter((planet) =>
+        isPlanetInsideInitialViewport(planet, initialTarget, camera),
+      ).length;
+      if (initialVisibleCount === 0) {
+        const nearest = planetData.reduce((closest, planet) => {
+          if (!closest) {
+            return planet;
+          }
+          return distanceSq(planet, initialTarget) < distanceSq(closest, initialTarget) ? planet : closest;
+        }, planetData[0]);
+        if (nearest) {
+          camera.position.set(nearest.x, nearest.y, 60);
+          camera.lookAt(nearest.x, nearest.y, 0);
+        }
+      }
+    }
     const cameraTarget = new THREE.Vector2(camera.position.x, camera.position.y);
     const keyboardVelocity = new THREE.Vector2(0, 0);
 
@@ -319,6 +348,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       camera,
     );
     const planetGroup = new THREE.Group();
+    const sanityProbeGroup = new THREE.Group();
     const instances: PlanetRenderInstance[] = [];
     const interactivePlanetMeshes: THREE.Mesh[] = [];
     const instantiatedPlanetIds = new Set<string>();
@@ -326,7 +356,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     const tinyPlanetMesh = tinyPlanets.length > 0
       ? new THREE.InstancedMesh(
         new THREE.SphereGeometry(1, 12, 12),
-        new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.76, metalness: 0.06 }),
+        new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
         tinyPlanets.length,
       )
       : null;
@@ -349,6 +379,19 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     }
 
     scene.add(planetGroup);
+    if (process.env.NODE_ENV !== 'production') {
+      const probePlanets = prioritizedQueue.slice(0, 3);
+      for (const probe of probePlanets) {
+        const probeMesh = new THREE.Mesh(
+          new THREE.SphereGeometry(2.3, 10, 10),
+          new THREE.MeshBasicMaterial({ color: '#ffe066', toneMapped: false }),
+        );
+        probeMesh.position.set(probe.x, probe.y, 0.2);
+        probeMesh.name = `galaxy-sanity-probe-${probe.id}`;
+        sanityProbeGroup.add(probeMesh);
+      }
+      scene.add(sanityProbeGroup);
+    }
     markPerf(perfStore, 'galaxy:scene:init:end');
     measurePerf(perfStore, 'galaxy:scene:init', 'galaxy:scene:init:start', 'galaxy:scene:init:end');
 
@@ -628,14 +671,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
           new THREE.Vector3(visualRadius, visualRadius, visualRadius),
         );
         tinyPlanetMesh.setMatrixAt(tinyPlanetIndex, matrix);
-        tinyPlanetMesh.setColorAt(
-          tinyPlanetIndex,
-          new THREE.Color(
-            planet.planet.render.surface.colorMid[0],
-            planet.planet.render.surface.colorMid[1],
-            planet.planet.render.surface.colorMid[2],
-          ),
-        );
+        tinyPlanetMesh.setColorAt(tinyPlanetIndex, boostGalaxyInstanceColor(planet.planet.render.surface.colorMid));
         tinyPlanetIds[tinyPlanetIndex] = planet.id;
         tinyPlanetIndex += 1;
         tinyPlanetMesh.instanceMatrix.needsUpdate = true;
@@ -914,6 +950,17 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       if (tinyPlanetMesh?.material instanceof THREE.Material) {
         tinyPlanetMesh.material.dispose();
       }
+      sanityProbeGroup.traverse((node) => {
+        if (node instanceof THREE.Mesh) {
+          node.geometry.dispose();
+          const material = node.material as THREE.Material | THREE.Material[];
+          if (Array.isArray(material)) {
+            material.forEach((entry) => entry.dispose());
+          } else {
+            material.dispose();
+          }
+        }
+      });
       (nebulaBackground.geometry as THREE.BufferGeometry).dispose();
       (nebulaBackground.material as THREE.Material).dispose();
       (starfield.geometry as THREE.BufferGeometry).dispose();
