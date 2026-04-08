@@ -53,10 +53,10 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
   const microRelief = new Float32Array(position.count);
   const silhouetteMask = new Float32Array(position.count);
 
-  const baseDisplacementScale = input.radius * (input.surfaceModel === 'gaseous' ? 0.03 : 0.22);
-  const macroScale = baseDisplacementScale * (input.surfaceModel === 'gaseous' ? 0.5 : 0.82);
-  const midScale = baseDisplacementScale * (input.surfaceModel === 'gaseous' ? 0.3 : 0.24);
-  const microScale = baseDisplacementScale * (input.surfaceModel === 'gaseous' ? 0.2 : 0.05);
+  const baseDisplacementScale = input.radius * (input.surfaceModel === 'gaseous' ? 0.028 : 0.26);
+  const macroScale = baseDisplacementScale * (input.surfaceModel === 'gaseous' ? 0.46 : 0.86);
+  const midScale = baseDisplacementScale * (input.surfaceModel === 'gaseous' ? 0.30 : 0.34);
+  const microScale = baseDisplacementScale * (input.surfaceModel === 'gaseous' ? 0.24 : 0.10);
 
   for (let i = 0; i < position.count; i += 1) {
     const x = position.getX(i);
@@ -87,21 +87,22 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
     const midComponent = terrain.midRelief * midScale;
     const microComponent = terrain.microRelief * microScale;
 
-    const silhouetteGain = 0.84 + terrain.silhouetteMask * 0.72;
-    const combinedRelief = (macroComponent + midComponent * 0.92 + microComponent * 0.38) * silhouetteGain;
+    const silhouetteGain = 0.78 + terrain.silhouetteMask * (input.surfaceModel === 'gaseous' ? 0.42 : 0.86);
+    const basinCompression = 1 - terrain.basinMask * 0.22;
+    const combinedRelief = (macroComponent + midComponent * 1.04 + microComponent * 0.58) * silhouetteGain * basinCompression;
 
     const amplitudeControl = input.reliefAmplitude * (input.surfaceModel === 'gaseous' ? 0.9 : 1.0);
     const unclampedDisplacement = combinedRelief * amplitudeControl;
     const clampedDisplacement = clamp(
       unclampedDisplacement,
-      -input.radius * (input.surfaceModel === 'gaseous' ? 0.016 : 0.09),
-      input.radius * (input.surfaceModel === 'gaseous' ? 0.018 : 0.12),
+      -input.radius * (input.surfaceModel === 'gaseous' ? 0.015 : 0.10),
+      input.radius * (input.surfaceModel === 'gaseous' ? 0.018 : 0.14),
     );
 
     let displacedRadius: number;
     if (hasOceanFamily && terrain.landMask < 0.5) {
-      const basinSink = terrain.basinMask * input.radius * 0.0028;
-      displacedRadius = input.radius * 0.998 - basinSink;
+      const basinSink = terrain.basinMask * input.radius * 0.0042;
+      displacedRadius = input.radius * 0.9975 - basinSink;
     } else {
       displacedRadius = input.radius + clampedDisplacement;
     }

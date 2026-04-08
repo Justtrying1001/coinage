@@ -171,7 +171,8 @@ function createOceanLayer(
   shadingContrast: number,
   highQuality: boolean,
 ): THREE.Mesh {
-  const geometry = new THREE.SphereGeometry(planetRadius, segments, segments);
+  const oceanRadius = planetRadius * (highQuality ? 0.998 : 0.999);
+  const geometry = new THREE.SphereGeometry(oceanRadius, segments, segments);
 
   const material = new THREE.ShaderMaterial({
     vertexShader: SHARED_SPHERE_VERTEX_SHADER,
@@ -182,6 +183,9 @@ function createOceanLayer(
       uShadingContrast: { value: shadingContrast * (highQuality ? 0.86 : 0.72) },
       uLightingBoost: { value: lightingBoost },
     },
+    transparent: true,
+    opacity: highQuality ? 0.84 : 0.7,
+    depthWrite: false,
   });
 
   const mesh = new THREE.Mesh(geometry, material);
