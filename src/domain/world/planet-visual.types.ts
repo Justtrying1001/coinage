@@ -114,6 +114,7 @@ export interface PlanetRenderProfile {
     noiseSeed: number;
     moistureSeed: number;
     thermalSeed: number;
+    bandSeed: number;
   };
   clouds: {
     enabled: boolean;

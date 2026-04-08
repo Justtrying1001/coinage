@@ -29,6 +29,9 @@ export const SURFACE_LIGHTING_GLSL = `
     float bandMask,
     vec3 accentColor,
     float emissive,
+    float roughness,
+    float specularStrength,
+    float bandingStrength,
     float shadingContrast,
     float lightingBoost
   ) {
@@ -47,7 +50,11 @@ export const SURFACE_LIGHTING_GLSL = `
 
     float rim = pow(1.0 - clamp(dot(normal, viewDir), 0.0, 1.0), 2.8) * (RIM_BASE_STRENGTH + silhouetteMask * RIM_SILHOUETTE_STRENGTH);
     float halfSpec = max(dot(normal, normalize(lightDir + viewDir)), 0.0);
-    float specular = pow(halfSpec, 26.0) * (SPEC_BASE_STRENGTH + heightNorm * SPEC_HEIGHT_STRENGTH + slope * SPEC_SLOPE_STRENGTH);
+    float gloss = clamp(1.0 - roughness, 0.05, 0.98);
+    float specPower = mix(8.0, 64.0, gloss);
+    float specBase = SPEC_BASE_STRENGTH + heightNorm * SPEC_HEIGHT_STRENGTH + slope * SPEC_SLOPE_STRENGTH;
+    float bandSpecLift = mix(0.0, 0.08, bandMask * bandingStrength);
+    float specular = pow(halfSpec, specPower) * (specBase + bandSpecLift) * clamp(specularStrength * 1.55, 0.0, 1.8);
 
     float reliefLighting = reliefShade * (RELIEF_BASE_STRENGTH + silhouetteMask * RELIEF_SILHOUETTE_STRENGTH);
     float tonal = clamp(shadowLift + hemisphere + slopeContrast + reliefLighting + rim + specular, 0.66, 1.5);

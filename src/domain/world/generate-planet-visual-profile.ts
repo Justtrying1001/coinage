@@ -563,9 +563,9 @@ function buildViewProfile(viewMode: PlanetViewProfile['viewMode']): PlanetViewPr
     atmosphereSegments: isGalaxy ? 0 : 0,
     ringSegments: isGalaxy ? 96 : 320,
     enableRings: true,
-    enableClouds: false,
-    enableAtmosphere: false,
-    enableOceanLayer: false,
+    enableClouds: !isGalaxy,
+    enableAtmosphere: !isGalaxy,
+    enableOceanLayer: !isGalaxy,
     lightingBoost: isGalaxy ? 1.38 : 1.55,
     shadingContrast: isGalaxy ? 0.24 : 0.32,
   };
@@ -685,6 +685,7 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
       noiseSeed: visualDNA.noiseSeeds.surface,
       moistureSeed: visualDNA.noiseSeeds.moisture,
       thermalSeed: visualDNA.noiseSeeds.thermal,
+      bandSeed: visualDNA.noiseSeeds.bands,
     },
     clouds: {
       enabled: classification.canHaveClouds,

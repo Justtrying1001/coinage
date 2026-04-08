@@ -83,8 +83,10 @@ const DRAG_DIRECT_RESPONSE = 0.58;
 const PLANET_BATCH_SIZE = 10;
 const INITIAL_BATCH_CAP = 72;
 const PERF_LOG_PREFIX = '[GalaxyPerf]';
-// V1 robustness: route all galaxy planets through a single instanced path for complete, stable map representation.
-const INSTANCED_RADIUS_THRESHOLD = Number.POSITIVE_INFINITY;
+// Hybrid representation: keep instancing for distant/small planets and preserve richer identity for nearby/important ones.
+const INSTANCED_RADIUS_THRESHOLD = 3.6;
+const GALAXY_DETAIL_FOCUS_RADIUS = Math.max(48, FIELD_RADIUS * 0.32);
+const GALAXY_DETAIL_BUDGET = 110;
 
 function createDefaultCounters(totalPlanets = 0): GalaxyPerfCounters {
   return {
@@ -333,6 +335,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     const tinyPlanetIds: string[] = [];
     let tinyPlanetIndex = 0;
     const expectedTinyPlanetCount = tinyPlanets.length;
+    let detailedPlanetCount = 0;
 
     if (tinyPlanetMesh) {
       tinyPlanetMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -603,7 +606,12 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       }
 
       const visualRadius = computeGalaxyVisualRadius(planet.planet.render.scale);
-      if (tinyPlanetMesh && visualRadius <= INSTANCED_RADIUS_THRESHOLD && tinyPlanetIndex < tinyPlanetMesh.count) {
+      const distanceToCameraOrigin = Math.hypot(planet.x - cameraTarget.x, planet.y - cameraTarget.y);
+      const shouldRenderDetailed =
+        visualRadius > INSTANCED_RADIUS_THRESHOLD ||
+        (distanceToCameraOrigin <= GALAXY_DETAIL_FOCUS_RADIUS && detailedPlanetCount < GALAXY_DETAIL_BUDGET);
+
+      if (!shouldRenderDetailed && tinyPlanetMesh && tinyPlanetIndex < tinyPlanetMesh.count) {
         if (perfStore) {
           perfStore.counters.workerJobsCompleted += 1;
         }
@@ -682,6 +690,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       instances.push(instance);
       instantiatedPlanetIds.add(planet.id);
       planetGroup.add(instance.object);
+      detailedPlanetCount += 1;
 
       if (perfStore) {
         perfStore.counters.meshCount += localMeshCount;

@@ -23,6 +23,10 @@ export const SURFACE_CORE_GLSL = `
   uniform vec3 uAccentColor;
   uniform float uEmissive;
   uniform float uSurfaceModel;
+  uniform float uRoughness;
+  uniform float uSpecularStrength;
+  uniform float uBandingStrength;
+  uniform float uBandSeed;
   uniform float uLightingBoost;
   uniform float uShadingContrast;
 
@@ -122,8 +126,10 @@ export const SURFACE_CORE_GLSL = `
     vec3 solidAlbedo = mix(oceanColor, state.landBase, vLandMask);
     solidAlbedo = mix(solidAlbedo, coast, state.coastMask * 0.75);
 
-    vec3 gasBands = mix(uColorDeep * 1.05, uColorMid * 1.1, sat(vBandMask * 0.92 + vMacroRelief * 0.1));
-    gasBands = mix(gasBands, uColorHigh * 1.12, sat(vThermalMask * 0.42 + vTemperatureMask * 0.28));
+    float seededBand = sin(vUnitPos.y * (12.0 + uBandingStrength * 18.0) + uBandSeed * 0.0000012) * 0.5 + 0.5;
+    float bandField = sat(vBandMask * 0.7 + seededBand * 0.3 + vMacroRelief * 0.08);
+    vec3 gasBands = mix(uColorDeep * 1.05, uColorMid * 1.1, bandField);
+    gasBands = mix(gasBands, uColorHigh * 1.12, sat(vThermalMask * 0.42 + vTemperatureMask * 0.28 + bandField * 0.18));
     vec3 gasStorms = mix(gasBands, uAccentColor * 1.06, sat(vThermalMask * 0.62 + vMidRelief * 0.12));
     vec3 gaseousAlbedo = mix(gasBands, gasStorms, sat(vBandMask * 0.52 + vThermalMask * 0.38));
 
