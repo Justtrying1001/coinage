@@ -16,6 +16,17 @@ function toColor(value: [number, number, number]): THREE.Color {
 
 const SURFACE_FRAGMENT_SHADER_PLANET = getSurfacePlanetFragmentShader();
 
+const FAMILY_INDEX: Record<PlanetRenderInput['planet']['render']['family'], number> = {
+  'terrestrial-lush': 0,
+  oceanic: 1,
+  'desert-arid': 2,
+  'ice-frozen': 3,
+  'volcanic-infernal': 4,
+  'barren-rocky': 5,
+  'toxic-alien': 6,
+  'gas-giant': 7,
+  'ringed-giant': 8,
+};
 
 const SHARED_SPHERE_VERTEX_SHADER = `
   varying vec3 vWorldPos;
@@ -55,57 +66,6 @@ const OCEAN_FRAGMENT_SHADER = `
     color *= uLightingBoost;
 
     gl_FragColor = vec4(clamp(color, vec3(0.3), vec3(1.0)), 1.0);
-  }
-`;
-
-const CLOUD_FRAGMENT_SHADER = `
-  varying vec3 vWorldPos;
-  varying vec3 vWorldNormal;
-  varying vec3 vUnitPos;
-
-  uniform vec3 uCloudColor;
-  uniform float uCoverage;
-  uniform float uOpacity;
-  uniform float uSeed;
-  uniform float uLightingBoost;
-
-  float sat(float x) { return clamp(x, 0.0, 1.0); }
-  float n3(vec3 p) {
-    return fract(sin(dot(p, vec3(127.1, 311.7, 74.7)) + uSeed * 0.0000019) * 43758.5453);
-  }
-
-  void main() {
-    vec3 p = normalize(vUnitPos);
-    vec3 normal = normalize(vWorldNormal);
-    vec3 viewDir = normalize(cameraPosition - vWorldPos);
-    float base = n3(p * 5.2) * 0.55 + n3(p * 11.0) * 0.45;
-    float clouds = smoothstep(1.0 - sat(uCoverage), 1.0, base);
-    float rim = pow(1.0 - sat(dot(normal, viewDir)), 2.3) * 0.22;
-    float alpha = clouds * sat(uOpacity * 1.08 + rim * 0.35);
-    if (alpha <= 0.001) discard;
-    vec3 color = uCloudColor * (0.88 + clouds * 0.3 + rim * 0.4) * uLightingBoost;
-    gl_FragColor = vec4(clamp(color, vec3(0.0), vec3(1.0)), clamp(alpha, 0.0, 0.88));
-  }
-`;
-
-const ATMOSPHERE_FRAGMENT_SHADER = `
-  varying vec3 vWorldPos;
-  varying vec3 vWorldNormal;
-
-  uniform vec3 uAtmosphereColor;
-  uniform float uDensity;
-  uniform float uRimStrength;
-  uniform float uLightingBoost;
-
-  float sat(float x) { return clamp(x, 0.0, 1.0); }
-
-  void main() {
-    vec3 normal = normalize(vWorldNormal);
-    vec3 viewDir = normalize(cameraPosition - vWorldPos);
-    float fresnel = pow(1.0 - sat(dot(normal, viewDir)), 2.7);
-    float alpha = fresnel * (0.18 + uDensity * 0.66) * uRimStrength;
-    vec3 color = uAtmosphereColor * (0.72 + fresnel * 0.86) * uLightingBoost;
-    gl_FragColor = vec4(clamp(color, vec3(0.0), vec3(1.0)), clamp(alpha, 0.0, 0.9));
   }
 `;
 
@@ -155,7 +115,6 @@ const RING_FRAGMENT_SHADER = `
 function createSurfaceLayer(
   planetRadius: number,
   render: PlanetRenderInput['planet']['render'],
-  surfaceRotationSpeed: number,
   segments: number,
   lightingBoost: number,
   shadingContrast: number,
@@ -192,6 +151,7 @@ function createSurfaceLayer(
       uSpecularStrength: { value: render.surface.specularStrength },
       uBandingStrength: { value: render.surface.bandingStrength },
       uBandSeed: { value: render.surface.bandSeed },
+      uFamilyType: { value: FAMILY_INDEX[render.family] ?? 0 },
       uLightingBoost: { value: lightingBoost },
       uShadingContrast: { value: shadingContrast },
     },
@@ -199,7 +159,7 @@ function createSurfaceLayer(
 
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = 'surface';
-  mesh.userData.rotationSpeed = surfaceRotationSpeed;
+  mesh.userData.rotationSpeed = 0;
   return mesh;
 }
 
@@ -226,60 +186,6 @@ function createOceanLayer(
 
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = 'ocean';
-  mesh.userData.rotationSpeed = 0;
-  return mesh;
-}
-
-function createCloudLayer(
-  planetRadius: number,
-  render: PlanetRenderInput['planet']['render'],
-  segments: number,
-  lightingBoost: number,
-): THREE.Mesh {
-  const cloudRadius = planetRadius * 1.012;
-  const geometry = new THREE.SphereGeometry(cloudRadius, segments, segments);
-  const material = new THREE.ShaderMaterial({
-    vertexShader: SHARED_SPHERE_VERTEX_SHADER,
-    fragmentShader: CLOUD_FRAGMENT_SHADER,
-    uniforms: {
-      uCloudColor: { value: toColor(render.clouds.color) },
-      uCoverage: { value: render.clouds.coverage },
-      uOpacity: { value: render.clouds.opacity },
-      uSeed: { value: render.clouds.noiseSeed },
-      uLightingBoost: { value: lightingBoost },
-    },
-    transparent: true,
-    depthWrite: false,
-  });
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.name = 'clouds';
-  mesh.userData.rotationSpeed = render.clouds.speed;
-  return mesh;
-}
-
-function createAtmosphereLayer(
-  planetRadius: number,
-  render: PlanetRenderInput['planet']['render'],
-  segments: number,
-  lightingBoost: number,
-): THREE.Mesh {
-  const atmosphereRadius = planetRadius * (1 + render.atmosphere.thickness);
-  const geometry = new THREE.SphereGeometry(atmosphereRadius, segments, segments);
-  const material = new THREE.ShaderMaterial({
-    vertexShader: SHARED_SPHERE_VERTEX_SHADER,
-    fragmentShader: ATMOSPHERE_FRAGMENT_SHADER,
-    uniforms: {
-      uAtmosphereColor: { value: toColor(render.atmosphere.color) },
-      uDensity: { value: render.atmosphere.density },
-      uRimStrength: { value: render.atmosphere.rimStrength },
-      uLightingBoost: { value: lightingBoost },
-    },
-    transparent: true,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-  });
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.name = 'atmosphere';
   mesh.userData.rotationSpeed = 0;
   return mesh;
 }
@@ -397,7 +303,6 @@ export function createPlanetRenderInstance(input: PlanetRenderInput): PlanetRend
     const surface = createSurfaceLayer(
       planet.render.renderRadius,
       planet.render,
-      planet.visualDNA.rotation.surfaceSpeed,
       galaxySegments,
       view.lightingBoost,
       view.shadingContrast,
@@ -407,32 +312,8 @@ export function createPlanetRenderInstance(input: PlanetRenderInput): PlanetRend
     disposeTargets.push(surface.geometry, surface.material);
   }
 
-  const renderClouds = view.enableClouds && planet.render.clouds.enabled && shouldRenderLayer('clouds', options.debug);
-  const renderAtmosphere = view.enableAtmosphere && planet.render.atmosphere.enabled && shouldRenderLayer('atmosphere', options.debug);
-
-  if (renderClouds) {
-    const cloudSegments = Math.max(48, Math.floor(view.meshSegments * 0.65));
-    const clouds = createCloudLayer(
-      planet.render.renderRadius,
-      planet.render,
-      cloudSegments,
-      view.lightingBoost,
-    );
-    group.add(clouds);
-    disposeTargets.push(clouds.geometry, clouds.material);
-  }
-
-  if (renderAtmosphere) {
-    const atmosphereSegments = Math.max(56, Math.floor(view.meshSegments * 0.72));
-    const atmosphere = createAtmosphereLayer(
-      planet.render.renderRadius,
-      planet.render,
-      atmosphereSegments,
-      view.lightingBoost,
-    );
-    group.add(atmosphere);
-    disposeTargets.push(atmosphere.geometry, atmosphere.material);
-  }
+  const renderClouds = false;
+  const renderAtmosphere = false;
 
   if (view.enableRings && planet.render.rings.enabled && shouldRenderLayer('rings', options.debug)) {
     const rings = createRingLayer(planet.render, ringSegments, view.shadingContrast, highQuality);
