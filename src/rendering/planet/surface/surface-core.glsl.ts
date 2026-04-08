@@ -17,7 +17,6 @@ export const SURFACE_CORE_GLSL = `
   varying float vMidRelief;
   varying float vMicroRelief;
   varying float vSilhouetteMask;
-  varying float vFractureMask;
 
   uniform vec3 uColorDeep;
   uniform vec3 uColorMid;
@@ -112,13 +111,25 @@ export const SURFACE_CORE_GLSL = `
     float aridMask = smoothstep(0.55, 0.9, 1.0 - state.humidity) * smoothstep(0.42, 0.88, state.temperature);
     float fertileMask = smoothstep(0.58, 0.94, state.humidity) * smoothstep(0.16, 0.78, state.temperature);
 
+    vec3 lowlands = mix(uColorDeep * 1.08, uColorMid * 1.12, state.lowlandMask);
+    lowlands = mix(lowlands, lowlands * vec3(1.04, 1.02, 0.94), aridMask * 0.26);
+    lowlands = mix(lowlands, lowlands * vec3(0.96, 1.05, 0.95), fertileMask * 0.22);
+
+    vec3 uplands = mix(uColorMid * 1.02, uColorHigh * 1.16, state.highlandMask);
+    vec3 rocky = mix(uColorHigh * 1.1, vec3(dot(uColorHigh, vec3(0.333))) + vec3(0.08), state.rockyMask * 0.5);
+
     float ridgeStrata = sin((vUnitPos.x * 1.3 + vUnitPos.z) * 10.0 + vMacroRelief * 4.0) * 0.5 + 0.5;
     float canyonNoise = sin(vUnitPos.y * 12.0 - vUnitPos.x * 7.0 + vMidRelief * 3.4) * 0.5 + 0.5;
     float detailMask = sat(ridgeStrata * 0.68 + canyonNoise * 0.32);
     float slopeMask = sat(1.0 - dot(state.normal, normalize(vUnitPos)));
     float plateauMask = smoothstep(0.56, 0.88, macroHeight) * (1.0 - slopeMask * 0.62);
     float basinShadow = smoothstep(0.42, 0.92, basinMask);
-    float fractureMask = sat(vFractureMask);
+
+    vec3 terrain = mix(lowlands, uplands, state.highlandMask * 0.84 + macroHeight * 0.16);
+    terrain = mix(terrain, rocky, state.rockyMask);
+    terrain = mix(terrain, terrain * vec3(0.97, 0.98, 1.01), detailMask * 0.12);
+    terrain = mix(terrain, terrain * vec3(1.04, 1.03, 0.99), plateauMask * 0.14);
+    terrain = mix(terrain, terrain * vec3(0.84, 0.86, 0.90), basinShadow * 0.22);
 
     float lushMask = familyMask(0.0);
     float oceanicMask = familyMask(1.0);
@@ -128,38 +139,16 @@ export const SURFACE_CORE_GLSL = `
     float barrenMask = familyMask(5.0);
     float toxicMask = familyMask(6.0);
 
-    float erosionHighlight = smoothstep(0.3, 0.86, erosion) * (0.28 + slopeMask * 0.32);
-    float craterRim = crater * smoothstep(0.22, 0.82, detailMask + slopeMask * 0.4);
-
-    vec3 matSediment = mix(uColorDeep * 1.02, uColorMid * 1.12, state.lowlandMask) * vec3(1.03, 1.00, 0.95);
-    vec3 matRockDark = mix(uColorMid * 0.82, uColorHigh * 0.78, state.rockyMask) * vec3(0.88, 0.87, 0.90);
-    vec3 matRockBright = mix(uColorMid * 1.08, uColorHigh * 1.2, state.highlandMask) * vec3(1.03, 1.02, 0.99);
-    vec3 matFrost = mix(uColorMid * 1.02, uColorHigh * 1.18, smoothstep(0.45, 0.92, state.highlandMask + (1.0 - state.temperature) * 0.5));
-    vec3 matBasalt = mix(uColorDeep * 0.72, uColorMid * 0.78, smoothstep(0.2, 0.9, state.rockyMask + thermal * 0.34));
-    vec3 matLava = mix(uAccentColor * vec3(1.18, 0.64, 0.34), uAccentColor * vec3(1.0, 0.48, 0.26), thermal);
-
-    float wSediment = sat((0.68 + fertileMask * 0.34) * (1.0 - state.highlandMask * 0.84));
-    float wRockDark = sat((slopeMask * 0.64 + state.rockyMask * 0.46 + fractureMask * 0.58) * (0.38 + barrenMask * 0.72 + volcanicMask * 0.42));
-    float wRockBright = sat(state.highlandMask * 0.62 + plateauMask * 0.42 + erosionHighlight * 0.5);
-    float wFrost = sat((1.0 - state.temperature) * (0.42 + iceMask * 0.62) * (0.36 + state.highlandMask * 0.44));
-    float wBasalt = sat((volcanicMask * 0.88 + barrenMask * 0.32) * (state.rockyMask * 0.48 + fractureMask * 0.44 + thermal * 0.34));
-    float wLava = sat(volcanicMask * smoothstep(0.2, 0.92, thermal * 0.84 + fractureMask * 0.32));
-
-    float wSum = wSediment + wRockDark + wRockBright + wFrost + wBasalt + wLava + 1e-5;
-    vec3 terrain =
-      (matSediment * wSediment +
-      matRockDark * wRockDark +
-      matRockBright * wRockBright +
-      matFrost * wFrost +
-      matBasalt * wBasalt +
-      matLava * wLava) / wSum;
-
-    terrain = mix(terrain, terrain * vec3(0.97, 0.98, 1.01), detailMask * 0.12);
-    terrain = mix(terrain, terrain * vec3(1.04, 1.03, 0.99), plateauMask * 0.14);
-    terrain = mix(terrain, terrain * vec3(0.84, 0.86, 0.90), basinShadow * 0.22);
     terrain = mix(terrain, terrain * vec3(0.86, 0.77, 0.65), desertMask * (1.0 - state.humidity) * 0.44);
+    terrain = mix(terrain, terrain * vec3(0.82, 0.92, 1.06), iceMask * (0.42 + state.highlandMask * 0.34));
+    terrain = mix(terrain, terrain * vec3(0.66, 0.61, 0.58), barrenMask * 0.42);
+    terrain = mix(terrain, terrain * vec3(0.64, 0.60, 0.56), volcanicMask * 0.52);
     terrain = mix(terrain, terrain * vec3(0.90, 1.06, 0.88), lushMask * state.humidity * 0.28);
     terrain = mix(terrain, terrain * vec3(0.88, 1.14, 0.84), toxicMask * 0.28);
+
+    float erosionHighlight = smoothstep(0.3, 0.86, erosion) * (0.28 + slopeMask * 0.32);
+    float craterRim = crater * smoothstep(0.22, 0.82, detailMask + slopeMask * 0.4);
+    terrain = mix(terrain, terrain * vec3(1.06, 1.04, 0.99), erosionHighlight);
     terrain = mix(terrain, terrain * vec3(0.74, 0.72, 0.71), craterRim * (barrenMask + volcanicMask + 0.25));
 
     vec3 coast = mix(oceanColor * vec3(1.1, 1.06, 1.02), terrain, smoothstep(0.0, 0.26, state.coastMask));

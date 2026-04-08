@@ -18,7 +18,6 @@ export interface TerrainSample {
   microRelief: number;
   basinMask: number;
   silhouetteMask: number;
-  fractureMask: number;
 }
 
 export interface TerrainInput {
@@ -142,7 +141,6 @@ function sampleSolid(input: TerrainInput): TerrainSample {
   const mountainChains = ridged(px * 2.7, py * 2.7, pz * 2.7, seed + 61, 4) * smoothstep(0.42, 0.9, continentMask);
   const foothills = fbm(px * 2.2, py * 2.2, pz * 2.2, seed + 95, 3, 2.0, 0.48) * continentMask;
   const erosionField = fbm(px * 3.4, py * 3.4, pz * 3.4, seed + 117, 3, 2.0, 0.5);
-  const fractureField = ridged(px * 4.6, py * 4.6, pz * 4.6, seed + 141, 3);
 
   const baseElevation = continentMask * 0.5 + foothills * 0.22 + mountainChains * 0.34;
   const erosionMask = smoothstep(0.4, 0.7, erosionField);
@@ -192,13 +190,6 @@ function sampleSolid(input: TerrainInput): TerrainSample {
     0,
     1,
   );
-  const fractureMask = clamp(
-    smoothstep(0.42, 0.86, fractureField) *
-    smoothstep(oceanLevel - 0.02, oceanLevel + 0.24, height01) *
-    (0.52 + mountainMask * 0.46 + thermalMask * 0.34),
-    0,
-    1,
-  );
 
   return {
     height01,
@@ -218,7 +209,6 @@ function sampleSolid(input: TerrainInput): TerrainSample {
     microRelief,
     basinMask,
     silhouetteMask,
-    fractureMask,
   };
 }
 
@@ -257,7 +247,6 @@ function sampleGaseous(input: TerrainInput): TerrainSample {
     microRelief,
     basinMask: 0,
     silhouetteMask: clamp(0.2 + bandMask * 0.4, 0, 1),
-    fractureMask: 0,
   };
 }
 
