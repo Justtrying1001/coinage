@@ -336,6 +336,9 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       tinyPlanetMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       tinyPlanetMesh.name = 'tiny-planets-instanced';
       tinyPlanetMesh.userData.instancePlanetIds = tinyPlanetIds;
+      // Instances are spread across the entire galaxy field; default instanced-mesh frustum bounds
+      // can under-cull and hide distant planets. Keep this layer always renderable for map completeness.
+      tinyPlanetMesh.frustumCulled = false;
       scene.add(tinyPlanetMesh);
       interactivePlanetMeshes.push(tinyPlanetMesh);
     }
