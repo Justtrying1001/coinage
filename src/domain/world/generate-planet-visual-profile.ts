@@ -562,7 +562,7 @@ function buildViewProfile(viewMode: PlanetViewProfile['viewMode']): PlanetViewPr
     cloudSegments: isGalaxy ? 0 : 0,
     atmosphereSegments: isGalaxy ? 0 : 0,
     ringSegments: isGalaxy ? 96 : 320,
-    enableRings: true,
+    enableRings: !isGalaxy,
     enableClouds: false,
     enableAtmosphere: false,
     enableOceanLayer: false,
