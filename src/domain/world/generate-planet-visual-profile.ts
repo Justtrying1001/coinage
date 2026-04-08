@@ -59,6 +59,11 @@ type FamilyRecipe = {
   palettes: PalettePreset[];
 };
 
+// ---------------------------------------------------------------------------
+// PALETTES — couleurs DIRECTES, pas de blending HSL
+// Océans très sombres, terres saturées, bon contraste
+// ---------------------------------------------------------------------------
+
 const FAMILY_RECIPES: FamilyRecipe[] = [
   {
     family: 'terrestrial-lush',
@@ -70,7 +75,7 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
     hasOceans: true,
     canHaveClouds: true,
     oceanCoverage: [0.36, 0.64],
-    cloudCoverage: [0.2, 0.62],
+    cloudCoverage: [0.2, 0.55],
     atmosphereDensity: [0.36, 0.74],
     reliefAmplitude: [0.12, 0.24],
     roughness: [0.38, 0.64],
@@ -80,25 +85,25 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
     palettes: [
       {
         id: 'lush-emerald',
-        deep: [0.07, 0.15, 0.06],
-        mid: [0.16, 0.34, 0.14],
-        high: [0.42, 0.36, 0.24],
+        deep: [0.06, 0.16, 0.04],
+        mid: [0.14, 0.42, 0.10],
+        high: [0.45, 0.38, 0.20],
         ocean: [0.02, 0.05, 0.16],
         accent: [0.80, 0.74, 0.50],
-        cloud: [0.94, 0.96, 1.0],
+        cloud: [0.95, 0.97, 1.0],
         atmosphere: [0.30, 0.55, 0.88],
         ring: [0.68, 0.64, 0.56],
       },
       {
         id: 'lush-boreal',
-        deep: [0.06, 0.12, 0.05],
-        mid: [0.13, 0.30, 0.12],
-        high: [0.36, 0.33, 0.24],
+        deep: [0.05, 0.12, 0.03],
+        mid: [0.11, 0.34, 0.09],
+        high: [0.40, 0.34, 0.22],
         ocean: [0.01, 0.04, 0.13],
         accent: [0.72, 0.68, 0.55],
         cloud: [0.93, 0.95, 0.98],
         atmosphere: [0.34, 0.56, 0.84],
-        ring: [0.7, 0.69, 0.62],
+        ring: [0.70, 0.69, 0.62],
       },
     ],
   },
@@ -112,7 +117,7 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
     hasOceans: true,
     canHaveClouds: true,
     oceanCoverage: [0.78, 0.96],
-    cloudCoverage: [0.35, 0.82],
+    cloudCoverage: [0.35, 0.70],
     atmosphereDensity: [0.5, 0.9],
     reliefAmplitude: [0.05, 0.14],
     roughness: [0.28, 0.52],
@@ -154,7 +159,7 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
     hasOceans: false,
     canHaveClouds: true,
     oceanCoverage: [0, 0.02],
-    cloudCoverage: [0.02, 0.22],
+    cloudCoverage: [0.02, 0.18],
     atmosphereDensity: [0.16, 0.42],
     reliefAmplitude: [0.12, 0.28],
     roughness: [0.58, 0.88],
@@ -182,7 +187,7 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
         accent: [0.84, 0.74, 0.52],
         cloud: [0.84, 0.78, 0.72],
         atmosphere: [0.76, 0.50, 0.22],
-        ring: [0.74, 0.62, 0.5],
+        ring: [0.74, 0.62, 0.50],
       },
     ],
   },
@@ -196,7 +201,7 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
     hasOceans: false,
     canHaveClouds: true,
     oceanCoverage: [0.04, 0.16],
-    cloudCoverage: [0.08, 0.38],
+    cloudCoverage: [0.08, 0.32],
     atmosphereDensity: [0.14, 0.45],
     reliefAmplitude: [0.07, 0.18],
     roughness: [0.34, 0.62],
@@ -213,7 +218,7 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
         accent: [0.70, 0.84, 0.95],
         cloud: [0.93, 0.96, 1.0],
         atmosphere: [0.46, 0.66, 0.92],
-        ring: [0.82, 0.9, 0.96],
+        ring: [0.82, 0.90, 0.96],
       },
       {
         id: 'ice-cyan',
@@ -238,7 +243,7 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
     hasOceans: false,
     canHaveClouds: true,
     oceanCoverage: [0, 0.02],
-    cloudCoverage: [0.04, 0.34],
+    cloudCoverage: [0.04, 0.28],
     atmosphereDensity: [0.3, 0.82],
     reliefAmplitude: [0.18, 0.32],
     roughness: [0.72, 0.95],
@@ -248,9 +253,9 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
     palettes: [
       {
         id: 'infernal-basalts',
-        deep: [0.08, 0.06, 0.06],
-        mid: [0.20, 0.12, 0.08],
-        high: [0.36, 0.22, 0.12],
+        deep: [0.04, 0.04, 0.05],
+        mid: [0.12, 0.08, 0.06],
+        high: [0.28, 0.15, 0.08],
         ocean: [0.06, 0.04, 0.03],
         accent: [0.95, 0.36, 0.06],
         cloud: [0.40, 0.32, 0.28],
@@ -259,14 +264,14 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
       },
       {
         id: 'infernal-sulfur',
-        deep: [0.09, 0.08, 0.05],
-        mid: [0.22, 0.16, 0.08],
-        high: [0.40, 0.24, 0.10],
+        deep: [0.05, 0.05, 0.04],
+        mid: [0.15, 0.11, 0.05],
+        high: [0.32, 0.19, 0.07],
         ocean: [0.05, 0.04, 0.03],
         accent: [0.97, 0.46, 0.08],
         cloud: [0.46, 0.36, 0.26],
         atmosphere: [0.82, 0.30, 0.10],
-        ring: [0.67, 0.38, 0.2],
+        ring: [0.67, 0.38, 0.20],
       },
     ],
   },
@@ -294,7 +299,7 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
         mid: [0.38, 0.34, 0.30],
         high: [0.60, 0.53, 0.46],
         ocean: [0.16, 0.16, 0.17],
-        accent: [0.74, 0.7, 0.64],
+        accent: [0.74, 0.70, 0.64],
         cloud: [0.75, 0.75, 0.74],
         atmosphere: [0.48, 0.48, 0.52],
         ring: [0.66, 0.65, 0.63],
@@ -308,7 +313,7 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
         accent: [0.68, 0.66, 0.62],
         cloud: [0.72, 0.72, 0.72],
         atmosphere: [0.44, 0.44, 0.47],
-        ring: [0.63, 0.62, 0.6],
+        ring: [0.63, 0.62, 0.60],
       },
     ],
   },
@@ -322,7 +327,7 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
     hasOceans: true,
     canHaveClouds: true,
     oceanCoverage: [0.18, 0.52],
-    cloudCoverage: [0.22, 0.66],
+    cloudCoverage: [0.22, 0.55],
     atmosphereDensity: [0.45, 0.92],
     reliefAmplitude: [0.08, 0.20],
     roughness: [0.42, 0.72],
@@ -332,22 +337,22 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
     palettes: [
       {
         id: 'toxic-neon',
-        deep: [0.08, 0.17, 0.07],
-        mid: [0.20, 0.34, 0.14],
-        high: [0.40, 0.48, 0.22],
-        ocean: [0.04, 0.11, 0.06],
-        accent: [0.66, 0.80, 0.36],
+        deep: [0.06, 0.18, 0.02],
+        mid: [0.18, 0.38, 0.06],
+        high: [0.40, 0.52, 0.10],
+        ocean: [0.03, 0.12, 0.02],
+        accent: [0.70, 0.92, 0.22],
         cloud: [0.72, 0.82, 0.60],
         atmosphere: [0.46, 0.72, 0.20],
         ring: [0.58, 0.72, 0.36],
       },
       {
         id: 'toxic-violet',
-        deep: [0.18, 0.10, 0.22],
-        mid: [0.30, 0.18, 0.34],
-        high: [0.44, 0.30, 0.50],
-        ocean: [0.08, 0.05, 0.12],
-        accent: [0.44, 0.74, 0.64],
+        deep: [0.18, 0.06, 0.22],
+        mid: [0.30, 0.16, 0.38],
+        high: [0.46, 0.28, 0.54],
+        ocean: [0.08, 0.04, 0.14],
+        accent: [0.30, 0.90, 0.72],
         cloud: [0.74, 0.70, 0.84],
         atmosphere: [0.46, 0.32, 0.80],
         ring: [0.62, 0.53, 0.86],
@@ -374,24 +379,24 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
     palettes: [
       {
         id: 'gas-amber',
-        deep: [0.33, 0.2, 0.14],
-        mid: [0.58, 0.4, 0.24],
+        deep: [0.33, 0.20, 0.14],
+        mid: [0.58, 0.40, 0.24],
         high: [0.78, 0.62, 0.43],
-        ocean: [0.2, 0.19, 0.2],
+        ocean: [0.20, 0.19, 0.20],
         accent: [0.92, 0.81, 0.56],
-        cloud: [0.9, 0.84, 0.74],
+        cloud: [0.90, 0.84, 0.74],
         atmosphere: [0.74, 0.58, 0.35],
         ring: [0.82, 0.74, 0.62],
       },
       {
         id: 'gas-azure',
-        deep: [0.2, 0.27, 0.43],
+        deep: [0.20, 0.27, 0.43],
         mid: [0.34, 0.46, 0.65],
-        high: [0.6, 0.69, 0.85],
+        high: [0.60, 0.69, 0.85],
         ocean: [0.21, 0.23, 0.31],
         accent: [0.88, 0.92, 0.99],
-        cloud: [0.88, 0.9, 0.95],
-        atmosphere: [0.5, 0.63, 0.9],
+        cloud: [0.88, 0.90, 0.95],
+        atmosphere: [0.50, 0.63, 0.90],
         ring: [0.76, 0.83, 0.94],
       },
     ],
@@ -407,127 +412,75 @@ const FAMILY_RECIPES: FamilyRecipe[] = [
     canHaveClouds: true,
     forceRings: true,
     oceanCoverage: [0, 0],
-    cloudCoverage: [0.54, 0.9],
+    cloudCoverage: [0.54, 0.90],
     atmosphereDensity: [0.64, 0.99],
     reliefAmplitude: [0.01, 0.03],
-    roughness: [0.2, 0.48],
+    roughness: [0.20, 0.48],
     specular: [0.18, 0.36],
     emissive: [0.01, 0.06],
-    banding: [0.6, 0.98],
+    banding: [0.60, 0.98],
     palettes: [
       {
         id: 'ringed-saturnian',
-        deep: [0.35, 0.3, 0.2],
-        mid: [0.6, 0.51, 0.33],
+        deep: [0.35, 0.30, 0.20],
+        mid: [0.60, 0.51, 0.33],
         high: [0.83, 0.75, 0.57],
-        ocean: [0.2, 0.19, 0.17],
+        ocean: [0.20, 0.19, 0.17],
         accent: [0.95, 0.88, 0.74],
         cloud: [0.91, 0.87, 0.78],
         atmosphere: [0.75, 0.65, 0.46],
-        ring: [0.9, 0.84, 0.72],
+        ring: [0.90, 0.84, 0.72],
       },
       {
         id: 'ringed-silver',
         deep: [0.28, 0.31, 0.38],
         mid: [0.45, 0.53, 0.63],
         high: [0.74, 0.81, 0.89],
-        ocean: [0.2, 0.22, 0.28],
+        ocean: [0.20, 0.22, 0.28],
         accent: [0.95, 0.96, 0.99],
-        cloud: [0.9, 0.92, 0.97],
+        cloud: [0.90, 0.92, 0.97],
         atmosphere: [0.63, 0.73, 0.91],
-        ring: [0.9, 0.92, 0.96],
+        ring: [0.90, 0.92, 0.96],
       },
     ],
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function jitterColor(rng: () => number, base: [number, number, number], variance = 0.02): [number, number, number] {
-  return base.map((channel) => clamp(channel + (rng() - 0.5) * variance, 0, 1)) as [number, number, number];
-}
-
-function rgbToHsl(color: [number, number, number]): [number, number, number] {
-  const [r, g, b] = color;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const lightness = (max + min) * 0.5;
-  const delta = max - min;
-
-  if (delta < 1e-6) {
-    return [0, 0, lightness];
-  }
-
-  const saturation = lightness > 0.5 ? delta / (2 - max - min) : delta / (max + min);
-  let hue = 0;
-  if (max === r) hue = (g - b) / delta + (g < b ? 6 : 0);
-  else if (max === g) hue = (b - r) / delta + 2;
-  else hue = (r - g) / delta + 4;
-
-  return [hue / 6, saturation, lightness];
-}
-
-function hslToRgb(hsl: [number, number, number]): [number, number, number] {
-  const [h, s, l] = hsl;
-  if (s <= 1e-6) {
-    return [l, l, l];
-  }
-
-  const hue2rgb = (p: number, q: number, t: number): number => {
-    let tt = t;
-    if (tt < 0) tt += 1;
-    if (tt > 1) tt -= 1;
-    if (tt < 1 / 6) return p + (q - p) * 6 * tt;
-    if (tt < 1 / 2) return q;
-    if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
-    return p;
-  };
-
-  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-  const p = 2 * l - q;
-  return [hue2rgb(p, q, h + 1 / 3), hue2rgb(p, q, h), hue2rgb(p, q, h - 1 / 3)];
-}
-
-function blendHsl(a: [number, number, number], b: [number, number, number], t: number): [number, number, number] {
-  const ah = rgbToHsl(a);
-  const bh = rgbToHsl(b);
-  const hueDelta = ((((bh[0] - ah[0]) % 1) + 1.5) % 1) - 0.5;
-  const hue = (ah[0] + hueDelta * t + 1) % 1;
-  const sat = clamp(ah[1] + (bh[1] - ah[1]) * t, 0, 1);
-  const light = clamp(ah[2] + (bh[2] - ah[2]) * t, 0, 1);
-  return hslToRgb([hue, sat, light]);
+/** Tiny per-channel jitter — keeps palette colors recognizable */
+function jitterColor(rng: () => number, base: [number, number, number], variance = 0.015): [number, number, number] {
+  return base.map((ch) => clamp(ch + (rng() - 0.5) * variance, 0, 1)) as [number, number, number];
 }
 
 function weightedRecipe(rng: () => number): FamilyRecipe {
-  const total = FAMILY_RECIPES.reduce((acc, recipe) => acc + recipe.weight, 0);
+  const total = FAMILY_RECIPES.reduce((acc, r) => acc + r.weight, 0);
   let cursor = rng() * total;
-
   for (const recipe of FAMILY_RECIPES) {
     cursor -= recipe.weight;
-    if (cursor <= 0) {
-      return recipe;
-    }
+    if (cursor <= 0) return recipe;
   }
-
   return FAMILY_RECIPES[FAMILY_RECIPES.length - 1]!;
 }
 
 function pickRadiusClass(recipe: FamilyRecipe, rng: () => number): PlanetRadiusClass {
-  if (recipe.surfaceModel === 'gaseous') {
-    return rng() > 0.16 ? 'giant' : 'standard';
-  }
+  if (recipe.surfaceModel === 'gaseous') return rng() > 0.16 ? 'giant' : 'standard';
   const roll = rng();
   if (roll < 0.25) return 'dwarf';
   if (roll < 0.86) return 'standard';
   return 'giant';
 }
 
-function radiusRangeForClass(radiusClass: PlanetRadiusClass, surfaceModel: PlanetSurfaceModel): { min: number; max: number } {
-  if (surfaceModel === 'gaseous') return { min: 8200, max: 15500 };
-  if (radiusClass === 'dwarf') return { min: 1800, max: 3900 };
-  if (radiusClass === 'giant') return { min: 7200, max: 11800 };
+function radiusRangeForClass(rc: PlanetRadiusClass, sm: PlanetSurfaceModel) {
+  if (sm === 'gaseous') return { min: 8200, max: 15500 };
+  if (rc === 'dwarf') return { min: 1800, max: 3900 };
+  if (rc === 'giant') return { min: 7200, max: 11800 };
   return { min: 4000, max: 7900 };
 }
 
@@ -538,38 +491,45 @@ function pickPalette(recipe: FamilyRecipe, rng: () => number): PalettePreset {
 function buildScaleProfile(physicalRadius: number, surfaceModel: PlanetSurfaceModel): PlanetScaleProfile {
   const normalizedRadius = clamp((physicalRadius - 1800) / (15500 - 1800), 0, 1);
   const renderRadiusBase = MIN_RENDER_RADIUS + normalizedRadius * (MAX_RENDER_RADIUS - MIN_RENDER_RADIUS);
-  const galaxyViewScaleMultiplier = surfaceModel === 'gaseous' ? 1.08 : 1;
-  const planetViewScaleMultiplier = surfaceModel === 'gaseous' ? 1.02 : 1;
-
   return {
     physicalRadius,
     renderRadiusBase,
     normalizedRadius,
-    galaxyViewScaleMultiplier,
-    planetViewScaleMultiplier,
+    galaxyViewScaleMultiplier: surfaceModel === 'gaseous' ? 1.08 : 1,
+    planetViewScaleMultiplier: surfaceModel === 'gaseous' ? 1.02 : 1,
     silhouetteProtectedRadius: Math.max(3.05, renderRadiusBase),
     minRadiusGuardrail: MIN_RENDER_RADIUS,
     maxRadiusGuardrail: MAX_RENDER_RADIUS,
   };
 }
 
+// ---------------------------------------------------------------------------
+// VIEW PROFILE — the critical part that was broken
+// ---------------------------------------------------------------------------
+
 function buildViewProfile(viewMode: PlanetViewProfile['viewMode']): PlanetViewProfile {
   const isGalaxy = viewMode === 'galaxy';
   return {
     viewMode,
     lod: isGalaxy ? 'low' : 'high',
-    meshSegments: isGalaxy ? 16 : 160,
-    cloudSegments: isGalaxy ? 0 : 0,
-    atmosphereSegments: isGalaxy ? 0 : 0,
+    // Galaxy: low-poly sphere with simplified fragment shader (no displacement)
+    meshSegments: isGalaxy ? 16 : 128,
+    // Planet: full layers
+    cloudSegments: isGalaxy ? 0 : 64,
+    atmosphereSegments: isGalaxy ? 0 : 48,
     ringSegments: isGalaxy ? 96 : 320,
     enableRings: true,
-    enableClouds: false,
-    enableAtmosphere: false,
-    enableOceanLayer: false,
-    lightingBoost: isGalaxy ? 1.38 : 1.55,
-    shadingContrast: isGalaxy ? 0.24 : 0.32,
+    enableClouds: !isGalaxy,       // ON for planet view
+    enableAtmosphere: !isGalaxy,   // ON for planet view
+    enableOceanLayer: !isGalaxy,   // ON for planet view
+    lightingBoost: isGalaxy ? 1.3 : 1.2,
+    shadingContrast: isGalaxy ? 0.24 : 0.30,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Main generator — NO HSL blending, palette colors used DIRECTLY
+// ---------------------------------------------------------------------------
 
 export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet {
   const worldSeed = input.worldSeed.trim();
@@ -608,23 +568,25 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
     canHaveRings: recipe.forceRings === true ? true : recipe.surfaceModel === 'gaseous' || rng() > 0.9,
   };
 
-  const baseDeep = jitterColor(rng, palette.deep);
-  const baseMid = jitterColor(rng, palette.mid);
-  const baseHigh = jitterColor(rng, palette.high);
-  const baseOcean = jitterColor(rng, palette.ocean, 0.02);
-  const baseAccent = jitterColor(rng, palette.accent, 0.02);
-  const colorMid = blendHsl(baseDeep, baseMid, 0.74);
-  const colorHigh = blendHsl(colorMid, baseHigh, 0.68);
+  // DIRECT palette colors — tiny jitter only, NO blending
+  const colorDeep = jitterColor(rng, palette.deep);
+  const colorMid = jitterColor(rng, palette.mid);
+  const colorHigh = jitterColor(rng, palette.high);
+  const oceanColor = jitterColor(rng, palette.ocean, 0.01);
+  const accentColor = jitterColor(rng, palette.accent, 0.01);
+  const cloudColor = jitterColor(rng, palette.cloud, 0.01);
+  const atmosphereTint = jitterColor(rng, palette.atmosphere, 0.02);
+  const ringColor = jitterColor(rng, palette.ring, 0.01);
 
   const visualDNA: PlanetVisualDNA = {
     paletteId: palette.id,
-    colorDeep: baseDeep,
+    colorDeep,
     colorMid,
     colorHigh,
-    oceanColor: blendHsl(baseOcean, baseDeep, 0.12),
-    accentColor: blendHsl(baseAccent, colorHigh, 0.22),
-    cloudColor: jitterColor(rng, palette.cloud, 0.025),
-    atmosphereTint: jitterColor(rng, palette.atmosphere, 0.035),
+    oceanColor,
+    accentColor,
+    cloudColor,
+    atmosphereTint,
     oceanCoverage: classification.hasOceans ? range(rng, recipe.oceanCoverage[0], recipe.oceanCoverage[1]) : 0,
     cloudCoverage: classification.canHaveClouds ? range(rng, recipe.cloudCoverage[0], recipe.cloudCoverage[1]) : 0,
     atmosphereDensity: classification.atmosphereClass === 'none' ? 0 : range(rng, recipe.atmosphereDensity[0], recipe.atmosphereDensity[1]),
@@ -671,11 +633,11 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
     family: recipe.family,
     surfaceModel: recipe.surfaceModel,
     surface: {
-      colorDeep: visualDNA.colorDeep,
-      colorMid: visualDNA.colorMid,
-      colorHigh: visualDNA.colorHigh,
-      oceanColor: visualDNA.oceanColor,
-      accentColor: visualDNA.accentColor,
+      colorDeep,
+      colorMid,
+      colorHigh,
+      oceanColor,
+      accentColor,
       reliefAmplitude: visualDNA.reliefAmplitude,
       roughness: visualDNA.roughness,
       specularStrength: visualDNA.specularStrength,
@@ -688,23 +650,23 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
     },
     clouds: {
       enabled: classification.canHaveClouds,
-      color: visualDNA.cloudColor,
+      color: cloudColor,
       coverage: visualDNA.cloudCoverage,
-      opacity: clamp(visualDNA.cloudCoverage * 0.82, 0, 0.92),
+      opacity: clamp(visualDNA.cloudCoverage * 0.75, 0, 0.80),
       speed: visualDNA.rotation.cloudSpeed,
       stormBanding: recipe.surfaceModel === 'gaseous' ? visualDNA.bandingStrength : visualDNA.bandingStrength * 0.42,
       noiseSeed: visualDNA.noiseSeeds.clouds,
     },
     atmosphere: {
       enabled: classification.atmosphereClass !== 'none',
-      color: visualDNA.atmosphereTint,
+      color: atmosphereTint,
       density: visualDNA.atmosphereDensity,
       thickness: clamp(visualDNA.atmosphereDensity * (recipe.surfaceModel === 'gaseous' ? 0.18 : 0.14), 0, 0.22),
       rimStrength: clamp(0.3 + visualDNA.atmosphereDensity * 0.68, 0.3, 0.98),
     },
     rings: {
       enabled: generated.ring.enabled,
-      color: blendHsl(jitterColor(rng, palette.ring, 0.015), colorHigh, 0.3),
+      color: ringColor,
       innerRadius: scale.renderRadiusBase * generated.ring.innerRadiusRatio,
       outerRadius: scale.renderRadiusBase * generated.ring.outerRadiusRatio,
       tilt: generated.ring.tilt,
@@ -719,16 +681,6 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
           : ['continents', 'ridged', 'erosion', 'crater'],
     },
   };
-
-  if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' && (window as { __COINAGE_PIPELINE_TRACE?: boolean }).__COINAGE_PIPELINE_TRACE) {
-    console.info('[PlanetPipelineTrace]', {
-      stage: 'generateCanonicalPlanet',
-      planetId: identity.planetId,
-      family: recipe.family,
-      surfaceModel: recipe.surfaceModel,
-      palette: visualDNA.paletteId,
-    });
-  }
 
   return { identity, classification, visualDNA, generated, render };
 }
