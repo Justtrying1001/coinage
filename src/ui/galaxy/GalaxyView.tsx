@@ -326,13 +326,16 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     const tinyPlanetMesh = tinyPlanets.length > 0
       ? new THREE.InstancedMesh(
         new THREE.SphereGeometry(1, 12, 12),
-        new THREE.MeshBasicMaterial({ vertexColors: true }),
+        new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.76, metalness: 0.06 }),
         tinyPlanets.length,
       )
       : null;
     const tinyPlanetIds: string[] = [];
     let tinyPlanetIndex = 0;
     const expectedTinyPlanetCount = tinyPlanets.length;
+    let invalidTinyPlanetTransforms = 0;
+    let tinyPlanetScaleTooSmall = 0;
+    let tinyPlanetPositionOutOfField = 0;
 
     if (tinyPlanetMesh) {
       tinyPlanetMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -607,6 +610,17 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         if (perfStore) {
           perfStore.counters.workerJobsCompleted += 1;
         }
+        const isPositionFinite = Number.isFinite(planet.x) && Number.isFinite(planet.y);
+        const isScaleFinite = Number.isFinite(visualRadius);
+        if (!isPositionFinite || !isScaleFinite) {
+          invalidTinyPlanetTransforms += 1;
+        }
+        if (visualRadius <= 0.001) {
+          tinyPlanetScaleTooSmall += 1;
+        }
+        if (Math.abs(planet.x) > FIELD_RADIUS * 2 || Math.abs(planet.y) > FIELD_RADIUS * 2) {
+          tinyPlanetPositionOutOfField += 1;
+        }
         const matrix = new THREE.Matrix4();
         matrix.compose(
           new THREE.Vector3(planet.x, planet.y, 0),
@@ -738,6 +752,14 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
             representedCount: instantiatedPlanetIds.size,
             tinyRepresented: tinyPlanetIndex,
             expectedTinyPlanetCount,
+            instancedCount: tinyPlanetMesh.count,
+            needsMatrixUpdate: tinyPlanetMesh.instanceMatrix.needsUpdate,
+            hasInstanceColor: Boolean(tinyPlanetMesh.instanceColor),
+            invalidTransforms: invalidTinyPlanetTransforms,
+            tinyScaleCount: tinyPlanetScaleTooSmall,
+            outOfFieldCount: tinyPlanetPositionOutOfField,
+            meshVisible: tinyPlanetMesh.visible,
+            frustumCulled: tinyPlanetMesh.frustumCulled,
           });
         }
         measurePerf(perfStore, 'galaxy:time-to-all-visible', 'galaxy:mount:start', 'galaxy:all-visible');
