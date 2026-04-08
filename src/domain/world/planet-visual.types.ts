@@ -148,11 +148,7 @@ export interface PlanetViewProfile {
   viewMode: 'galaxy' | 'planet';
   lod: 'low' | 'medium' | 'high';
   meshSegments: number;
-  cloudSegments: number;
   atmosphereSegments: number;
-  ringSegments: number;
-  enableRings: boolean;
-  enableClouds: boolean;
   enableAtmosphere: boolean;
   lightingBoost: number;
 }

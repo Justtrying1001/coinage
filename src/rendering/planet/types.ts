@@ -5,9 +5,7 @@ export interface PlanetRendererOptions {
   viewMode: PlanetViewProfile['viewMode'];
   debug?: {
     surfaceOnly?: boolean;
-    cloudsOnly?: boolean;
     atmosphereOnly?: boolean;
-    ringsOnly?: boolean;
     freezeRotation?: boolean;
   };
 }

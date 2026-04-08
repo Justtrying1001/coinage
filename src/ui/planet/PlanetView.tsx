@@ -8,7 +8,6 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { resolvePlanetIdentity } from '@/domain/world/resolve-planet-identity';
 import { createPlanetRenderInstance, updatePlanetLayerAnimation, updatePlanetLighting } from '@/rendering/planet/create-planet-render-instance';
 import { PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
-import { createNebulaBackground, createStarfield } from '@/rendering/space/create-starfield';
 
 interface PlanetViewProps {
   worldSeed: string;
@@ -31,10 +30,7 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     }
 
     const scene = new THREE.Scene();
-    const nebulaBackground = createNebulaBackground(800);
-    const starfield = createStarfield(2000, 700);
-    scene.add(nebulaBackground);
-    scene.add(starfield);
+    scene.background = new THREE.Color('#030308');
 
     const camera = new THREE.PerspectiveCamera(34, mount.clientWidth / Math.max(1, mount.clientHeight), 0.1, 1200);
     camera.position.set(0, 0.22, 4.8);
