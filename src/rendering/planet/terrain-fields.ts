@@ -23,6 +23,7 @@ interface TerrainInput {
   oceanLevel: number;
   family: PlanetFamily;
   surfaceModel: PlanetSurfaceModel;
+  bandingStrength: number;
 }
 
 function clamp(v: number, min: number, max: number): number { return Math.max(min, Math.min(max, v)); }
@@ -66,6 +67,25 @@ function fbm(x: number, y: number, z: number, seed: number, octaves = 5, lacunar
   return value;
 }
 
+
+const FAMILY_PRESETS: Record<PlanetFamily, {
+  elevationScale: number;
+  humidityBias: number;
+  thermalScale: number;
+  snowBoost: number;
+  lavaBoost: number;
+}> = {
+  'terrestrial-lush': { elevationScale: 0.92, humidityBias: 0.14, thermalScale: 0.7, snowBoost: 0.06, lavaBoost: 0.0 },
+  oceanic: { elevationScale: 0.58, humidityBias: 0.22, thermalScale: 0.5, snowBoost: 0.04, lavaBoost: 0.0 },
+  'desert-arid': { elevationScale: 1.02, humidityBias: -0.28, thermalScale: 0.82, snowBoost: -0.12, lavaBoost: 0.06 },
+  'ice-frozen': { elevationScale: 0.72, humidityBias: 0.06, thermalScale: 0.42, snowBoost: 0.48, lavaBoost: 0.0 },
+  'volcanic-infernal': { elevationScale: 1.24, humidityBias: -0.18, thermalScale: 1.36, snowBoost: -0.2, lavaBoost: 0.35 },
+  'barren-rocky': { elevationScale: 1.1, humidityBias: -0.08, thermalScale: 0.76, snowBoost: -0.02, lavaBoost: 0.08 },
+  'toxic-alien': { elevationScale: 0.86, humidityBias: 0.08, thermalScale: 1.05, snowBoost: -0.1, lavaBoost: 0.12 },
+  'gas-giant': { elevationScale: 0.2, humidityBias: 0.0, thermalScale: 1.1, snowBoost: 0.0, lavaBoost: 0.0 },
+  'ringed-giant': { elevationScale: 0.2, humidityBias: 0.0, thermalScale: 1.1, snowBoost: 0.0, lavaBoost: 0.0 },
+};
+
 function ridged(x: number, y: number, z: number, seed: number, octaves = 4): number {
   let value = 0;
   let amp = 0.75;
@@ -81,11 +101,12 @@ function ridged(x: number, y: number, z: number, seed: number, octaves = 4): num
 }
 
 export function sampleTerrainFields(input: TerrainInput): TerrainFields {
-  const { x, y, z, seed, moistureSeed, thermalSeed, oceanLevel, family, surfaceModel } = input;
+  const { x, y, z, seed, moistureSeed, thermalSeed, oceanLevel, family, surfaceModel, bandingStrength } = input;
   const lat = Math.abs(y);
+  const preset = FAMILY_PRESETS[family];
 
   if (surfaceModel === 'gaseous') {
-    const jets = Math.sin((y * 0.5 + 0.5 + seed * 0.00000007) * 24.0) * 0.5 + 0.5;
+    const jets = Math.sin((y * 0.5 + 0.5 + seed * 0.00000007) * (16.0 + bandingStrength * 42.0)) * 0.5 + 0.5;
     const turbulence = fbm(x * 2.1, y * 2.1, z * 2.1, seed + 19, 3, 2.1, 0.55);
     const storms = smoothstep(0.62, 0.9, fbm(x * 4.5, y * 4.5, z * 4.5, thermalSeed + 71, 3));
     return {
@@ -105,28 +126,25 @@ export function sampleTerrainFields(input: TerrainInput): TerrainFields {
   const continent = fbm(x * 0.7, y * 0.7, z * 0.7, seed + 7, 4, 2.0, 0.52);
   const macroRidge = ridged(x * 1.1, y * 1.1, z * 1.1, seed + 41, 3);
   const mountain = ridged(x * 2.6, y * 2.6, z * 2.6, seed + 89, 4);
-  const micro = fbm(x * 6.5, y * 6.5, z * 6.5, seed + 137, 2, 2.0, 0.5);
-  const humidity = smoothstep(0.25, 0.8, fbm(x * 1.9, y * 1.9, z * 1.9, moistureSeed, 3));
+  const micro = fbm(x * (6.0 + bandingStrength * 4.0), y * (6.0 + bandingStrength * 4.0), z * (6.0 + bandingStrength * 4.0), seed + 137, 2, 2.0, 0.5);
+  const humidity = clamp(smoothstep(0.25, 0.8, fbm(x * 1.9, y * 1.9, z * 1.9, moistureSeed, 3)) + preset.humidityBias, 0, 1);
   const temperature = clamp((1 - lat) * 0.72 + (fbm(x * 1.4, y * 1.4, z * 1.4, thermalSeed, 2) - 0.5) * 0.3, 0, 1);
-  const thermal = family === 'volcanic-infernal' ? smoothstep(0.58, 0.9, fbm(x * 3.8, y * 3.8, z * 3.8, thermalSeed + 109, 3)) : 0;
+  const thermal = smoothstep(0.58, 0.9, fbm(x * 3.8, y * 3.8, z * 3.8, thermalSeed + 109, 3)) * preset.thermalScale;
 
   const macro = (continent - 0.5) * 0.75 + (macroRidge - 0.5) * 0.7;
   const mid = (mountain - 0.45) * 0.45;
   const detail = (micro - 0.5) * 0.16;
   let elevation = macro + mid + detail + thermal * 0.08;
 
-  if (family === 'oceanic') elevation *= 0.58;
-  if (family === 'ice-frozen') elevation *= 0.72;
-  if (family === 'barren-rocky') elevation *= 1.08;
-  if (family === 'volcanic-infernal') elevation *= 1.22;
+  elevation *= preset.elevationScale;
 
   const waterMask = 1 - smoothstep(oceanLevel - 0.03, oceanLevel + 0.03, elevation + 0.5);
   const slope = smoothstep(0.45, 0.95, mountain * 0.72 + macroRidge * 0.28);
 
   let snowMask = smoothstep(0.62, 0.96, lat) * smoothstep(0.18, 0.65, 1 - temperature);
-  if (family === 'ice-frozen') snowMask = clamp(snowMask + 0.46, 0, 1);
+  snowMask = clamp(snowMask + preset.snowBoost, 0, 1);
 
-  const lavaMask = family === 'volcanic-infernal' ? smoothstep(0.5, 0.92, thermal + slope * 0.2) : 0;
+  const lavaMask = smoothstep(0.5, 0.92, thermal + slope * 0.2) * preset.lavaBoost;
   const rockMask = clamp(slope * 0.75 + (1 - humidity) * 0.25 + lavaMask * 0.3, 0, 1);
   const sedimentMask = clamp((1 - slope) * (0.66 + humidity * 0.34) * (1 - lavaMask * 0.6), 0, 1);
 

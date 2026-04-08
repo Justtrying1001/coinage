@@ -567,7 +567,6 @@ function buildViewProfile(viewMode: PlanetViewProfile['viewMode']): PlanetViewPr
     enableAtmosphere: !isGalaxy,
     enableOceanLayer: !isGalaxy,
     lightingBoost: isGalaxy ? 1.26 : 1.38,
-    shadingContrast: isGalaxy ? 0.2 : 0.34,
   };
 }
 
@@ -638,7 +637,6 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
       moisture: deriveSeed(String(canonicalSeed), 'moisture'),
       thermal: deriveSeed(String(canonicalSeed), 'thermal'),
       clouds: deriveSeed(String(canonicalSeed), 'clouds'),
-      bands: deriveSeed(String(canonicalSeed), 'bands'),
       rings: deriveSeed(String(canonicalSeed), 'rings'),
     },
     rotation: {
@@ -685,7 +683,6 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
       noiseSeed: visualDNA.noiseSeeds.surface,
       moistureSeed: visualDNA.noiseSeeds.moisture,
       thermalSeed: visualDNA.noiseSeeds.thermal,
-      bandSeed: visualDNA.noiseSeeds.bands,
     },
     clouds: {
       enabled: classification.canHaveClouds,
@@ -693,7 +690,6 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
       coverage: visualDNA.cloudCoverage,
       opacity: clamp(visualDNA.cloudCoverage * 0.82, 0, 0.92),
       speed: visualDNA.rotation.cloudSpeed,
-      stormBanding: recipe.surfaceModel === 'gaseous' ? visualDNA.bandingStrength : visualDNA.bandingStrength * 0.42,
       noiseSeed: visualDNA.noiseSeeds.clouds,
     },
     atmosphere: {
@@ -716,8 +712,8 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
       paletteId: visualDNA.paletteId,
       activeNoiseFamilies:
         recipe.surfaceModel === 'gaseous'
-          ? ['jet-stream', 'banding', 'storm-cells']
-          : ['continents', 'ridged', 'erosion', 'crater'],
+          ? ['jet-stream', 'storm-cells', 'cloud-shear', 'material-stack']
+          : ['macro-relief', 'ridge-field', 'hydrology', 'material-stack'],
     },
   };
 

@@ -81,6 +81,7 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
           oceanLevel: input.oceanLevel,
           family: input.family,
           surfaceModel: input.surfaceModel,
+          bandingStrength: input.bandingStrength,
         });
 
         const maxAmplitude = input.surfaceModel === 'gaseous' ? input.radius * 0.028 : input.radius * 0.18;

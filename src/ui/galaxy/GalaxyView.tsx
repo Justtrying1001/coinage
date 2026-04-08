@@ -8,7 +8,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 
 import { getGalaxyPlanetManifest } from '@/domain/world/build-galaxy-planet-manifest';
-import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
+import { createPlanetRenderInstance, updatePlanetLayerAnimation, updatePlanetLighting } from '@/rendering/planet/create-planet-render-instance';
 import { PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
 import { createNebulaBackground, createStarfield } from '@/rendering/space/create-starfield';
 
@@ -68,7 +68,10 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
 
     const composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
-    scene.add(new THREE.AmbientLight('#c5d7ff', 2.1));
+    scene.add(new THREE.AmbientLight('#9db7df', 0.45));
+    const keyLight = new THREE.DirectionalLight('#ffffff', 1.25);
+    keyLight.position.set(24, 14, 28);
+    scene.add(keyLight);
 
     const group = new THREE.Group();
     const instances = manifest.map((entry) => createPlanetRenderInstance({
@@ -209,6 +212,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
 
       for (const instance of instances) {
         updatePlanetLayerAnimation(instance.object, delta);
+        updatePlanetLighting(instance.object, keyLight.position.clone().normalize());
       }
       composer.render();
       requestAnimationFrame(animate);
