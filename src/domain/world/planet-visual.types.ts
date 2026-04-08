@@ -58,7 +58,6 @@ export interface PlanetVisualDNA {
     moisture: number;
     thermal: number;
     clouds: number;
-    bands: number;
     rings: number;
   };
   rotation: {
@@ -114,7 +113,6 @@ export interface PlanetRenderProfile {
     noiseSeed: number;
     moistureSeed: number;
     thermalSeed: number;
-    bandSeed: number;
   };
   clouds: {
     enabled: boolean;
@@ -122,7 +120,6 @@ export interface PlanetRenderProfile {
     coverage: number;
     opacity: number;
     speed: number;
-    stormBanding: number;
     noiseSeed: number;
   };
   atmosphere: {
@@ -159,7 +156,6 @@ export interface PlanetViewProfile {
   enableAtmosphere: boolean;
   enableOceanLayer: boolean;
   lightingBoost: number;
-  shadingContrast: number;
 }
 
 export interface CanonicalPlanet {

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 
 import { resolvePlanetIdentity } from '@/domain/world/resolve-planet-identity';
-import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
+import { createPlanetRenderInstance, updatePlanetLayerAnimation, updatePlanetLighting } from '@/rendering/planet/create-planet-render-instance';
 
 interface PlanetValidationViewProps {
   worldSeed: string;
@@ -68,6 +68,7 @@ export default function PlanetValidationView({ worldSeed, planetId, mode }: Plan
       if (disposed) return;
       const dt = Math.min(0.05, clock.getDelta());
       updatePlanetLayerAnimation(planetInstance.object, dt, false);
+      updatePlanetLighting(planetInstance.object, keyLight.position.clone().normalize());
       renderer.render(scene, camera);
       requestAnimationFrame(animate);
     };

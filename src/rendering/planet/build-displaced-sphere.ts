@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 
 import type { PlanetFamily, PlanetSurfaceModel } from '@/domain/world/planet-visual.types';
-import { sampleTerrain } from './terrain-noise';
+import { sampleTerrainFields } from './terrain-fields';
 
-export const OCEAN_FAMILIES: ReadonlyArray<string> = ['terrestrial-lush', 'oceanic', 'toxic-alien'];
+export const OCEAN_FAMILIES: ReadonlyArray<PlanetFamily> = ['terrestrial-lush', 'oceanic', 'toxic-alien'];
 
 export interface DisplacedSphereInput {
   radius: number;
@@ -18,134 +18,120 @@ export interface DisplacedSphereInput {
   surfaceModel: PlanetSurfaceModel;
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
+const FACE_DIRS: Array<THREE.Vector3> = [
+  new THREE.Vector3(1, 0, 0),
+  new THREE.Vector3(-1, 0, 0),
+  new THREE.Vector3(0, 1, 0),
+  new THREE.Vector3(0, -1, 0),
+  new THREE.Vector3(0, 0, 1),
+  new THREE.Vector3(0, 0, -1),
+];
+
+function buildFaceBasis(localUp: THREE.Vector3): { axisA: THREE.Vector3; axisB: THREE.Vector3 } {
+  const axisA = new THREE.Vector3(localUp.y, localUp.z, localUp.x);
+  const axisB = new THREE.Vector3().crossVectors(localUp, axisA);
+  return { axisA, axisB };
 }
 
-export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE.SphereGeometry {
-  if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' && (window as { __COINAGE_PIPELINE_TRACE?: boolean }).__COINAGE_PIPELINE_TRACE) {
-    console.info('[PlanetPipelineTrace]', {
-      stage: 'buildDisplacedSphereGeometry',
-      family: input.family,
-      surfaceModel: input.surfaceModel,
-      segments: input.segments,
-      reliefAmplitude: input.reliefAmplitude,
-      oceanLevel: input.oceanLevel,
-    });
-  }
-  const geometry = new THREE.SphereGeometry(input.radius, input.segments, input.segments);
-  const position = geometry.attributes.position;
+function pushTri(indices: number[], a: number, b: number, c: number): void {
+  indices.push(a, b, c);
+}
 
-  const heights = new Float32Array(position.count);
-  const landMask = new Float32Array(position.count);
-  const mountainMask = new Float32Array(position.count);
-  const coastMask = new Float32Array(position.count);
-  const oceanDepth = new Float32Array(position.count);
-  const continentMask = new Float32Array(position.count);
-  const humidityMask = new Float32Array(position.count);
-  const temperatureMask = new Float32Array(position.count);
-  const erosionMask = new Float32Array(position.count);
-  const craterMask = new Float32Array(position.count);
-  const thermalMask = new Float32Array(position.count);
-  const bandMask = new Float32Array(position.count);
-  const macroRelief = new Float32Array(position.count);
-  const midRelief = new Float32Array(position.count);
-  const microRelief = new Float32Array(position.count);
-  const silhouetteMask = new Float32Array(position.count);
+export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE.BufferGeometry {
+  const resolution = Math.max(16, Math.floor(input.segments / 2));
 
-  const baseDisplacementScale = input.radius * (input.surfaceModel === 'gaseous' ? 0.028 : 0.26);
-  const macroScale = baseDisplacementScale * (input.surfaceModel === 'gaseous' ? 0.46 : 0.86);
-  const midScale = baseDisplacementScale * (input.surfaceModel === 'gaseous' ? 0.30 : 0.34);
-  const microScale = baseDisplacementScale * (input.surfaceModel === 'gaseous' ? 0.24 : 0.10);
+  const positions: number[] = [];
+  const indices: number[] = [];
 
-  for (let i = 0; i < position.count; i += 1) {
-    const x = position.getX(i);
-    const y = position.getY(i);
-    const z = position.getZ(i);
+  const elevation: number[] = [];
+  const waterMask: number[] = [];
+  const slopeMask: number[] = [];
+  const humidity: number[] = [];
+  const temperature: number[] = [];
+  const thermal: number[] = [];
+  const rockMask: number[] = [];
+  const sedimentMask: number[] = [];
+  const snowMask: number[] = [];
+  const lavaMask: number[] = [];
 
-    const invLen = 1 / Math.max(1e-6, Math.sqrt(x * x + y * y + z * z));
-    const px = x * invLen;
-    const py = y * invLen;
-    const pz = z * invLen;
+  let vertexOffset = 0;
 
-    const terrain = sampleTerrain({
-      px,
-      py,
-      pz,
-      seed: input.seed,
-      moistureSeed: input.moistureSeed,
-      thermalSeed: input.thermalSeed,
-      oceanLevel: input.oceanLevel,
-      bandingStrength: input.bandingStrength,
-      family: input.family,
-      surfaceModel: input.surfaceModel,
-    });
+  for (const localUp of FACE_DIRS) {
+    const { axisA, axisB } = buildFaceBasis(localUp);
 
-    const hasOceanFamily = OCEAN_FAMILIES.includes(input.family);
+    for (let y = 0; y < resolution; y += 1) {
+      for (let x = 0; x < resolution; x += 1) {
+        const px = x / (resolution - 1);
+        const py = y / (resolution - 1);
 
-    const macroComponent = terrain.macroRelief * macroScale;
-    const midComponent = terrain.midRelief * midScale;
-    const microComponent = terrain.microRelief * microScale;
+        const pointOnCube = new THREE.Vector3()
+          .copy(localUp)
+          .addScaledVector(axisA, (px - 0.5) * 2)
+          .addScaledVector(axisB, (py - 0.5) * 2);
 
-    const silhouetteGain = 0.78 + terrain.silhouetteMask * (input.surfaceModel === 'gaseous' ? 0.42 : 0.86);
-    const basinCompression = 1 - terrain.basinMask * 0.22;
-    const combinedRelief = (macroComponent + midComponent * 1.04 + microComponent * 0.58) * silhouetteGain * basinCompression;
+        const pointOnUnitSphere = pointOnCube.normalize();
 
-    const amplitudeControl = input.reliefAmplitude * (input.surfaceModel === 'gaseous' ? 0.9 : 1.0);
-    const unclampedDisplacement = combinedRelief * amplitudeControl;
-    const clampedDisplacement = clamp(
-      unclampedDisplacement,
-      -input.radius * (input.surfaceModel === 'gaseous' ? 0.015 : 0.10),
-      input.radius * (input.surfaceModel === 'gaseous' ? 0.018 : 0.14),
-    );
+        const fields = sampleTerrainFields({
+          x: pointOnUnitSphere.x,
+          y: pointOnUnitSphere.y,
+          z: pointOnUnitSphere.z,
+          seed: input.seed,
+          moistureSeed: input.moistureSeed,
+          thermalSeed: input.thermalSeed,
+          oceanLevel: input.oceanLevel,
+          family: input.family,
+          surfaceModel: input.surfaceModel,
+          bandingStrength: input.bandingStrength,
+        });
 
-    let displacedRadius: number;
-    if (hasOceanFamily && terrain.landMask < 0.5) {
-      const basinSink = terrain.basinMask * input.radius * 0.0042;
-      displacedRadius = input.radius * 0.9975 - basinSink;
-    } else {
-      displacedRadius = input.radius + clampedDisplacement;
+        const maxAmplitude = input.surfaceModel === 'gaseous' ? input.radius * 0.028 : input.radius * 0.18;
+        const displacedRadius = input.radius + fields.elevation * maxAmplitude * input.reliefAmplitude;
+
+        positions.push(
+          pointOnUnitSphere.x * displacedRadius,
+          pointOnUnitSphere.y * displacedRadius,
+          pointOnUnitSphere.z * displacedRadius,
+        );
+
+        elevation.push(fields.elevation);
+        waterMask.push(fields.waterMask);
+        slopeMask.push(fields.slope);
+        humidity.push(fields.humidity);
+        temperature.push(fields.temperature);
+        thermal.push(fields.thermal);
+        rockMask.push(fields.rockMask);
+        sedimentMask.push(fields.sedimentMask);
+        snowMask.push(fields.snowMask);
+        lavaMask.push(fields.lavaMask);
+      }
     }
 
-    position.setXYZ(i, px * displacedRadius, py * displacedRadius, pz * displacedRadius);
+    for (let y = 0; y < resolution - 1; y += 1) {
+      for (let x = 0; x < resolution - 1; x += 1) {
+        const i = vertexOffset + x + y * resolution;
+        pushTri(indices, i, i + 1, i + resolution + 1);
+        pushTri(indices, i, i + resolution + 1, i + resolution);
+      }
+    }
 
-    heights[i] = terrain.height01;
-    landMask[i] = terrain.landMask;
-    mountainMask[i] = terrain.mountainMask;
-    coastMask[i] = terrain.coastMask;
-    oceanDepth[i] = terrain.oceanDepth;
-    continentMask[i] = terrain.continentMask;
-    humidityMask[i] = terrain.humidityMask;
-    temperatureMask[i] = terrain.temperatureMask;
-    erosionMask[i] = terrain.erosionMask;
-    craterMask[i] = terrain.craterMask;
-    thermalMask[i] = terrain.thermalMask;
-    bandMask[i] = terrain.bandMask;
-    macroRelief[i] = terrain.macroRelief;
-    midRelief[i] = terrain.midRelief;
-    microRelief[i] = terrain.microRelief;
-    silhouetteMask[i] = terrain.silhouetteMask;
+    vertexOffset += resolution * resolution;
   }
 
-  position.needsUpdate = true;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
   geometry.computeVertexNormals();
 
-  geometry.setAttribute('aHeight', new THREE.BufferAttribute(heights, 1));
-  geometry.setAttribute('aLandMask', new THREE.BufferAttribute(landMask, 1));
-  geometry.setAttribute('aMountainMask', new THREE.BufferAttribute(mountainMask, 1));
-  geometry.setAttribute('aCoastMask', new THREE.BufferAttribute(coastMask, 1));
-  geometry.setAttribute('aOceanDepth', new THREE.BufferAttribute(oceanDepth, 1));
-  geometry.setAttribute('aContinentMask', new THREE.BufferAttribute(continentMask, 1));
-  geometry.setAttribute('aHumidityMask', new THREE.BufferAttribute(humidityMask, 1));
-  geometry.setAttribute('aTemperatureMask', new THREE.BufferAttribute(temperatureMask, 1));
-  geometry.setAttribute('aErosionMask', new THREE.BufferAttribute(erosionMask, 1));
-  geometry.setAttribute('aCraterMask', new THREE.BufferAttribute(craterMask, 1));
-  geometry.setAttribute('aThermalMask', new THREE.BufferAttribute(thermalMask, 1));
-  geometry.setAttribute('aBandMask', new THREE.BufferAttribute(bandMask, 1));
-  geometry.setAttribute('aMacroRelief', new THREE.BufferAttribute(macroRelief, 1));
-  geometry.setAttribute('aMidRelief', new THREE.BufferAttribute(midRelief, 1));
-  geometry.setAttribute('aMicroRelief', new THREE.BufferAttribute(microRelief, 1));
-  geometry.setAttribute('aSilhouetteMask', new THREE.BufferAttribute(silhouetteMask, 1));
+  geometry.setAttribute('aElevation', new THREE.Float32BufferAttribute(elevation, 1));
+  geometry.setAttribute('aWaterMask', new THREE.Float32BufferAttribute(waterMask, 1));
+  geometry.setAttribute('aSlopeMask', new THREE.Float32BufferAttribute(slopeMask, 1));
+  geometry.setAttribute('aHumidityMask', new THREE.Float32BufferAttribute(humidity, 1));
+  geometry.setAttribute('aTemperatureMask', new THREE.Float32BufferAttribute(temperature, 1));
+  geometry.setAttribute('aThermalMask', new THREE.Float32BufferAttribute(thermal, 1));
+  geometry.setAttribute('aRockMask', new THREE.Float32BufferAttribute(rockMask, 1));
+  geometry.setAttribute('aSedimentMask', new THREE.Float32BufferAttribute(sedimentMask, 1));
+  geometry.setAttribute('aSnowMask', new THREE.Float32BufferAttribute(snowMask, 1));
+  geometry.setAttribute('aLavaMask', new THREE.Float32BufferAttribute(lavaMask, 1));
 
   return geometry;
 }

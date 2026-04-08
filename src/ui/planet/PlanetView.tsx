@@ -6,9 +6,10 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
 import { resolvePlanetIdentity } from '@/domain/world/resolve-planet-identity';
-import { createPlanetRenderInstance, updatePlanetLayerAnimation } from '@/rendering/planet/create-planet-render-instance';
+import { createPlanetRenderInstance, updatePlanetLayerAnimation, updatePlanetLighting } from '@/rendering/planet/create-planet-render-instance';
 import { PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
 import { createNebulaBackground, createStarfield } from '@/rendering/space/create-starfield';
 
@@ -50,7 +51,16 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     mount.appendChild(renderer.domElement);
     const composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
-    scene.add(new THREE.AmbientLight('#cfe0ff', 1.18));
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(mount.clientWidth, mount.clientHeight), 0.28, 0.45, 0.7);
+    composer.addPass(bloomPass);
+
+    scene.add(new THREE.AmbientLight('#9db7df', 0.34));
+    const keyLight = new THREE.DirectionalLight('#ffffff', 1.45);
+    keyLight.position.set(16, 9, 22);
+    scene.add(keyLight);
+    const fillLight = new THREE.DirectionalLight('#7ea4ff', 0.26);
+    fillLight.position.set(-14, -8, 12);
+    scene.add(fillLight);
 
     const planetInstance = createPlanetRenderInstance({
       planet: resolved.planet,
@@ -147,6 +157,7 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
 
       const delta = Math.min(0.05, animationClock.getDelta());
       updatePlanetLayerAnimation(planetInstance.object, delta);
+      updatePlanetLighting(planetInstance.object, keyLight.position.clone().normalize());
       controls.update();
       composer.render();
       requestAnimationFrame(animate);
