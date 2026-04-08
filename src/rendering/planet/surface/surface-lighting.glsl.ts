@@ -2,8 +2,8 @@
 export const SURFACE_LIGHTING_GLSL = `
   const vec3 LIGHT_DIRECTION = vec3(0.42, 0.82, 0.34);
 
-  const float DIFFUSE_WRAP_BASE = 0.12;
-  const float DIFFUSE_WRAP_SCALE = 0.88;
+  const float DIFFUSE_WRAP_BASE = 0.08;
+  const float DIFFUSE_WRAP_SCALE = 0.84;
 
   const float SLOPE_BASE_STRENGTH = 0.16;
   const float SLOPE_SILHOUETTE_STRENGTH = 0.14;
@@ -48,9 +48,9 @@ export const SURFACE_LIGHTING_GLSL = `
     float craterOcclusion = smoothstep(0.3, 0.9, vCraterMask) * 0.08;
 
     float hemisphere = (normal.y * 0.5 + 0.5) * shadingContrast;
-    float terrainOcclusion = (1.0 - heightNorm) * 0.08 + (1.0 - wrappedDiffuse) * 0.05;
-    float shadowLift = 0.60 + wrappedDiffuse * 0.56 - terrainOcclusion - craterOcclusion;
-    float terminator = smoothstep(-0.25, 0.35, ndlRaw);
+    float terrainOcclusion = (1.0 - heightNorm) * 0.10 + (1.0 - wrappedDiffuse) * 0.07;
+    float shadowLift = 0.53 + wrappedDiffuse * 0.52 - terrainOcclusion - craterOcclusion;
+    float terminator = smoothstep(-0.18, 0.28, ndlRaw);
 
     float rim = pow(1.0 - clamp(dot(normal, viewDir), 0.0, 1.0), 2.8) * (RIM_BASE_STRENGTH + silhouetteMask * RIM_SILHOUETTE_STRENGTH);
     float halfSpec = max(dot(normal, normalize(lightDir + viewDir)), 0.0);
@@ -61,14 +61,14 @@ export const SURFACE_LIGHTING_GLSL = `
     float specular = pow(halfSpec, specPower) * (specBase + bandSpecLift) * clamp(specularStrength * 1.55, 0.0, 1.8);
 
     float reliefLighting = reliefShade * (RELIEF_BASE_STRENGTH + silhouetteMask * RELIEF_SILHOUETTE_STRENGTH);
-    float tonal = clamp((shadowLift + hemisphere + slopeContrast + erosionContrast + reliefLighting + rim + specular) * mix(0.84, 1.22, terminator), 0.46, 1.62);
+    float tonal = clamp((shadowLift + hemisphere + slopeContrast + erosionContrast + reliefLighting + rim + specular) * mix(0.82, 1.18, terminator), 0.40, 1.56);
 
     float luma = dot(albedo, vec3(0.2126, 0.7152, 0.0722));
-    vec3 saturated = mix(vec3(luma), albedo, 1.18);
+    vec3 saturated = mix(vec3(luma), albedo, 1.10);
     vec3 color = saturated * tonal;
-    color = mix(color, pow(max(color, vec3(0.0)), vec3(0.92)), 0.26);
+    color = mix(color, pow(max(color, vec3(0.0)), vec3(0.95)), 0.22);
     color += accentColor * (emissive * (thermalMask * 0.62 + bandMask * 0.18));
 
-    return clamp(color * lightingBoost, vec3(0.24), vec3(1.0));
+    return clamp(color * lightingBoost, vec3(0.20), vec3(1.0));
   }
 `;
