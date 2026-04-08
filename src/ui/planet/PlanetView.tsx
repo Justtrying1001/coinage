@@ -50,7 +50,7 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     mount.appendChild(renderer.domElement);
     const composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
-    scene.add(new THREE.AmbientLight('#cfe0ff', 1.65));
+    scene.add(new THREE.AmbientLight('#cfe0ff', 1.18));
 
     const planetInstance = createPlanetRenderInstance({
       planet: resolved.planet,

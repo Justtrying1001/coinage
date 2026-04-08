@@ -137,12 +137,16 @@ function sampleSolid(input: TerrainInput): TerrainSample {
   const continentRidge = ridged(px * 0.9, py * 0.9, pz * 0.9, seed + 71, 2);
   const continentField = continentBase + (continentWarp - 0.5) * 0.24 - continentRidge * 0.12;
   const continentMask = smoothstep(0.36, 0.64, continentField);
+  const tectonicField = fbm(px * 1.35, py * 1.35, pz * 1.35, seed + 149, 4, 2.1, 0.5);
+  const ridgeFault = ridged(px * 3.1, py * 3.1, pz * 3.1, seed + 211, 3);
+  const riftField = smoothstep(0.56, 0.88, Math.abs(Math.sin((px * 2.8 - pz * 2.2) * 6.6 + tectonicField * 4.8)));
+  const dorsalField = smoothstep(0.44, 0.86, ridgeFault * (0.66 + continentMask * 0.34));
 
   const mountainChains = ridged(px * 2.7, py * 2.7, pz * 2.7, seed + 61, 4) * smoothstep(0.42, 0.9, continentMask);
   const foothills = fbm(px * 2.2, py * 2.2, pz * 2.2, seed + 95, 3, 2.0, 0.48) * continentMask;
   const erosionField = fbm(px * 3.4, py * 3.4, pz * 3.4, seed + 117, 3, 2.0, 0.5);
 
-  const baseElevation = continentMask * 0.5 + foothills * 0.22 + mountainChains * 0.34;
+  const baseElevation = continentMask * 0.5 + foothills * 0.22 + mountainChains * 0.34 + dorsalField * 0.08 - riftField * 0.05;
   const erosionMask = smoothstep(0.4, 0.7, erosionField);
   const erodedElevation = baseElevation - erosionMask * 0.05;
 
@@ -171,25 +175,73 @@ function sampleSolid(input: TerrainInput): TerrainSample {
 
   const basinMask = smoothstep(0.42, 0.9, 1 - continentMask) * smoothstep(oceanLevel - 0.14, oceanLevel + 0.03, height01);
   const plateauMask = smoothstep(oceanLevel + 0.14, oceanLevel + 0.28, height01) * (1 - mountainMask * 0.76);
+  const fractureMask = smoothstep(0.42, 0.88, riftField * (0.58 + (1 - continentMask) * 0.44));
 
-  const macroPeaks = smoothstep(0.44, 0.84, continentMask) * (0.72 + continentRidge * 0.26);
-  const macroBasins = basinMask * 0.82 + smoothstep(0.62, 0.92, oceanDepth) * 0.34;
-  const macroRelief = clamp((macroPeaks - macroBasins) * 1.62 - 0.2, -1, 1);
+  const macroPeaks = smoothstep(0.44, 0.84, continentMask) * (0.72 + continentRidge * 0.26 + dorsalField * 0.18);
+  const macroBasins = basinMask * 0.82 + smoothstep(0.62, 0.92, oceanDepth) * 0.34 + fractureMask * 0.26;
+  let macroRelief = clamp((macroPeaks - macroBasins) * 1.78 - 0.22, -1, 1);
 
-  const midRaw = mountainChains * 0.95 + foothills * 0.58 + plateauMask * 0.34 - erosionMask * 0.28 - basinMask * 0.22;
-  const midRelief = clamp((midRaw - 0.34) * 1.7, -1, 1);
+  const midRaw =
+    mountainChains * 0.92 +
+    foothills * 0.62 +
+    plateauMask * 0.42 +
+    dorsalField * 0.26 -
+    erosionMask * 0.26 -
+    basinMask * 0.24 -
+    fractureMask * 0.16;
+  let midRelief = clamp((midRaw - 0.36) * 1.92, -1, 1);
 
   const microField = fbm(px * 6.2, py * 6.2, pz * 6.2, seed + 171, 2, 2.0, 0.5);
-  const microRelief = clamp((microField * 2 - 1) * (0.5 + mountainMask * 0.5), -1, 1);
+  const microRidge = ridged(px * 8.4, py * 8.4, pz * 8.4, seed + 269, 2);
+  let microRelief = clamp(((microField * 2 - 1) * 0.56 + (microRidge - 0.5) * 0.44) * (0.48 + mountainMask * 0.52 + dorsalField * 0.22), -1, 1);
 
-  const silhouetteMask = clamp(
+  let silhouetteMask = clamp(
     smoothstep(0.38, 0.86, continentMask) * 0.42 +
     smoothstep(0.2, 0.92, mountainMask) * 0.46 +
     plateauMask * 0.24 +
-    (1 - basinMask) * 0.12,
+    dorsalField * 0.22 +
+    (1 - basinMask) * 0.12 -
+    fractureMask * 0.08,
     0,
     1,
   );
+
+  if (family === 'terrestrial-lush') {
+    macroRelief = clamp(macroRelief * 0.9 + humidityMask * 0.12 - basinMask * 0.05, -1, 1);
+    midRelief = clamp(midRelief * 0.88 + foothills * 0.08, -1, 1);
+    microRelief = clamp(microRelief * 0.92 + (humidityMask - 0.5) * 0.10, -1, 1);
+    silhouetteMask = clamp(silhouetteMask * 0.90 + plateauMask * 0.06, 0, 1);
+  } else if (family === 'oceanic') {
+    macroRelief = clamp(macroRelief * 0.66 - basinMask * 0.10, -1, 1);
+    midRelief = clamp(midRelief * 0.58 - erosionMask * 0.08, -1, 1);
+    microRelief = clamp(microRelief * 0.46, -1, 1);
+    silhouetteMask = clamp(silhouetteMask * 0.62 + basinMask * 0.08, 0, 1);
+  } else if (family === 'desert-arid') {
+    macroRelief = clamp(macroRelief * 1.04 + dorsalField * 0.10, -1, 1);
+    midRelief = clamp(midRelief * 1.12 + fractureMask * 0.12, -1, 1);
+    microRelief = clamp(microRelief * 1.08 + ridgeFault * 0.08, -1, 1);
+    silhouetteMask = clamp(silhouetteMask * 1.02 + fractureMask * 0.08, 0, 1);
+  } else if (family === 'ice-frozen') {
+    macroRelief = clamp(macroRelief * 0.82 + polarIce * 0.14 - basinMask * 0.06, -1, 1);
+    midRelief = clamp(midRelief * 0.74 + polarIce * 0.10, -1, 1);
+    microRelief = clamp(microRelief * 0.60 + polarIce * 0.06, -1, 1);
+    silhouetteMask = clamp(silhouetteMask * 0.78 + polarIce * 0.10, 0, 1);
+  } else if (family === 'volcanic-infernal') {
+    macroRelief = clamp(macroRelief * 1.18 + thermalMask * 0.18 + fractureMask * 0.10, -1, 1);
+    midRelief = clamp(midRelief * 1.24 + thermalMask * 0.20 + ridgeFault * 0.12, -1, 1);
+    microRelief = clamp(microRelief * 1.12 + thermalMask * 0.14, -1, 1);
+    silhouetteMask = clamp(silhouetteMask * 1.16 + fractureMask * 0.14, 0, 1);
+  } else if (family === 'barren-rocky') {
+    macroRelief = clamp(macroRelief * 1.10 + craterMask * 0.12, -1, 1);
+    midRelief = clamp(midRelief * 1.06 + craterMask * 0.10, -1, 1);
+    microRelief = clamp(microRelief * 0.96 + craterMask * 0.12, -1, 1);
+    silhouetteMask = clamp(silhouetteMask * 1.08 + craterMask * 0.12, 0, 1);
+  } else if (family === 'toxic-alien') {
+    macroRelief = clamp(macroRelief * 0.84 + thermalMask * 0.08 - basinMask * 0.08, -1, 1);
+    midRelief = clamp(midRelief * 0.92 + thermalMask * 0.16 + humidityMask * 0.08, -1, 1);
+    microRelief = clamp(microRelief * 1.04 + (thermalMask - 0.4) * 0.14, -1, 1);
+    silhouetteMask = clamp(silhouetteMask * 0.88 + thermalMask * 0.08, 0, 1);
+  }
 
   return {
     height01,
