@@ -14,6 +14,7 @@ test('view strategy separates galaxy and planet budgets', () => {
   assert.equal(galaxy.enableAtmosphere, false);
   assert.equal(planet.enableAtmosphere, false);
   assert.equal(galaxy.enableOceanLayer, false);
+  assert.equal(planet.enableOceanLayer, false);
   assert.equal(galaxy.lod, 'low');
   assert.equal(planet.lod, 'high');
 });

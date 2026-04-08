@@ -685,6 +685,7 @@ export function generateCanonicalPlanet(input: PlanetSeedInput): CanonicalPlanet
       noiseSeed: visualDNA.noiseSeeds.surface,
       moistureSeed: visualDNA.noiseSeeds.moisture,
       thermalSeed: visualDNA.noiseSeeds.thermal,
+      bandSeed: visualDNA.noiseSeeds.bands,
     },
     clouds: {
       enabled: classification.canHaveClouds,

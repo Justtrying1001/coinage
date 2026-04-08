@@ -54,9 +54,9 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
   const silhouetteMask = new Float32Array(position.count);
 
   const baseDisplacementScale = input.radius * (input.surfaceModel === 'gaseous' ? 0.03 : 0.22);
-  const macroScale = baseDisplacementScale * (input.surfaceModel === 'gaseous' ? 0.5 : 0.68);
+  const macroScale = baseDisplacementScale * (input.surfaceModel === 'gaseous' ? 0.5 : 0.82);
   const midScale = baseDisplacementScale * (input.surfaceModel === 'gaseous' ? 0.3 : 0.24);
-  const microScale = baseDisplacementScale * (input.surfaceModel === 'gaseous' ? 0.2 : 0.08);
+  const microScale = baseDisplacementScale * (input.surfaceModel === 'gaseous' ? 0.2 : 0.05);
 
   for (let i = 0; i < position.count; i += 1) {
     const x = position.getX(i);
@@ -87,8 +87,8 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
     const midComponent = terrain.midRelief * midScale;
     const microComponent = terrain.microRelief * microScale;
 
-    const silhouetteGain = 0.72 + terrain.silhouetteMask * 0.68;
-    const combinedRelief = (macroComponent + midComponent + microComponent * 0.55) * silhouetteGain;
+    const silhouetteGain = 0.84 + terrain.silhouetteMask * 0.72;
+    const combinedRelief = (macroComponent + midComponent * 0.92 + microComponent * 0.38) * silhouetteGain;
 
     const amplitudeControl = input.reliefAmplitude * (input.surfaceModel === 'gaseous' ? 0.9 : 1.0);
     const unclampedDisplacement = combinedRelief * amplitudeControl;

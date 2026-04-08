@@ -10,6 +10,8 @@ export const SURFACE_VERTEX_SHADER_PLANET = `
   attribute float aHumidityMask;
   attribute float aTemperatureMask;
   attribute float aThermalMask;
+  attribute float aErosionMask;
+  attribute float aCraterMask;
   attribute float aBandMask;
   attribute float aMacroRelief;
   attribute float aMidRelief;
@@ -25,6 +27,8 @@ export const SURFACE_VERTEX_SHADER_PLANET = `
   varying float vHumidityMask;
   varying float vTemperatureMask;
   varying float vThermalMask;
+  varying float vErosionMask;
+  varying float vCraterMask;
   varying float vBandMask;
   varying float vMacroRelief;
   varying float vMidRelief;
@@ -43,6 +47,8 @@ export const SURFACE_VERTEX_SHADER_PLANET = `
     vHumidityMask = aHumidityMask;
     vTemperatureMask = aTemperatureMask;
     vThermalMask = aThermalMask;
+    vErosionMask = aErosionMask;
+    vCraterMask = aCraterMask;
     vBandMask = aBandMask;
     vMacroRelief = aMacroRelief;
     vMidRelief = aMidRelief;
@@ -79,6 +85,9 @@ export const SURFACE_FRAGMENT_SHADER_GALAXY = `
   uniform vec3 uAccentColor;
   uniform float uSurfaceModel;
   uniform float uSeed;
+  uniform float uRoughness;
+  uniform float uSpecularStrength;
+  uniform float uBandingStrength;
   uniform float uLightingBoost;
   uniform float uShadingContrast;
 
@@ -113,7 +122,9 @@ export const SURFACE_FRAGMENT_SHADER_GALAXY = `
     vec3 viewDir = normalize(cameraPosition - vWorldPos);
     float softShading = (normal.y * 0.5 + 0.5) * uShadingContrast;
     float rim = pow(1.0 - sat(dot(normal, viewDir)), 2.2) * 0.12;
-    float specular = pow(max(dot(normal, normalize(vec3(0.35, 0.75, 0.25))), 0.0), 10.0) * 0.08;
+    float gloss = clamp(1.0 - uRoughness, 0.05, 0.98);
+    float specPower = mix(6.0, 32.0, gloss);
+    float specular = pow(max(dot(normal, normalize(vec3(0.35, 0.75, 0.25))), 0.0), specPower) * (0.03 + uSpecularStrength * 0.11 + uBandingStrength * 0.04);
     float tonal = 1.08 + softShading + rim + specular;
     float luma = dot(albedo, vec3(0.2126, 0.7152, 0.0722));
     vec3 saturated = mix(vec3(luma), albedo, 1.18);
@@ -152,6 +163,9 @@ ${SURFACE_LIGHTING_GLSL}
       vBandMask,
       uAccentColor,
       uEmissive,
+      uRoughness,
+      uSpecularStrength,
+      uBandingStrength,
       uShadingContrast,
       uLightingBoost
     );
@@ -167,6 +181,9 @@ ${SURFACE_LIGHTING_GLSL}
       vBandMask,
       uAccentColor,
       uEmissive,
+      uRoughness,
+      uSpecularStrength,
+      uBandingStrength,
       uShadingContrast,
       uLightingBoost
     );

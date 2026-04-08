@@ -10,6 +10,8 @@ export const SURFACE_CORE_GLSL = `
   varying float vHumidityMask;
   varying float vTemperatureMask;
   varying float vThermalMask;
+  varying float vErosionMask;
+  varying float vCraterMask;
   varying float vBandMask;
   varying float vMacroRelief;
   varying float vMidRelief;
@@ -23,6 +25,11 @@ export const SURFACE_CORE_GLSL = `
   uniform vec3 uAccentColor;
   uniform float uEmissive;
   uniform float uSurfaceModel;
+  uniform float uRoughness;
+  uniform float uSpecularStrength;
+  uniform float uBandingStrength;
+  uniform float uBandSeed;
+  uniform float uFamilyType;
   uniform float uLightingBoost;
   uniform float uShadingContrast;
 
@@ -45,6 +52,7 @@ export const SURFACE_CORE_GLSL = `
   const float RELIEF_OCEAN_WEIGHT = 0.04;
 
   float sat(float x) { return clamp(x, 0.0, 1.0); }
+  float familyMask(float idx) { return 1.0 - step(0.5, abs(uFamilyType - idx)); }
 
   struct SurfaceState {
     vec3 normal;
@@ -71,6 +79,9 @@ export const SURFACE_CORE_GLSL = `
     float macroHeight = sat(vMacroRelief * 0.5 + 0.5);
     float midHeight = sat(vMidRelief * 0.5 + 0.5);
     float microShape = sat(vMicroRelief * 0.5 + 0.5);
+    float erosion = sat(vErosionMask);
+    float crater = sat(vCraterMask);
+    float thermal = sat(vThermalMask);
     float basinMask = sat(vOceanDepth * 0.72 + (1.0 - macroHeight) * 0.42);
 
     state.heightNorm = sat(
@@ -80,7 +91,7 @@ export const SURFACE_CORE_GLSL = `
     );
 
     float coastalBand = sat(1.0 - abs(vLandMask - 0.5) * 2.0);
-    state.coastMask = smoothstep(0.2, 0.82, coastalBand + basinMask * 0.18 - macroHeight * 0.1);
+    state.coastMask = smoothstep(0.24, 0.80, coastalBand + basinMask * 0.16 - macroHeight * 0.14);
 
     vec3 oceanShelf = uOceanColor * vec3(1.3, 1.24, 1.16);
     vec3 oceanMid = uOceanColor * vec3(0.96, 1.0, 1.05);
@@ -107,25 +118,57 @@ export const SURFACE_CORE_GLSL = `
     vec3 uplands = mix(uColorMid * 1.02, uColorHigh * 1.16, state.highlandMask);
     vec3 rocky = mix(uColorHigh * 1.1, vec3(dot(uColorHigh, vec3(0.333))) + vec3(0.08), state.rockyMask * 0.5);
 
-    float detailStrata = sin((vUnitPos.x + vUnitPos.z) * 24.0 + vMidRelief * 5.0) * 0.5 + 0.5;
-    float detailPits = sin(vUnitPos.y * 33.0 - vUnitPos.x * 19.0 + vMicroRelief * 8.0) * 0.5 + 0.5;
-    float detailMask = sat(detailStrata * 0.6 + detailPits * 0.4);
+    float ridgeStrata = sin((vUnitPos.x * 1.3 + vUnitPos.z) * 10.0 + vMacroRelief * 4.0) * 0.5 + 0.5;
+    float canyonNoise = sin(vUnitPos.y * 12.0 - vUnitPos.x * 7.0 + vMidRelief * 3.4) * 0.5 + 0.5;
+    float detailMask = sat(ridgeStrata * 0.68 + canyonNoise * 0.32);
+    float slopeMask = sat(1.0 - dot(state.normal, normalize(vUnitPos)));
+    float plateauMask = smoothstep(0.56, 0.88, macroHeight) * (1.0 - slopeMask * 0.62);
+    float basinShadow = smoothstep(0.42, 0.92, basinMask);
 
-    vec3 terrain = mix(lowlands, uplands, state.highlandMask * 0.8 + macroHeight * 0.2);
+    vec3 terrain = mix(lowlands, uplands, state.highlandMask * 0.84 + macroHeight * 0.16);
     terrain = mix(terrain, rocky, state.rockyMask);
-    terrain = mix(terrain, terrain * vec3(0.96, 0.98, 1.02), detailMask * 0.1);
+    terrain = mix(terrain, terrain * vec3(0.97, 0.98, 1.01), detailMask * 0.12);
+    terrain = mix(terrain, terrain * vec3(1.04, 1.03, 0.99), plateauMask * 0.14);
+    terrain = mix(terrain, terrain * vec3(0.84, 0.86, 0.90), basinShadow * 0.22);
+
+    float lushMask = familyMask(0.0);
+    float oceanicMask = familyMask(1.0);
+    float desertMask = familyMask(2.0);
+    float iceMask = familyMask(3.0);
+    float volcanicMask = familyMask(4.0);
+    float barrenMask = familyMask(5.0);
+    float toxicMask = familyMask(6.0);
+
+    terrain = mix(terrain, terrain * vec3(0.86, 0.77, 0.65), desertMask * (1.0 - state.humidity) * 0.44);
+    terrain = mix(terrain, terrain * vec3(0.82, 0.92, 1.06), iceMask * (0.42 + state.highlandMask * 0.34));
+    terrain = mix(terrain, terrain * vec3(0.66, 0.61, 0.58), barrenMask * 0.42);
+    terrain = mix(terrain, terrain * vec3(0.64, 0.60, 0.56), volcanicMask * 0.52);
+    terrain = mix(terrain, terrain * vec3(0.90, 1.06, 0.88), lushMask * state.humidity * 0.28);
+    terrain = mix(terrain, terrain * vec3(0.88, 1.14, 0.84), toxicMask * 0.28);
+
+    float erosionHighlight = smoothstep(0.3, 0.86, erosion) * (0.28 + slopeMask * 0.32);
+    float craterRim = crater * smoothstep(0.22, 0.82, detailMask + slopeMask * 0.4);
+    terrain = mix(terrain, terrain * vec3(1.06, 1.04, 0.99), erosionHighlight);
+    terrain = mix(terrain, terrain * vec3(0.74, 0.72, 0.71), craterRim * (barrenMask + volcanicMask + 0.25));
 
     vec3 coast = mix(oceanColor * vec3(1.1, 1.06, 1.02), terrain, smoothstep(0.0, 0.26, state.coastMask));
 
     state.landBase = mix(terrain, coast, state.coastMask * 0.74);
 
+    oceanColor = mix(oceanColor, oceanColor * vec3(0.68, 0.82, 1.12), oceanicMask * 0.52);
+    oceanColor = mix(oceanColor, oceanColor * vec3(0.88, 1.02, 0.90), toxicMask * 0.24);
+
     vec3 solidAlbedo = mix(oceanColor, state.landBase, vLandMask);
     solidAlbedo = mix(solidAlbedo, coast, state.coastMask * 0.75);
 
-    vec3 gasBands = mix(uColorDeep * 1.05, uColorMid * 1.1, sat(vBandMask * 0.92 + vMacroRelief * 0.1));
-    gasBands = mix(gasBands, uColorHigh * 1.12, sat(vThermalMask * 0.42 + vTemperatureMask * 0.28));
-    vec3 gasStorms = mix(gasBands, uAccentColor * 1.06, sat(vThermalMask * 0.62 + vMidRelief * 0.12));
+    float seededBand = sin(vUnitPos.y * (12.0 + uBandingStrength * 18.0) + uBandSeed * 0.0000012) * 0.5 + 0.5;
+    float bandField = sat(vBandMask * 0.7 + seededBand * 0.3 + vMacroRelief * 0.08);
+    vec3 gasBands = mix(uColorDeep * 1.05, uColorMid * 1.1, bandField);
+    gasBands = mix(gasBands, uColorHigh * 1.12, sat(vThermalMask * 0.42 + vTemperatureMask * 0.28 + bandField * 0.18));
+    vec3 gasStorms = mix(gasBands, uAccentColor * 1.06, sat(vThermalMask * 0.58 + vMidRelief * 0.08));
     vec3 gaseousAlbedo = mix(gasBands, gasStorms, sat(vBandMask * 0.52 + vThermalMask * 0.38));
+    float lavaMask = volcanicMask * smoothstep(0.48, 0.9, thermal) * smoothstep(0.2, 0.8, slopeMask + detailMask * 0.4);
+    solidAlbedo = mix(solidAlbedo, mix(solidAlbedo, uAccentColor * vec3(1.15, 0.64, 0.42), 0.72), lavaMask);
 
     state.albedo = mix(solidAlbedo, gaseousAlbedo, sat(uSurfaceModel));
     state.reliefShade =

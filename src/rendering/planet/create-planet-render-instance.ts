@@ -16,6 +16,17 @@ function toColor(value: [number, number, number]): THREE.Color {
 
 const SURFACE_FRAGMENT_SHADER_PLANET = getSurfacePlanetFragmentShader();
 
+const FAMILY_INDEX: Record<PlanetRenderInput['planet']['render']['family'], number> = {
+  'terrestrial-lush': 0,
+  oceanic: 1,
+  'desert-arid': 2,
+  'ice-frozen': 3,
+  'volcanic-infernal': 4,
+  'barren-rocky': 5,
+  'toxic-alien': 6,
+  'gas-giant': 7,
+  'ringed-giant': 8,
+};
 
 const SHARED_SPHERE_VERTEX_SHADER = `
   varying vec3 vWorldPos;
@@ -136,6 +147,11 @@ function createSurfaceLayer(
       uEmissive: { value: render.surface.emissiveIntensity },
       uSurfaceModel: { value: render.surfaceModel === 'gaseous' ? 1 : 0 },
       uSeed: { value: render.surface.noiseSeed },
+      uRoughness: { value: render.surface.roughness },
+      uSpecularStrength: { value: render.surface.specularStrength },
+      uBandingStrength: { value: render.surface.bandingStrength },
+      uBandSeed: { value: render.surface.bandSeed },
+      uFamilyType: { value: FAMILY_INDEX[render.family] ?? 0 },
       uLightingBoost: { value: lightingBoost },
       uShadingContrast: { value: shadingContrast },
     },
@@ -143,7 +159,7 @@ function createSurfaceLayer(
 
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = 'surface';
-  mesh.userData.rotationSpeed = render.surfaceModel === 'gaseous' ? render.clouds.speed * 0.3 : 0;
+  mesh.userData.rotationSpeed = 0;
   return mesh;
 }
 
@@ -296,8 +312,8 @@ export function createPlanetRenderInstance(input: PlanetRenderInput): PlanetRend
     disposeTargets.push(surface.geometry, surface.material);
   }
 
-  const renderClouds = view.enableClouds && planet.render.clouds.enabled && shouldRenderLayer('clouds', options.debug);
-  const renderAtmosphere = view.enableAtmosphere && planet.render.atmosphere.enabled && shouldRenderLayer('atmosphere', options.debug);
+  const renderClouds = false;
+  const renderAtmosphere = false;
 
   if (view.enableRings && planet.render.rings.enabled && shouldRenderLayer('rings', options.debug)) {
     const rings = createRingLayer(planet.render, ringSegments, view.shadingContrast, highQuality);

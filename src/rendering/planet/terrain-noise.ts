@@ -135,14 +135,14 @@ function sampleSolid(input: TerrainInput): TerrainSample {
   const continentBase = fbm(px * 0.62, py * 0.62, pz * 0.62, seed + 11, 4, 2.03, 0.52);
   const continentWarp = fbm(px * 1.05, py * 1.05, pz * 1.05, seed + 27, 3, 2.12, 0.47);
   const continentRidge = ridged(px * 0.9, py * 0.9, pz * 0.9, seed + 71, 2);
-  const continentField = continentBase + (continentWarp - 0.5) * 0.2 - continentRidge * 0.1;
-  const continentMask = smoothstep(0.34, 0.62, continentField);
+  const continentField = continentBase + (continentWarp - 0.5) * 0.24 - continentRidge * 0.12;
+  const continentMask = smoothstep(0.36, 0.64, continentField);
 
   const mountainChains = ridged(px * 2.7, py * 2.7, pz * 2.7, seed + 61, 4) * smoothstep(0.42, 0.9, continentMask);
   const foothills = fbm(px * 2.2, py * 2.2, pz * 2.2, seed + 95, 3, 2.0, 0.48) * continentMask;
   const erosionField = fbm(px * 3.4, py * 3.4, pz * 3.4, seed + 117, 3, 2.0, 0.5);
 
-  const baseElevation = continentMask * 0.52 + foothills * 0.2 + mountainChains * 0.26;
+  const baseElevation = continentMask * 0.5 + foothills * 0.22 + mountainChains * 0.34;
   const erosionMask = smoothstep(0.4, 0.7, erosionField);
   const erodedElevation = baseElevation - erosionMask * 0.05;
 
@@ -166,15 +166,15 @@ function sampleSolid(input: TerrainInput): TerrainSample {
   const landMask = smoothstep(oceanLevel - 0.01, oceanLevel + 0.01, height01);
   const coastMask = smoothstep(oceanLevel - 0.016, oceanLevel + 0.008, height01)
     - smoothstep(oceanLevel + 0.008, oceanLevel + 0.052, height01);
-  const mountainMask = smoothstep(oceanLevel + 0.1, oceanLevel + 0.34, height01) * smoothstep(0.32, 0.9, mountainChains);
+  const mountainMask = smoothstep(oceanLevel + 0.08, oceanLevel + 0.32, height01) * smoothstep(0.3, 0.9, mountainChains);
   const oceanDepth = 1 - smoothstep(oceanLevel - 0.2, oceanLevel + 0.02, height01);
 
   const basinMask = smoothstep(0.42, 0.9, 1 - continentMask) * smoothstep(oceanLevel - 0.14, oceanLevel + 0.03, height01);
-  const plateauMask = smoothstep(oceanLevel + 0.16, oceanLevel + 0.3, height01) * (1 - mountainMask * 0.8);
+  const plateauMask = smoothstep(oceanLevel + 0.14, oceanLevel + 0.28, height01) * (1 - mountainMask * 0.76);
 
-  const macroPeaks = smoothstep(0.46, 0.82, continentMask) * (0.68 + continentRidge * 0.24);
+  const macroPeaks = smoothstep(0.44, 0.84, continentMask) * (0.72 + continentRidge * 0.26);
   const macroBasins = basinMask * 0.82 + smoothstep(0.62, 0.92, oceanDepth) * 0.34;
-  const macroRelief = clamp((macroPeaks - macroBasins) * 1.4 - 0.18, -1, 1);
+  const macroRelief = clamp((macroPeaks - macroBasins) * 1.62 - 0.2, -1, 1);
 
   const midRaw = mountainChains * 0.95 + foothills * 0.58 + plateauMask * 0.34 - erosionMask * 0.28 - basinMask * 0.22;
   const midRelief = clamp((midRaw - 0.34) * 1.7, -1, 1);
