@@ -13,6 +13,11 @@ export interface TerrainSample {
   craterMask: number;
   thermalMask: number;
   bandMask: number;
+  macroRelief: number;
+  midRelief: number;
+  microRelief: number;
+  basinMask: number;
+  silhouetteMask: number;
 }
 
 export interface TerrainInput {
@@ -164,6 +169,28 @@ function sampleSolid(input: TerrainInput): TerrainSample {
   const mountainMask = smoothstep(oceanLevel + 0.1, oceanLevel + 0.34, height01) * smoothstep(0.32, 0.9, mountainChains);
   const oceanDepth = 1 - smoothstep(oceanLevel - 0.2, oceanLevel + 0.02, height01);
 
+  const basinMask = smoothstep(0.42, 0.9, 1 - continentMask) * smoothstep(oceanLevel - 0.14, oceanLevel + 0.03, height01);
+  const plateauMask = smoothstep(oceanLevel + 0.16, oceanLevel + 0.3, height01) * (1 - mountainMask * 0.8);
+
+  const macroPeaks = smoothstep(0.46, 0.82, continentMask) * (0.68 + continentRidge * 0.24);
+  const macroBasins = basinMask * 0.82 + smoothstep(0.62, 0.92, oceanDepth) * 0.34;
+  const macroRelief = clamp((macroPeaks - macroBasins) * 1.4 - 0.18, -1, 1);
+
+  const midRaw = mountainChains * 0.95 + foothills * 0.58 + plateauMask * 0.34 - erosionMask * 0.28 - basinMask * 0.22;
+  const midRelief = clamp((midRaw - 0.34) * 1.7, -1, 1);
+
+  const microField = fbm(px * 6.2, py * 6.2, pz * 6.2, seed + 171, 2, 2.0, 0.5);
+  const microRelief = clamp((microField * 2 - 1) * (0.5 + mountainMask * 0.5), -1, 1);
+
+  const silhouetteMask = clamp(
+    smoothstep(0.38, 0.86, continentMask) * 0.42 +
+    smoothstep(0.2, 0.92, mountainMask) * 0.46 +
+    plateauMask * 0.24 +
+    (1 - basinMask) * 0.12,
+    0,
+    1,
+  );
+
   return {
     height01,
     continentMask,
@@ -177,6 +204,11 @@ function sampleSolid(input: TerrainInput): TerrainSample {
     craterMask,
     thermalMask,
     bandMask: 0,
+    macroRelief,
+    midRelief,
+    microRelief,
+    basinMask,
+    silhouetteMask,
   };
 }
 
@@ -193,6 +225,10 @@ function sampleGaseous(input: TerrainInput): TerrainSample {
   const bandMask = clamp(jets * 0.65 + turbulence * 0.25 + storms * 0.15, 0, 1);
   const height01 = clamp(0.5 + (turbulence - 0.5) * 0.04, 0.46, 0.54);
 
+  const macroRelief = clamp((bandMask - 0.5) * 0.24, -1, 1);
+  const midRelief = clamp((turbulence - 0.5) * 0.42, -1, 1);
+  const microRelief = clamp((noise3(px * 9, py * 9, pz * 9, seed + 301) - 0.5) * 0.2, -1, 1);
+
   return {
     height01,
     continentMask: 0,
@@ -206,6 +242,11 @@ function sampleGaseous(input: TerrainInput): TerrainSample {
     craterMask: 0,
     thermalMask: storms,
     bandMask,
+    macroRelief,
+    midRelief,
+    microRelief,
+    basinMask: 0,
+    silhouetteMask: clamp(0.2 + bandMask * 0.4, 0, 1),
   };
 }
 
