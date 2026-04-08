@@ -10,10 +10,10 @@ export const SURFACE_BIOME_GLSL = `
   const float BIOME_HUMID_MIN = 0.52;
   const float BIOME_HUMID_MAX = 0.92;
 
-  const float HUMID_LOWLAND_STRENGTH = 0.70;
-  const float HOT_DRY_STRENGTH = 0.40;
-  const float COLD_BASE_STRENGTH = 0.45;
-  const float ROCKY_COLD_STRENGTH = 0.50;
+  const float HUMID_LOWLAND_STRENGTH = 0.74;
+  const float HOT_DRY_STRENGTH = 0.42;
+  const float COLD_BASE_STRENGTH = 0.48;
+  const float ROCKY_COLD_STRENGTH = 0.52;
 
   vec3 applyBiomeTint(
     vec3 landBase,
@@ -28,16 +28,18 @@ export const SURFACE_BIOME_GLSL = `
     float biomeDry = smoothstep(BIOME_DRY_MIN, BIOME_DRY_MAX, 1.0 - humidity);
     float biomeHumid = smoothstep(BIOME_HUMID_MIN, BIOME_HUMID_MAX, humidity);
 
-    vec3 humidTint = vec3(0.95, 1.04, 0.94);
-    vec3 dryWarmTint = vec3(1.06, 0.98, 0.9);
-    vec3 coldTint = vec3(0.92, 0.98, 1.07);
-    vec3 rockyColdTint = vec3(0.92, 0.95, 1.02);
+    vec3 humidTint = vec3(0.94, 1.05, 0.93);
+    vec3 dryWarmTint = vec3(1.07, 0.99, 0.89);
+    vec3 coldTint = vec3(0.9, 0.98, 1.08);
+    vec3 rockyColdTint = vec3(0.90, 0.95, 1.03);
+    vec3 alpineTint = vec3(1.03, 1.03, 1.05);
 
     vec3 biomeTint = vec3(1.0);
     biomeTint = mix(biomeTint, humidTint, biomeHumid * lowlandMask * HUMID_LOWLAND_STRENGTH);
-    biomeTint = mix(biomeTint, dryWarmTint, biomeHot * biomeDry * (HOT_DRY_STRENGTH + highlandMask * 0.2));
-    biomeTint = mix(biomeTint, coldTint, biomeCold * (COLD_BASE_STRENGTH + highlandMask * 0.35));
+    biomeTint = mix(biomeTint, dryWarmTint, biomeHot * biomeDry * (HOT_DRY_STRENGTH + highlandMask * 0.22));
+    biomeTint = mix(biomeTint, coldTint, biomeCold * (COLD_BASE_STRENGTH + highlandMask * 0.36));
     biomeTint = mix(biomeTint, rockyColdTint, rockyMask * biomeCold * ROCKY_COLD_STRENGTH);
+    biomeTint = mix(biomeTint, alpineTint, highlandMask * biomeCold * 0.24);
 
     return landBase * biomeTint;
   }
