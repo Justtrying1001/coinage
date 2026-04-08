@@ -234,7 +234,7 @@ export const SURFACE_CORE_GLSL = `
     terrain = mix(terrain, terrain * vec3(0.92, 1.06, 0.92), lushMask * fertileMask * 0.30);
     terrain = mix(terrain, terrain * vec3(1.08, 1.01, 0.88), desertMask * aridMask * 0.34);
     terrain = mix(terrain, terrain * vec3(0.90, 0.96, 1.10), iceMask * (frostWeight * 0.42 + (1.0 - state.temperature) * 0.20));
-    terrain = mix(terrain, terrain * vec3(0.72, 0.68, 0.64), barrenMask * (crater * 0.38 + rockyMask * 0.22));
+    terrain = mix(terrain, terrain * vec3(0.72, 0.68, 0.64), barrenMask * (crater * 0.38 + state.rockyMask * 0.22));
     terrain = mix(terrain, terrain * vec3(0.82, 1.10, 0.86), toxicMask * (thermal * 0.22 + basinMask * 0.20));
 
     vec3 shallowWaterMat = mix(oceanShelf, oceanMid, 0.44) * vec3(1.12, 1.08, 1.02);
