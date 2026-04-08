@@ -125,6 +125,13 @@ export const SURFACE_CORE_GLSL = `
     float ridgeStrata = sin((vUnitPos.x * 1.3 + vUnitPos.z) * 10.0 + vMacroRelief * 4.0) * 0.5 + 0.5;
     float canyonNoise = sin(vUnitPos.y * 12.0 - vUnitPos.x * 7.0 + vMidRelief * 3.4) * 0.5 + 0.5;
     float detailMask = sat(ridgeStrata * 0.68 + canyonNoise * 0.32);
+    float ridgeMask = smoothstep(0.56, 0.92, ridgeStrata * (0.58 + midHeight * 0.42));
+    float canyonMask = smoothstep(0.52, 0.90, canyonNoise * (0.56 + (1.0 - macroHeight) * 0.34));
+    float tectonicMask = smoothstep(
+      0.42,
+      0.88,
+      abs(sin((vUnitPos.x * 2.7 - vUnitPos.z * 2.1) * 5.8 + vMacroRelief * 5.2)) * (0.62 + midHeight * 0.34)
+    );
     float slopeMask = sat(1.0 - dot(state.normal, normalize(vUnitPos)));
     float plateauMask = smoothstep(0.56, 0.88, macroHeight) * (1.0 - slopeMask * 0.62);
     float basinShadow = smoothstep(0.42, 0.92, basinMask);
@@ -154,14 +161,14 @@ export const SURFACE_CORE_GLSL = `
 
     float sedimentWeight = land * smoothstep(0.12, 0.86, state.lowlandMask + state.coastMask * 0.72)
       * (1.0 - smoothstep(0.58, 0.95, state.rockyMask));
-    float darkRockWeight = land * smoothstep(0.28, 0.92, state.rockyMask + slopeMask * 0.42 + macroHeight * 0.22)
+    float darkRockWeight = land * smoothstep(0.28, 0.92, state.rockyMask + slopeMask * 0.42 + macroHeight * 0.22 + tectonicMask * 0.16)
       * (1.0 - smoothstep(0.48, 0.92, crater * 0.6));
-    float brightRockWeight = land * smoothstep(0.42, 0.94, state.highlandMask + macroHeight * 0.26 + erosion * 0.2)
+    float brightRockWeight = land * smoothstep(0.42, 0.94, state.highlandMask + macroHeight * 0.26 + erosion * 0.2 + ridgeMask * 0.14)
       * (1.0 - smoothstep(0.42, 0.9, basinMask));
-    float frostWeight = land * smoothstep(0.24, 0.9, iceMask * (1.0 - state.temperature) + iceMask * state.highlandMask * 0.54);
-    float basaltHotWeight = land * volcanicMask * smoothstep(0.26, 0.88, thermal + slopeMask * 0.32 + state.rockyMask * 0.24);
+    float frostWeight = land * smoothstep(0.24, 0.9, iceMask * (1.0 - state.temperature) + iceMask * state.highlandMask * 0.54 + canyonMask * 0.08);
+    float basaltHotWeight = land * volcanicMask * smoothstep(0.26, 0.88, thermal + slopeMask * 0.32 + state.rockyMask * 0.24 + tectonicMask * 0.18);
     float lavaWeight = land * volcanicMask * smoothstep(0.44, 0.92, thermal)
-      * smoothstep(0.2, 0.86, detailMask + slopeMask * 0.46);
+      * smoothstep(0.2, 0.86, detailMask + slopeMask * 0.46 + tectonicMask * 0.22);
     float toxicFilmWeight = land * toxicMask * smoothstep(0.26, 0.86, state.humidity + basinMask * 0.22);
 
     sedimentWeight *= mix(1.0, 1.22, lushMask * state.humidity + desertMask * (1.0 - state.humidity));
@@ -185,12 +192,13 @@ export const SURFACE_CORE_GLSL = `
 
     vec3 sedimentMat = sedimentBase * mix(vec3(0.88, 0.82, 0.74), vec3(1.02, 1.00, 0.96), state.humidity * 0.62);
     sedimentMat = mix(sedimentMat, sedimentMat * vec3(1.04, 1.03, 1.01), plateauMask * 0.24);
-    vec3 darkRockMat = darkRockBase * mix(vec3(0.88, 0.86, 0.84), vec3(1.02, 1.0, 0.98), erosion * 0.22);
-    vec3 brightRockMat = brightRockBase * mix(vec3(0.98, 1.0, 1.02), vec3(1.08, 1.08, 1.06), erosion * 0.34 + detailMask * 0.2);
+    vec3 darkRockMat = darkRockBase * mix(vec3(0.88, 0.86, 0.84), vec3(1.02, 1.0, 0.98), erosion * 0.22 + tectonicMask * 0.16);
+    vec3 brightRockMat = brightRockBase * mix(vec3(0.98, 1.0, 1.02), vec3(1.08, 1.08, 1.06), erosion * 0.34 + detailMask * 0.2 + ridgeMask * 0.24);
     vec3 frostMat = frostBase * mix(vec3(0.96, 0.99, 1.03), vec3(1.08, 1.12, 1.18), sat(1.0 - state.temperature));
     vec3 basaltHotMat = basaltHotBase * mix(vec3(0.82, 0.78, 0.74), vec3(1.04, 0.94, 0.88), thermal * 0.34);
     vec3 lavaMat = lavaBase * mix(vec3(0.84, 0.74, 0.66), vec3(1.24, 0.96, 0.68), thermal * 0.42);
     vec3 toxicFilmMat = mix(uColorMid * vec3(0.86, 1.08, 0.82), uAccentColor * vec3(0.88, 1.14, 0.84), 0.56);
+    toxicFilmMat = mix(toxicFilmMat, toxicFilmMat * vec3(0.92, 1.12, 0.90), canyonMask * 0.22 + basinShadow * 0.18);
 
     vec3 terrain =
       sedimentMat * sedimentWeight +
@@ -218,9 +226,9 @@ export const SURFACE_CORE_GLSL = `
 
     float erosionHighlight = smoothstep(0.3, 0.86, erosion) * (0.22 + slopeMask * 0.24);
     float craterRim = crater * smoothstep(0.22, 0.82, detailMask + slopeMask * 0.4);
-    terrain = mix(terrain, terrain * vec3(1.05, 1.03, 0.99), erosionHighlight);
+    terrain = mix(terrain, terrain * vec3(1.05, 1.03, 0.99), erosionHighlight + ridgeMask * 0.14);
     terrain = mix(terrain, terrain * vec3(0.76, 0.74, 0.73), craterRim * (barrenMask + volcanicMask + 0.2));
-    terrain = mix(terrain, terrain * vec3(0.98, 1.02, 1.04), frostWeight * 0.22);
+    terrain = mix(terrain, terrain * vec3(0.98, 1.02, 1.04), frostWeight * 0.22 + canyonMask * 0.1);
 
     vec3 shallowWaterMat = mix(oceanShelf, oceanMid, 0.42) * vec3(1.10, 1.06, 1.02);
     vec3 deepWaterMat = mix(oceanMid, oceanDeep, 0.72) * vec3(0.90, 0.96, 1.06);
@@ -232,7 +240,9 @@ export const SURFACE_CORE_GLSL = `
     deepWaterMat = mix(deepWaterMat, deepWaterMat * vec3(0.84, 1.02, 0.90), toxicMask * 0.3);
 
     oceanColor = shallowWaterMat * shallowWaterWeight + deepWaterMat * deepWaterWeight;
-    vec3 coast = mix(oceanColor * vec3(1.05, 1.03, 1.0), terrain, smoothstep(0.0, 0.34, state.coastMask));
+    vec3 coastSediment = mix(sedimentMat, shallowWaterMat * vec3(1.02, 1.01, 0.98), 0.46);
+    vec3 coast = mix(oceanColor * vec3(1.05, 1.03, 1.0), coastSediment, smoothstep(0.0, 0.28, state.coastMask));
+    coast = mix(coast, terrain, smoothstep(0.14, 0.62, state.coastMask));
 
     state.landBase = mix(terrain, coast, state.coastMask * 0.72);
 
@@ -254,6 +264,9 @@ export const SURFACE_CORE_GLSL = `
       state.heightNorm * RELIEF_HEIGHT_WEIGHT +
       midHeight * RELIEF_MID_WEIGHT +
       macroHeight * RELIEF_MACRO_WEIGHT +
+      ridgeMask * 0.08 +
+      tectonicMask * 0.06 -
+      canyonMask * 0.04 +
       vSilhouetteMask * RELIEF_SILHOUETTE_WEIGHT -
       basinMask * RELIEF_OCEAN_WEIGHT;
 
