@@ -44,10 +44,12 @@ export const SURFACE_LIGHTING_GLSL = `
 
     float slope = 1.0 - clamp(dot(normal, normalize(unitPos)), 0.0, 1.0);
     float slopeContrast = slope * (SLOPE_BASE_STRENGTH + silhouetteMask * SLOPE_SILHOUETTE_STRENGTH);
+    float erosionContrast = smoothstep(0.24, 0.86, vErosionMask) * (0.06 + slope * 0.12);
+    float craterOcclusion = smoothstep(0.3, 0.9, vCraterMask) * 0.08;
 
     float hemisphere = (normal.y * 0.5 + 0.5) * shadingContrast;
     float terrainOcclusion = (1.0 - heightNorm) * 0.08 + (1.0 - wrappedDiffuse) * 0.05;
-    float shadowLift = 0.64 + wrappedDiffuse * 0.52 - terrainOcclusion;
+    float shadowLift = 0.60 + wrappedDiffuse * 0.56 - terrainOcclusion - craterOcclusion;
     float terminator = smoothstep(-0.25, 0.35, ndlRaw);
 
     float rim = pow(1.0 - clamp(dot(normal, viewDir), 0.0, 1.0), 2.8) * (RIM_BASE_STRENGTH + silhouetteMask * RIM_SILHOUETTE_STRENGTH);
@@ -59,7 +61,7 @@ export const SURFACE_LIGHTING_GLSL = `
     float specular = pow(halfSpec, specPower) * (specBase + bandSpecLift) * clamp(specularStrength * 1.55, 0.0, 1.8);
 
     float reliefLighting = reliefShade * (RELIEF_BASE_STRENGTH + silhouetteMask * RELIEF_SILHOUETTE_STRENGTH);
-    float tonal = clamp((shadowLift + hemisphere + slopeContrast + reliefLighting + rim + specular) * mix(0.88, 1.18, terminator), 0.52, 1.58);
+    float tonal = clamp((shadowLift + hemisphere + slopeContrast + erosionContrast + reliefLighting + rim + specular) * mix(0.84, 1.22, terminator), 0.46, 1.62);
 
     float luma = dot(albedo, vec3(0.2126, 0.7152, 0.0722));
     vec3 saturated = mix(vec3(luma), albedo, 1.18);

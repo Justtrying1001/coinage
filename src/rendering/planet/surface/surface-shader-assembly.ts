@@ -10,6 +10,8 @@ export const SURFACE_VERTEX_SHADER_PLANET = `
   attribute float aHumidityMask;
   attribute float aTemperatureMask;
   attribute float aThermalMask;
+  attribute float aErosionMask;
+  attribute float aCraterMask;
   attribute float aBandMask;
   attribute float aMacroRelief;
   attribute float aMidRelief;
@@ -25,6 +27,8 @@ export const SURFACE_VERTEX_SHADER_PLANET = `
   varying float vHumidityMask;
   varying float vTemperatureMask;
   varying float vThermalMask;
+  varying float vErosionMask;
+  varying float vCraterMask;
   varying float vBandMask;
   varying float vMacroRelief;
   varying float vMidRelief;
@@ -43,6 +47,8 @@ export const SURFACE_VERTEX_SHADER_PLANET = `
     vHumidityMask = aHumidityMask;
     vTemperatureMask = aTemperatureMask;
     vThermalMask = aThermalMask;
+    vErosionMask = aErosionMask;
+    vCraterMask = aCraterMask;
     vBandMask = aBandMask;
     vMacroRelief = aMacroRelief;
     vMidRelief = aMidRelief;
