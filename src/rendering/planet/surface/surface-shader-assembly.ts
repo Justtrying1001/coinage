@@ -3,16 +3,12 @@ import { SURFACE_CORE_GLSL } from './surface-core.glsl';
 import { SURFACE_LIGHTING_GLSL } from './surface-lighting.glsl';
 
 // Responsibility: wire shader modules together and expose final shader strings.
-export const SURFACE_VERTEX_SHADER = `
+export const SURFACE_VERTEX_SHADER_PLANET = `
   attribute float aHeight;
   attribute float aLandMask;
-  attribute float aMountainMask;
-  attribute float aCoastMask;
   attribute float aOceanDepth;
-  attribute float aContinentMask;
   attribute float aHumidityMask;
   attribute float aTemperatureMask;
-  attribute float aErosionMask;
   attribute float aThermalMask;
   attribute float aBandMask;
   attribute float aMacroRelief;
@@ -25,13 +21,9 @@ export const SURFACE_VERTEX_SHADER = `
   varying vec3 vUnitPos;
   varying float vHeight;
   varying float vLandMask;
-  varying float vMountainMask;
-  varying float vCoastMask;
   varying float vOceanDepth;
-  varying float vContinentMask;
   varying float vHumidityMask;
   varying float vTemperatureMask;
-  varying float vErosionMask;
   varying float vThermalMask;
   varying float vBandMask;
   varying float vMacroRelief;
@@ -47,13 +39,9 @@ export const SURFACE_VERTEX_SHADER = `
 
     vHeight = aHeight;
     vLandMask = aLandMask;
-    vMountainMask = aMountainMask;
-    vCoastMask = aCoastMask;
     vOceanDepth = aOceanDepth;
-    vContinentMask = aContinentMask;
     vHumidityMask = aHumidityMask;
     vTemperatureMask = aTemperatureMask;
-    vErosionMask = aErosionMask;
     vThermalMask = aThermalMask;
     vBandMask = aBandMask;
     vMacroRelief = aMacroRelief;
@@ -61,6 +49,20 @@ export const SURFACE_VERTEX_SHADER = `
     vMicroRelief = aMicroRelief;
     vSilhouetteMask = aSilhouetteMask;
 
+    gl_Position = projectionMatrix * viewMatrix * worldPos;
+  }
+`;
+
+export const SURFACE_VERTEX_SHADER_GALAXY = `
+  varying vec3 vWorldPos;
+  varying vec3 vWorldNormal;
+  varying vec3 vUnitPos;
+
+  void main() {
+    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    vWorldPos = worldPos.xyz;
+    vWorldNormal = normalize(mat3(modelMatrix) * normal);
+    vUnitPos = normalize(position);
     gl_Position = projectionMatrix * viewMatrix * worldPos;
   }
 `;

@@ -3,7 +3,12 @@ import * as THREE from 'three';
 import { createPlanetViewProfile } from '@/domain/world/generate-planet-visual-profile';
 import type { PlanetRenderInput, PlanetRenderInstance } from './types';
 import { buildDisplacedSphereGeometry, OCEAN_FAMILIES } from './build-displaced-sphere';
-import { SURFACE_FRAGMENT_SHADER_GALAXY, SURFACE_VERTEX_SHADER, getSurfacePlanetFragmentShader } from './surface/surface-shader-assembly';
+import {
+  SURFACE_FRAGMENT_SHADER_GALAXY,
+  SURFACE_VERTEX_SHADER_GALAXY,
+  SURFACE_VERTEX_SHADER_PLANET,
+  getSurfacePlanetFragmentShader,
+} from './surface/surface-shader-assembly';
 
 function toColor(value: [number, number, number]): THREE.Color {
   return new THREE.Color(value[0], value[1], value[2]);
@@ -120,7 +125,7 @@ function createSurfaceLayer(
     : new THREE.SphereGeometry(planetRadius, Math.max(12, Math.floor(segments)), Math.max(12, Math.floor(segments)));
 
   const material = new THREE.ShaderMaterial({
-    vertexShader: SURFACE_VERTEX_SHADER,
+    vertexShader: highQuality ? SURFACE_VERTEX_SHADER_PLANET : SURFACE_VERTEX_SHADER_GALAXY,
     fragmentShader: highQuality ? SURFACE_FRAGMENT_SHADER_PLANET : SURFACE_FRAGMENT_SHADER_GALAXY,
     uniforms: {
       uColorDeep: { value: toColor(render.surface.colorDeep) },

@@ -6,13 +6,9 @@ export const SURFACE_CORE_GLSL = `
   varying vec3 vUnitPos;
   varying float vHeight;
   varying float vLandMask;
-  varying float vMountainMask;
-  varying float vCoastMask;
   varying float vOceanDepth;
-  varying float vContinentMask;
   varying float vHumidityMask;
   varying float vTemperatureMask;
-  varying float vErosionMask;
   varying float vThermalMask;
   varying float vBandMask;
   varying float vMacroRelief;
@@ -30,10 +26,8 @@ export const SURFACE_CORE_GLSL = `
   uniform float uLightingBoost;
   uniform float uShadingContrast;
 
-  const float CONTINENT_BASE_WEIGHT = 0.76;
-  const float CONTINENT_LAND_WEIGHT = 0.20;
-  const float CONTINENT_MACRO_WEIGHT = 0.20;
-  const float CONTINENT_EROSION_WEIGHT = 0.10;
+  const float CONTINENT_BASE_WEIGHT = 0.82;
+  const float CONTINENT_MACRO_WEIGHT = 0.18;
 
   const float HEIGHT_BASE_WEIGHT = 0.58;
   const float HEIGHT_MACRO_WEIGHT = 0.28;
@@ -70,12 +64,7 @@ export const SURFACE_CORE_GLSL = `
   SurfaceState buildSurfaceState() {
     SurfaceState state;
     state.normal = normalize(vWorldNormal);
-    state.continent = sat(
-      vContinentMask * CONTINENT_BASE_WEIGHT +
-      vLandMask * CONTINENT_LAND_WEIGHT +
-      vMacroRelief * CONTINENT_MACRO_WEIGHT -
-      vErosionMask * CONTINENT_EROSION_WEIGHT
-    );
+    state.continent = sat(vLandMask * CONTINENT_BASE_WEIGHT + vMacroRelief * CONTINENT_MACRO_WEIGHT);
     state.humidity = sat(vHumidityMask * 0.86 + 0.14);
     state.temperature = sat(vTemperatureMask * 0.84 + 0.16);
 
@@ -93,10 +82,10 @@ export const SURFACE_CORE_GLSL = `
     float oceanT = sat(vOceanDepth * 0.88 + (1.0 - state.continent) * 0.22 - vMacroRelief * 0.08);
     vec3 oceanColor = mix(oceanShallow, oceanDeep, oceanT);
 
-    state.coastMask = smoothstep(0.16, 0.72, vCoastMask);
+    state.coastMask = smoothstep(0.08, 0.48, sat((1.0 - abs(vLandMask - 0.5) * 2.0) + vOceanDepth * 0.24));
     state.lowlandMask = smoothstep(LOWLAND_MIN, LOWLAND_MAX, state.heightNorm);
     state.highlandMask = smoothstep(HIGHLAND_MIN, HIGHLAND_MAX, state.heightNorm + midHeight * 0.24 + macroHeight * 0.18);
-    state.rockyMask = smoothstep(0.5, 0.9, state.highlandMask + vMountainMask * 0.52 + midHeight * 0.22);
+    state.rockyMask = smoothstep(0.5, 0.9, state.highlandMask + midHeight * 0.24);
 
     vec3 lowlands = mix(uColorDeep * 1.06, uColorMid * 1.08, state.lowlandMask);
     vec3 uplands = mix(uColorMid * 1.02, uColorHigh * 1.14, state.highlandMask);
