@@ -17,6 +17,7 @@ export const SURFACE_VERTEX_SHADER_PLANET = `
   attribute float aMidRelief;
   attribute float aMicroRelief;
   attribute float aSilhouetteMask;
+  attribute float aFractureMask;
 
   varying vec3 vWorldPos;
   varying vec3 vWorldNormal;
@@ -34,6 +35,7 @@ export const SURFACE_VERTEX_SHADER_PLANET = `
   varying float vMidRelief;
   varying float vMicroRelief;
   varying float vSilhouetteMask;
+  varying float vFractureMask;
 
   void main() {
     vec4 worldPos = modelMatrix * vec4(position, 1.0);
@@ -54,6 +56,7 @@ export const SURFACE_VERTEX_SHADER_PLANET = `
     vMidRelief = aMidRelief;
     vMicroRelief = aMicroRelief;
     vSilhouetteMask = aSilhouetteMask;
+    vFractureMask = aFractureMask;
 
     gl_Position = projectionMatrix * viewMatrix * worldPos;
   }

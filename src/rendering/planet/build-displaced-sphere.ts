@@ -52,6 +52,7 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
   const midRelief = new Float32Array(position.count);
   const microRelief = new Float32Array(position.count);
   const silhouetteMask = new Float32Array(position.count);
+  const fractureMask = new Float32Array(position.count);
 
   const baseDisplacementScale = input.radius * (input.surfaceModel === 'gaseous' ? 0.03 : 0.22);
   const macroScale = baseDisplacementScale * (input.surfaceModel === 'gaseous' ? 0.5 : 0.82);
@@ -124,6 +125,7 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
     midRelief[i] = terrain.midRelief;
     microRelief[i] = terrain.microRelief;
     silhouetteMask[i] = terrain.silhouetteMask;
+    fractureMask[i] = terrain.fractureMask;
   }
 
   position.needsUpdate = true;
@@ -145,6 +147,7 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
   geometry.setAttribute('aMidRelief', new THREE.BufferAttribute(midRelief, 1));
   geometry.setAttribute('aMicroRelief', new THREE.BufferAttribute(microRelief, 1));
   geometry.setAttribute('aSilhouetteMask', new THREE.BufferAttribute(silhouetteMask, 1));
+  geometry.setAttribute('aFractureMask', new THREE.BufferAttribute(fractureMask, 1));
 
   return geometry;
 }
