@@ -4,9 +4,6 @@ import { useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
 import { resolvePlanetIdentity } from '@/domain/world/resolve-planet-identity';
 import { createPlanetRenderInstance, updatePlanetLayerAnimation, updatePlanetLighting } from '@/rendering/planet/create-planet-render-instance';
@@ -49,18 +46,11 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     renderer.toneMapping = PLANET_RENDER_PHOTOMETRY.toneMapping;
     renderer.toneMappingExposure = PLANET_RENDER_PHOTOMETRY.planetExposure;
     mount.appendChild(renderer.domElement);
-    const composer = new EffectComposer(renderer);
-    composer.addPass(new RenderPass(scene, camera));
-    const bloomPass = new UnrealBloomPass(new THREE.Vector2(mount.clientWidth, mount.clientHeight), 0.28, 0.45, 0.7);
-    composer.addPass(bloomPass);
 
-    scene.add(new THREE.AmbientLight('#9db7df', 0.34));
-    const keyLight = new THREE.DirectionalLight('#ffffff', 1.45);
-    keyLight.position.set(16, 9, 22);
+    scene.add(new THREE.AmbientLight('#ffffff', 0.45));
+    const keyLight = new THREE.DirectionalLight('#ffffff', 1.18);
+    keyLight.position.set(12, 7, 14);
     scene.add(keyLight);
-    const fillLight = new THREE.DirectionalLight('#7ea4ff', 0.26);
-    fillLight.position.set(-14, -8, 12);
-    scene.add(fillLight);
 
     const planetInstance = createPlanetRenderInstance({
       planet: resolved.planet,
@@ -143,7 +133,6 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
       camera.far = Math.max(1200, resizedMaxDistance * 6);
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
-      composer.setSize(width, height);
       controls.update();
     };
 
@@ -159,7 +148,7 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
       updatePlanetLayerAnimation(planetInstance.object, delta);
       updatePlanetLighting(planetInstance.object, keyLight.position.clone().normalize());
       controls.update();
-      composer.render();
+      renderer.render(scene, camera);
       requestAnimationFrame(animate);
     };
 
@@ -182,7 +171,6 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
         }
       });
 
-      composer.dispose();
       renderer.dispose();
       if (mount.contains(renderer.domElement)) {
         mount.removeChild(renderer.domElement);

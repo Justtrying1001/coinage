@@ -13,18 +13,6 @@ function toColor(value: [number, number, number]): THREE.Color {
   return new THREE.Color(value[0], value[1], value[2]);
 }
 
-const FAMILY_INDEX: Record<PlanetRenderInput['planet']['render']['family'], number> = {
-  'terrestrial-lush': 0,
-  oceanic: 1,
-  'desert-arid': 2,
-  'ice-frozen': 3,
-  'volcanic-infernal': 4,
-  'barren-rocky': 5,
-  'toxic-alien': 6,
-  'gas-giant': 7,
-  'ringed-giant': 8,
-};
-
 function createSurfaceLayer(
   planetRadius: number,
   render: PlanetRenderInput['planet']['render'],
@@ -83,7 +71,7 @@ function createCloudLayer(
     uniforms: {
       uCloudColor: { value: toColor(render.clouds.color) },
       uCoverage: { value: Math.min(0.92, Math.max(0.18, render.clouds.coverage)) },
-      uOpacity: { value: name === 'clouds-low' ? 0.58 : 0.34 },
+      uOpacity: { value: name === 'clouds-low' ? 0.22 : 0.12 },
       uSeed: { value: render.clouds.noiseSeed + (name === 'clouds-low' ? 0 : 921) },
       uTime: { value: 0 },
       uSpeed: { value: speedFactor },
@@ -145,13 +133,13 @@ function createCloudLayer(
         float macro = noise(p);
         float detail = noise(p * 2.0 + vec3(1.3, -0.7, 2.1));
         float n = macro * 0.72 + detail * 0.28;
-        n = mix(n, n * 0.75 + bands * 0.25, uBanding * 0.7);
+        n = mix(n, n * 0.9 + bands * 0.1, uBanding * 0.4);
 
         float alpha = smoothstep(1.0 - uCoverage, 1.0, n) * uOpacity;
         vec3 normal = normalize(vNormalW);
         float light = max(dot(normal, normalize(uLightDirection)), 0.0);
-        float rim = pow(1.0 - max(dot(normal, normalize(cameraPosition - vWorldPos)), 0.0), 2.8) * 0.28;
-        vec3 col = uCloudColor * (0.40 + light * 0.92 + rim);
+        float rim = pow(1.0 - max(dot(normal, normalize(cameraPosition - vWorldPos)), 0.0), 3.4) * 0.12;
+        vec3 col = uCloudColor * (0.26 + light * 0.56 + rim);
         gl_FragColor = vec4(col, alpha);
       }
     `,
@@ -159,7 +147,7 @@ function createCloudLayer(
 
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = name;
-  mesh.userData.rotationSpeed = Math.max(0.004, render.clouds.speed * speedFactor * 0.9);
+  mesh.userData.rotationSpeed = Math.max(0.0025, render.clouds.speed * speedFactor * 0.5);
   return mesh;
 }
 
@@ -169,7 +157,6 @@ function createAtmosphereLayer(
   segments: number,
 ): THREE.Mesh {
   const geometry = new THREE.SphereGeometry(planetRadius * (1 + Math.max(0.05, render.atmosphere.thickness + 0.028)), segments, segments);
-  const family = FAMILY_INDEX[render.family] ?? 0;
 
   const material = new THREE.ShaderMaterial({
     side: THREE.BackSide,
@@ -178,9 +165,8 @@ function createAtmosphereLayer(
     blending: THREE.AdditiveBlending,
     uniforms: {
       uAtmosphereColor: { value: toColor(render.atmosphere.color) },
-      uDensity: { value: Math.max(0.2, render.atmosphere.density) },
-      uRimStrength: { value: render.atmosphere.rimStrength },
-      uFamilyType: { value: family },
+      uDensity: { value: Math.max(0.12, Math.min(0.46, render.atmosphere.density * 0.55)) },
+      uRimStrength: { value: Math.max(0.2, Math.min(0.58, render.atmosphere.rimStrength * 0.6)) },
       uLightDirection: { value: new THREE.Vector3(0.38, 0.76, 0.52).normalize() },
     },
     vertexShader: `
@@ -200,28 +186,15 @@ function createAtmosphereLayer(
       uniform vec3 uAtmosphereColor;
       uniform float uDensity;
       uniform float uRimStrength;
-      uniform float uFamilyType;
       uniform vec3 uLightDirection;
-
-      float familyMask(float id) { return 1.0 - step(0.5, abs(uFamilyType - id)); }
 
       void main() {
         vec3 normal = normalize(vNormalW);
         vec3 viewDir = normalize(cameraPosition - vWorldPos);
-        float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.9);
+        float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 3.1);
         float sun = max(dot(normal, normalize(uLightDirection)), 0.0);
-
-        float toxic = familyMask(6.0);
-        float volcanic = familyMask(4.0);
-        float frozen = familyMask(3.0);
-
-        vec3 tint = uAtmosphereColor;
-        tint = mix(tint, tint * vec3(0.92, 1.08, 0.88), toxic * 0.22);
-        tint = mix(tint, tint * vec3(1.12, 0.86, 0.72), volcanic * 0.20);
-        tint = mix(tint, tint * vec3(0.86, 0.95, 1.12), frozen * 0.24);
-
-        float alpha = clamp(fresnel * uRimStrength * (0.62 + sun * 0.45) * uDensity, 0.0, 0.88);
-        gl_FragColor = vec4(tint, alpha);
+        float alpha = clamp(fresnel * uRimStrength * (0.38 + sun * 0.24) * uDensity, 0.0, 0.32);
+        gl_FragColor = vec4(uAtmosphereColor, alpha);
       }
     `,
   });
@@ -237,7 +210,7 @@ function createRingLayer(render: PlanetRenderInput['planet']['render'], segments
   const material = new THREE.MeshBasicMaterial({
     color: toColor(render.rings.color),
     transparent: true,
-    opacity: Math.min(0.88, render.rings.opacity * 1.25),
+    opacity: Math.min(0.35, render.rings.opacity * 0.6),
     side: THREE.DoubleSide,
     depthWrite: false,
   });
@@ -309,8 +282,8 @@ export function createPlanetRenderInstance(input: PlanetRenderInput): PlanetRend
   const disposeTargets: Array<THREE.BufferGeometry | THREE.Material | THREE.Material[]> = [surface.geometry, surface.material];
 
   if (view.enableClouds && planet.render.clouds.enabled && shouldRenderLayer('clouds', options.debug)) {
-    const lowClouds = createCloudLayer('clouds-low', planet.render.renderRadius, planet.render, Math.max(64, Math.floor(view.cloudSegments)), 1.03, 0.025);
-    const highClouds = createCloudLayer('clouds-high', planet.render.renderRadius, planet.render, Math.max(56, Math.floor(view.cloudSegments * 0.8)), 1.06, 0.038);
+    const lowClouds = createCloudLayer('clouds-low', planet.render.renderRadius, planet.render, Math.max(56, Math.floor(view.cloudSegments)), 1.02, 0.016);
+    const highClouds = createCloudLayer('clouds-high', planet.render.renderRadius, planet.render, Math.max(44, Math.floor(view.cloudSegments * 0.6)), 1.035, 0.022);
     group.add(lowClouds);
     group.add(highClouds);
     disposeTargets.push(lowClouds.geometry, lowClouds.material, highClouds.geometry, highClouds.material);
