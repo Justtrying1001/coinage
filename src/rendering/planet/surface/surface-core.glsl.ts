@@ -172,10 +172,9 @@ export const SURFACE_CORE_GLSL = `
     lavaWeight *= mix(0.72, 1.44, volcanicMask);
     toxicFilmWeight *= mix(0.64, 1.34, toxicMask);
 
-    float landWeightSum = max(
-      0.001,
-      sedimentWeight + darkRockWeight + brightRockWeight + frostWeight + basaltHotWeight + lavaWeight + toxicFilmWeight,
-    );
+    float landWeightSumRaw =
+      sedimentWeight + darkRockWeight + brightRockWeight + frostWeight + basaltHotWeight + lavaWeight + toxicFilmWeight;
+    float landWeightSum = max(0.001, landWeightSumRaw);
     sedimentWeight = safeDiv(sedimentWeight, landWeightSum);
     darkRockWeight = safeDiv(darkRockWeight, landWeightSum);
     brightRockWeight = safeDiv(brightRockWeight, landWeightSum);
@@ -202,6 +201,21 @@ export const SURFACE_CORE_GLSL = `
       lavaMat * lavaWeight +
       toxicFilmMat * toxicFilmWeight;
 
+    vec3 legacyTerrain = mix(lowlands, uplands, state.highlandMask * 0.84 + macroHeight * 0.16);
+    legacyTerrain = mix(legacyTerrain, rocky, state.rockyMask);
+    legacyTerrain = mix(legacyTerrain, legacyTerrain * vec3(0.97, 0.98, 1.01), detailMask * 0.12);
+    legacyTerrain = mix(legacyTerrain, legacyTerrain * vec3(1.04, 1.03, 0.99), plateauMask * 0.14);
+    legacyTerrain = mix(legacyTerrain, legacyTerrain * vec3(0.84, 0.86, 0.90), basinShadow * 0.22);
+    legacyTerrain = mix(legacyTerrain, legacyTerrain * vec3(0.86, 0.77, 0.65), desertMask * (1.0 - state.humidity) * 0.44);
+    legacyTerrain = mix(legacyTerrain, legacyTerrain * vec3(0.82, 0.92, 1.06), iceMask * (0.42 + state.highlandMask * 0.34));
+    legacyTerrain = mix(legacyTerrain, legacyTerrain * vec3(0.66, 0.61, 0.58), barrenMask * 0.42);
+    legacyTerrain = mix(legacyTerrain, legacyTerrain * vec3(0.64, 0.60, 0.56), volcanicMask * 0.52);
+    legacyTerrain = mix(legacyTerrain, legacyTerrain * vec3(0.90, 1.06, 0.88), lushMask * state.humidity * 0.28);
+    legacyTerrain = mix(legacyTerrain, legacyTerrain * vec3(0.88, 1.14, 0.84), toxicMask * 0.28);
+
+    float invalidMaterialState = 1.0 - step(0.02, landWeightSumRaw + waterBlendNorm * 0.2);
+    terrain = mix(terrain, legacyTerrain, invalidMaterialState);
+
     float erosionHighlight = smoothstep(0.3, 0.86, erosion) * (0.22 + slopeMask * 0.24);
     float craterRim = crater * smoothstep(0.22, 0.82, detailMask + slopeMask * 0.4);
     terrain = mix(terrain, terrain * vec3(1.05, 1.03, 0.99), erosionHighlight);
@@ -224,6 +238,7 @@ export const SURFACE_CORE_GLSL = `
 
     vec3 solidAlbedo = mix(oceanColor, state.landBase, vLandMask);
     solidAlbedo = mix(solidAlbedo, coast, state.coastMask * 0.82);
+    solidAlbedo = max(solidAlbedo, vec3(0.025));
 
     float seededBand = sin(vUnitPos.y * (12.0 + uBandingStrength * 18.0) + uBandSeed * 0.0000012) * 0.5 + 0.5;
     float bandField = sat(vBandMask * 0.7 + seededBand * 0.3 + vMacroRelief * 0.08);
