@@ -83,7 +83,8 @@ const DRAG_DIRECT_RESPONSE = 0.58;
 const PLANET_BATCH_SIZE = 10;
 const INITIAL_BATCH_CAP = 72;
 const PERF_LOG_PREFIX = '[GalaxyPerf]';
-const INSTANCED_RADIUS_THRESHOLD = 4.4;
+// V1 robustness: route all galaxy planets through a single instanced path for complete, stable map representation.
+const INSTANCED_RADIUS_THRESHOLD = Number.POSITIVE_INFINITY;
 
 function createDefaultCounters(totalPlanets = 0): GalaxyPerfCounters {
   return {
@@ -325,12 +326,13 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     const tinyPlanetMesh = tinyPlanets.length > 0
       ? new THREE.InstancedMesh(
         new THREE.SphereGeometry(1, 12, 12),
-        new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.76, metalness: 0.06 }),
+        new THREE.MeshBasicMaterial({ vertexColors: true }),
         tinyPlanets.length,
       )
       : null;
     const tinyPlanetIds: string[] = [];
     let tinyPlanetIndex = 0;
+    const expectedTinyPlanetCount = tinyPlanets.length;
 
     if (tinyPlanetMesh) {
       tinyPlanetMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -729,6 +731,15 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       if (completedPlanetCount >= planetData.length && queueIndex >= prioritizedQueue.length) {
         isBatching = false;
         markPerf(perfStore, 'galaxy:all-visible');
+        if (process.env.NODE_ENV !== 'production' && tinyPlanetMesh) {
+          console.info(`${PERF_LOG_PREFIX} representation-check`, {
+            manifestCount: planetData.length,
+            queueCount: prioritizedQueue.length,
+            representedCount: instantiatedPlanetIds.size,
+            tinyRepresented: tinyPlanetIndex,
+            expectedTinyPlanetCount,
+          });
+        }
         measurePerf(perfStore, 'galaxy:time-to-all-visible', 'galaxy:mount:start', 'galaxy:all-visible');
 
         if (shouldLogPerf()) {
