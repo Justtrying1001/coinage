@@ -18,6 +18,10 @@ export interface DisplacedSphereInput {
   surfaceModel: PlanetSurfaceModel;
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
 export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE.SphereGeometry {
   if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' && (window as { __COINAGE_PIPELINE_TRACE?: boolean }).__COINAGE_PIPELINE_TRACE) {
     console.info('[PlanetPipelineTrace]', {
@@ -44,8 +48,15 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
   const craterMask = new Float32Array(position.count);
   const thermalMask = new Float32Array(position.count);
   const bandMask = new Float32Array(position.count);
+  const macroRelief = new Float32Array(position.count);
+  const midRelief = new Float32Array(position.count);
+  const microRelief = new Float32Array(position.count);
+  const silhouetteMask = new Float32Array(position.count);
 
-  const displacementScale = input.radius * (input.surfaceModel === 'gaseous' ? 0.03 : 0.22);
+  const baseDisplacementScale = input.radius * (input.surfaceModel === 'gaseous' ? 0.03 : 0.22);
+  const macroScale = baseDisplacementScale * (input.surfaceModel === 'gaseous' ? 0.5 : 0.68);
+  const midScale = baseDisplacementScale * (input.surfaceModel === 'gaseous' ? 0.3 : 0.24);
+  const microScale = baseDisplacementScale * (input.surfaceModel === 'gaseous' ? 0.2 : 0.08);
 
   for (let i = 0; i < position.count; i += 1) {
     const x = position.getX(i);
@@ -70,15 +81,29 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
       surfaceModel: input.surfaceModel,
     });
 
-    const signed = (terrain.height01 - 0.5) * 2;
-    const landDisplacement = signed * input.reliefAmplitude * displacementScale;
     const hasOceanFamily = OCEAN_FAMILIES.includes(input.family);
+
+    const macroComponent = terrain.macroRelief * macroScale;
+    const midComponent = terrain.midRelief * midScale;
+    const microComponent = terrain.microRelief * microScale;
+
+    const silhouetteGain = 0.72 + terrain.silhouetteMask * 0.68;
+    const combinedRelief = (macroComponent + midComponent + microComponent * 0.55) * silhouetteGain;
+
+    const amplitudeControl = input.reliefAmplitude * (input.surfaceModel === 'gaseous' ? 0.9 : 1.0);
+    const unclampedDisplacement = combinedRelief * amplitudeControl;
+    const clampedDisplacement = clamp(
+      unclampedDisplacement,
+      -input.radius * (input.surfaceModel === 'gaseous' ? 0.016 : 0.09),
+      input.radius * (input.surfaceModel === 'gaseous' ? 0.018 : 0.12),
+    );
 
     let displacedRadius: number;
     if (hasOceanFamily && terrain.landMask < 0.5) {
-      displacedRadius = input.radius * 0.998;
+      const basinSink = terrain.basinMask * input.radius * 0.0028;
+      displacedRadius = input.radius * 0.998 - basinSink;
     } else {
-      displacedRadius = input.radius + landDisplacement;
+      displacedRadius = input.radius + clampedDisplacement;
     }
 
     position.setXYZ(i, px * displacedRadius, py * displacedRadius, pz * displacedRadius);
@@ -95,6 +120,10 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
     craterMask[i] = terrain.craterMask;
     thermalMask[i] = terrain.thermalMask;
     bandMask[i] = terrain.bandMask;
+    macroRelief[i] = terrain.macroRelief;
+    midRelief[i] = terrain.midRelief;
+    microRelief[i] = terrain.microRelief;
+    silhouetteMask[i] = terrain.silhouetteMask;
   }
 
   position.needsUpdate = true;
@@ -112,6 +141,10 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): THREE
   geometry.setAttribute('aCraterMask', new THREE.BufferAttribute(craterMask, 1));
   geometry.setAttribute('aThermalMask', new THREE.BufferAttribute(thermalMask, 1));
   geometry.setAttribute('aBandMask', new THREE.BufferAttribute(bandMask, 1));
+  geometry.setAttribute('aMacroRelief', new THREE.BufferAttribute(macroRelief, 1));
+  geometry.setAttribute('aMidRelief', new THREE.BufferAttribute(midRelief, 1));
+  geometry.setAttribute('aMicroRelief', new THREE.BufferAttribute(microRelief, 1));
+  geometry.setAttribute('aSilhouetteMask', new THREE.BufferAttribute(silhouetteMask, 1));
 
   return geometry;
 }
