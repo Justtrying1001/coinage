@@ -17,6 +17,7 @@ function createSurfaceLayer(
   planetRadius: number,
   render: PlanetRenderInput['planet']['render'],
   segments: number,
+  debug: PlanetRenderInput['options']['debug'] | undefined,
 ): THREE.Mesh {
   const built = buildDisplacedSphereGeometry({
     radius: planetRadius,
@@ -35,6 +36,15 @@ function createSurfaceLayer(
       ? new THREE.Vector2(minElevation, maxElevation)
       : new THREE.Vector2(minElevation, minElevation + 0.2);
 
+  if (process.env.NODE_ENV !== 'production' && Math.abs(maxElevation - minElevation) < 1e-5) {
+    console.warn('[PlanetView] Degenerate elevation range, applying fallback min/max window', {
+      minElevation,
+      maxElevation,
+      planetId: render.planetId,
+      family: render.family,
+    });
+  }
+
   if (process.env.NODE_ENV !== 'production') {
     const elevationAttr = built.geometry.getAttribute('aUnscaledElevation');
     if (!elevationAttr || elevationAttr.count === 0) {
@@ -47,19 +57,27 @@ function createSurfaceLayer(
   while (landStops.length < maxStops) landStops.push({ anchor: 1, color: landStops[landStops.length - 1].color });
   while (depthStops.length < maxStops) depthStops.push({ anchor: 1, color: depthStops[depthStops.length - 1].color });
 
-  const material = new THREE.ShaderMaterial({
-    vertexShader: SURFACE_VERTEX_SHADER_PLANET,
-    fragmentShader: SURFACE_FRAGMENT_SHADER_PLANET,
-    uniforms: {
-      uMinMax: { value: safeMinMax },
-      uSeaLevel: { value: 1.0 },
-      uLightDirection: { value: new THREE.Vector3(0.38, 0.76, 0.52).normalize() },
-      uLandGradientSize: { value: gradients.land.length },
-      uDepthGradientSize: { value: gradients.depth.length },
-      uLandGradient: { value: landStops.map((s) => ({ anchor: s.anchor, color: toColor(s.color) })) },
-      uDepthGradient: { value: depthStops.map((s) => ({ anchor: s.anchor, color: toColor(s.color) })) },
-    },
-  });
+  const material: THREE.Material = debug?.forceBasicMaterial
+    ? new THREE.MeshBasicMaterial({
+      color: '#52f7ff',
+      wireframe: Boolean(debug?.wireframe),
+    })
+    : new THREE.ShaderMaterial({
+      vertexShader: SURFACE_VERTEX_SHADER_PLANET,
+      fragmentShader: SURFACE_FRAGMENT_SHADER_PLANET,
+      wireframe: Boolean(debug?.wireframe),
+      uniforms: {
+        uMinMax: { value: safeMinMax },
+        uSeaLevel: { value: 0.0 },
+        uLightDirection: { value: new THREE.Vector3(0.38, 0.76, 0.52).normalize() },
+        uLandGradientSize: { value: gradients.land.length },
+        uDepthGradientSize: { value: gradients.depth.length },
+        uLandAnchors: { value: landStops.map((s) => s.anchor) },
+        uDepthAnchors: { value: depthStops.map((s) => s.anchor) },
+        uLandColors: { value: landStops.map((s) => toColor(s.color)) },
+        uDepthColors: { value: depthStops.map((s) => toColor(s.color)) },
+      },
+    });
 
   const mesh = new THREE.Mesh(built.geometry, material);
   mesh.name = 'surface';
@@ -173,6 +191,7 @@ export function createPlanetRenderInstance(input: PlanetRenderInput): PlanetRend
     planet.render.renderRadius,
     planet.render,
     view.meshSegments,
+    options.debug,
   );
   group.add(surface);
 

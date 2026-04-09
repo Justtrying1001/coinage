@@ -6,8 +6,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import { resolvePlanetIdentity } from '@/domain/world/resolve-planet-identity';
-import { createPlanetRenderInstance, updatePlanetLayerAnimation, updatePlanetLighting } from '@/rendering/planet/create-planet-render-instance';
+import { updatePlanetLayerAnimation, updatePlanetLighting } from '@/rendering/planet/create-planet-render-instance';
 import { PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
+import { createXenoversePlanetGpuInstance } from '@/vendor/xenoverse/planet-gpu';
 
 interface PlanetViewProps {
   worldSeed: string;
@@ -29,6 +30,11 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
       return;
     }
 
+    const searchParams = new URLSearchParams(window.location.search);
+    const runtimeDebugEnabled = searchParams.get('debugRender') === '1';
+    const forceBasicMaterial = searchParams.get('debugBasic') === '1';
+    const wireframe = searchParams.get('wireframe') === '1';
+
     const scene = new THREE.Scene();
     scene.background = new THREE.Color('#030308');
 
@@ -48,12 +54,11 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     keyLight.position.set(12, 7, 14);
     scene.add(keyLight);
 
-    const planetInstance = createPlanetRenderInstance({
-      planet: resolved.planet,
-      x: 0,
-      y: 0,
-      z: 0,
-      options: { viewMode: 'planet' },
+    const planetInstance = createXenoversePlanetGpuInstance(resolved.planet, {
+      renderer,
+      forceBasicMaterial,
+      wireframe,
+      preferCompute: true,
     });
 
     scene.add(planetInstance.object);
@@ -87,6 +92,58 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     camera.updateProjectionMatrix();
     camera.position.copy(framingCenter).addScaledVector(baseViewDirection, initialDistance);
     camera.lookAt(framingCenter);
+
+    if (runtimeDebugEnabled && process.env.NODE_ENV !== 'production') {
+      camera.updateMatrixWorld();
+      const frustum = new THREE.Frustum();
+      const projectionView = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      frustum.setFromProjectionMatrix(projectionView);
+
+      const meshDiagnostics: Array<Record<string, unknown>> = [];
+      let computeFaceCount = 0;
+      planetInstance.object.traverse((node) => {
+        if (!(node instanceof THREE.Mesh)) return;
+        const geometry = node.geometry;
+        const position = geometry.getAttribute('position');
+        const bounds = new THREE.Box3().setFromObject(node);
+        const sphere = bounds.getBoundingSphere(new THREE.Sphere());
+        const uv = geometry.getAttribute('uv');
+        const computeMarker = uv && uv.count > 0 ? uv.getY(0) : 0;
+        if (node.name === 'xenoverse-face' && computeMarker > 0.5) computeFaceCount += 1;
+        const mat = node.material;
+        const uniforms =
+          mat instanceof THREE.ShaderMaterial
+            ? {
+              uMinMax: mat.uniforms.uMinMax?.value?.toArray?.(),
+              uSeaLevel: mat.uniforms.uSeaLevel?.value,
+              uLandGradientSize: mat.uniforms.uLandGradientSize?.value,
+              uDepthGradientSize: mat.uniforms.uDepthGradientSize?.value,
+            }
+            : null;
+
+        meshDiagnostics.push({
+          name: node.name,
+          vertexCount: position?.count ?? 0,
+          boundsMin: bounds.min.toArray(),
+          boundsMax: bounds.max.toArray(),
+          sphereRadius: sphere.radius,
+          distanceToCamera: camera.position.distanceTo(sphere.center),
+          inFrustum: frustum.intersectsSphere(sphere),
+          material: mat.type,
+          uniforms,
+          computeMarker,
+        });
+      });
+
+      console.info('[PlanetView:runtime-debug]', {
+        planetId: resolved.planetId,
+        meshes: meshDiagnostics.length,
+        computeFaceCount,
+        forceBasicMaterial,
+        wireframe,
+        meshDiagnostics,
+      });
+    }
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enablePan = false;

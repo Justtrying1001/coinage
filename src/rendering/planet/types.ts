@@ -7,6 +7,8 @@ export interface PlanetRendererOptions {
     surfaceOnly?: boolean;
     atmosphereOnly?: boolean;
     freezeRotation?: boolean;
+    forceBasicMaterial?: boolean;
+    wireframe?: boolean;
   };
 }
 
