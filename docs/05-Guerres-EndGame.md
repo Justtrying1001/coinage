@@ -2,96 +2,98 @@
 
 **Guerres Officielles & End Game**
 
-*Conflits inter-factions, résolution de saison et classement final*
+*Conflits inter-factions, bascule territoriale et fin de saison*
 
-Version 2.0 — Avril 2026
+Version 2.1 — Avril 2026
 
 # Guerres officielles
 
 ## Prérequis
 
-- Branche Diplomatique suffisamment avancée
+- Branche Diplomatique active
 - Branche Militaire active
 - Conseil opérationnel
 
 ## Déclaration
 
-1. Proposition côté gouvernance
+1. Proposition en gouvernance
 2. Vote des joueurs actifs
 3. Notification de la cible
-4. Phase de mobilisation
+4. Mobilisation
 
 ## Conduite du conflit
 
-Deux niveaux coexistent :
+Deux niveaux complémentaires :
 
-- **Collectif** : armée de faction, objectifs, calendrier
-- **Individuel** : raids, sièges, défense locale
+- **Collectif** : objectifs, armée de faction, priorités territoriales
+- **Individuel** : raids, sièges, renforts, logistique
 
 ## Objectif territorial
 
-Le cœur de la guerre est la prise de villes sur des secteurs clés.
+Le conflit vise la capture de villes sur des secteurs stratégiques pour atteindre le seuil de bascule.
 
-Règle majeure : seuil de 75% de contrôle sur la zone ciblée pour déclencher la bascule territoriale.
+## Séquence de prise de ville
+
+1. Nettoyage des défenses
+2. Instabilité (12h)
+3. Arrivée d’un convoi de colonisation dans la fenêtre
+4. Validation de capture
 
 ## Fin de guerre
 
 | Condition | Effet |
 | --- | --- |
 | Traité de paix | Fin négociée |
-| Reddition | Fin immédiate sous conditions |
-| Conquête validée | Territoire transféré |
+| Reddition | Fin immédiate avec conditions |
+| Conquête validée | Transfert territorial |
 | Abandon | Défaite reconnue |
 
 ## Récompenses
 
-Distribution proportionnelle au score de contribution :
+Distribution selon score de contribution :
 
-- ressources
-- part de trésor capturé
+- ressources capturées
+- part de trésor adverse
 - bonus Shards
 
 # Renseignement macro
 
-Analyse de faction (niveau macro) :
+Analyse de faction :
 
-- niveau des branches
-- activité récente
+- état des branches
+- niveau d’activité
 - volume collectif estimé
-- état du trésor
+- niveau de trésor
 
-Ne révèle pas :
-
-- détail complet ville par ville
-- ordres internes du Conseil
+Ne révèle pas le détail complet ville par ville.
 
 # End game et saisons
 
-## Cycle saisonnier
+## Cycle de saison
 
-Chaque serveur suit un cycle fini :
-
-1. montée en puissance
+1. expansion
 2. conflits majeurs
-3. phase de conclusion
-4. distribution des récompenses
-5. reset de monde
+3. résolution politique et militaire
+4. classement final
+5. reset monde
 
 ## Victoire de saison
 
-La victoire combine :
+Combinaison de :
 
 - domination territoriale
-- performance faction
+- performance de faction
 - performance individuelle pondérée
 
-## Ce qui persiste
+## Persistance
+
+Persiste :
 
 - titres
 - historique de classement
-- réputation globale
+- réputation
 
-## Ce qui reset
+Reset :
 
 - ressources
 - villes

@@ -2,129 +2,129 @@
 
 **Gameplay Micro**
 
-*Population • Économie • Combat • Espionnage • Recherche • Trading*
+*Population • Économie • Unités • Combat • Déplacement • Colonisation • Espionnage*
 
-Version 2.0 — Avril 2026
+Version 2.1 — Avril 2026
 
 # Population
 
-La population alimente à la fois :
+La population est la capacité partagée de la ville. Elle est consommée par :
 
-- les bâtiments
-- les unités vivantes
+- bâtiments
+- unités vivantes
 
-Tension centrale : plus tu investis en infrastructures, moins tu peux maintenir d’unités (et inversement).
-
-## Source
-
-Housing Complex = source principale du cap de population.
-
-## Spécialisations de ville
-
-| Type | Focus |
-| --- | --- |
-| Ville économique | Production et stockage |
-| Ville offensive | Projection et pression inter-secteur |
-| Ville défensive | Résistance locale |
-| Ville recherche | RC et technologies |
-| Ville colonisation | Déploiement de convois |
+Objectif stratégique : arbitrer entre puissance économique, défense locale et projection militaire.
 
 # Économie
 
-- Production continue au fil du temps
-- Aucun tick serveur obligatoire
-- Réévaluation au login ou à l’action
-- Storage cap comme limite naturelle
+- Production continue en temps réel
+- Récupération au login / à l’action (claim-on-access)
+- Caps de stockage comme limite naturelle
+- Protection nouveau joueur + protection post-raid
 
-Protections de base :
+# Typologie d’unités (canonique)
 
-- Protection nouveau joueur (7 jours, levée en cas d’attaque initiée)
-- Protection post-raid (12h contre le même attaquant)
+Aucune catégorie verticale. Toutes les unités suivent une logique terrain/carte.
 
-# Combat micro
-
-## Types d’attaque
-
-- Cinétique
-- Énergétique
-- Plasma
-
-## Phases de combat
-
-1. Phase mobile : unités de projection et d’interception
-2. Phase terrestre : affrontement principal sur cible
-
-## Familles d’unités
-
-| Famille | Rôle |
+| Type | Rôle principal |
 | --- | --- |
-| Ligne | Tenue, défense, attrition |
-| Assaut | Percée et dégâts directs |
-| Projection | Déploiement rapide inter-secteur |
-| Colonisation | Prise de secteur libre (convoi) |
+| Unité rapide | Pression, interception, anti-raid |
+| Unité standard | Polyvalence frontale |
+| Unité lourde | Tenue de ligne, encaissement |
+| Unité de siège | Destruction des défenses et ouverture de capture |
+| Unité de reconnaissance | Information et détection |
+| Unité défensive | Protection forte en garnison |
+| Convoi logistique | Renfort et transport de charge |
+| Convoi de colonisation | Installation sur secteur libre |
 
-## Déplacement
+# Combat
 
-Le temps dépend de la distance inter-secteur et de l’unité la plus lente du groupe.
+## Principe général
 
-`temps_trajet = distance × (1 / vitesse_unite_plus_lente)`
+Le combat est résolu sans couches verticales :
 
-# Actions militaires
+- type d’unité
+- vitesse
+- portée opérationnelle
+- composition de vague
 
-| Action | Description |
-| --- | --- |
-| Raid | Pillage ciblé d’une ville ennemie |
-| Siège | Capture d’une ville occupée |
-| Colonisation | Installation sur secteur libre via convoi |
-| Renfort | Défense d’un territoire allié |
+## Phases de résolution
 
-## Séquence de siège
+1. **Engagement initial** : contact des unités rapides et de reconnaissance, perturbation de la ligne adverse.
+2. **Combat principal** : affrontement des unités standard, lourdes et défensives.
+3. **Résolution** : application des pertes, validation du contrôle local, ouverture éventuelle de capture.
+
+## Modèle de contre
+
+- Rapides > Reconnaissance isolée
+- Lourdes > Standard en duel frontal
+- Siège > Défenses fixes
+- Défensives > Rapides en défense préparée
+
+# Déplacement et projection
+
+## Déplacement inter-secteur
+
+Le temps dépend de la distance et de l’unité la plus lente du groupe.
+
+`temps_trajet = distance_inter_secteur × (1 / vitesse_unite_plus_lente)`
+
+## Projection militaire
+
+La projection combine :
+
+- vitesse des unités
+- disponibilité des convois logistiques
+- coordination multi-vagues
+
+# Colonisation
+
+## Colonisation d’un secteur libre
+
+- Condition : secteur neutre avec slot libre
+- Moyen : convoi de colonisation
+- Résultat : création d’une ville contrôlée
+
+## Capture d’une ville occupée
+
+Séquence :
 
 1. Nettoyage des défenses
 2. Fenêtre d’instabilité (12h)
-3. Arrivée du convoi de colonisation
-4. Validation de capture
+3. Arrivée du convoi de colonisation dans la fenêtre
+4. Validation de capture si le convoi survit
 
-# Règle de chute territoriale (75%)
+# Actions militaires disponibles
 
-Quand une faction perd 75% des villes d’un territoire ciblé face à une même faction ennemie, ce territoire bascule.
-
-# Espionnage
-
-## Principe
-
-Le vault d’Iron finance les missions.
-
-| Mission | Effet |
+| Action | Usage |
 | --- | --- |
-| Reconnaissance | Données militaires essentielles |
-| Infiltration | Vue étendue (unités, bâtiments, ressources) |
-| Surveillance | Suivi des mouvements entrants/sortants |
-| Sabotage | Retard de production ou de formation |
+| Raid | Pillage ciblé |
+| Siège | Ouverture d’une capture |
+| Renfort | Soutien défensif |
+| Colonisation | Prise de secteur libre |
 
-## Résolution
+# Règle de bascule territoriale (75%)
 
-Succès si l’investissement d’Iron attaquant dépasse la défense adverse.
+Si une faction perd 75% des villes d’un territoire ciblé au profit d’une même faction ennemie, le territoire bascule.
 
-# Recherche individuelle
+# Espionnage micro
 
-RC (Research Capacity) = budget limité qui force des choix.
+Le Centre d’espionnage et le vault d’Iron permettent :
 
-Axes recommandés :
+- reconnaissance
+- infiltration
+- surveillance
+- sabotage
 
-- Économie
-- Défense
-- Assaut
-- Vitesse
-- Espionnage
-- Logistique
+Succès d’une mission : investissement d’Iron attaquant supérieur à la défense de la cible.
 
-# Trading
+# Recherche individuelle (RC)
 
-Le Marché permet :
+Le RC est un budget limité qui force la spécialisation. Axes recommandés :
 
-- échanges directs
-- routes planifiées
-- assistance intra-faction
-
-Le coût logistique dépend de la distance inter-secteur.
+- économie
+- défense
+- assaut
+- vitesse
+- espionnage
+- logistique

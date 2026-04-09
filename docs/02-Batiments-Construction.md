@@ -2,9 +2,9 @@
 
 **Bâtiments & Construction**
 
-*Catalogue micro et règles de progression*
+*Catalogue micro, production d’unités et projection territoriale*
 
-Version 2.0 — Avril 2026
+Version 2.1 — Avril 2026
 
 # Règles générales
 
@@ -13,17 +13,15 @@ Version 2.0 — Avril 2026
 | Slots | Nombre fixe par ville |
 | Unicité | 1 bâtiment de chaque type par ville |
 | Niveaux | 20 niveaux max (hors prestige) |
-| Coûts | Déduits au lancement de la construction |
+| Coûts | Déduits au lancement |
 | Queue F2P | 2 constructions simultanées |
 | Queue premium | Jusqu’à 5 slots via Shards |
 
-# Bâtiment central
+# HQ (Headquarters)
 
-## HQ (Headquarters)
+Le HQ débloque les bâtiments et structure la progression de ville.
 
-Le HQ gouverne les déblocages de la ville.
-
-| Niveau HQ | Déblocages principaux |
+| Niveau HQ | Déblocages |
 | --- | --- |
 | 1 | Mine, Carrière, Entrepôt, Caserne, Housing Complex |
 | 3 | Raffinerie, Mur défensif |
@@ -35,59 +33,69 @@ Le HQ gouverne les déblocages de la ville.
 | 18 | Usine d’armement |
 | 20 | Bâtiments prestige |
 
-# Catalogue économie
+# Bâtiments économiques
 
-- Mine (Ore)
-- Carrière (Stone)
-- Raffinerie (Iron)
-- Entrepôt (storage cap)
-- Shard Vault (cap Shards)
-- Housing Complex (cap population)
-- Marché (trading et routes)
+| Bâtiment | Rôle |
+| --- | --- |
+| Mine | Production Ore |
+| Carrière | Production Stone |
+| Raffinerie | Production Iron |
+| Entrepôt | Augmente les caps de stockage |
+| Shard Vault | Augmente le cap de Shards |
+| Housing Complex | Augmente le cap population |
+| Marché | Échanges et routes logistiques |
 
-# Catalogue militaire
+# Bâtiments militaires
 
 ## Caserne
 
-Unités de base et spécialisations rapides.
+Produit les unités standard, défensives et de reconnaissance.
 
 ## Forge de combat
 
-Unités offensives avancées et anti-fortification.
+Produit les unités lourdes et certaines unités rapides orientées assaut.
 
-## Hub de déploiement (remplace l’ancien dock)
+## Hub de déploiement
 
-Bâtiment de projection militaire inter-secteur.
+Bâtiment dédié à la projection inter-secteur :
+
+- unités rapides anti-raid
+- unités de siège
+- convois logistiques
+- convois de colonisation
 
 | Niveau | Déblocage |
 | --- | --- |
-| 1 | Intercepteur tactique (défense mobile) |
-| 5 | Escouade rapide (projection offensive) |
-| 10 | Transport blindé (projection d’unités lourdes) |
-| 15 | Briseur de ligne (anti-structure) |
+| 1 | Éclaireur rapide (reconnaissance / anti-raid) |
+| 5 | Escouade mobile (projection offensive) |
+| 10 | Convoi logistique (renfort et transport de charge) |
+| 15 | Équipe de siège (bris de défenses) |
 | 20 | Convoi de colonisation |
 
 ## Académie militaire
 
-Améliore les statistiques permanentes : attaque, défense, vitesse.
+Débloque des bonus permanents :
 
-## Mur défensif / Tour de guet
+- attaque
+- défense
+- vitesse de déplacement
+- efficacité de siège
 
-Défense locale, détection et réduction du risque d’attaque surprise.
+## Mur défensif et Tour de guet
 
-# Bâtiments gouvernance & espionnage
+- Mur défensif : mitigation des dégâts subis en défense
+- Tour de guet : alerte précoce et meilleure visibilité des mouvements entrants
 
-## Council Chamber
+# Bâtiments gouvernance et renseignement
 
-Prérequis pour voter et candidater au Conseil.
-
-## Centre d’espionnage
-
-Gestion du vault d’Iron et missions (reconnaissance, infiltration, sabotage).
+| Bâtiment | Rôle |
+| --- | --- |
+| Council Chamber | Accès aux votes/candidatures de gouvernance |
+| Centre d’espionnage | Missions de reconnaissance, infiltration, sabotage |
 
 # Bâtiments prestige
 
 - Training Grounds
 - Surveillance Network
 
-Ces bâtiments apportent des bonus spécialisés et rares.
+Ces bâtiments apportent des avantages spécialisés sans changer le modèle territorial.

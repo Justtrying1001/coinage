@@ -4,32 +4,32 @@
 
 *Progression de faction • Gouvernance • Territoires neutres • Alliances • Diplomatie*
 
-Version 2.0 — Avril 2026
+Version 2.1 — Avril 2026
 
 # Vue macro
 
-La couche macro coordonne les décisions collectives d’une faction :
+La couche macro pilote les décisions collectives d’une faction sur la world map 2D sectorisée :
 
 - priorités d’investissement
 - défense territoriale
 - guerres officielles
-- négociations inter-factions
+- accords diplomatiques
 
 # Progression collective
 
 ## Branches de faction
 
-Trois branches de progression partagent le Signal de faction :
+Trois branches :
 
 - Économique
 - Militaire
 - Diplomatique
 
-Une seule branche progresse à la fois (choix du Conseil).
+Une seule branche progresse à la fois, selon la priorité votée.
 
 ## Trésor de faction
 
-Le trésor agrège :
+Le trésor centralise :
 
 - Signal de faction
 - contributions de ressources
@@ -41,7 +41,7 @@ Le trésor agrège :
 
 | Paramètre | Valeur |
 | --- | --- |
-| Taille | 5 membres |
+| Membres | 5 |
 | Élection | 1 joueur = 1 voix |
 | Rôles | Gouverneur, Général, Diplomate, membres |
 
@@ -49,50 +49,53 @@ Le trésor agrège :
 
 | Décision | Validation |
 | --- | --- |
-| Dépense du trésor | Majorité Conseil (3/5) |
+| Dépense trésor | Majorité Conseil (3/5) |
 | Déclaration de guerre | Vote joueurs actifs + Conseil |
 | Alliance / traité | Diplomate + Conseil |
 | Priorité de branche | Majorité Conseil |
 
-# Territoires neutres et contrôlés
+# Territoires
 
-## État neutre
+## État initial
 
-Au lancement, tous les secteurs sont neutres.
+Tous les secteurs démarrent neutres.
 
 ## Activation d’une faction
 
 Premier joueur d’un token :
 
 1. attribution d’un secteur neutre
-2. ce secteur devient territoire principal
-3. la faction devient active sur la carte
+2. conversion en territoire principal
+3. activation de la faction sur la carte
 
-## Conversion en territoire contrôlé
+## Territoire contrôlé
 
-Un secteur neutre devient contrôlé lorsqu’une faction en assure la maîtrise complète selon les règles de capture.
+Un secteur devient territoire contrôlé après maîtrise complète suivant les règles de capture.
 
 # Alliances
 
 | Règle | Valeur |
 | --- | --- |
-| Taille max | 3 factions |
+| Taille maximale | 3 factions |
 | Non-agression | Totale pendant alliance |
-| Rupture standard | Préavis + délai avant guerre |
-| Rupture opportuniste | Malus temporaire si trahison |
+| Rupture standard | Préavis puis délai avant guerre |
+| Rupture opportuniste | Malus temporaire |
 
 # Diplomatie
 
-Le système couvre :
+Le système inclut :
 
 - pactes
 - traités de paix
 - redditions conditionnelles
-- accords secrets (niveau avancé)
+- accords secrets avancés
 
-# Principes d’équilibre macro
+# Cohérence combat macro
 
-- transparence des contributions
-- limites anti-abus sur la gouvernance
-- snapshots stables pendant conflit
-- coûts d’opportunité visibles pour toute décision collective
+La guerre macro repose uniquement sur :
+
+- composition d’unités terrain
+- projection inter-secteur
+- contrôle de villes et de secteurs
+
+Aucune mécanique verticale n’intervient dans la résolution des conflits.
