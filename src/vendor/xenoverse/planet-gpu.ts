@@ -23,8 +23,10 @@ function toColor(value: [number, number, number]): THREE.Color {
 }
 
 export interface XenoversePlanetGpuOptions {
+  renderer: THREE.WebGLRenderer;
   forceBasicMaterial?: boolean;
   wireframe?: boolean;
+  preferCompute?: boolean;
 }
 
 export interface XenoversePlanetGpuInstance {
@@ -38,7 +40,7 @@ export interface XenoversePlanetGpuInstance {
  */
 export function createXenoversePlanetGpuInstance(
   planet: CanonicalPlanet,
-  options: XenoversePlanetGpuOptions = {},
+  options: XenoversePlanetGpuOptions,
 ): XenoversePlanetGpuInstance {
   const resolution = 140;
   const minMax = new MinMax();
@@ -61,6 +63,8 @@ export function createXenoversePlanetGpuInstance(
       reliefAmplitude: planet.render.surface.reliefAmplitude,
       family: planet.render.family,
       minMax,
+      renderer: options.renderer,
+      preferCompute: options.preferCompute ?? true,
     });
 
     const material: THREE.Material = options.forceBasicMaterial
@@ -149,6 +153,23 @@ export function createXenoversePlanetGpuInstance(
     disposeTargets.push(atmoGeom, atmoMat);
   }
 
+  if (process.env.NODE_ENV !== 'production') {
+    let computeFaces = 0;
+    group.traverse((node) => {
+      if (!(node instanceof THREE.Mesh)) return;
+      if (node.name !== 'xenoverse-face') return;
+      const uv = node.geometry.getAttribute('uv');
+      if (!uv || uv.count === 0) return;
+      const marker = uv.getY(0);
+      if (marker > 0.5) computeFaces += 1;
+    });
+    console.info('[XenoversePlanetGpu] Face build summary', {
+      planetId: planet.identity.planetId,
+      computeFaces,
+      totalFaces: FACE_DIRECTIONS.length,
+    });
+  }
+
   return {
     object: group,
     dispose: () => {
@@ -156,4 +177,3 @@ export function createXenoversePlanetGpuInstance(
     },
   };
 }
-

@@ -55,8 +55,10 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     scene.add(keyLight);
 
     const planetInstance = createXenoversePlanetGpuInstance(resolved.planet, {
+      renderer,
       forceBasicMaterial,
       wireframe,
+      preferCompute: true,
     });
 
     scene.add(planetInstance.object);
@@ -98,12 +100,16 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
       frustum.setFromProjectionMatrix(projectionView);
 
       const meshDiagnostics: Array<Record<string, unknown>> = [];
+      let computeFaceCount = 0;
       planetInstance.object.traverse((node) => {
         if (!(node instanceof THREE.Mesh)) return;
         const geometry = node.geometry;
         const position = geometry.getAttribute('position');
         const bounds = new THREE.Box3().setFromObject(node);
         const sphere = bounds.getBoundingSphere(new THREE.Sphere());
+        const uv = geometry.getAttribute('uv');
+        const computeMarker = uv && uv.count > 0 ? uv.getY(0) : 0;
+        if (node.name === 'xenoverse-face' && computeMarker > 0.5) computeFaceCount += 1;
         const mat = node.material;
         const uniforms =
           mat instanceof THREE.ShaderMaterial
@@ -125,12 +131,14 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
           inFrustum: frustum.intersectsSphere(sphere),
           material: mat.type,
           uniforms,
+          computeMarker,
         });
       });
 
       console.info('[PlanetView:runtime-debug]', {
         planetId: resolved.planetId,
         meshes: meshDiagnostics.length,
+        computeFaceCount,
         forceBasicMaterial,
         wireframe,
         meshDiagnostics,
