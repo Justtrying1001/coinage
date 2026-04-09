@@ -107,37 +107,54 @@ This foundation is designed to evolve toward:
 
 The current implementation intentionally stops at map generation + rendering baseline to keep the first milestone stable and extensible.
 
-## Map View rework (composition + visual language)
+## Map View rework (from procedural debug look to hybrid visual kit)
 
-The first prototype proved architecture, but map readability and atmosphere were too debug-like. The rework focuses on map composition and rendering language without adding gameplay systems.
+The earlier prototype validated architecture and generation, but remained visually insufficient because final perception relied mostly on primitive fills/strokes/glows. That created a debug-map feeling instead of a game-map identity.
 
-### World composition improvements
+### What changed in rendering strategy
 
-- Rebalanced world extents and framing for a better ratio between map size and object spacing.
-- Reworked macro distribution to use structured cluster rings plus explicit void pockets.
-- Increased spacing constraints with stronger rejection rules to avoid nearby blob stacking.
-- Kept deterministic generation and 500+ factions while improving breathing room and strategic legibility.
+The map remains procedurally generated (world layout, islands, slots), but rendering is now hybrid:
+- procedural placement/composition is preserved
+- a reusable visual kit provides texture-assisted surface language
+- primitives still define structure, while textures/overlays provide art direction
 
-### Faction-island rendering improvements
+### What remains procedural
 
-- Added layered island rendering (under-glow, core mass, contour, accent shelf, rim).
-- Refined silhouette modulation so islands remain irregular but less like flat debug polygons.
-- Improved hover/selection emphasis with restrained scale/tint/pulse rather than harsh highlighting.
+- deterministic seeded world generation
+- cluster/void composition
+- faction positions, sizes, and silhouettes
+- city slot placement and neutral occupancy state
 
-### City slot rendering improvements
+### What is now asset-assisted / systematized
 
-- Replaced debug dots with integrated emplacement markers.
-- Each slot now uses a micro marker stack (bed, ring, ticks, core) for strategic readability.
-- Markers stay lightweight and neutral-state friendly while preserving future occupied/free differentiation.
+A reusable map visual kit now supplies:
+- ocean noise field texture
+- ocean flow texture
+- island surface texture
+- island vein/segmentation texture
+- slot glyph texture
 
-### Digital ocean improvements
+These are small reusable assets generated once and reused across all factions/tiles for coherence.
 
-- Added layered ocean construction: base depth field, haze patches, current-flow lines, sparse glints, and faint structural grid.
-- Ocean now contributes to composition and navigation instead of acting as plain background fill.
-- Visual treatment remains restrained to keep islands as primary focus.
+### Faction-island rendering now
 
-### Intentionally simple for now
+- multi-layer island stack: under-glow, core silhouette, textured surface pass, vein pass, accent mass, contour, rim
+- texture passes are masked by procedural island silhouettes
+- result preserves top-down readability while removing flat-blob debug perception
 
-- No zoom system (view scale progression is still intended via Map -> Faction -> City).
-- No ownership/combat/economy systems yet.
-- No heavy HUD chrome; map remains the primary surface.
+### City slot rendering now
+
+- slots now render as integrated emplacement anchors
+- marker stack uses base bed + halo + glyph texture
+- markers remain compact/readable and ready for future occupied/free state differentiation
+
+### Digital ocean rendering now
+
+- ocean now combines base depth fill + tiled noise + tiled flow structures + broad field ellipses + sparse glints + faint macro grid
+- digital ocean behaves as compositional sea-equivalent (spacing, separation, navigation support)
+
+### Still placeholder for now
+
+- no zoom system (view progression remains Map -> Faction -> City)
+- no gameplay ownership/combat/economy systems yet
+- visual kit is intentionally lightweight and can later be replaced by authored art assets without changing architecture

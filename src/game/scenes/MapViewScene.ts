@@ -1,7 +1,8 @@
 import * as PIXI from 'pixi.js';
 import type { Faction, WorldData } from '@/game/core/types';
-import type { GameScene } from '@/game/scenes/GameScene';
 import { buildFactionGraphic } from '@/game/renderers/islandRenderer';
+import { getMapVisualKit, type MapVisualKit } from '@/game/renderers/visualKit';
+import type { GameScene } from '@/game/scenes/GameScene';
 
 interface FactionLayer {
   container: PIXI.Container;
@@ -18,9 +19,12 @@ export class MapViewScene implements GameScene {
 
   private elapsed = 0;
 
+  private readonly kit: MapVisualKit;
+
   private factionLayers = new Map<string, FactionLayer>();
 
   constructor(private readonly world: WorldData) {
+    this.kit = getMapVisualKit();
     this.drawOcean();
     this.mountFactions();
   }
@@ -47,48 +51,47 @@ export class MapViewScene implements GameScene {
   private drawOcean() {
     const base = new PIXI.Graphics();
     base.rect(0, 0, this.world.width, this.world.height);
-    base.fill({ color: 0x050a12, alpha: 1 });
+    base.fill({ color: 0x040911, alpha: 1 });
     this.root.addChild(base);
 
-    const hazeColors = [0x0f2133, 0x0c1928, 0x10243a, 0x0a1624];
-    for (let i = 0; i < 18; i += 1) {
-      const haze = new PIXI.Graphics();
-      const x = ((i * 1837 + this.world.seed * 13) % this.world.width) + (i % 2 === 0 ? -120 : 80);
-      const y = ((i * 1291 + this.world.seed * 7) % this.world.height) + (i % 3 === 0 ? -100 : 60);
-      const rx = 520 + ((i * 97) % 520);
-      const ry = 390 + ((i * 113) % 430);
-      haze.ellipse(x, y, rx, ry);
-      haze.fill({ color: hazeColors[i % hazeColors.length], alpha: 0.08 });
-      this.root.addChild(haze);
-    }
+    const noise = new PIXI.TilingSprite({ texture: this.kit.oceanNoise, width: this.world.width, height: this.world.height });
+    noise.alpha = 0.5;
+    noise.tileScale.set(2.2, 2.2);
+    this.root.addChild(noise);
 
-    const currentLines = new PIXI.Graphics();
-    for (let y = 260; y < this.world.height; y += 420) {
-      currentLines.moveTo(0, y);
-      currentLines.bezierCurveTo(this.world.width * 0.25, y + 55, this.world.width * 0.65, y - 55, this.world.width, y + 5);
+    const flow = new PIXI.TilingSprite({ texture: this.kit.oceanFlow, width: this.world.width, height: this.world.height });
+    flow.alpha = 0.22;
+    flow.tileScale.set(1.8, 1.4);
+    this.root.addChild(flow);
+
+    const largeField = new PIXI.Graphics();
+    for (let i = 0; i < 8; i += 1) {
+      const x = ((i * 2399 + this.world.seed * 13) % this.world.width) - 250;
+      const y = ((i * 1601 + this.world.seed * 11) % this.world.height) - 220;
+      largeField.ellipse(x, y, 1800 + (i % 3) * 280, 1200 + (i % 4) * 180);
     }
-    currentLines.stroke({ color: 0x2a5a75, width: 1, alpha: 0.16 });
-    this.root.addChild(currentLines);
+    largeField.fill({ color: 0x10243a, alpha: 0.07 });
+    this.root.addChild(largeField);
 
     const grid = new PIXI.Graphics();
-    for (let y = 0; y <= this.world.height; y += 620) {
+    for (let y = 0; y <= this.world.height; y += 760) {
       grid.moveTo(0, y);
       grid.lineTo(this.world.width, y);
     }
-    for (let x = 0; x <= this.world.width; x += 620) {
+    for (let x = 0; x <= this.world.width; x += 760) {
       grid.moveTo(x, 0);
       grid.lineTo(x, this.world.height);
     }
-    grid.stroke({ color: 0x18384d, width: 1, alpha: 0.08 });
+    grid.stroke({ color: 0x18384d, width: 1, alpha: 0.06 });
     this.root.addChild(grid);
 
-    for (let i = 0; i < 220; i += 1) {
+    for (let i = 0; i < 180; i += 1) {
       const glint = new PIXI.Graphics();
-      const x = (i * 631 + this.world.seed * 17) % this.world.width;
-      const y = (i * 997 + this.world.seed * 19) % this.world.height;
-      const radius = i % 7 === 0 ? 2 : 1.2;
+      const x = (i * 887 + this.world.seed * 29) % this.world.width;
+      const y = (i * 521 + this.world.seed * 31) % this.world.height;
+      const radius = i % 9 === 0 ? 2.4 : 1.1;
       glint.circle(x, y, radius);
-      glint.fill({ color: 0x63c5ea, alpha: i % 7 === 0 ? 0.16 : 0.09 });
+      glint.fill({ color: 0x6fcce8, alpha: i % 9 === 0 ? 0.15 : 0.06 });
       this.root.addChild(glint);
     }
   }
@@ -96,7 +99,7 @@ export class MapViewScene implements GameScene {
   private mountFactions() {
     for (const faction of this.world.factions) {
       const shadeOffset = parseInt(faction.id.replace('f-', ''), 10) % 16;
-      const { container, core, rim, underGlow } = buildFactionGraphic(faction, shadeOffset);
+      const { container, core, rim, underGlow } = buildFactionGraphic(faction, shadeOffset, this.kit);
       container.eventMode = 'static';
       container.cursor = 'pointer';
 

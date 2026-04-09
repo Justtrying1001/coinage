@@ -1,5 +1,6 @@
 import * as PIXI from 'pixi.js';
 import type { Faction } from '@/game/core/types';
+import type { MapVisualKit } from '@/game/renderers/visualKit';
 
 interface FactionRenderNode {
   container: PIXI.Container;
@@ -8,12 +9,12 @@ interface FactionRenderNode {
   underGlow: PIXI.Graphics;
 }
 
-export function buildFactionGraphic(faction: Faction, paletteShift: number): FactionRenderNode {
+export function buildFactionGraphic(faction: Faction, paletteShift: number, kit: MapVisualKit): FactionRenderNode {
   const container = new PIXI.Container();
   container.position.set(faction.position.x, faction.position.y);
 
   const underGlow = new PIXI.Graphics();
-  underGlow.ellipse(0, 0, faction.radius * 1.2, faction.radius * 0.86);
+  underGlow.ellipse(0, 0, faction.radius * 1.26, faction.radius * 0.9);
   underGlow.fill({
     color: PIXI.Color.shared.setValue(`hsl(${198 + paletteShift}, 72%, 35%)`).toNumber(),
     alpha: 0.08,
@@ -21,50 +22,61 @@ export function buildFactionGraphic(faction: Faction, paletteShift: number): Fac
 
   const core = new PIXI.Graphics();
   core.poly(buildPolygon(faction, 1), true);
-  core.fill({ color: PIXI.Color.shared.setValue(`hsl(${212 + paletteShift}, 22%, 21%)`).toNumber(), alpha: 0.96 });
+  core.fill({ color: PIXI.Color.shared.setValue(`hsl(${212 + paletteShift}, 22%, 21%)`).toNumber(), alpha: 0.97 });
+
+  const mask = new PIXI.Graphics();
+  mask.poly(buildPolygon(faction, 0.98), true);
+  mask.fill({ color: 0xffffff, alpha: 1 });
+
+  const span = faction.radius * 2.8;
+  const surface = new PIXI.TilingSprite({ texture: kit.islandSurface, width: span, height: span });
+  surface.anchor.set(0.5);
+  surface.alpha = 0.34;
+  surface.tint = PIXI.Color.shared.setValue(`hsl(${202 + paletteShift}, 38%, 54%)`).toNumber();
+  surface.tilePosition.set((faction.shapeSeed % 97) * 1.7, (faction.shapeSeed % 61) * 2.1);
+
+  const veins = new PIXI.TilingSprite({ texture: kit.islandVein, width: span, height: span });
+  veins.anchor.set(0.5);
+  veins.alpha = 0.2;
+  veins.tint = 0x9fdff7;
+  veins.tilePosition.set((faction.shapeSeed % 149) * 1.2, (faction.shapeSeed % 47) * 1.4);
+
+  surface.mask = mask;
+  veins.mask = mask;
 
   const rim = new PIXI.Graphics();
-  rim.poly(buildPolygon(faction, 1.02), true);
-  rim.stroke({ color: PIXI.Color.shared.setValue(`hsl(${198 + paletteShift}, 52%, 40%)`).toNumber(), width: 2.3, alpha: 0.72 });
+  rim.poly(buildPolygon(faction, 1.01), true);
+  rim.stroke({ color: PIXI.Color.shared.setValue(`hsl(${198 + paletteShift}, 52%, 42%)`).toNumber(), width: 2.4, alpha: 0.72 });
 
   const contour = new PIXI.Graphics();
-  contour.poly(buildPolygon(faction, 0.85), true);
-  contour.stroke({ color: PIXI.Color.shared.setValue(`hsl(${205 + paletteShift}, 32%, 30%)`).toNumber(), width: 1.3, alpha: 0.5 });
+  contour.poly(buildPolygon(faction, 0.84), true);
+  contour.stroke({ color: PIXI.Color.shared.setValue(`hsl(${205 + paletteShift}, 32%, 30%)`).toNumber(), width: 1.2, alpha: 0.48 });
 
   const accent = new PIXI.Graphics();
-  accent.poly(buildPolygon(faction, 0.68), true);
-  accent.fill({ color: PIXI.Color.shared.setValue(`hsl(${214 + paletteShift}, 26%, 17%)`).toNumber(), alpha: 0.55 });
+  accent.poly(buildPolygon(faction, 0.66), true);
+  accent.fill({ color: PIXI.Color.shared.setValue(`hsl(${214 + paletteShift}, 26%, 17%)`).toNumber(), alpha: 0.53 });
 
-  container.addChild(underGlow, core, accent, contour, rim);
+  container.addChild(underGlow, core, surface, veins, accent, contour, rim, mask);
 
   for (const slot of faction.slots) {
     const marker = new PIXI.Container();
 
     const bed = new PIXI.Graphics();
-    bed.circle(0, 0, 4.8);
-    bed.fill({ color: 0x0d1c27, alpha: 0.8 });
+    bed.circle(0, 0, 5.2);
+    bed.fill({ color: 0x09131d, alpha: 0.78 });
+    bed.stroke({ color: 0x294557, width: 1, alpha: 0.62 });
 
-    const ring = new PIXI.Graphics();
-    ring.circle(0, 0, 4.6);
-    ring.stroke({ color: 0x4db4dc, width: 1.25, alpha: slot.occupied ? 0.85 : 0.55 });
+    const glyph = new PIXI.Sprite(kit.slotGlyph);
+    glyph.anchor.set(0.5);
+    glyph.scale.set(0.6);
+    glyph.alpha = slot.occupied ? 0.98 : 0.8;
 
-    const coreDot = new PIXI.Graphics();
-    coreDot.circle(0, 0, 1.3);
-    coreDot.fill({ color: slot.occupied ? 0x93f1ff : 0x78caea, alpha: 0.9 });
-
-    const ticks = new PIXI.Graphics();
-    ticks.moveTo(-2.8, 0);
-    ticks.lineTo(-1.7, 0);
-    ticks.moveTo(2.8, 0);
-    ticks.lineTo(1.7, 0);
-    ticks.moveTo(0, -2.8);
-    ticks.lineTo(0, -1.7);
-    ticks.moveTo(0, 2.8);
-    ticks.lineTo(0, 1.7);
-    ticks.stroke({ color: 0x8fe8ff, width: 0.75, alpha: 0.46 });
+    const halo = new PIXI.Graphics();
+    halo.circle(0, 0, 8.2);
+    halo.stroke({ color: 0x7fe2ff, width: 1, alpha: slot.occupied ? 0.45 : 0.24 });
 
     marker.position.set(slot.x, slot.y);
-    marker.addChild(bed, ring, ticks, coreDot);
+    marker.addChild(halo, bed, glyph);
 
     container.addChild(marker);
   }
