@@ -9,9 +9,9 @@ interface WorldGeneratorConfig {
 }
 
 const SIZE_TABLE: Record<SizeCategory, { baseRadius: number; slotRange: [number, number]; chance: number }> = {
-  small: { baseRadius: 56, slotRange: [10, 14], chance: 0.56 },
-  medium: { baseRadius: 84, slotRange: [13, 20], chance: 0.33 },
-  large: { baseRadius: 118, slotRange: [18, 25], chance: 0.11 },
+  small: { baseRadius: 44, slotRange: [10, 14], chance: 0.56 },
+  medium: { baseRadius: 66, slotRange: [13, 20], chance: 0.33 },
+  large: { baseRadius: 94, slotRange: [18, 25], chance: 0.11 },
 };
 
 interface Cluster {
@@ -40,7 +40,7 @@ export function generateWorld({
 
   const factions: Faction[] = [];
   const grid = new Map<string, Point2D[]>();
-  const cellSize = 380;
+  const cellSize = 290;
 
   const addPoint = (point: Point2D) => {
     const key = `${Math.floor(point.x / cellSize)}:${Math.floor(point.y / cellSize)}`;
@@ -77,8 +77,8 @@ export function generateWorld({
     safety += 1;
     const cluster = weightedPick(clusters, rng);
     const point: Point2D = {
-      x: clamp(rng.range(cluster.x - cluster.spreadX, cluster.x + cluster.spreadX), 520, width - 520),
-      y: clamp(rng.range(cluster.y - cluster.spreadY, cluster.y + cluster.spreadY), 430, height - 430),
+      x: clamp(rng.range(cluster.x - cluster.spreadX, cluster.x + cluster.spreadX), 360, width - 360),
+      y: clamp(rng.range(cluster.y - cluster.spreadY, cluster.y + cluster.spreadY), 320, height - 320),
     };
 
     if (isInsideVoid(point, voidPockets)) {
@@ -87,7 +87,7 @@ export function generateWorld({
 
     const radialFactor = radialFromCenter(point, width, height);
     const localDensityBias = densityFromNearestCluster(point, clusters);
-    const minDistance = 250 + radialFactor * 130 + localDensityBias * 48 + rng.range(10, 70);
+    const minDistance = 170 + radialFactor * 70 + localDensityBias * 30 + rng.range(8, 42);
     if (hasSpacingConflict(point, minDistance)) {
       continue;
     }
@@ -125,15 +125,15 @@ function buildClusters(rng: SeededRng, width: number, height: number): Cluster[]
   const cy = height * 0.5;
   const clusters: Cluster[] = [];
 
-  for (let i = 0; i < 16; i += 1) {
-    const ring = i % 4;
-    const radiusFactor = [0.16, 0.29, 0.41, 0.5][ring];
-    const angle = (Math.PI * 2 * i) / 16 + rng.range(-0.18, 0.18);
+  for (let i = 0; i < 22; i += 1) {
+    const ring = i % 5;
+    const radiusFactor = [0.12, 0.23, 0.33, 0.42, 0.5][ring];
+    const angle = (Math.PI * 2 * i) / 22 + rng.range(-0.18, 0.18);
     clusters.push({
       x: cx + Math.cos(angle) * width * radiusFactor,
       y: cy + Math.sin(angle) * height * radiusFactor,
-      spreadX: rng.range(550, 1450),
-      spreadY: rng.range(460, 1320),
+      spreadX: rng.range(480, 1280),
+      spreadY: rng.range(420, 1120),
       weight: rng.range(0.9, 2.4),
     });
   }
@@ -146,16 +146,16 @@ function buildVoidPockets(rng: SeededRng, width: number, height: number): VoidPo
   const cx = width * 0.5;
   const cy = height * 0.5;
 
-  for (let i = 0; i < 7; i += 1) {
-    const angle = (Math.PI * 2 * i) / 7 + rng.range(-0.24, 0.24);
+  for (let i = 0; i < 5; i += 1) {
+    const angle = (Math.PI * 2 * i) / 5 + rng.range(-0.24, 0.24);
     pockets.push({
       x: cx + Math.cos(angle) * width * rng.range(0.18, 0.42),
       y: cy + Math.sin(angle) * height * rng.range(0.15, 0.4),
-      radius: rng.range(720, 1320),
+      radius: rng.range(560, 980),
     });
   }
 
-  pockets.push({ x: cx, y: cy, radius: 1100 });
+  pockets.push({ x: cx, y: cy, radius: 720 });
   return pockets;
 }
 

@@ -107,54 +107,64 @@ This foundation is designed to evolve toward:
 
 The current implementation intentionally stops at map generation + rendering baseline to keep the first milestone stable and extensible.
 
-## Map View rework (from procedural debug look to hybrid visual kit)
+## Map View art-direction reset (from failed debug-map to command-world prototype)
 
-The earlier prototype validated architecture and generation, but remained visually insufficient because final perception relied mostly on primitive fills/strokes/glows. That created a debug-map feeling instead of a game-map identity.
+The previous Map View failed visually because it looked like rendering diagnostics, not a strategy-game world. Islands read as flat procedural blobs, slot points read as generic markers, and the ocean behaved like empty canvas filler. The result did not meet the Coinage DA target.
 
-### What changed in rendering strategy
+### Visual target now followed
 
-The map remains procedurally generated (world layout, islands, slots), but rendering is now hybrid:
-- procedural placement/composition is preserved
-- a reusable visual kit provides texture-assisted surface language
-- primitives still define structure, while textures/overlays provide art direction
+The active target is a dense, dark, premium command-map language aligned with the provided reference direction:
+- many faction-islands visible in one frame
+- layered digital-ocean atmosphere
+- textured territorial island masses
+- integrated settlement anchors
+- subtle strategic connection hints
+- restrained command-center framing
 
-### What remains procedural
+### Density and composition changes
 
-- deterministic seeded world generation
-- cluster/void composition
-- faction positions, sizes, and silhouettes
-- city slot placement and neutral occupancy state
+- world generation keeps deterministic seeded behavior and 500+ factions, but placement now uses denser spacing and smaller average island radii
+- cluster strategy increased local concentration while reducing oversized void pockets
+- viewport now reads as a populated strategic surface rather than sparse isolated samples
 
-### What is now asset-assisted / systematized
+### Island rendering changes
 
-A reusable map visual kit now supplies:
-- ocean noise field texture
-- ocean flow texture
-- island surface texture
-- island vein/segmentation texture
-- slot glyph texture
+Island rendering moved to a stronger layered stack:
+- under-glow and shadow base for grounding
+- core mass silhouette for territory readability
+- masked surface/ridge/micro texture passes for material variation
+- interior band + contour hierarchy for map-native structure
+- restrained faction rim for interaction feedback
 
-These are small reusable assets generated once and reused across all factions/tiles for coherence.
+This keeps islands top-down and readable, but removes the flat-blob prototype look.
 
-### Faction-island rendering now
+### Slot rendering changes
 
-- multi-layer island stack: under-glow, core silhouette, textured surface pass, vein pass, accent mass, contour, rim
-- texture passes are masked by procedural island silhouettes
-- result preserves top-down readability while removing flat-blob debug perception
+Slot presentation now uses integrated settlement-anchor language:
+- dark embedded pad tied to island surface
+- thin anchor bar to imply emplacement
+- luminous micro-node core (occupied-ready visual state)
 
-### City slot rendering now
+Slots stay visible and playable while feeling attached to the landmass.
 
-- slots now render as integrated emplacement anchors
-- marker stack uses base bed + halo + glyph texture
-- markers remain compact/readable and ready for future occupied/free state differentiation
+### Ocean/background rendering changes
 
-### Digital ocean rendering now
+The ocean is now a layered digital field:
+- deep dark base
+- nebula-like atmospheric tiling layer
+- flowing data-current passes
+- broad haze ellipses
+- sparse glints/star points
 
-- ocean now combines base depth fill + tiled noise + tiled flow structures + broad field ellipses + sparse glints + faint macro grid
-- digital ocean behaves as compositional sea-equivalent (spacing, separation, navigation support)
+This increases depth and premium atmosphere without overpowering island readability.
 
-### Still placeholder for now
+### Strategic links + command-map framing
 
-- no zoom system (view progression remains Map -> Faction -> City)
-- no gameplay ownership/combat/economy systems yet
-- visual kit is intentionally lightweight and can later be replaced by authored art assets without changing architecture
+- subtle, low-alpha curved inter-island traces now provide strategic network hints without turning the map into a graph
+- restrained HUD-style edge frame and corner readouts add command-center presentation tone with minimal clutter
+
+### What remains temporary
+
+- visual kit still uses generated lightweight textures (replaceable later with authored art packs)
+- no free zoom remains intentional for Map View phase
+- no faction/city gameplay ownership layer yet (visual-only milestone)

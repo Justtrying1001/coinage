@@ -82,6 +82,7 @@ export class CoinageGameApp {
     const scene = new MapViewScene(world);
     this.scene = scene;
     this.worldContainer.addChild(scene.root);
+    scene.onResize(app.screen.width, app.screen.height);
 
     this.panController = new PanController(
       this.host,

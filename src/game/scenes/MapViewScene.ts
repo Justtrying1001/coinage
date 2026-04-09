@@ -10,6 +10,7 @@ interface FactionLayer {
   rim: PIXI.Graphics;
   underGlow: PIXI.Graphics;
   faction: Faction;
+  slotNodes: PIXI.Sprite[];
 }
 
 export class MapViewScene implements GameScene {
@@ -23,25 +24,57 @@ export class MapViewScene implements GameScene {
 
   private factionLayers = new Map<string, FactionLayer>();
 
+  private oceanNebulaLayer: PIXI.TilingSprite | null = null;
+
+  private oceanDataFlowLayer: PIXI.TilingSprite | null = null;
+
+  private oceanCurrentLayer: PIXI.TilingSprite | null = null;
+
+  private hudFrame = new PIXI.Container();
+
   constructor(private readonly world: WorldData) {
     this.kit = getMapVisualKit();
     this.drawOcean();
+    this.drawStrategicLinks();
     this.mountFactions();
+    this.root.addChild(this.hudFrame);
   }
 
   update(deltaMs: number) {
     this.elapsed += deltaMs;
 
+    if (this.oceanNebulaLayer) {
+      this.oceanNebulaLayer.tilePosition.x += deltaMs * 0.003;
+      this.oceanNebulaLayer.tilePosition.y += deltaMs * 0.0018;
+    }
+    if (this.oceanDataFlowLayer) {
+      this.oceanDataFlowLayer.tilePosition.x -= deltaMs * 0.013;
+      this.oceanDataFlowLayer.tilePosition.y += deltaMs * 0.004;
+    }
+    if (this.oceanCurrentLayer) {
+      this.oceanCurrentLayer.tilePosition.x += deltaMs * 0.023;
+      this.oceanCurrentLayer.tilePosition.y -= deltaMs * 0.006;
+    }
+
+    for (const layer of this.factionLayers.values()) {
+      const pulseBase = 0.6 + Math.sin(this.elapsed * 0.003 + layer.faction.shapeSeed * 0.0001) * 0.08;
+      for (const slotNode of layer.slotNodes) {
+        slotNode.alpha = slotNode.alpha * 0.65 + pulseBase * 0.35;
+      }
+    }
+
     if (!this.selectedFactionId) return;
     const selected = this.factionLayers.get(this.selectedFactionId);
     if (!selected) return;
 
-    const pulse = 0.74 + Math.sin(this.elapsed * 0.0048) * 0.1;
+    const pulse = 0.74 + Math.sin(this.elapsed * 0.0048) * 0.14;
     selected.rim.alpha = pulse;
-    selected.underGlow.alpha = 0.11 + Math.sin(this.elapsed * 0.0035) * 0.05;
+    selected.underGlow.alpha = 0.13 + Math.sin(this.elapsed * 0.0035) * 0.06;
   }
 
-  onResize() {}
+  onResize(width: number, height: number) {
+    this.drawHudFrame(width, height);
+  }
 
   destroy() {
     this.root.destroy({ children: true });
@@ -51,71 +84,92 @@ export class MapViewScene implements GameScene {
   private drawOcean() {
     const base = new PIXI.Graphics();
     base.rect(0, 0, this.world.width, this.world.height);
-    base.fill({ color: 0x040911, alpha: 1 });
+    base.fill({ color: 0x040914, alpha: 1 });
     this.root.addChild(base);
 
-    const noise = new PIXI.TilingSprite({ texture: this.kit.oceanNoise, width: this.world.width, height: this.world.height });
-    noise.alpha = 0.5;
-    noise.tileScale.set(2.2, 2.2);
-    this.root.addChild(noise);
+    this.oceanNebulaLayer = new PIXI.TilingSprite({ texture: this.kit.oceanNebula, width: this.world.width, height: this.world.height });
+    this.oceanNebulaLayer.alpha = 0.8;
+    this.oceanNebulaLayer.tileScale.set(1.2, 1.2);
+    this.root.addChild(this.oceanNebulaLayer);
 
-    const flow = new PIXI.TilingSprite({ texture: this.kit.oceanFlow, width: this.world.width, height: this.world.height });
-    flow.alpha = 0.22;
-    flow.tileScale.set(1.8, 1.4);
-    this.root.addChild(flow);
+    const darken = new PIXI.Graphics();
+    darken.rect(0, 0, this.world.width, this.world.height);
+    darken.fill({ color: 0x02050b, alpha: 0.2 });
+    this.root.addChild(darken);
 
-    const largeField = new PIXI.Graphics();
-    for (let i = 0; i < 8; i += 1) {
-      const x = ((i * 2399 + this.world.seed * 13) % this.world.width) - 250;
-      const y = ((i * 1601 + this.world.seed * 11) % this.world.height) - 220;
-      largeField.ellipse(x, y, 1800 + (i % 3) * 280, 1200 + (i % 4) * 180);
+    this.oceanDataFlowLayer = new PIXI.TilingSprite({ texture: this.kit.oceanDataFlow, width: this.world.width, height: this.world.height });
+    this.oceanDataFlowLayer.alpha = 0.32;
+    this.oceanDataFlowLayer.tileScale.set(1.4, 1.2);
+    this.root.addChild(this.oceanDataFlowLayer);
+
+    this.oceanCurrentLayer = new PIXI.TilingSprite({ texture: this.kit.oceanCurrent, width: this.world.width, height: this.world.height });
+    this.oceanCurrentLayer.alpha = 0.24;
+    this.oceanCurrentLayer.tileScale.set(1.8, 1.8);
+    this.root.addChild(this.oceanCurrentLayer);
+
+    const atmosphere = new PIXI.Graphics();
+    for (let i = 0; i < 18; i += 1) {
+      const x = ((i * 1889 + this.world.seed * 17) % this.world.width) - 380;
+      const y = ((i * 1177 + this.world.seed * 23) % this.world.height) - 290;
+      atmosphere.ellipse(x, y, 1400 + (i % 5) * 380, 950 + (i % 6) * 210);
     }
-    largeField.fill({ color: 0x10243a, alpha: 0.07 });
-    this.root.addChild(largeField);
+    atmosphere.fill({ color: 0x143151, alpha: 0.09 });
+    this.root.addChild(atmosphere);
 
-    const grid = new PIXI.Graphics();
-    for (let y = 0; y <= this.world.height; y += 760) {
-      grid.moveTo(0, y);
-      grid.lineTo(this.world.width, y);
-    }
-    for (let x = 0; x <= this.world.width; x += 760) {
-      grid.moveTo(x, 0);
-      grid.lineTo(x, this.world.height);
-    }
-    grid.stroke({ color: 0x18384d, width: 1, alpha: 0.06 });
-    this.root.addChild(grid);
-
-    for (let i = 0; i < 180; i += 1) {
-      const glint = new PIXI.Graphics();
+    const stars = new PIXI.Graphics();
+    for (let i = 0; i < 520; i += 1) {
       const x = (i * 887 + this.world.seed * 29) % this.world.width;
       const y = (i * 521 + this.world.seed * 31) % this.world.height;
-      const radius = i % 9 === 0 ? 2.4 : 1.1;
-      glint.circle(x, y, radius);
-      glint.fill({ color: 0x6fcce8, alpha: i % 9 === 0 ? 0.15 : 0.06 });
-      this.root.addChild(glint);
+      const radius = i % 27 === 0 ? 1.5 : 0.72;
+      stars.circle(x, y, radius);
+      stars.fill({ color: 0x7fd1ef, alpha: i % 27 === 0 ? 0.17 : 0.06 });
     }
+    this.root.addChild(stars);
+  }
+
+  private drawStrategicLinks() {
+    const links = new PIXI.Graphics();
+    const batches = 220;
+    for (let i = 0; i < batches; i += 1) {
+      const a = this.world.factions[(i * 17 + this.world.seed) % this.world.factions.length];
+      const b = this.world.factions[(i * 43 + this.world.seed * 3) % this.world.factions.length];
+
+      const dx = a.position.x - b.position.x;
+      const dy = a.position.y - b.position.y;
+      const sq = dx * dx + dy * dy;
+      if (sq < 300 * 300 || sq > 1400 * 1400) continue;
+
+      const midX = (a.position.x + b.position.x) * 0.5;
+      const midY = (a.position.y + b.position.y) * 0.5;
+      const bendX = midX + ((i % 3) - 1) * 22;
+      const bendY = midY + ((i % 5) - 2) * 16;
+      links.moveTo(a.position.x, a.position.y);
+      links.quadraticCurveTo(bendX, bendY, b.position.x, b.position.y);
+    }
+    links.stroke({ color: 0x79bddc, width: 1, alpha: 0.08 });
+    this.root.addChild(links);
   }
 
   private mountFactions() {
     for (const faction of this.world.factions) {
-      const shadeOffset = parseInt(faction.id.replace('f-', ''), 10) % 16;
-      const { container, core, rim, underGlow } = buildFactionGraphic(faction, shadeOffset, this.kit);
+      const shadeOffset = parseInt(faction.id.replace('f-', ''), 10) % 18;
+      const { container, core, rim, underGlow, slotNodes } = buildFactionGraphic(faction, shadeOffset, this.kit);
       container.eventMode = 'static';
       container.cursor = 'pointer';
 
       container.on('pointerover', () => {
         if (this.selectedFactionId !== faction.id) {
-          container.scale.set(1.035);
-          rim.alpha = 0.85;
-          underGlow.alpha = 0.12;
+          container.scale.set(1.03);
+          rim.alpha = 0.84;
+          underGlow.alpha = 0.14;
         }
       });
 
       container.on('pointerout', () => {
         if (this.selectedFactionId !== faction.id) {
           container.scale.set(1);
-          rim.alpha = 0.72;
-          underGlow.alpha = 0.08;
+          rim.alpha = 0.68;
+          underGlow.alpha = 0.1;
         }
       });
 
@@ -124,7 +178,7 @@ export class MapViewScene implements GameScene {
       });
 
       this.root.addChild(container);
-      this.factionLayers.set(faction.id, { container, core, rim, underGlow, faction });
+      this.factionLayers.set(faction.id, { container, core, rim, underGlow, faction, slotNodes });
     }
   }
 
@@ -133,11 +187,43 @@ export class MapViewScene implements GameScene {
 
     for (const [id, layer] of this.factionLayers.entries()) {
       const isSelected = id === factionId;
-      layer.container.scale.set(isSelected ? 1.06 : 1);
-      layer.core.tint = isSelected ? 0xc1f2ff : 0xffffff;
-      layer.rim.tint = isSelected ? 0xb3edff : 0xffffff;
-      layer.rim.alpha = isSelected ? 0.84 : 0.72;
-      layer.underGlow.alpha = isSelected ? 0.13 : 0.08;
+      layer.container.scale.set(isSelected ? 1.05 : 1);
+      layer.core.tint = isSelected ? 0xc7f4ff : 0xffffff;
+      layer.rim.tint = isSelected ? 0xbaf1ff : 0xffffff;
+      layer.rim.alpha = isSelected ? 0.86 : 0.68;
+      layer.underGlow.alpha = isSelected ? 0.18 : 0.1;
+      for (const slotNode of layer.slotNodes) {
+        slotNode.scale.set(isSelected ? 0.42 : 0.34);
+      }
     }
+  }
+
+  private drawHudFrame(width: number, height: number) {
+    this.hudFrame.removeChildren();
+
+    const frame = new PIXI.Graphics();
+    frame.roundRect(12, 12, Math.max(120, width - 24), Math.max(120, height - 24), 14);
+    frame.stroke({ color: 0x74bfdc, width: 1, alpha: 0.22 });
+
+    const corners = new PIXI.Graphics();
+    const cornerLen = 30;
+    const inset = 20;
+    const r = 2;
+    corners.roundRect(inset, inset, cornerLen, r, 1);
+    corners.roundRect(inset, inset, r, cornerLen, 1);
+    corners.roundRect(width - inset - cornerLen, inset, cornerLen, r, 1);
+    corners.roundRect(width - inset - r, inset, r, cornerLen, 1);
+    corners.roundRect(inset, height - inset - r, cornerLen, r, 1);
+    corners.roundRect(inset, height - inset - cornerLen, r, cornerLen, 1);
+    corners.roundRect(width - inset - cornerLen, height - inset - r, cornerLen, r, 1);
+    corners.roundRect(width - inset - r, height - inset - cornerLen, r, cornerLen, 1);
+    corners.fill({ color: 0x8de0fb, alpha: 0.3 });
+
+    const readout = new PIXI.Graphics();
+    readout.roundRect(width - 240, 26, 200, 34, 8);
+    readout.fill({ color: 0x04121d, alpha: 0.42 });
+    readout.stroke({ color: 0x7bc8e5, width: 1, alpha: 0.25 });
+
+    this.hudFrame.addChild(frame, corners, readout);
   }
 }
