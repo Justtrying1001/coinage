@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 import type { PlanetFamily } from '@/domain/world/planet-visual.types';
-import { getFamilyXenoLayers, sampleXenoElevation } from '../core/planet-core-xeno';
+import { getFamilyXenoLayers, sampleXenoElevation } from '@/rendering/planet/core/planet-core-xeno';
 import { MinMax } from './min-max';
 
 export interface TerrainFaceInput {
@@ -84,3 +84,4 @@ export function buildTerrainFaceGeometry(input: TerrainFaceInput): THREE.BufferG
   geometry.computeVertexNormals();
   return geometry;
 }
+

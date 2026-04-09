@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 
 import type { CanonicalPlanet } from '@/domain/world/planet-visual.types';
-import { getFamilyGradients } from '../core/planet-core-xeno';
+import { getFamilyGradients } from '@/rendering/planet/core/planet-core-xeno';
 import {
   SURFACE_FRAGMENT_SHADER_PLANET,
   SURFACE_VERTEX_SHADER_PLANET,
-} from '../surface/surface-shader-assembly';
+} from '@/rendering/planet/surface/surface-shader-assembly';
 import { MinMax } from './min-max';
 import { buildTerrainFaceGeometry } from './terrain-face';
 
@@ -22,20 +22,24 @@ function toColor(value: [number, number, number]): THREE.Color {
   return new THREE.Color(value[0], value[1], value[2]);
 }
 
-export interface PlanetXenoDetailedOptions {
+export interface XenoversePlanetGpuOptions {
   forceBasicMaterial?: boolean;
   wireframe?: boolean;
 }
 
-export interface PlanetXenoDetailedInstance {
+export interface XenoversePlanetGpuInstance {
   object: THREE.Group;
   dispose: () => void;
 }
 
-export function createPlanetXenoDetailedInstance(
+/**
+ * Vendor-port path aligned with XenoverseUp face-based planet assembly.
+ * NOTE: current stack does not include the original GPU compute + readback stage.
+ */
+export function createXenoversePlanetGpuInstance(
   planet: CanonicalPlanet,
-  options: PlanetXenoDetailedOptions = {},
-): PlanetXenoDetailedInstance {
+  options: XenoversePlanetGpuOptions = {},
+): XenoversePlanetGpuInstance {
   const resolution = 140;
   const minMax = new MinMax();
   const group = new THREE.Group();
@@ -82,7 +86,7 @@ export function createPlanetXenoDetailedInstance(
       });
 
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.name = 'xeno-face';
+    mesh.name = 'xenoverse-face';
     mesh.userData.rotationSpeed = planet.render.surfaceModel === 'gaseous' ? 0.01 : 0.016;
     group.add(mesh);
     disposeTargets.push(geometry, material);
@@ -140,7 +144,7 @@ export function createPlanetXenoDetailedInstance(
       `,
     });
     const atmo = new THREE.Mesh(atmoGeom, atmoMat);
-    atmo.name = 'xeno-atmosphere';
+    atmo.name = 'xenoverse-atmosphere';
     group.add(atmo);
     disposeTargets.push(atmoGeom, atmoMat);
   }

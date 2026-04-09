@@ -9,8 +9,8 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 
 import { getGalaxyPlanetManifest } from '@/domain/world/build-galaxy-planet-manifest';
 import { GALAXY_LAYOUT_RUNTIME_CONFIG } from '@/domain/world/world.constants';
-import { createPlanetRenderInstance, updatePlanetLayerAnimation, updatePlanetLighting } from '@/rendering/planet/create-planet-render-instance';
 import { PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
+import { createPlanetProxyInstance } from '@/rendering/planet/create-planet-proxy-instance';
 import { createNebulaBackground, createStarfield } from '@/rendering/space/create-starfield';
 
 const GalaxyHud = dynamic(() => import('./GalaxyHud'), {
@@ -80,18 +80,10 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     scene.add(keyLight);
 
     const group = new THREE.Group();
-    const instances = manifest.map((entry) => createPlanetRenderInstance({
-      planet: entry.planet,
+    const instances = manifest.map((entry) => createPlanetProxyInstance(entry.planet, {
       x: entry.x,
       y: entry.y,
       z: 0,
-      options: {
-        viewMode: 'galaxy',
-        debug: {
-          forceBasicMaterial,
-          wireframe,
-        },
-      },
     }));
     for (const instance of instances) {
       group.add(instance.object);
@@ -101,22 +93,9 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     const interactiveMeshes: THREE.Mesh[] = [];
     group.traverse((node) => {
       if (node instanceof THREE.Mesh) {
-        const parentPlanet = manifest.find((entry) => entry.id === node.parent?.userData?.planetId);
-        if (parentPlanet) {
-          node.userData.planetId = parentPlanet.id;
-        }
         interactiveMeshes.push(node);
       }
     });
-    for (const instance of instances) {
-      const planetId = instance.debugSnapshot.planetId;
-      instance.object.traverse((node) => {
-        if (node instanceof THREE.Mesh) {
-          node.userData.planetId = planetId;
-        }
-      });
-    }
-
     if (runtimeDebugEnabled && process.env.NODE_ENV !== 'production') {
       camera.updateMatrixWorld();
       const frustum = new THREE.Frustum();
@@ -127,7 +106,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         const box = new THREE.Box3().setFromObject(instance.object);
         const sphere = box.getBoundingSphere(new THREE.Sphere());
         return {
-          planetId: instance.debugSnapshot.planetId,
+          planetId: instance.object.userData.planetId as string,
           position: instance.object.position.toArray(),
           sphereRadius: sphere.radius,
           distanceToCamera: camera.position.distanceTo(sphere.center),
@@ -261,8 +240,8 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       camera.position.y = THREE.MathUtils.clamp(camera.position.y, -FIELD_RADIUS, FIELD_RADIUS);
 
       for (const instance of instances) {
-        updatePlanetLayerAnimation(instance.object, delta);
-        updatePlanetLighting(instance.object, keyLight.position.clone().normalize());
+        const speed = typeof instance.object.userData.rotationSpeed === 'number' ? instance.object.userData.rotationSpeed : 0;
+        instance.object.rotation.y += speed * delta;
       }
       composer.render();
       requestAnimationFrame(animate);

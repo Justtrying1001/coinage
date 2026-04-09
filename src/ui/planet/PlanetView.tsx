@@ -8,7 +8,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { resolvePlanetIdentity } from '@/domain/world/resolve-planet-identity';
 import { updatePlanetLayerAnimation, updatePlanetLighting } from '@/rendering/planet/create-planet-render-instance';
 import { PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
-import { createPlanetXenoDetailedInstance } from '@/rendering/planet/xeno/create-planet-xeno-detailed-instance';
+import { createXenoversePlanetGpuInstance } from '@/vendor/xenoverse/planet-gpu';
 
 interface PlanetViewProps {
   worldSeed: string;
@@ -54,7 +54,7 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     keyLight.position.set(12, 7, 14);
     scene.add(keyLight);
 
-    const planetInstance = createPlanetXenoDetailedInstance(resolved.planet, {
+    const planetInstance = createXenoversePlanetGpuInstance(resolved.planet, {
       forceBasicMaterial,
       wireframe,
     });
