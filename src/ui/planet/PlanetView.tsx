@@ -201,22 +201,24 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
 
     window.addEventListener('resize', onResize);
 
+    const animationTimer = new THREE.Timer();
+    animationTimer.connect(document);
+    animationTimer.reset();
+
     let disposed = false;
     const animate = () => {
       if (disposed) {
         return;
       }
 
-      const delta = Math.min(0.05, animationClock.getDelta());
+      animationTimer.update();
+      const delta = Math.min(0.05, animationTimer.getDelta());
       updatePlanetLayerAnimation(planetInstance.object, delta);
       updatePlanetLighting(planetInstance.object, keyLight.position.clone().normalize());
       controls.update();
       renderer.render(scene, camera);
       requestAnimationFrame(animate);
     };
-
-
-    const animationClock = new THREE.Clock();
     const raf = requestAnimationFrame(animate);
 
     return () => {

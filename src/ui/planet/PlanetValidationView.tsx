@@ -70,11 +70,14 @@ export default function PlanetValidationView({ worldSeed, planetId, mode }: Plan
     }
 
     let disposed = false;
-    const clock = new THREE.Clock();
+    const animationTimer = new THREE.Timer();
+    animationTimer.connect(document);
+    animationTimer.reset();
 
     const animate = () => {
       if (disposed) return;
-      const dt = Math.min(0.05, clock.getDelta());
+      animationTimer.update();
+      const dt = Math.min(0.05, animationTimer.getDelta());
       updatePlanetLayerAnimation(planetInstance.object, dt, false);
       updatePlanetLighting(planetInstance.object, keyLight.position.clone().normalize());
       renderer.render(scene, camera);
