@@ -5,6 +5,7 @@ import type { CanonicalPlanet } from '@/domain/world/planet-visual.types';
 import { getFamilyXenoLayers, sampleXenoElevation } from '@/rendering/planet/core/planet-core-xeno';
 import { createPlanetSurfaceGradients, validateGradientReadability } from '@/rendering/planet/core/planet-surface-gradients';
 import { isValidElevationRange, resolveSeaLevelFromRange } from '@/rendering/planet/shading-contract';
+import { SURFACE_FRAGMENT_SHADER_PLANET, SURFACE_VERTEX_SHADER_PLANET } from '@/rendering/planet/surface/surface-shader-assembly';
 import { MinMax } from './min-max';
 import { buildTerrainFaceGeometry } from './terrain-face';
 
@@ -104,21 +105,6 @@ function harmonizeFaceBorders(faces: FaceBuildResult[], resolution: number): voi
 
 function toColor(value: [number, number, number]): THREE.Color {
   return new THREE.Color(value[0], value[1], value[2]);
-}
-
-function sampleGradient(t: number, anchors: number[], colors: THREE.Color[]): THREE.Color {
-  const clamped = THREE.MathUtils.clamp(t, 0, 1);
-  let color = colors[0]?.clone() ?? new THREE.Color(1, 0, 1);
-  for (let i = 1; i < anchors.length; i += 1) {
-    if (clamped <= anchors[i]!) {
-      const a = anchors[i - 1] ?? 0;
-      const b = anchors[i] ?? 1;
-      const blend = THREE.MathUtils.smoothstep(clamped, a, b);
-      return colors[i - 1]!.clone().lerp(colors[i]!, blend);
-    }
-    color = colors[i]!.clone();
-  }
-  return color;
 }
 
 export interface XenoversePlanetGpuOptions {
@@ -226,47 +212,48 @@ export function createXenoversePlanetGpuInstance(
 
   const position = renderGeometry.getAttribute('position');
   const elevationRaw = renderGeometry.getAttribute('aUnscaledElevation');
-  const elevationAttr = elevationRaw && elevationRaw instanceof THREE.BufferAttribute ? elevationRaw : null;
-  const colors = new Float32Array(position.count * 3);
-
-  const layers = getFamilyXenoLayers(planet.render.family);
-  const landAnchors = landStops.map((s) => s.anchor);
-  const depthAnchors = depthStops.map((s) => s.anchor);
-  const landColors = landStops.map((s) => toColor(s.color));
-  const depthColors = depthStops.map((s) => toColor(s.color));
-
-  const point = new THREE.Vector3();
-  for (let i = 0; i < position.count; i += 1) {
-    point.set(position.getX(i), position.getY(i), position.getZ(i)).normalize();
-    const elevation = elevationAttr
-      ? elevationAttr.getX(i)
-      : sampleXenoElevation({
+  let elevationAttr = elevationRaw && elevationRaw instanceof THREE.BufferAttribute ? elevationRaw : null;
+  if (!elevationAttr) {
+    const layers = getFamilyXenoLayers(planet.render.family);
+    const reconstructed = new Float32Array(position.count);
+    const samplePoint = new THREE.Vector3();
+    for (let i = 0; i < position.count; i += 1) {
+      samplePoint.set(position.getX(i), position.getY(i), position.getZ(i)).normalize();
+      reconstructed[i] = sampleXenoElevation({
         seed: planet.render.surface.noiseSeed,
         radius: planet.render.renderRadius,
         reliefAmplitude: planet.render.surface.reliefAmplitude,
         oceanLevel: planet.render.surface.oceanLevel,
         layers,
-      }, point).unscaledElevation;
-    const color =
-      elevation > seaLevel
-        ? sampleGradient((elevation - seaLevel) / Math.max(1e-4, safeMax - seaLevel), landAnchors, landColors)
-        : sampleGradient((elevation - min) / Math.max(1e-4, seaLevel - min), depthAnchors, depthColors);
-    colors[i * 3] = color.r;
-    colors[i * 3 + 1] = color.g;
-    colors[i * 3 + 2] = color.b;
+      }, samplePoint).unscaledElevation;
+    }
+    elevationAttr = new THREE.BufferAttribute(reconstructed, 1);
+    renderGeometry.setAttribute('aUnscaledElevation', elevationAttr);
   }
 
-  renderGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  renderGeometry.computeVertexNormals();
+  const landAnchors = landStops.map((s) => s.anchor);
+  const depthAnchors = depthStops.map((s) => s.anchor);
+  const landColors = landStops.map((s) => toColor(s.color));
+  const depthColors = depthStops.map((s) => toColor(s.color));
 
   const surfaceMaterial: THREE.Material = options.forceBasicMaterial
     ? new THREE.MeshBasicMaterial({ color: '#4df9ff', wireframe: Boolean(options.wireframe) })
-    : new THREE.MeshStandardMaterial({
-      vertexColors: true,
+    : new THREE.ShaderMaterial({
+      vertexShader: SURFACE_VERTEX_SHADER_PLANET,
+      fragmentShader: SURFACE_FRAGMENT_SHADER_PLANET,
       wireframe: Boolean(options.wireframe),
-      roughness: 0.52,
-      metalness: 0.08,
-      emissive: toColor(planet.render.surface.accentColor).multiplyScalar(0.04),
+      uniforms: {
+        uMinMax: { value: new THREE.Vector2(min, safeMax) },
+        uSeaLevel: { value: seaLevel },
+        uLightDirection: { value: new THREE.Vector3(0.38, 0.76, 0.52).normalize() },
+        uAmbientStrength: { value: 0.34 },
+        uLandGradientSize: { value: landStops.length },
+        uDepthGradientSize: { value: depthStops.length },
+        uLandAnchors: { value: landAnchors },
+        uDepthAnchors: { value: depthAnchors },
+        uLandColors: { value: landColors },
+        uDepthColors: { value: depthColors },
+      },
     });
 
   const surface = new THREE.Mesh(renderGeometry, surfaceMaterial);
