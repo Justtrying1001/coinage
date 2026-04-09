@@ -12,7 +12,7 @@ export function PixiGameViewport() {
       return;
     }
 
-    const app = new CoinageGameApp(root, { seed: 78231, worldWidth: 22000, worldHeight: 14000 });
+    const app = new CoinageGameApp(root, { seed: 78231, worldWidth: 18000, worldHeight: 12000 });
     app.mount();
 
     return () => {

@@ -90,7 +90,7 @@ export class CoinageGameApp {
       { width: world.width, height: world.height },
     );
     this.panController.mount();
-    this.panController.centerOn({ x: world.width * 0.48, y: world.height * 0.46 });
+    this.panController.centerOn({ x: world.width * 0.5, y: world.height * 0.58 });
 
     app.ticker.add((ticker) => {
       scene.update(ticker.deltaMS);

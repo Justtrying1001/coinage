@@ -106,3 +106,38 @@ This foundation is designed to evolve toward:
 - ownership/occupation and later combat/economy systems
 
 The current implementation intentionally stops at map generation + rendering baseline to keep the first milestone stable and extensible.
+
+## Map View rework (composition + visual language)
+
+The first prototype proved architecture, but map readability and atmosphere were too debug-like. The rework focuses on map composition and rendering language without adding gameplay systems.
+
+### World composition improvements
+
+- Rebalanced world extents and framing for a better ratio between map size and object spacing.
+- Reworked macro distribution to use structured cluster rings plus explicit void pockets.
+- Increased spacing constraints with stronger rejection rules to avoid nearby blob stacking.
+- Kept deterministic generation and 500+ factions while improving breathing room and strategic legibility.
+
+### Faction-island rendering improvements
+
+- Added layered island rendering (under-glow, core mass, contour, accent shelf, rim).
+- Refined silhouette modulation so islands remain irregular but less like flat debug polygons.
+- Improved hover/selection emphasis with restrained scale/tint/pulse rather than harsh highlighting.
+
+### City slot rendering improvements
+
+- Replaced debug dots with integrated emplacement markers.
+- Each slot now uses a micro marker stack (bed, ring, ticks, core) for strategic readability.
+- Markers stay lightweight and neutral-state friendly while preserving future occupied/free differentiation.
+
+### Digital ocean improvements
+
+- Added layered ocean construction: base depth field, haze patches, current-flow lines, sparse glints, and faint structural grid.
+- Ocean now contributes to composition and navigation instead of acting as plain background fill.
+- Visual treatment remains restrained to keep islands as primary focus.
+
+### Intentionally simple for now
+
+- No zoom system (view scale progression is still intended via Map -> Faction -> City).
+- No ownership/combat/economy systems yet.
+- No heavy HUD chrome; map remains the primary surface.
