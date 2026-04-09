@@ -185,8 +185,6 @@ export function createPlanetRenderInstance(input: PlanetRenderInput): PlanetRend
       finalMeshScale:
         options.viewMode === 'galaxy' ? planet.render.scale.galaxyViewScaleMultiplier : planet.render.scale.planetViewScaleMultiplier,
       atmosphereThickness: planet.render.atmosphere.thickness,
-      cloudCoverage: 0,
-      hasRings: false,
       paletteId: planet.visualDNA.paletteId,
       activeNoiseFamilies: planet.render.debug.activeNoiseFamilies,
       currentViewMode: view.viewMode,
