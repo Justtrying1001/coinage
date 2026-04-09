@@ -32,8 +32,6 @@ export interface PlanetClassification {
   roughnessClass: PlanetRoughnessClass;
   reliefClass: PlanetReliefClass;
   hasOceans: boolean;
-  canHaveClouds: boolean;
-  canHaveRings: boolean;
 }
 
 export interface PlanetVisualDNA {
@@ -43,10 +41,8 @@ export interface PlanetVisualDNA {
   colorHigh: [number, number, number];
   oceanColor: [number, number, number];
   accentColor: [number, number, number];
-  cloudColor: [number, number, number];
   atmosphereTint: [number, number, number];
   oceanCoverage: number;
-  cloudCoverage: number;
   atmosphereDensity: number;
   reliefAmplitude: number;
   roughness: number;
@@ -57,12 +53,9 @@ export interface PlanetVisualDNA {
     surface: number;
     moisture: number;
     thermal: number;
-    clouds: number;
-    rings: number;
   };
   rotation: {
     surfaceSpeed: number;
-    cloudSpeed: number;
     axialTilt: number;
   };
 }
@@ -72,13 +65,6 @@ export interface PlanetGeneratedProfile {
   classification: PlanetClassification;
   visualDNA: PlanetVisualDNA;
   physicalRadius: number;
-  ring: {
-    enabled: boolean;
-    innerRadiusRatio: number;
-    outerRadiusRatio: number;
-    tilt: number;
-    opacity: number;
-  };
 }
 
 export interface PlanetScaleProfile {
@@ -114,29 +100,12 @@ export interface PlanetRenderProfile {
     moistureSeed: number;
     thermalSeed: number;
   };
-  clouds: {
-    enabled: boolean;
-    color: [number, number, number];
-    coverage: number;
-    opacity: number;
-    speed: number;
-    noiseSeed: number;
-  };
   atmosphere: {
     enabled: boolean;
     color: [number, number, number];
     density: number;
     thickness: number;
     rimStrength: number;
-  };
-  rings: {
-    enabled: boolean;
-    color: [number, number, number];
-    innerRadius: number;
-    outerRadius: number;
-    tilt: number;
-    opacity: number;
-    noiseSeed: number;
   };
   debug: {
     paletteId: string;
@@ -148,13 +117,8 @@ export interface PlanetViewProfile {
   viewMode: 'galaxy' | 'planet';
   lod: 'low' | 'medium' | 'high';
   meshSegments: number;
-  cloudSegments: number;
   atmosphereSegments: number;
-  ringSegments: number;
-  enableRings: boolean;
-  enableClouds: boolean;
   enableAtmosphere: boolean;
-  enableOceanLayer: boolean;
   lightingBoost: number;
 }
 
@@ -175,8 +139,6 @@ export interface PlanetDebugSnapshot {
   renderRadiusBase: number;
   finalMeshScale: number;
   atmosphereThickness: number;
-  cloudCoverage: number;
-  hasRings: boolean;
   paletteId: string;
   activeNoiseFamilies: string[];
   currentViewMode: PlanetViewProfile['viewMode'];

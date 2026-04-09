@@ -10,10 +10,8 @@ test('render mapping is deterministic and stable', () => {
   assert.deepEqual(a.render, b.render);
 });
 
-test('render mapping exposes separated surface/cloud/atmosphere/rings layers', () => {
+test('render mapping exposes canonical surface/atmosphere layers only', () => {
   const planet = generateCanonicalPlanet({ worldSeed: 'coinage-mvp-seed', planetSeed: 'mapping-2' });
   assert.ok(planet.render.surface !== undefined);
-  assert.ok(planet.render.clouds !== undefined);
   assert.ok(planet.render.atmosphere !== undefined);
-  assert.ok(planet.render.rings !== undefined);
 });
