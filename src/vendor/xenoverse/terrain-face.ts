@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 
 import type { PlanetFamily } from '@/domain/world/planet-visual.types';
-import type { NoiseLayerConfig } from '@/rendering/planet/core/planet-core-xeno';
-import { getFamilyXenoLayers, sampleXenoElevation } from '@/rendering/planet/core/planet-core-xeno';
+import type { NoiseFilter } from '@/rendering/planet/core/xenoverse-noise';
+import { createNoiseContract, sampleNoiseContractElevation } from '@/rendering/planet/core/xenoverse-noise';
 import { runVertexComputeFace } from './compute/vertex-compute';
 import { MinMax } from './min-max';
 
@@ -46,7 +46,7 @@ function runCpuFace(
   seed: number,
   oceanLevel: number,
   reliefAmplitude: number,
-  layers: NoiseLayerConfig[],
+  filters: NoiseFilter[],
 ): { positions: Float32Array; elevations: Float32Array } {
   const vertexCount = resolution * resolution;
   const positions = new Float32Array(vertexCount * 3);
@@ -65,16 +65,11 @@ function runCpuFace(
         .addScaledVector(axisB, (py - 0.5) * 2);
       const pointOnUnitSphere = pointOnCube.normalize();
 
-      const sample = sampleXenoElevation(
-        {
-          seed,
-          radius,
-          reliefAmplitude,
-          oceanLevel,
-          layers,
-        },
-        pointOnUnitSphere,
-      );
+      const sample = sampleNoiseContractElevation({
+        seed,
+        reliefAmplitude,
+        filters,
+      }, pointOnUnitSphere);
       const safeUnscaled = Number.isFinite(sample.unscaledElevation) ? sample.unscaledElevation : 0;
       const safeScaled = Number.isFinite(sample.scaledElevation) ? sample.scaledElevation : 0;
       const finalRadius = radius * (1 + safeScaled);
@@ -93,7 +88,7 @@ function runCpuFace(
 export function buildTerrainFaceGeometry(input: TerrainFaceInput): THREE.BufferGeometry {
   const { localUp, resolution, radius, seed, oceanLevel, reliefAmplitude, family, minMax, renderer, preferCompute } = input;
   const { axisA, axisB } = buildFaceBasis(localUp);
-  const layers = getFamilyXenoLayers(family);
+  const contract = createNoiseContract({ family, seed, reliefAmplitude });
   const vertexCount = resolution * resolution;
 
   let positions: Float32Array;
@@ -110,9 +105,7 @@ export function buildTerrainFaceGeometry(input: TerrainFaceInput): THREE.BufferG
         axisB,
         resolution,
         radius,
-        reliefAmplitude,
-        seed,
-        layers,
+        contract,
       });
       positions = computed.positions;
       elevations = computed.elevations;
@@ -122,10 +115,10 @@ export function buildTerrainFaceGeometry(input: TerrainFaceInput): THREE.BufferG
       if (process.env.NODE_ENV !== 'production') {
         console.warn('[XenoverseCompute] GPU path unavailable for face, CPU fallback used', error);
       }
-      ({ positions, elevations } = runCpuFace(localUp, axisA, axisB, resolution, radius, seed, oceanLevel, reliefAmplitude, layers));
+      ({ positions, elevations } = runCpuFace(localUp, axisA, axisB, resolution, radius, seed, oceanLevel, reliefAmplitude, contract.filters));
     }
   } else {
-    ({ positions, elevations } = runCpuFace(localUp, axisA, axisB, resolution, radius, seed, oceanLevel, reliefAmplitude, layers));
+    ({ positions, elevations } = runCpuFace(localUp, axisA, axisB, resolution, radius, seed, oceanLevel, reliefAmplitude, contract.filters));
   }
 
   const uv = new Float32Array(vertexCount * 2);
@@ -144,4 +137,3 @@ export function buildTerrainFaceGeometry(input: TerrainFaceInput): THREE.BufferG
   geometry.userData.computeInfo = { usedCompute, fallbackReason };
   return geometry;
 }
-

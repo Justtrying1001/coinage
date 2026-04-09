@@ -1,11 +1,7 @@
 import * as THREE from 'three';
 
 import type { PlanetFamily } from '@/domain/world/planet-visual.types';
-import {
-  createMinMaxTracker,
-  getFamilyXenoLayers,
-  sampleXenoElevation,
-} from './core/planet-core-xeno';
+import { createNoiseContract, sampleNoiseContractElevation } from './core/xenoverse-noise';
 
 export interface DisplacedSphereInput {
   radius: number;
@@ -43,8 +39,13 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): Displ
   const indices: number[] = [];
   const unscaledElevation: number[] = [];
 
-  const minMax = createMinMaxTracker();
-  const layers = getFamilyXenoLayers(input.family);
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+  const noiseContract = createNoiseContract({
+    family: input.family,
+    seed: input.seed,
+    reliefAmplitude: input.reliefAmplitude,
+  });
 
   let vertexOffset = 0;
 
@@ -62,16 +63,7 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): Displ
           .addScaledVector(axisB, (py - 0.5) * 2);
 
         const pointOnUnitSphere = pointOnCube.normalize();
-        const elevation = sampleXenoElevation(
-          {
-            seed: input.seed,
-            radius: input.radius,
-            reliefAmplitude: input.reliefAmplitude,
-            oceanLevel: input.oceanLevel,
-            layers,
-          },
-          pointOnUnitSphere,
-        );
+        const elevation = sampleNoiseContractElevation(noiseContract, pointOnUnitSphere);
         const safeUnscaled = Number.isFinite(elevation.unscaledElevation) ? elevation.unscaledElevation : 0;
         const safeScaled = Number.isFinite(elevation.scaledElevation) ? elevation.scaledElevation : 0;
 
@@ -84,7 +76,8 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): Displ
         );
 
         unscaledElevation.push(safeUnscaled);
-        minMax.add(safeUnscaled);
+        min = Math.min(min, safeUnscaled);
+        max = Math.max(max, safeUnscaled);
       }
     }
 
@@ -105,5 +98,11 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): Displ
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
 
-  return { geometry, minMax: minMax.get() };
+  return {
+    geometry,
+    minMax: {
+      min: Number.isFinite(min) ? min : 0,
+      max: Number.isFinite(max) ? max : 0,
+    },
+  };
 }

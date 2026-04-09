@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 import type { CanonicalPlanet } from '@/domain/world/planet-visual.types';
-import { getFamilyXenoLayers, sampleXenoElevation } from '@/rendering/planet/core/planet-core-xeno';
+import { createNoiseContract, sampleNoiseContractElevation } from '@/rendering/planet/core/xenoverse-noise';
 import { createPlanetSurfaceGradients, validateGradientReadability } from '@/rendering/planet/core/planet-surface-gradients';
 import { isValidElevationRange, resolveSeaLevelFromRange } from '@/rendering/planet/shading-contract';
 import { SURFACE_FRAGMENT_SHADER_PLANET, SURFACE_VERTEX_SHADER_PLANET } from '@/rendering/planet/surface/surface-shader-assembly';
@@ -138,6 +138,11 @@ export function createXenoversePlanetGpuInstance(
   const minMax = new MinMax();
   const group = new THREE.Group();
   const disposeTargets: Array<THREE.BufferGeometry | THREE.Material> = [];
+  const noiseContract = createNoiseContract({
+    family: planet.render.family,
+    seed: planet.render.surface.noiseSeed,
+    reliefAmplitude: planet.render.surface.reliefAmplitude,
+  });
 
   const gradients = createPlanetSurfaceGradients(planet);
   const landStops = [...gradients.land];
@@ -214,18 +219,11 @@ export function createXenoversePlanetGpuInstance(
   const elevationRaw = renderGeometry.getAttribute('aUnscaledElevation');
   let elevationAttr = elevationRaw && elevationRaw instanceof THREE.BufferAttribute ? elevationRaw : null;
   if (!elevationAttr) {
-    const layers = getFamilyXenoLayers(planet.render.family);
     const reconstructed = new Float32Array(position.count);
     const samplePoint = new THREE.Vector3();
     for (let i = 0; i < position.count; i += 1) {
       samplePoint.set(position.getX(i), position.getY(i), position.getZ(i)).normalize();
-      reconstructed[i] = sampleXenoElevation({
-        seed: planet.render.surface.noiseSeed,
-        radius: planet.render.renderRadius,
-        reliefAmplitude: planet.render.surface.reliefAmplitude,
-        oceanLevel: planet.render.surface.oceanLevel,
-        layers,
-      }, samplePoint).unscaledElevation;
+      reconstructed[i] = sampleNoiseContractElevation(noiseContract, samplePoint).unscaledElevation;
     }
     elevationAttr = new THREE.BufferAttribute(reconstructed, 1);
     renderGeometry.setAttribute('aUnscaledElevation', elevationAttr);

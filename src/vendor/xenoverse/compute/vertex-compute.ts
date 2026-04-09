@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-import type { NoiseLayerConfig } from '@/rendering/planet/core/planet-core-xeno';
+import type { XenoverseNoiseContract } from '@/rendering/planet/core/xenoverse-noise';
 
 const COMPUTE_VERTEX_SHADER = `
   varying vec2 vUv;
@@ -31,8 +31,9 @@ const COMPUTE_FRAGMENT_SHADER = `
   uniform float uMinValue[MAX_LAYERS];
   uniform float uLayerSteps[MAX_LAYERS];
   uniform float uUseMask[MAX_LAYERS];
-  uniform float uType[MAX_LAYERS];
+  uniform float uFilterType[MAX_LAYERS];
   uniform float uEnabled[MAX_LAYERS];
+  uniform vec3 uCenter[MAX_LAYERS];
 
   float hash31(vec3 p) {
     return fract(sin(dot(p, vec3(127.1, 311.7, 74.7)) + uSeed * 0.00000137) * 43758.5453123);
@@ -70,8 +71,8 @@ const COMPUTE_FRAGMENT_SHADER = `
 
     for (int i = 0; i < 8; i++) {
       if (i >= steps) break;
-      float v = valueNoise3(p * frequency + vec3(float(i) * 0.0137));
-      if (uType[idx] > 0.5) {
+      float v = valueNoise3(p * frequency + uCenter[idx] + vec3(float(i) * 0.0137));
+      if (uFilterType[idx] > 0.5) {
         float ridge = 1.0 - abs(v * 2.0 - 1.0);
         ridge *= ridge;
         ridge *= weight;
@@ -120,9 +121,7 @@ export interface ComputeFaceInput {
   axisB: THREE.Vector3;
   resolution: number;
   radius: number;
-  reliefAmplitude: number;
-  seed: number;
-  layers: NoiseLayerConfig[];
+  contract: XenoverseNoiseContract;
 }
 
 export interface ComputeFaceOutput {
@@ -132,7 +131,8 @@ export interface ComputeFaceOutput {
 }
 
 export function runVertexComputeFace(input: ComputeFaceInput): ComputeFaceOutput {
-  const { renderer, localUp, axisA, axisB, resolution, radius, reliefAmplitude, seed, layers } = input;
+  const { renderer, localUp, axisA, axisB, resolution, radius, contract } = input;
+  const layers = contract.filters;
   const gl = renderer.getContext();
   const supportsFloatReadback = renderer.capabilities.isWebGL2 && gl instanceof WebGL2RenderingContext;
   if (!supportsFloatReadback) {
@@ -151,8 +151,8 @@ export function runVertexComputeFace(input: ComputeFaceInput): ComputeFaceOutput
         uAxisA: { value: axisA },
         uAxisB: { value: axisB },
         uRadius: { value: radius },
-        uReliefAmplitude: { value: reliefAmplitude },
-        uSeed: { value: seed },
+        uReliefAmplitude: { value: contract.reliefAmplitude },
+        uSeed: { value: contract.seed },
         uLayerCount: { value: Math.min(layers.length, 8) },
         uStrength: { value: Array.from({ length: 8 }, (_, i) => layers[i]?.strength ?? 0) },
         uRoughness: { value: Array.from({ length: 8 }, (_, i) => layers[i]?.roughness ?? 1) },
@@ -161,8 +161,9 @@ export function runVertexComputeFace(input: ComputeFaceInput): ComputeFaceOutput
         uMinValue: { value: Array.from({ length: 8 }, (_, i) => layers[i]?.minValue ?? 0) },
         uLayerSteps: { value: Array.from({ length: 8 }, (_, i) => layers[i]?.layerCount ?? 0) },
         uUseMask: { value: Array.from({ length: 8 }, (_, i) => (layers[i]?.useFirstLayerAsMask ? 1 : 0)) },
-        uType: { value: Array.from({ length: 8 }, (_, i) => (layers[i]?.type === 'ridged' ? 1 : 0)) },
+        uFilterType: { value: Array.from({ length: 8 }, (_, i) => (layers[i]?.filterType === 'ridged' ? 1 : 0)) },
         uEnabled: { value: Array.from({ length: 8 }, (_, i) => (layers[i]?.enabled ? 1 : 0)) },
+        uCenter: { value: Array.from({ length: 8 }, (_, i) => new THREE.Vector3(...(layers[i]?.center ?? [0, 0, 0]))) },
       },
       depthWrite: false,
       depthTest: false,
@@ -202,4 +203,3 @@ export function runVertexComputeFace(input: ComputeFaceInput): ComputeFaceOutput
 
   return { positions, elevations, usedCompute: true };
 }
-
