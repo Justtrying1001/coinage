@@ -1,12 +1,10 @@
 import * as THREE from 'three';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 import type { CanonicalPlanet } from '@/domain/world/planet-visual.types';
+import { getFamilyXenoLayers, sampleXenoElevation } from '@/rendering/planet/core/planet-core-xeno';
 import { createPlanetSurfaceGradients, validateGradientReadability } from '@/rendering/planet/core/planet-surface-gradients';
 import { isValidElevationRange, resolveSeaLevelFromRange } from '@/rendering/planet/shading-contract';
-import {
-  SURFACE_FRAGMENT_SHADER_PLANET,
-  SURFACE_VERTEX_SHADER_PLANET,
-} from '@/rendering/planet/surface/surface-shader-assembly';
 import { MinMax } from './min-max';
 import { buildTerrainFaceGeometry } from './terrain-face';
 
@@ -21,6 +19,21 @@ const FACE_DIRECTIONS: THREE.Vector3[] = [
 
 function toColor(value: [number, number, number]): THREE.Color {
   return new THREE.Color(value[0], value[1], value[2]);
+}
+
+function sampleGradient(t: number, anchors: number[], colors: THREE.Color[]): THREE.Color {
+  const clamped = THREE.MathUtils.clamp(t, 0, 1);
+  let color = colors[0]?.clone() ?? new THREE.Color(1, 0, 1);
+  for (let i = 1; i < anchors.length; i += 1) {
+    if (clamped <= anchors[i]!) {
+      const a = anchors[i - 1] ?? 0;
+      const b = anchors[i] ?? 1;
+      const blend = THREE.MathUtils.smoothstep(clamped, a, b);
+      return colors[i - 1]!.clone().lerp(colors[i]!, blend);
+    }
+    color = colors[i]!.clone();
+  }
+  return color;
 }
 
 export interface XenoversePlanetGpuOptions {
@@ -46,10 +59,6 @@ export interface XenoversePlanetGpuInstance {
   dispose: () => void;
 }
 
-/**
- * Canonical detailed renderer for Planet View.
- * This vendor-port path is now the unique runtime detailed path.
- */
 export function createXenoversePlanetGpuInstance(
   planet: CanonicalPlanet,
   options: XenoversePlanetGpuOptions,
@@ -78,6 +87,7 @@ export function createXenoversePlanetGpuInstance(
   let usedComputeFaces = 0;
   let usedCpuFaces = 0;
   const fallbackReasons: string[] = [];
+  const faceGeometries: THREE.BufferGeometry[] = [];
 
   for (const faceDir of FACE_DIRECTIONS) {
     const geometry = buildTerrainFaceGeometry({
@@ -93,45 +103,22 @@ export function createXenoversePlanetGpuInstance(
       preferCompute: options.preferCompute ?? true,
     });
 
-    const computeInfo = geometry.userData.computeInfo as
-      | { usedCompute: boolean; fallbackReason?: string }
-      | undefined;
-    if (computeInfo?.usedCompute) {
-      usedComputeFaces += 1;
-    } else {
+    const computeInfo = geometry.userData.computeInfo as { usedCompute: boolean; fallbackReason?: string } | undefined;
+    if (computeInfo?.usedCompute) usedComputeFaces += 1;
+    else {
       usedCpuFaces += 1;
       if (computeInfo?.fallbackReason) fallbackReasons.push(computeInfo.fallbackReason);
     }
 
-    const material: THREE.Material = options.forceBasicMaterial
-      ? new THREE.MeshBasicMaterial({
-        color: '#4df9ff',
-        wireframe: Boolean(options.wireframe),
-      })
-      : new THREE.ShaderMaterial({
-        vertexShader: SURFACE_VERTEX_SHADER_PLANET,
-        fragmentShader: SURFACE_FRAGMENT_SHADER_PLANET,
-        wireframe: Boolean(options.wireframe),
-        uniforms: {
-          uMinMax: { value: new THREE.Vector2(0, 1) },
-          uSeaLevel: { value: 0.0 },
-          uLightDirection: { value: new THREE.Vector3(0.38, 0.76, 0.52).normalize() },
-          uAmbientStrength: { value: 0.38 },
-          uLandGradientSize: { value: gradients.land.length },
-          uDepthGradientSize: { value: gradients.depth.length },
-          uLandAnchors: { value: landStops.map((s) => s.anchor) },
-          uDepthAnchors: { value: depthStops.map((s) => s.anchor) },
-          uLandColors: { value: landStops.map((s) => toColor(s.color)) },
-          uDepthColors: { value: depthStops.map((s) => toColor(s.color)) },
-        },
-      });
-
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.name = 'xenoverse-face';
-    mesh.userData.rotationSpeed = planet.render.surfaceModel === 'gaseous' ? 0.01 : 0.016;
-    group.add(mesh);
-    disposeTargets.push(geometry, material);
+    faceGeometries.push(geometry);
   }
+
+  const merged = BufferGeometryUtils.mergeGeometries(faceGeometries, false);
+  if (!merged) {
+    throw new Error('Failed to merge Xenoverse face geometries');
+  }
+  const welded = BufferGeometryUtils.mergeVertices(merged, 1e-4);
+  welded.computeVertexNormals();
 
   const [min, max] = minMax.toPair();
   const safeMax = max > min ? max : min + 0.2;
@@ -145,12 +132,67 @@ export function createXenoversePlanetGpuInstance(
     });
   }
 
-  group.traverse((node) => {
-    if (!(node instanceof THREE.Mesh)) return;
-    if (!(node.material instanceof THREE.ShaderMaterial)) return;
-    node.material.uniforms.uMinMax.value.set(min, safeMax);
-    node.material.uniforms.uSeaLevel.value = seaLevel;
-  });
+  const landAnchors = landStops.map((s) => s.anchor);
+  const depthAnchors = depthStops.map((s) => s.anchor);
+  const landColors = landStops.map((s) => toColor(s.color));
+  const depthColors = depthStops.map((s) => toColor(s.color));
+
+  const position = welded.getAttribute('position');
+  if (position && position.count > 0) {
+    const layers = getFamilyXenoLayers(planet.render.family);
+    const colors = new Float32Array(position.count * 3);
+    const point = new THREE.Vector3();
+
+    for (let i = 0; i < position.count; i += 1) {
+      point.set(position.getX(i), position.getY(i), position.getZ(i)).normalize();
+      const sample = sampleXenoElevation({
+        seed: planet.render.surface.noiseSeed,
+        radius: planet.render.renderRadius,
+        reliefAmplitude: planet.render.surface.reliefAmplitude,
+        oceanLevel: planet.render.surface.oceanLevel,
+        layers,
+      }, point);
+      const e = sample.unscaledElevation;
+
+      const color =
+        e > seaLevel
+          ? sampleGradient((e - seaLevel) / Math.max(1e-4, safeMax - seaLevel), landAnchors, landColors)
+          : sampleGradient((e - min) / Math.max(1e-4, seaLevel - min), depthAnchors, depthColors);
+      colors[i * 3] = color.r;
+      colors[i * 3 + 1] = color.g;
+      colors[i * 3 + 2] = color.b;
+    }
+    welded.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  }
+
+  const surfaceMaterial: THREE.Material = options.forceBasicMaterial
+    ? new THREE.MeshBasicMaterial({ color: '#4df9ff', wireframe: Boolean(options.wireframe) })
+    : new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      wireframe: Boolean(options.wireframe),
+      roughness: 0.52,
+      metalness: 0.08,
+      emissive: toColor(planet.render.surface.accentColor).multiplyScalar(0.04),
+    });
+
+  const surface = new THREE.Mesh(welded, surfaceMaterial);
+  surface.name = 'xenoverse-surface';
+  surface.userData.rotationSpeed = planet.render.surfaceModel === 'gaseous' ? 0.01 : 0.016;
+  group.add(surface);
+  disposeTargets.push(welded, surfaceMaterial);
+  faceGeometries.forEach((g) => g.dispose());
+
+  const seamFill = new THREE.Mesh(
+    new THREE.SphereGeometry(planet.render.renderRadius * 0.996, 96, 96),
+    new THREE.MeshStandardMaterial({
+      color: toColor(planet.render.surface.colorMid),
+      roughness: 0.62,
+      metalness: 0.03,
+    }),
+  );
+  seamFill.name = 'xenoverse-seam-fill';
+  group.add(seamFill);
+  disposeTargets.push(seamFill.geometry, seamFill.material);
 
   if (planet.render.atmosphere.enabled) {
     const atmoGeom = new THREE.SphereGeometry(
@@ -180,6 +222,7 @@ export function createXenoversePlanetGpuInstance(
         }
       `,
       fragmentShader: `
+        precision highp float;
         varying vec3 vNormalW;
         varying vec3 vWorldPos;
         uniform vec3 uAtmosphereColor;
