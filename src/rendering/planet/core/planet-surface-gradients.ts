@@ -29,6 +29,13 @@ function luminance(color: [number, number, number]): number {
   return color[0] * 0.2126 + color[1] * 0.7152 + color[2] * 0.0722;
 }
 
+function liftToMinLuminance(color: [number, number, number], minLuminance: number): [number, number, number] {
+  const l = luminance(color);
+  if (l >= minLuminance) return color;
+  const deficit = minLuminance - l;
+  return boost(color, deficit);
+}
+
 export function createPlanetSurfaceGradients(planet: CanonicalPlanet): { land: GradientStop[]; depth: GradientStop[] } {
   const deep = planet.render.surface.colorDeep;
   const mid = planet.render.surface.colorMid;
@@ -44,16 +51,16 @@ export function createPlanetSurfaceGradients(planet: CanonicalPlanet): { land: G
   const oceanShallow = boost(mix(ocean, accent, 0.32), 0.12);
 
   const land = [
-    { anchor: 0.0, color: boost(landBase, 0.04) },
-    { anchor: 0.45, color: boost(landMid, 0.07) },
-    { anchor: 0.8, color: boost(mix(landMid, landPeak, 0.5), 0.1) },
-    { anchor: 1.0, color: landPeak },
+    { anchor: 0.0, color: liftToMinLuminance(boost(landBase, 0.04), 0.18) },
+    { anchor: 0.45, color: liftToMinLuminance(boost(landMid, 0.07), 0.24) },
+    { anchor: 0.8, color: liftToMinLuminance(boost(mix(landMid, landPeak, 0.5), 0.1), 0.3) },
+    { anchor: 1.0, color: liftToMinLuminance(landPeak, 0.34) },
   ];
 
   const depth = [
-    { anchor: 0.0, color: oceanDeep },
-    { anchor: 0.52, color: boost(mix(oceanDeep, oceanShallow, 0.5), 0.05) },
-    { anchor: 1.0, color: oceanShallow },
+    { anchor: 0.0, color: liftToMinLuminance(oceanDeep, 0.09) },
+    { anchor: 0.52, color: liftToMinLuminance(boost(mix(oceanDeep, oceanShallow, 0.5), 0.05), 0.14) },
+    { anchor: 1.0, color: liftToMinLuminance(oceanShallow, 0.2) },
   ];
 
   return { land, depth };

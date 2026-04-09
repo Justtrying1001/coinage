@@ -190,16 +190,44 @@ export function runVertexComputeFace(input: ComputeFaceInput): ComputeFaceOutput
 
   const positions = new Float32Array(resolution * resolution * 3);
   const elevations = new Float32Array(resolution * resolution);
+  let invalidSamples = 0;
+  let minRadius = Number.POSITIVE_INFINITY;
+  let maxRadius = 0;
   for (let i = 0; i < resolution * resolution; i += 1) {
-    positions[i * 3] = pixels[i * 4];
-    positions[i * 3 + 1] = pixels[i * 4 + 1];
-    positions[i * 3 + 2] = pixels[i * 4 + 2];
-    elevations[i] = pixels[i * 4 + 3];
+    const x = pixels[i * 4];
+    const y = pixels[i * 4 + 1];
+    const z = pixels[i * 4 + 2];
+    const elevation = pixels[i * 4 + 3];
+    const valid = Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z) && Number.isFinite(elevation);
+    if (!valid) {
+      invalidSamples += 1;
+      continue;
+    }
+    positions[i * 3] = x;
+    positions[i * 3 + 1] = y;
+    positions[i * 3 + 2] = z;
+    elevations[i] = elevation;
+
+    const radiusSample = Math.hypot(x, y, z);
+    minRadius = Math.min(minRadius, radiusSample);
+    maxRadius = Math.max(maxRadius, radiusSample);
   }
 
   quad.geometry.dispose();
   (quad.material as THREE.Material).dispose();
   target.dispose();
+
+  const invalidRatio = invalidSamples / Math.max(1, resolution * resolution);
+  const suspiciousRadius = !Number.isFinite(minRadius)
+    || !Number.isFinite(maxRadius)
+    || minRadius <= 0
+    || maxRadius <= 0
+    || maxRadius > radius * 8;
+  if (invalidRatio > 0.0001 || suspiciousRadius) {
+    throw new Error(
+      `compute-readback-invalid invalidRatio=${invalidRatio.toFixed(4)} minRadius=${minRadius} maxRadius=${maxRadius}`,
+    );
+  }
 
   return { positions, elevations, usedCompute: true };
 }

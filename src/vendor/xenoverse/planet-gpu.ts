@@ -174,7 +174,6 @@ export function createXenoversePlanetGpuInstance(
       resolution,
       radius: planet.render.renderRadius,
       seed: planet.render.surface.noiseSeed,
-      oceanLevel: planet.render.surface.oceanLevel,
       reliefAmplitude: planet.render.surface.reliefAmplitude,
       family: planet.render.family,
       minMax,

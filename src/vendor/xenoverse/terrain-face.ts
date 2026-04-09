@@ -10,10 +10,9 @@ export interface TerrainFaceInput {
   localUp: THREE.Vector3;
   resolution: number;
   radius: number;
-  seed: number;
-  oceanLevel: number;
-  reliefAmplitude: number;
   family: PlanetFamily;
+  seed: number;
+  reliefAmplitude: number;
   minMax: MinMax;
   renderer?: THREE.WebGLRenderer;
   preferCompute?: boolean;
@@ -43,10 +42,7 @@ function runCpuFace(
   axisB: THREE.Vector3,
   resolution: number,
   radius: number,
-  seed: number,
-  oceanLevel: number,
-  reliefAmplitude: number,
-  filters: NoiseFilter[],
+  contract: { seed: number; reliefAmplitude: number; filters: NoiseFilter[] },
 ): { positions: Float32Array; elevations: Float32Array } {
   const vertexCount = resolution * resolution;
   const positions = new Float32Array(vertexCount * 3);
@@ -66,9 +62,9 @@ function runCpuFace(
       const pointOnUnitSphere = pointOnCube.normalize();
 
       const sample = sampleNoiseContractElevation({
-        seed,
-        reliefAmplitude,
-        filters,
+        seed: contract.seed,
+        reliefAmplitude: contract.reliefAmplitude,
+        filters: contract.filters,
       }, pointOnUnitSphere);
       const safeUnscaled = Number.isFinite(sample.unscaledElevation) ? sample.unscaledElevation : 0;
       const safeScaled = Number.isFinite(sample.scaledElevation) ? sample.scaledElevation : 0;
@@ -86,7 +82,7 @@ function runCpuFace(
 }
 
 export function buildTerrainFaceGeometry(input: TerrainFaceInput): THREE.BufferGeometry {
-  const { localUp, resolution, radius, seed, oceanLevel, reliefAmplitude, family, minMax, renderer, preferCompute } = input;
+  const { localUp, resolution, radius, seed, reliefAmplitude, family, minMax, renderer, preferCompute } = input;
   const { axisA, axisB } = buildFaceBasis(localUp);
   const contract = createNoiseContract({ family, seed, reliefAmplitude });
   const vertexCount = resolution * resolution;
@@ -115,17 +111,19 @@ export function buildTerrainFaceGeometry(input: TerrainFaceInput): THREE.BufferG
       if (process.env.NODE_ENV !== 'production') {
         console.warn('[XenoverseCompute] GPU path unavailable for face, CPU fallback used', error);
       }
-      ({ positions, elevations } = runCpuFace(localUp, axisA, axisB, resolution, radius, seed, oceanLevel, reliefAmplitude, contract.filters));
+      ({ positions, elevations } = runCpuFace(localUp, axisA, axisB, resolution, radius, contract));
     }
   } else {
-    ({ positions, elevations } = runCpuFace(localUp, axisA, axisB, resolution, radius, seed, oceanLevel, reliefAmplitude, contract.filters));
+    ({ positions, elevations } = runCpuFace(localUp, axisA, axisB, resolution, radius, contract));
   }
 
   const uv = new Float32Array(vertexCount * 2);
   for (let i = 0; i < vertexCount; i += 1) {
-    uv[i * 2] = elevations[i]!;
+    const safeElevation = Number.isFinite(elevations[i]!) ? elevations[i]! : 0;
+    elevations[i] = safeElevation;
+    uv[i * 2] = safeElevation;
     uv[i * 2 + 1] = usedCompute ? 1 : 0;
-    minMax.add(elevations[i]!);
+    minMax.add(safeElevation);
   }
 
   const geometry = new THREE.BufferGeometry();

@@ -32,38 +32,44 @@ export const SURFACE_FRAGMENT_SHADER_PLANET = `
   uniform vec3 uLightDirection;
   uniform float uAmbientStrength;
 
-  float saturate(float v) {
+  float clamp01(float v) {
     return clamp(v, 0.0, 1.0);
   }
 
   float inverseLerp(float a, float b, float v) {
     float d = max(0.0001, b - a);
-    return saturate((v - a) / d);
+    return clamp01((v - a) / d);
   }
 
-  vec3 sampleGradient(
-    float anchors[MAX_GRADIENT_SIZE],
-    vec3 colors[MAX_GRADIENT_SIZE],
-    float size,
-    float t
-  ) {
-    int count = int(size);
-    if (count <= 0) {
-      return vec3(1.0, 0.0, 1.0);
-    }
-
-    vec3 color = colors[0];
-
+  vec3 sampleLandGradient(float t) {
+    int count = int(uLandGradientSize);
+    if (count <= 0) return vec3(1.0, 0.0, 1.0);
+    vec3 color = uLandColors[0];
     for (int i = 1; i < MAX_GRADIENT_SIZE; i++) {
       if (i >= count) break;
-      if (t <= anchors[i]) {
-        float blend = smoothstep(anchors[i - 1], anchors[i], t);
-        color = mix(colors[i - 1], colors[i], blend);
+      if (t <= uLandAnchors[i]) {
+        float blend = smoothstep(uLandAnchors[i - 1], uLandAnchors[i], t);
+        color = mix(uLandColors[i - 1], uLandColors[i], blend);
         break;
       }
-      color = colors[i];
+      color = uLandColors[i];
     }
+    return color;
+  }
 
+  vec3 sampleDepthGradient(float t) {
+    int count = int(uDepthGradientSize);
+    if (count <= 0) return vec3(1.0, 0.0, 1.0);
+    vec3 color = uDepthColors[0];
+    for (int i = 1; i < MAX_GRADIENT_SIZE; i++) {
+      if (i >= count) break;
+      if (t <= uDepthAnchors[i]) {
+        float blend = smoothstep(uDepthAnchors[i - 1], uDepthAnchors[i], t);
+        color = mix(uDepthColors[i - 1], uDepthColors[i], blend);
+        break;
+      }
+      color = uDepthColors[i];
+    }
     return color;
   }
 
@@ -79,21 +85,21 @@ export const SURFACE_FRAGMENT_SHADER_PLANET = `
 
     if (vElevation > uSeaLevel + shoreMixRange) {
       float t = inverseLerp(uSeaLevel + shoreMixRange, maxElevation, vElevation);
-      baseColor = sampleGradient(uLandAnchors, uLandColors, uLandGradientSize, t);
+      baseColor = sampleLandGradient(t);
       roughness = 0.48;
       metalness = 0.02;
     } else if (vElevation >= uSeaLevel) {
       float landT = inverseLerp(uSeaLevel + shoreMixRange, maxElevation, vElevation);
       float depthT = inverseLerp(minElevation, uSeaLevel, vElevation);
       float shoreT = smoothstep(uSeaLevel, uSeaLevel + shoreMixRange, vElevation);
-      vec3 land = sampleGradient(uLandAnchors, uLandColors, uLandGradientSize, landT);
-      vec3 depth = sampleGradient(uDepthAnchors, uDepthColors, uDepthGradientSize, depthT);
+      vec3 land = sampleLandGradient(landT);
+      vec3 depth = sampleDepthGradient(depthT);
       baseColor = mix(depth, land, shoreT);
       roughness = mix(0.08, 0.48, shoreT);
       metalness = mix(0.36, 0.02, shoreT);
     } else {
       float t = inverseLerp(minElevation, uSeaLevel, vElevation);
-      baseColor = sampleGradient(uDepthAnchors, uDepthColors, uDepthGradientSize, t);
+      baseColor = sampleDepthGradient(t);
       roughness = 0.06;
       metalness = 0.38;
     }
