@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 import type { CanonicalPlanet } from '@/domain/world/planet-visual.types';
 import { getFamilyXenoLayers, sampleXenoElevation } from '@/rendering/planet/core/planet-core-xeno';
@@ -15,6 +16,91 @@ const FACE_DIRECTIONS: THREE.Vector3[] = [
   new THREE.Vector3(0, 0, 1),
   new THREE.Vector3(0, 0, -1),
 ];
+
+interface FaceBuildResult {
+  geometry: THREE.BufferGeometry;
+  localUp: THREE.Vector3;
+  axisA: THREE.Vector3;
+  axisB: THREE.Vector3;
+}
+
+function buildFaceBasis(localUp: THREE.Vector3): { axisA: THREE.Vector3; axisB: THREE.Vector3 } {
+  const axisA = new THREE.Vector3(localUp.y, localUp.z, localUp.x);
+  const axisB = new THREE.Vector3().crossVectors(localUp, axisA);
+  return { axisA, axisB };
+}
+
+function buildFaceBorderKey(localUp: THREE.Vector3, axisA: THREE.Vector3, axisB: THREE.Vector3, x: number, y: number, resolution: number): string {
+  const px = x / (resolution - 1);
+  const py = y / (resolution - 1);
+  const pointOnCube = new THREE.Vector3()
+    .copy(localUp)
+    .addScaledVector(axisA, (px - 0.5) * 2)
+    .addScaledVector(axisB, (py - 0.5) * 2)
+    .normalize();
+  return `${Math.round(pointOnCube.x * 1e6)}:${Math.round(pointOnCube.y * 1e6)}:${Math.round(pointOnCube.z * 1e6)}`;
+}
+
+function harmonizeFaceBorders(faces: FaceBuildResult[], resolution: number): void {
+  type BorderVertexRef = {
+    unit: THREE.Vector3;
+    positionAttr: THREE.BufferAttribute;
+    elevationAttr: THREE.BufferAttribute | null;
+    vertexIndex: number;
+    elevation: number;
+    radius: number;
+  };
+
+  const borderMap = new Map<string, BorderVertexRef[]>();
+  const vertex = new THREE.Vector3();
+
+  for (const face of faces) {
+    const positionAttr = face.geometry.getAttribute('position') as THREE.BufferAttribute;
+    const elevationRaw = face.geometry.getAttribute('aUnscaledElevation');
+    const elevationAttr = elevationRaw && elevationRaw instanceof THREE.BufferAttribute ? elevationRaw : null;
+
+    for (let y = 0; y < resolution; y += 1) {
+      for (let x = 0; x < resolution; x += 1) {
+        if (x !== 0 && y !== 0 && x !== resolution - 1 && y !== resolution - 1) continue;
+        const vertexIndex = x + y * resolution;
+        vertex.set(positionAttr.getX(vertexIndex), positionAttr.getY(vertexIndex), positionAttr.getZ(vertexIndex));
+        const radius = vertex.length();
+        if (radius <= 0) continue;
+        const unit = vertex.clone().multiplyScalar(1 / radius);
+        const elevation = elevationAttr ? elevationAttr.getX(vertexIndex) : 0;
+
+        const key = buildFaceBorderKey(face.localUp, face.axisA, face.axisB, x, y, resolution);
+        const refs = borderMap.get(key) ?? [];
+        refs.push({
+          unit,
+          positionAttr,
+          elevationAttr,
+          vertexIndex,
+          elevation,
+          radius,
+        });
+        borderMap.set(key, refs);
+      }
+    }
+  }
+
+  for (const refs of borderMap.values()) {
+    if (refs.length <= 1) continue;
+    const avgRadius = refs.reduce((sum, ref) => sum + ref.radius, 0) / refs.length;
+    const avgElevation = refs.reduce((sum, ref) => sum + ref.elevation, 0) / refs.length;
+    for (const ref of refs) {
+      ref.positionAttr.setXYZ(
+        ref.vertexIndex,
+        ref.unit.x * avgRadius,
+        ref.unit.y * avgRadius,
+        ref.unit.z * avgRadius,
+      );
+      if (ref.elevationAttr) ref.elevationAttr.setX(ref.vertexIndex, avgElevation);
+      ref.positionAttr.needsUpdate = true;
+      if (ref.elevationAttr) ref.elevationAttr.needsUpdate = true;
+    }
+  }
+}
 
 function toColor(value: [number, number, number]): THREE.Color {
   return new THREE.Color(value[0], value[1], value[2]);
@@ -87,11 +173,13 @@ export function createXenoversePlanetGpuInstance(
   let usedComputeFaces = 0;
   let usedCpuFaces = 0;
   const fallbackReasons: string[] = [];
-  const diagnosticFaces: THREE.BufferGeometry[] = [];
+  const builtFaces: FaceBuildResult[] = [];
 
   for (const faceDir of FACE_DIRECTIONS) {
+    const localUp = faceDir.clone();
+    const { axisA, axisB } = buildFaceBasis(localUp);
     const faceGeometry = buildTerrainFaceGeometry({
-      localUp: faceDir,
+      localUp,
       resolution,
       radius: planet.render.renderRadius,
       seed: planet.render.surface.noiseSeed,
@@ -110,7 +198,7 @@ export function createXenoversePlanetGpuInstance(
       if (computeInfo?.fallbackReason) fallbackReasons.push(computeInfo.fallbackReason);
     }
 
-    diagnosticFaces.push(faceGeometry);
+    builtFaces.push({ geometry: faceGeometry, localUp, axisA, axisB });
   }
 
   const [min, max] = minMax.toPair();
@@ -125,9 +213,20 @@ export function createXenoversePlanetGpuInstance(
     });
   }
 
-  // Final visible mesh: globally continuous spherical sampling to remove cube-face seams.
-  const renderGeometry = new THREE.SphereGeometry(planet.render.renderRadius, 220, 160);
+  // Final visible mesh: face-based Xenoverse geometry with border harmonization.
+  harmonizeFaceBorders(builtFaces, resolution);
+
+  const merged = BufferGeometryUtils.mergeGeometries(builtFaces.map((face) => face.geometry), false);
+  if (!merged) {
+    throw new Error('Failed to merge Xenoverse face geometries');
+  }
+  const renderGeometry = BufferGeometryUtils.mergeVertices(merged, 5e-4);
+  merged.dispose();
+  renderGeometry.computeVertexNormals();
+
   const position = renderGeometry.getAttribute('position');
+  const elevationRaw = renderGeometry.getAttribute('aUnscaledElevation');
+  const elevationAttr = elevationRaw && elevationRaw instanceof THREE.BufferAttribute ? elevationRaw : null;
   const colors = new Float32Array(position.count * 3);
 
   const layers = getFamilyXenoLayers(planet.render.family);
@@ -139,19 +238,15 @@ export function createXenoversePlanetGpuInstance(
   const point = new THREE.Vector3();
   for (let i = 0; i < position.count; i += 1) {
     point.set(position.getX(i), position.getY(i), position.getZ(i)).normalize();
-
-    const sample = sampleXenoElevation({
-      seed: planet.render.surface.noiseSeed,
-      radius: planet.render.renderRadius,
-      reliefAmplitude: planet.render.surface.reliefAmplitude,
-      oceanLevel: planet.render.surface.oceanLevel,
-      layers,
-    }, point);
-
-    const finalRadius = planet.render.renderRadius * (1 + Math.max(0, sample.scaledElevation));
-    position.setXYZ(i, point.x * finalRadius, point.y * finalRadius, point.z * finalRadius);
-
-    const elevation = sample.unscaledElevation;
+    const elevation = elevationAttr
+      ? elevationAttr.getX(i)
+      : sampleXenoElevation({
+        seed: planet.render.surface.noiseSeed,
+        radius: planet.render.renderRadius,
+        reliefAmplitude: planet.render.surface.reliefAmplitude,
+        oceanLevel: planet.render.surface.oceanLevel,
+        layers,
+      }, point).unscaledElevation;
     const color =
       elevation > seaLevel
         ? sampleGradient((elevation - seaLevel) / Math.max(1e-4, safeMax - seaLevel), landAnchors, landColors)
@@ -161,7 +256,6 @@ export function createXenoversePlanetGpuInstance(
     colors[i * 3 + 2] = color.b;
   }
 
-  position.needsUpdate = true;
   renderGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   renderGeometry.computeVertexNormals();
 
@@ -181,7 +275,7 @@ export function createXenoversePlanetGpuInstance(
   group.add(surface);
 
   disposeTargets.push(renderGeometry, surfaceMaterial);
-  diagnosticFaces.forEach((g) => g.dispose());
+  builtFaces.forEach((face) => face.geometry.dispose());
 
   if (planet.render.atmosphere.enabled) {
     const atmoGeom = new THREE.SphereGeometry(
