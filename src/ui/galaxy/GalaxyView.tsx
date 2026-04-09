@@ -90,6 +90,12 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
 
     const width = mount.clientWidth;
     const height = mount.clientHeight;
+    const [centerX, centerY] = manifest.length
+      ? manifest.reduce<[number, number]>(
+          (acc, entry) => [acc[0] + entry.x, acc[1] + entry.y],
+          [0, 0],
+        ).map((sum) => sum / manifest.length)
+      : [0, 0];
     const aspect = width / Math.max(1, height);
     const frustumHeight = FIELD_RADIUS * 2.2;
     const frustumWidth = frustumHeight * aspect;
