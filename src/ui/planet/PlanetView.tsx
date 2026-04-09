@@ -6,8 +6,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import { resolvePlanetIdentity } from '@/domain/world/resolve-planet-identity';
-import { createPlanetRenderInstance, updatePlanetLayerAnimation, updatePlanetLighting } from '@/rendering/planet/create-planet-render-instance';
+import { updatePlanetLayerAnimation, updatePlanetLighting } from '@/rendering/planet/create-planet-render-instance';
 import { PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
+import { createPlanetXenoDetailedInstance } from '@/rendering/planet/xeno/create-planet-xeno-detailed-instance';
 
 interface PlanetViewProps {
   worldSeed: string;
@@ -53,18 +54,9 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     keyLight.position.set(12, 7, 14);
     scene.add(keyLight);
 
-    const planetInstance = createPlanetRenderInstance({
-      planet: resolved.planet,
-      x: 0,
-      y: 0,
-      z: 0,
-      options: {
-        viewMode: 'planet',
-        debug: {
-          forceBasicMaterial,
-          wireframe,
-        },
-      },
+    const planetInstance = createPlanetXenoDetailedInstance(resolved.planet, {
+      forceBasicMaterial,
+      wireframe,
     });
 
     scene.add(planetInstance.object);
