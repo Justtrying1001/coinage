@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 import type { CanonicalPlanet } from '@/domain/world/planet-visual.types';
-import { getFamilyGradients } from '@/rendering/planet/core/planet-core-xeno';
+import { createPlanetSurfaceGradients, validateGradientReadability } from '@/rendering/planet/core/planet-surface-gradients';
 import { isValidElevationRange, resolveSeaLevelFromRange } from '@/rendering/planet/shading-contract';
 import {
   SURFACE_FRAGMENT_SHADER_PLANET,
@@ -59,11 +59,21 @@ export function createXenoversePlanetGpuInstance(
   const group = new THREE.Group();
   const disposeTargets: Array<THREE.BufferGeometry | THREE.Material> = [];
 
-  const gradients = getFamilyGradients(planet.render.family);
+  const gradients = createPlanetSurfaceGradients(planet);
   const landStops = [...gradients.land];
   const depthStops = [...gradients.depth];
   while (landStops.length < 6) landStops.push({ anchor: 1, color: landStops[landStops.length - 1].color });
   while (depthStops.length < 6) depthStops.push({ anchor: 1, color: depthStops[depthStops.length - 1].color });
+
+  if (process.env.NODE_ENV !== 'production') {
+    const readabilityIssues = validateGradientReadability(landStops, depthStops);
+    if (readabilityIssues.length > 0) {
+      console.warn('[XenoversePlanetGpu] Gradient readability warnings', {
+        planetId: planet.identity.planetId,
+        readabilityIssues,
+      });
+    }
+  }
 
   let usedComputeFaces = 0;
   let usedCpuFaces = 0;
