@@ -28,6 +28,19 @@ function createSurfaceLayer(
   });
 
   const gradients = getFamilyGradients(render.family);
+  const minElevation = Number.isFinite(built.minMax.min) ? built.minMax.min : 0.85;
+  const maxElevation = Number.isFinite(built.minMax.max) ? built.minMax.max : 1.15;
+  const safeMinMax =
+    maxElevation > minElevation
+      ? new THREE.Vector2(minElevation, maxElevation)
+      : new THREE.Vector2(minElevation, minElevation + 0.2);
+
+  if (process.env.NODE_ENV !== 'production') {
+    const elevationAttr = built.geometry.getAttribute('aUnscaledElevation');
+    if (!elevationAttr || elevationAttr.count === 0) {
+      console.warn('[PlanetView] Missing elevation attribute on surface geometry');
+    }
+  }
   const maxStops = 6;
   const landStops = [...gradients.land];
   const depthStops = [...gradients.depth];
@@ -38,7 +51,7 @@ function createSurfaceLayer(
     vertexShader: SURFACE_VERTEX_SHADER_PLANET,
     fragmentShader: SURFACE_FRAGMENT_SHADER_PLANET,
     uniforms: {
-      uMinMax: { value: new THREE.Vector2(built.minMax.min, built.minMax.max) },
+      uMinMax: { value: safeMinMax },
       uSeaLevel: { value: 1.0 },
       uLightDirection: { value: new THREE.Vector3(0.38, 0.76, 0.52).normalize() },
       uLandGradientSize: { value: gradients.land.length },

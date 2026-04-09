@@ -72,8 +72,10 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): Displ
           },
           pointOnUnitSphere,
         );
+        const safeUnscaled = Number.isFinite(elevation.unscaledElevation) ? elevation.unscaledElevation : 0;
+        const safeScaled = Number.isFinite(elevation.scaledElevation) ? elevation.scaledElevation : 0;
 
-        const displacedRadius = input.radius * (1 + elevation.scaledElevation);
+        const displacedRadius = input.radius * (1 + safeScaled);
 
         positions.push(
           pointOnUnitSphere.x * displacedRadius,
@@ -81,16 +83,16 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): Displ
           pointOnUnitSphere.z * displacedRadius,
         );
 
-        unscaledElevation.push(1 + elevation.unscaledElevation);
-        minMax.add(1 + elevation.unscaledElevation);
+        unscaledElevation.push(1 + safeUnscaled);
+        minMax.add(1 + safeUnscaled);
       }
     }
 
     for (let y = 0; y < resolution - 1; y += 1) {
       for (let x = 0; x < resolution - 1; x += 1) {
         const i = vertexOffset + x + y * resolution;
-        indices.push(i + resolution + 1, i + 1, i);
-        indices.push(i + resolution, i + resolution + 1, i);
+        indices.push(i, i + 1, i + resolution + 1);
+        indices.push(i, i + resolution + 1, i + resolution);
       }
     }
 
