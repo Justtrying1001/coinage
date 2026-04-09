@@ -38,7 +38,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
 
     const scene = new THREE.Scene();
     const nebulaBackground = createNebulaBackground(1200);
-    const starfield = createStarfield(3000, 1000);
+    const starfield = createStarfield(3000, 760);
     scene.add(nebulaBackground);
     scene.add(starfield);
 
@@ -53,7 +53,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       frustumHeight / 2,
       -frustumHeight / 2,
       0.1,
-      800,
+      2500,
     );
     camera.position.set(0, 0, 120);
     camera.lookAt(0, 0, 0);

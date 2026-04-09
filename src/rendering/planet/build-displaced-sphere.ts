@@ -83,8 +83,8 @@ export function buildDisplacedSphereGeometry(input: DisplacedSphereInput): Displ
           pointOnUnitSphere.z * displacedRadius,
         );
 
-        unscaledElevation.push(1 + safeUnscaled);
-        minMax.add(1 + safeUnscaled);
+        unscaledElevation.push(safeUnscaled);
+        minMax.add(safeUnscaled);
       }
     }
 
