@@ -97,6 +97,10 @@ export const SURFACE_FRAGMENT_SHADER_PLANET = `
       metalness = 0.38;
     }
 
+    if (length(baseColor) < 0.0001) {
+      baseColor = vec3(0.85, 0.2, 0.9);
+    }
+
     vec3 n = normalize(vWorldNormal);
     vec3 l = normalize(uLightDirection);
     vec3 v = normalize(cameraPosition - vWorldPos);

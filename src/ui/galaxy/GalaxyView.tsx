@@ -8,6 +8,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 
 import { getGalaxyPlanetManifest } from '@/domain/world/build-galaxy-planet-manifest';
+import { GALAXY_LAYOUT_RUNTIME_CONFIG } from '@/domain/world/world.constants';
 import { createPlanetRenderInstance, updatePlanetLayerAnimation, updatePlanetLighting } from '@/rendering/planet/create-planet-render-instance';
 import { PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
 import { createNebulaBackground, createStarfield } from '@/rendering/space/create-starfield';
@@ -21,7 +22,7 @@ interface GalaxyViewProps {
   worldSeed: string;
 }
 
-const FIELD_RADIUS = 84;
+const FIELD_RADIUS = GALAXY_LAYOUT_RUNTIME_CONFIG.fieldRadius ?? 120;
 const MOVE_SPEED = 18;
 
 export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
@@ -36,6 +37,11 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       return;
     }
 
+    const searchParams = new URLSearchParams(window.location.search);
+    const runtimeDebugEnabled = searchParams.get('debugRender') === '1';
+    const forceBasicMaterial = searchParams.get('debugBasic') === '1';
+    const wireframe = searchParams.get('wireframe') === '1';
+
     const scene = new THREE.Scene();
     const nebulaBackground = createNebulaBackground(1200);
     const starfield = createStarfield(3000, 760);
@@ -45,7 +51,7 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
     const width = mount.clientWidth;
     const height = mount.clientHeight;
     const aspect = width / Math.max(1, height);
-    const frustumHeight = 220;
+    const frustumHeight = FIELD_RADIUS * 2.2;
     const frustumWidth = frustumHeight * aspect;
     const camera = new THREE.OrthographicCamera(
       -frustumWidth / 2,
@@ -79,7 +85,13 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
       x: entry.x,
       y: entry.y,
       z: 0,
-      options: { viewMode: 'galaxy' },
+      options: {
+        viewMode: 'galaxy',
+        debug: {
+          forceBasicMaterial,
+          wireframe,
+        },
+      },
     }));
     for (const instance of instances) {
       group.add(instance.object);
@@ -102,6 +114,44 @@ export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
         if (node instanceof THREE.Mesh) {
           node.userData.planetId = planetId;
         }
+      });
+    }
+
+    if (runtimeDebugEnabled && process.env.NODE_ENV !== 'production') {
+      camera.updateMatrixWorld();
+      const frustum = new THREE.Frustum();
+      const projectionView = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      frustum.setFromProjectionMatrix(projectionView);
+
+      const diagnostics = instances.slice(0, 24).map((instance) => {
+        const box = new THREE.Box3().setFromObject(instance.object);
+        const sphere = box.getBoundingSphere(new THREE.Sphere());
+        return {
+          planetId: instance.debugSnapshot.planetId,
+          position: instance.object.position.toArray(),
+          sphereRadius: sphere.radius,
+          distanceToCamera: camera.position.distanceTo(sphere.center),
+          inFrustum: frustum.intersectsSphere(sphere),
+        };
+      });
+
+      const inFrustumCount = diagnostics.filter((entry) => entry.inFrustum).length;
+      console.info('[GalaxyView:runtime-debug]', {
+        planetCount: instances.length,
+        meshCount: interactiveMeshes.length,
+        forceBasicMaterial,
+        wireframe,
+        camera: {
+          left: camera.left,
+          right: camera.right,
+          top: camera.top,
+          bottom: camera.bottom,
+          near: camera.near,
+          far: camera.far,
+          position: camera.position.toArray(),
+        },
+        inFrustumSampleCount: inFrustumCount,
+        diagnosticsSample: diagnostics,
       });
     }
 

@@ -29,6 +29,11 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
       return;
     }
 
+    const searchParams = new URLSearchParams(window.location.search);
+    const runtimeDebugEnabled = searchParams.get('debugRender') === '1';
+    const forceBasicMaterial = searchParams.get('debugBasic') === '1';
+    const wireframe = searchParams.get('wireframe') === '1';
+
     const scene = new THREE.Scene();
     scene.background = new THREE.Color('#030308');
 
@@ -53,7 +58,13 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
       x: 0,
       y: 0,
       z: 0,
-      options: { viewMode: 'planet' },
+      options: {
+        viewMode: 'planet',
+        debug: {
+          forceBasicMaterial,
+          wireframe,
+        },
+      },
     });
 
     scene.add(planetInstance.object);
@@ -87,6 +98,52 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     camera.updateProjectionMatrix();
     camera.position.copy(framingCenter).addScaledVector(baseViewDirection, initialDistance);
     camera.lookAt(framingCenter);
+
+    if (runtimeDebugEnabled && process.env.NODE_ENV !== 'production') {
+      camera.updateMatrixWorld();
+      const frustum = new THREE.Frustum();
+      const projectionView = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      frustum.setFromProjectionMatrix(projectionView);
+
+      const meshDiagnostics: Array<Record<string, unknown>> = [];
+      planetInstance.object.traverse((node) => {
+        if (!(node instanceof THREE.Mesh)) return;
+        const geometry = node.geometry;
+        const position = geometry.getAttribute('position');
+        const bounds = new THREE.Box3().setFromObject(node);
+        const sphere = bounds.getBoundingSphere(new THREE.Sphere());
+        const mat = node.material;
+        const uniforms =
+          mat instanceof THREE.ShaderMaterial
+            ? {
+              uMinMax: mat.uniforms.uMinMax?.value?.toArray?.(),
+              uSeaLevel: mat.uniforms.uSeaLevel?.value,
+              uLandGradientSize: mat.uniforms.uLandGradientSize?.value,
+              uDepthGradientSize: mat.uniforms.uDepthGradientSize?.value,
+            }
+            : null;
+
+        meshDiagnostics.push({
+          name: node.name,
+          vertexCount: position?.count ?? 0,
+          boundsMin: bounds.min.toArray(),
+          boundsMax: bounds.max.toArray(),
+          sphereRadius: sphere.radius,
+          distanceToCamera: camera.position.distanceTo(sphere.center),
+          inFrustum: frustum.intersectsSphere(sphere),
+          material: mat.type,
+          uniforms,
+        });
+      });
+
+      console.info('[PlanetView:runtime-debug]', {
+        planetId: resolved.planetId,
+        meshes: meshDiagnostics.length,
+        forceBasicMaterial,
+        wireframe,
+        meshDiagnostics,
+      });
+    }
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enablePan = false;

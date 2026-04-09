@@ -17,6 +17,7 @@ function createSurfaceLayer(
   planetRadius: number,
   render: PlanetRenderInput['planet']['render'],
   segments: number,
+  debug: PlanetRenderInput['options']['debug'] | undefined,
 ): THREE.Mesh {
   const built = buildDisplacedSphereGeometry({
     radius: planetRadius,
@@ -56,21 +57,27 @@ function createSurfaceLayer(
   while (landStops.length < maxStops) landStops.push({ anchor: 1, color: landStops[landStops.length - 1].color });
   while (depthStops.length < maxStops) depthStops.push({ anchor: 1, color: depthStops[depthStops.length - 1].color });
 
-  const material = new THREE.ShaderMaterial({
-    vertexShader: SURFACE_VERTEX_SHADER_PLANET,
-    fragmentShader: SURFACE_FRAGMENT_SHADER_PLANET,
-    uniforms: {
-      uMinMax: { value: safeMinMax },
-      uSeaLevel: { value: 0.0 },
-      uLightDirection: { value: new THREE.Vector3(0.38, 0.76, 0.52).normalize() },
-      uLandGradientSize: { value: gradients.land.length },
-      uDepthGradientSize: { value: gradients.depth.length },
-      uLandAnchors: { value: landStops.map((s) => s.anchor) },
-      uDepthAnchors: { value: depthStops.map((s) => s.anchor) },
-      uLandColors: { value: landStops.map((s) => toColor(s.color)) },
-      uDepthColors: { value: depthStops.map((s) => toColor(s.color)) },
-    },
-  });
+  const material: THREE.Material = debug?.forceBasicMaterial
+    ? new THREE.MeshBasicMaterial({
+      color: '#52f7ff',
+      wireframe: Boolean(debug?.wireframe),
+    })
+    : new THREE.ShaderMaterial({
+      vertexShader: SURFACE_VERTEX_SHADER_PLANET,
+      fragmentShader: SURFACE_FRAGMENT_SHADER_PLANET,
+      wireframe: Boolean(debug?.wireframe),
+      uniforms: {
+        uMinMax: { value: safeMinMax },
+        uSeaLevel: { value: 0.0 },
+        uLightDirection: { value: new THREE.Vector3(0.38, 0.76, 0.52).normalize() },
+        uLandGradientSize: { value: gradients.land.length },
+        uDepthGradientSize: { value: gradients.depth.length },
+        uLandAnchors: { value: landStops.map((s) => s.anchor) },
+        uDepthAnchors: { value: depthStops.map((s) => s.anchor) },
+        uLandColors: { value: landStops.map((s) => toColor(s.color)) },
+        uDepthColors: { value: depthStops.map((s) => toColor(s.color)) },
+      },
+    });
 
   const mesh = new THREE.Mesh(built.geometry, material);
   mesh.name = 'surface';
@@ -184,6 +191,7 @@ export function createPlanetRenderInstance(input: PlanetRenderInput): PlanetRend
     planet.render.renderRadius,
     planet.render,
     view.meshSegments,
+    options.debug,
   );
   group.add(surface);
 
