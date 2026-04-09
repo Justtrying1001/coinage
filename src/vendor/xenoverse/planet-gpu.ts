@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 import type { CanonicalPlanet } from '@/domain/world/planet-visual.types';
 import { getFamilyXenoLayers, sampleXenoElevation } from '@/rendering/planet/core/planet-core-xeno';
@@ -84,13 +83,14 @@ export function createXenoversePlanetGpuInstance(
     }
   }
 
+  // Keep face-path build for runtime diagnostics/compute observability.
   let usedComputeFaces = 0;
   let usedCpuFaces = 0;
   const fallbackReasons: string[] = [];
-  const faceGeometries: THREE.BufferGeometry[] = [];
+  const diagnosticFaces: THREE.BufferGeometry[] = [];
 
   for (const faceDir of FACE_DIRECTIONS) {
-    const geometry = buildTerrainFaceGeometry({
+    const faceGeometry = buildTerrainFaceGeometry({
       localUp: faceDir,
       resolution,
       radius: planet.render.renderRadius,
@@ -103,22 +103,15 @@ export function createXenoversePlanetGpuInstance(
       preferCompute: options.preferCompute ?? true,
     });
 
-    const computeInfo = geometry.userData.computeInfo as { usedCompute: boolean; fallbackReason?: string } | undefined;
+    const computeInfo = faceGeometry.userData.computeInfo as { usedCompute: boolean; fallbackReason?: string } | undefined;
     if (computeInfo?.usedCompute) usedComputeFaces += 1;
     else {
       usedCpuFaces += 1;
       if (computeInfo?.fallbackReason) fallbackReasons.push(computeInfo.fallbackReason);
     }
 
-    faceGeometries.push(geometry);
+    diagnosticFaces.push(faceGeometry);
   }
-
-  const merged = BufferGeometryUtils.mergeGeometries(faceGeometries, false);
-  if (!merged) {
-    throw new Error('Failed to merge Xenoverse face geometries');
-  }
-  const welded = BufferGeometryUtils.mergeVertices(merged, 1e-4);
-  welded.computeVertexNormals();
 
   const [min, max] = minMax.toPair();
   const safeMax = max > min ? max : min + 0.2;
@@ -132,38 +125,45 @@ export function createXenoversePlanetGpuInstance(
     });
   }
 
+  // Final visible mesh: globally continuous spherical sampling to remove cube-face seams.
+  const renderGeometry = new THREE.SphereGeometry(planet.render.renderRadius, 220, 160);
+  const position = renderGeometry.getAttribute('position');
+  const colors = new Float32Array(position.count * 3);
+
+  const layers = getFamilyXenoLayers(planet.render.family);
   const landAnchors = landStops.map((s) => s.anchor);
   const depthAnchors = depthStops.map((s) => s.anchor);
   const landColors = landStops.map((s) => toColor(s.color));
   const depthColors = depthStops.map((s) => toColor(s.color));
 
-  const position = welded.getAttribute('position');
-  if (position && position.count > 0) {
-    const layers = getFamilyXenoLayers(planet.render.family);
-    const colors = new Float32Array(position.count * 3);
-    const point = new THREE.Vector3();
+  const point = new THREE.Vector3();
+  for (let i = 0; i < position.count; i += 1) {
+    point.set(position.getX(i), position.getY(i), position.getZ(i)).normalize();
 
-    for (let i = 0; i < position.count; i += 1) {
-      point.set(position.getX(i), position.getY(i), position.getZ(i)).normalize();
-      const sample = sampleXenoElevation({
-        seed: planet.render.surface.noiseSeed,
-        radius: planet.render.renderRadius,
-        reliefAmplitude: planet.render.surface.reliefAmplitude,
-        oceanLevel: planet.render.surface.oceanLevel,
-        layers,
-      }, point);
-      const e = sample.unscaledElevation;
+    const sample = sampleXenoElevation({
+      seed: planet.render.surface.noiseSeed,
+      radius: planet.render.renderRadius,
+      reliefAmplitude: planet.render.surface.reliefAmplitude,
+      oceanLevel: planet.render.surface.oceanLevel,
+      layers,
+    }, point);
 
-      const color =
-        e > seaLevel
-          ? sampleGradient((e - seaLevel) / Math.max(1e-4, safeMax - seaLevel), landAnchors, landColors)
-          : sampleGradient((e - min) / Math.max(1e-4, seaLevel - min), depthAnchors, depthColors);
-      colors[i * 3] = color.r;
-      colors[i * 3 + 1] = color.g;
-      colors[i * 3 + 2] = color.b;
-    }
-    welded.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    const finalRadius = planet.render.renderRadius * (1 + Math.max(0, sample.scaledElevation));
+    position.setXYZ(i, point.x * finalRadius, point.y * finalRadius, point.z * finalRadius);
+
+    const elevation = sample.unscaledElevation;
+    const color =
+      elevation > seaLevel
+        ? sampleGradient((elevation - seaLevel) / Math.max(1e-4, safeMax - seaLevel), landAnchors, landColors)
+        : sampleGradient((elevation - min) / Math.max(1e-4, seaLevel - min), depthAnchors, depthColors);
+    colors[i * 3] = color.r;
+    colors[i * 3 + 1] = color.g;
+    colors[i * 3 + 2] = color.b;
   }
+
+  position.needsUpdate = true;
+  renderGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  renderGeometry.computeVertexNormals();
 
   const surfaceMaterial: THREE.Material = options.forceBasicMaterial
     ? new THREE.MeshBasicMaterial({ color: '#4df9ff', wireframe: Boolean(options.wireframe) })
@@ -175,24 +175,13 @@ export function createXenoversePlanetGpuInstance(
       emissive: toColor(planet.render.surface.accentColor).multiplyScalar(0.04),
     });
 
-  const surface = new THREE.Mesh(welded, surfaceMaterial);
+  const surface = new THREE.Mesh(renderGeometry, surfaceMaterial);
   surface.name = 'xenoverse-surface';
   surface.userData.rotationSpeed = planet.render.surfaceModel === 'gaseous' ? 0.01 : 0.016;
   group.add(surface);
-  disposeTargets.push(welded, surfaceMaterial);
-  faceGeometries.forEach((g) => g.dispose());
 
-  const seamFill = new THREE.Mesh(
-    new THREE.SphereGeometry(planet.render.renderRadius * 0.996, 96, 96),
-    new THREE.MeshStandardMaterial({
-      color: toColor(planet.render.surface.colorMid),
-      roughness: 0.62,
-      metalness: 0.03,
-    }),
-  );
-  seamFill.name = 'xenoverse-seam-fill';
-  group.add(seamFill);
-  disposeTargets.push(seamFill.geometry, seamFill.material);
+  disposeTargets.push(renderGeometry, surfaceMaterial);
+  diagnosticFaces.forEach((g) => g.dispose());
 
   if (planet.render.atmosphere.enabled) {
     const atmoGeom = new THREE.SphereGeometry(
