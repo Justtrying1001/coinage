@@ -2,129 +2,205 @@
 
 **Gameplay Micro**
 
-*Population • Économie • Unités • Combat • Déplacement • Colonisation • Espionnage*
+*Population • Économie • Militaire • Espionnage • Recherche • Trading*
 
-Version 2.1 — Avril 2026
+DOC 03 — MICRO
+
+Version 2.2 — Avril 2026
 
 # Population
 
-La population est la capacité partagée de la ville. Elle est consommée par :
+La population est une capacité partagée et permanente de chaque ville. Elle est consommée par deux éléments simultanément : les bâtiments construits et les troupes entraînées et vivantes.
 
-- bâtiments
-- unités vivantes
+**Tension centrale : plus tu construis de bâtiments, moins tu as de population disponible pour les troupes, et inversement.**
 
-Objectif stratégique : arbitrer entre puissance économique, défense locale et projection militaire.
+## Source de population
+
+Housing Complex est la seule source principale de cap population. Training Grounds (prestige) ajoute +10% sur ce cap.
+
+Le Housing Complex et l'Entrepôt ne consomment pas de population.
+
+## Consommation
+
+| Source | Comportement |
+| --- | --- |
+| Bâtiments | Consomment de la population à la construction et à chaque upgrade. La population reste réservée tant que le bâtiment existe. |
+| Troupes | Consomment de la population tant qu'elles sont vivantes. Quand une troupe meurt, sa population est libérée. |
+
+## Spécialisation des villes
+
+| Type de ville | Focus | Description |
+| --- | --- | --- |
+| Ville économique | Production max | Housing Complex et bâtiments de production au maximum, peu de troupes |
+| Ville offensive | Pression d'attaque | Bâtiments minimaux, population concentrée en troupes d'attaque |
+| Ville défensive | Défenses max | Mur défensif et Tour de guet élevés, forte garnison |
+| Ville de recherche | RC max | Laboratoire priorisé, forte contribution technologique |
+| Ville de colonisation | Prise territoriale | Hub de déploiement niveau 20 + convoi de colonisation + escorte complète |
 
 # Économie
 
-- Production continue en temps réel
-- Récupération au login / à l’action (claim-on-access)
-- Caps de stockage comme limite naturelle
-- Protection nouveau joueur + protection post-raid
+## Production continue — modèle Grepolis
 
-# Typologie d’unités (canonique)
+Les ressources s'accumulent en continu à un taux horaire. La ville stocke un `lastUpdatedAt`. À chaque accès, le système calcule le temps écoulé et crédite les ressources accumulées, plafonnées par le storage cap.
 
-Aucune catégorie verticale. Toutes les unités suivent une logique terrain/carte.
+Aucun job de fond nécessaire : calcul à la demande (`claim-on-access`).
 
-| Type | Rôle principal |
+## Anti-abuse
+
+| Protection | Durée | Condition |
+| --- | --- | --- |
+| Protection nouveau joueur | 7 jours | Immunité totale. Levée si le joueur attaque en premier. |
+| Protection post-raid | 12 heures | Immunité contre le même attaquant après un raid subi. |
+
+# Militaire — Micro
+
+## Système de combat — 3 types d'attaque
+
+Chaque unité possède un type d'attaque et des valeurs de défense contre les trois types.
+
+| Type | Description | Efficace contre | Inefficace contre |
+| --- | --- | --- | --- |
+| Cinétique | Attaque physique brute | Défense Énergétique | Défense Cinétique |
+| Énergétique | Attaque concentrée | Défense Plasma | Défense Énergétique |
+| Plasma | Attaque à distance | Défense Cinétique | Défense Plasma |
+
+## Deux phases de combat (mécanique inchangée)
+
+| Phase | Description |
 | --- | --- |
-| Unité rapide | Pression, interception, anti-raid |
-| Unité standard | Polyvalence frontale |
-| Unité lourde | Tenue de ligne, encaissement |
-| Unité de siège | Destruction des défenses et ouverture de capture |
-| Unité de reconnaissance | Information et détection |
-| Unité défensive | Protection forte en garnison |
-| Convoi logistique | Renfort et transport de charge |
-| Convoi de colonisation | Installation sur secteur libre |
+| Phase 1 — Écran de projection / interception | Les unités de projection s'affrontent en premier. Le résultat détermine combien de convois d'assaut atteignent la cible et avec quelle efficacité. |
+| Phase 2 — Combat principal | Les troupes débarquées affrontent les défenses locales. Le Mur défensif applique son bonus à toutes les unités en défense. |
 
-# Combat
+## Unités de ligne
 
-## Principe général
+| Unité | DB key | Attaque | Vitesse | Loot | Pop | Débloqué |
+| --- | --- | --- | --- | --- | --- | --- |
+| Fantassin | infantry | Cinétique | Moyenne | Faible | 1 | Caserne niv.1 |
+| Bouclier | shield_guard | Cinétique | Lente | Nul | 3 | Caserne niv.5 |
+| Tireur | marksman | Plasma | Moyenne | Faible | 1 | Caserne niv.10 |
+| Cavalier | raider_cavalry | Cinétique | Très rapide | Très élevé | 3 | Caserne niv.15 |
+| Assaillant | assault | Énergétique | Moyenne | Moyen | 2 | Forge niv.1 |
+| Briseur | breacher | Cinétique | Très lente | Nul | 5 | Forge niv.8 |
 
-Le combat est résolu sans couches verticales :
+## Unités de projection
 
-- type d’unité
-- vitesse
-- portée opérationnelle
-- composition de vague
+| Unité | DB key | Attaque | Vitesse | Pop | Débloqué | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| Sentinelle d'interception | interception_sentinel | Énergétique | Très rapide | 4 | Hub niv.1 | Défense d'écran de projection |
+| Escorteur rapide | rapid_escort | Plasma | Rapide | 3 | Hub niv.5 | Recommandé sur toute attaque inter-secteur |
+| Convoi d'assaut | assault_convoy | Aucune | Lente | 6 | Hub niv.10 | Requis pour projeter des troupes sur un autre secteur. Cible prioritaire ennemie. Capacité : 10 pop |
+| Briseur mobile | siege_runner | Cinétique | Lente | 5 | Hub niv.15 | Anti-structure. Nécessite escorte |
+| Convoi de colonisation | colonization_convoy | Aucune | Très lente (le plus lent) | 10 | Hub niv.20 + HQ 10 | Consommé à l'arrivée. Escorte obligatoire |
 
-## Phases de résolution
+## Distance et temps de déplacement
 
-1. **Engagement initial** : contact des unités rapides et de reconnaissance, perturbation de la ligne adverse.
-2. **Combat principal** : affrontement des unités standard, lourdes et défensives.
-3. **Résolution** : application des pertes, validation du contrôle local, ouverture éventuelle de capture.
+`Temps_trajet = Distance × (1 / Vitesse_unité_la_plus_lente)`
 
-## Modèle de contre
+La vitesse du groupe est celle de l'unité la plus lente. Les joueurs coordonnent les vagues : la vague de nettoyage doit arriver juste avant le convoi de colonisation.
 
-- Rapides > Reconnaissance isolée
-- Lourdes > Standard en duel frontal
-- Siège > Défenses fixes
-- Défensives > Rapides en défense préparée
+### Vitesses relatives (du plus rapide au plus lent)
 
-# Déplacement et projection
-
-## Déplacement inter-secteur
-
-Le temps dépend de la distance et de l’unité la plus lente du groupe.
-
-`temps_trajet = distance_inter_secteur × (1 / vitesse_unite_plus_lente)`
-
-## Projection militaire
-
-La projection combine :
-
-- vitesse des unités
-- disponibilité des convois logistiques
-- coordination multi-vagues
-
-# Colonisation
-
-## Colonisation d’un secteur libre
-
-- Condition : secteur neutre avec slot libre
-- Moyen : convoi de colonisation
-- Résultat : création d’une ville contrôlée
-
-## Capture d’une ville occupée
-
-Séquence :
-
-1. Nettoyage des défenses
-2. Fenêtre d’instabilité (12h)
-3. Arrivée du convoi de colonisation dans la fenêtre
-4. Validation de capture si le convoi survit
-
-# Actions militaires disponibles
-
-| Action | Usage |
+| Vitesse | Unités |
 | --- | --- |
-| Raid | Pillage ciblé |
-| Siège | Ouverture d’une capture |
-| Renfort | Soutien défensif |
-| Colonisation | Prise de secteur libre |
+| Très rapide | Cavalier, Sentinelle d'interception |
+| Rapide | Escorteur rapide |
+| Moyenne | Fantassin, Tireur, Assaillant |
+| Lente | Bouclier, Briseur mobile, Convoi d'assaut |
+| Très lente | Briseur |
+| Extrêmement lente | Convoi de colonisation |
 
-# Règle de bascule territoriale (75%)
+## Types d'actions militaires
 
-Si une faction perd 75% des villes d’un territoire ciblé au profit d’une même faction ennemie, le territoire bascule.
+| Action | Disponible | Description |
+| --- | --- | --- |
+| Raid | Toujours sur secteurs neutres / En guerre sur territoires principaux | Attaque rapide de pillage |
+| Colonisation | Toujours, slot libre uniquement | Envoi d'un convoi de colonisation vers un slot libre sur secteur neutre. Aucun combat si slot libre |
+| Siège ville occupée (neutre) | Toujours | Si victoire + convoi arrive pendant Instabilité : capture |
+| Siège ville (territoire principal) | Uniquement en guerre officielle | Même mécanique que siège neutre |
 
-# Espionnage micro
+## Séquence de siège
 
-Le Centre d’espionnage et le vault d’Iron permettent :
+| Étape | Description |
+| --- | --- |
+| 1. Nettoyage | Détruire les défenses de la ville cible |
+| 2. Instabilité | Attaque de siège gagnante : fenêtre d'Instabilité de 12h |
+| 3. Convoi | Envoyer le convoi de colonisation (souvent avant l'Instabilité vu sa lenteur) |
+| 4. Capture | Le convoi arrive pendant la fenêtre et son escorte survit : ville capturée |
+| 5. Échec | Convoi détruit ou fenêtre expirée : siège annulé |
 
-- reconnaissance
-- infiltration
-- surveillance
-- sabotage
+## Règle des 75% — Chute d'un territoire
 
-Succès d’une mission : investissement d’Iron attaquant supérieur à la défense de la cible.
+Si une faction perd 75% de ses villes sur un territoire spécifique au profit d'une même faction ennemie, ce territoire bascule.
 
-# Recherche individuelle (RC)
+Exemple : une faction possède 4 territoires. Si l'ennemi prend 75% des villes du territoire 1, le territoire 1 bascule, les territoires 2/3/4 restent.
 
-Le RC est un budget limité qui force la spécialisation. Axes recommandés :
+## Anti-bully
 
-- économie
-- défense
-- assaut
-- vitesse
-- espionnage
-- logistique
+`PowerRatio = puissance_défenseur / puissance_attaquant`
+
+`MoraleMod = clamp(0.55, 1.0, 0.4 + PowerRatio × 1.8)`
+
+Plus l'écart de puissance est grand, plus l'attaque est pénalisée.
+
+## Impact on-chain sur le militaire
+
+| Métrique | Calcul | Effet |
+| --- | --- | --- |
+| Cohésion | % joueurs actifs 7j | >60% : +15% efficacité armée collective / <40% : -10% |
+| Rétention holders | % holders >30 jours | >70% : +10% bonus défensif / <40% : -5% défense |
+| Taux de conversion | % holders actifs en jeu | Haut taux : -20% temps de mobilisation collective |
+
+# Espionnage
+
+## Principe — Vault d'Iron
+
+L'Iron sert de ressource de construction et de monnaie d'espionnage.
+
+Le Centre d'espionnage dispose d'un vault interne séparé de l'Entrepôt. L'Iron déposé dans ce vault n'est pas restituable vers l'Entrepôt.
+
+| Rôle du vault | Description |
+| --- | --- |
+| Attaque | Iron envoyé vers une ville cible |
+| Défense | Plus le vault est rempli, plus la ville résiste à l'espionnage |
+
+## Mécanique
+
+| Résultat | Condition | Conséquences |
+| --- | --- | --- |
+| Succès | Iron envoyé > Iron vault cible | Rapport complet. Iron envoyé consommé. |
+| Échec | Iron envoyé ≤ Iron vault cible | Rapport d'échec aux deux joueurs. Iron envoyé perdu. |
+
+Minimum mission : 1 000 Iron.
+
+## Niveaux de mission
+
+| Niveau Centre d'espionnage | Mission | Description |
+| --- | --- | --- |
+| 1 | Reconnaissance | Rapport basique troupes |
+| 5 | Infiltration | Rapport complet troupes, bâtiments, ressources, vault |
+| 10 | Surveillance | Suivi 12h des mouvements entrants/sortants |
+| 15 | Sabotage | Ralentit construction/production/formation |
+| 20 | Opération fantôme | Reconnaissance + sabotage, détection réduite |
+
+# Recherche individuelle
+
+## RC (Research Capacity)
+
+Le RC est un budget alloué, non consommé. Les technologies réservent du RC tant qu'elles restent actives.
+
+`RC_total = RC_base(6) + RC_laboratoire(3 × niveau) + RC_HQ(paliers)`
+
+Une seule recherche active à la fois par ville.
+
+## Branches de recherche (mécaniques conservées)
+
+1. Économie
+2. Militaire de ligne
+3. Militaire de projection
+4. Défense
+5. Espionnage
+6. Colonisation
+
+# Trading
+
+Le Marché rééquilibre les spécialisations de villes. Les ressources circulent via convois logistiques, avec un temps de trajet dépendant de la distance entre villes.

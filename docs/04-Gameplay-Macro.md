@@ -2,100 +2,132 @@
 
 **Gameplay Macro**
 
-*Progression de faction • Gouvernance • Territoires neutres • Alliances • Diplomatie*
+*Niveaux de Territoire • Gouvernance • Secteurs Neutres • Alliances • Diplomatie*
 
-Version 2.1 — Avril 2026
+DOC 04 — MACRO
 
-# Vue macro
+Version 2.2 — Avril 2026
 
-La couche macro pilote les décisions collectives d’une faction sur la world map 2D sectorisée :
+# Vue d'ensemble — Macro vs Micro
 
-- priorités d’investissement
-- défense territoriale
-- guerres officielles
-- accords diplomatiques
+| Dimension | Micro | Macro |
+| --- | --- | --- |
+| Échelle | Un joueur, une ville | Une faction entière, une alliance |
+| Décisions | Construction, troupes, raids | Technologies collectives, guerres, diplomatie |
+| Gouvernance | Individuelle | Conseil élu |
+| Ressources | Ore, Stone, Iron, Shards | Signal et Trésor de faction |
+| Temporalité | Quotidienne | Hebdo à mensuelle |
 
-# Progression collective
+# Niveaux de Territoire — 3 branches
 
-## Branches de faction
+Les niveaux de territoire sont une progression collective sans bâtiment physique dédié. Les effets s'appliquent à tous les joueurs contributeurs de la faction.
 
-Trois branches :
+## Financement
 
-- Économique
-- Militaire
-- Diplomatique
+| Source | Description |
+| --- | --- |
+| Signal de faction | Données on-chain + activité joueurs |
+| Contributions | Ore/Stone/Iron versés au trésor |
+| Trésor de faction | Pool collectif géré par le Conseil |
 
-Une seule branche progresse à la fois, selon la priorité votée.
+Une seule branche progresse à la fois.
 
-## Trésor de faction
+## Branche Économique — 20 paliers
 
-Le trésor centralise :
+Paliers centrés sur production, storage cap, coûts de construction/formation/recherche.
 
-- Signal de faction
-- contributions de ressources
-- contributions militaires
+## Branche Militaire — 20 paliers
 
-# Gouvernance
+Paliers centrés sur attaque/défense individuelles et collectives, mobilisation, vitesse en guerre, déblocage conquête 75%.
+
+## Branche Diplomatique — 20 paliers
+
+Paliers centrés sur slots du territoire principal, pactes, alliances, traités, reddition, analyse de faction.
+
+# Gouvernance de faction
 
 ## Conseil
 
-| Paramètre | Valeur |
+| Propriété | Valeur |
 | --- | --- |
-| Membres | 5 |
-| Élection | 1 joueur = 1 voix |
-| Rôles | Gouverneur, Général, Diplomate, membres |
+| Membres | 5 élus |
+| Vote | 1 joueur = 1 voix |
+| Mandat | Permanent tant qu'actif |
+| Perte siège | Inactivité >7 jours, démission, expulsion unanime des 4 autres |
+
+## Rôles
+
+| Rôle | Responsabilité |
+| --- | --- |
+| Gouverneur | Représentation officielle, propose la guerre |
+| Général | Direction armée collective en guerre |
+| Diplomate | Pactes, alliances, traités, redditions |
 
 ## Décisions clés
 
 | Décision | Validation |
 | --- | --- |
 | Dépense trésor | Majorité Conseil (3/5) |
-| Déclaration de guerre | Vote joueurs actifs + Conseil |
-| Alliance / traité | Diplomate + Conseil |
-| Priorité de branche | Majorité Conseil |
+| Nommer/révoquer Général ou Diplomate | Majorité Conseil (3/5) |
+| Déclarer guerre | Gouverneur + vote 25% joueurs actifs/24h |
+| Accepter paix ou reddition | Conseil (3/5) + vote 50% joueurs actifs |
+| Priorité branche | Majorité Conseil (3/5) |
 
-# Territoires
+# Secteurs neutres et territoires contrôlés
 
-## État initial
+## Génération monde
 
-Tous les secteurs démarrent neutres.
+Tous les secteurs sont générés à partir de `WORLD_SEED` et démarrent neutres.
 
-## Activation d’une faction
+## Secteur neutre
 
-Premier joueur d’un token :
+| Propriété | Valeur |
+| --- | --- |
+| Slots | 50 à 300 selon seed |
+| Gouvernance | Aucune |
+| PvP | Permanent |
+| Colonisation | Slot libre via convoi de colonisation |
+| Multi-slots | Autorisé |
 
-1. attribution d’un secteur neutre
-2. conversion en territoire principal
-3. activation de la faction sur la carte
+## Attribution territoire principal
 
-## Territoire contrôlé
+Premier joueur d'un token :
 
-Un secteur devient territoire contrôlé après maîtrise complète suivant les règles de capture.
+1. attribution d'un secteur neutre
+2. ce secteur devient territoire principal
+3. ville du joueur créée
+4. protection hors guerre officielle
+
+## Passage en territoire contrôlé
+
+Un secteur neutre devient territoire contrôlé quand tous ses slots sont détenus par la même faction.
+
+## Perte du statut contrôlé
+
+Si un slot est repris par une autre faction en guerre officielle, le secteur redevient neutre immédiatement.
 
 # Alliances
 
-| Règle | Valeur |
+| Propriété | Valeur |
 | --- | --- |
-| Taille maximale | 3 factions |
-| Non-agression | Totale pendant alliance |
-| Rupture standard | Préavis puis délai avant guerre |
-| Rupture opportuniste | Malus temporaire |
+| Prérequis | Branche Diplomatique palier dédié pour les deux factions |
+| Maximum | 3 factions |
+| Durée minimale | 7 jours |
+| Visibilité | Publique par défaut, secrète si palier adéquat |
+
+## Effets
+
+- non-agression totale
+- coordination militaire
+- visibilité partagée des mouvements entrants
+
+## Rupture
+
+| Type | Effet |
+| --- | --- |
+| Rupture normale | Notification + délai de 48h avant guerre entre ex-alliées |
+| Trahison en guerre | Malus temporaire, annulable à haut palier diplomatique |
 
 # Diplomatie
 
-Le système inclut :
-
-- pactes
-- traités de paix
-- redditions conditionnelles
-- accords secrets avancés
-
-# Cohérence combat macro
-
-La guerre macro repose uniquement sur :
-
-- composition d’unités terrain
-- projection inter-secteur
-- contrôle de villes et de secteurs
-
-Aucune mécanique verticale n’intervient dans la résolution des conflits.
+Actions : pactes, guerre officielle, traités de paix, alliances, accords secrets, analyse de faction, reddition conditionnelle.
