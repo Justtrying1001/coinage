@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import { resolvePlanetIdentity } from '@/domain/world/resolve-planet-identity';
-import { updatePlanetLayerAnimation, updatePlanetLighting } from '@/rendering/planet/create-planet-render-instance';
+import { updatePlanetLayerAnimation, updatePlanetLighting } from '@/rendering/planet/update-planet-runtime';
 import { PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
 import { createXenoversePlanetGpuInstance } from '@/vendor/xenoverse/planet-gpu';
 
@@ -17,6 +17,7 @@ interface PlanetViewProps {
 
 export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const [pipelineInfo, setPipelineInfo] = useState<string>('initialisation…');
 
   const resolved = useMemo(() => resolvePlanetIdentity(worldSeed, planetId), [planetId, worldSeed]);
 
@@ -49,10 +50,13 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     renderer.toneMappingExposure = PLANET_RENDER_PHOTOMETRY.planetExposure;
     mount.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight('#ffffff', 0.45));
-    const keyLight = new THREE.DirectionalLight('#ffffff', 1.18);
-    keyLight.position.set(12, 7, 14);
+    scene.add(new THREE.AmbientLight('#dbe8ff', 0.62));
+    const keyLight = new THREE.DirectionalLight('#ffffff', 1.9);
+    keyLight.position.set(13, 9, 16);
     scene.add(keyLight);
+    const fillLight = new THREE.DirectionalLight('#9ec1ff', 0.56);
+    fillLight.position.set(-11, -6, 12);
+    scene.add(fillLight);
 
     const planetInstance = createXenoversePlanetGpuInstance(resolved.planet, {
       renderer,
@@ -62,6 +66,11 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
     });
 
     scene.add(planetInstance.object);
+
+    const runtimeLabel = planetInstance.diagnostics.usedCpuFaces === 0
+      ? `GPU compute (${planetInstance.diagnostics.usedComputeFaces}/6 faces)`
+      : `CPU fallback (${planetInstance.diagnostics.usedCpuFaces}/6 faces)${planetInstance.diagnostics.fallbackReasons.length ? ` — ${planetInstance.diagnostics.fallbackReasons.join(', ')}` : ''}`;
+    setPipelineInfo(runtimeLabel);
 
     const framingBounds = new THREE.Box3().setFromObject(planetInstance.object);
     const framingSphere = framingBounds.getBoundingSphere(new THREE.Sphere());
@@ -139,6 +148,7 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
         planetId: resolved.planetId,
         meshes: meshDiagnostics.length,
         computeFaceCount,
+        buildDiagnostics: planetInstance.diagnostics,
         forceBasicMaterial,
         wireframe,
         meshDiagnostics,
@@ -256,6 +266,12 @@ export default function PlanetView({ worldSeed, planetId }: PlanetViewProps) {
         <p className="text-[11px] uppercase tracking-[0.16em] text-slate-300/90">Planet View</p>
         <p className="mt-1 text-slate-100/90">
           <span className="font-semibold">ID:</span> {resolved.planetId}
+        </p>
+        <p className="mt-1 text-slate-100/90">
+          <span className="font-semibold">Renderer:</span> Xenoverse Detailed (canonique)
+        </p>
+        <p className="mt-1 text-slate-100/90">
+          <span className="font-semibold">Pipeline:</span> {pipelineInfo}
         </p>
         <p className="mt-1 text-slate-100/90">
           <span className="font-semibold">Seed:</span> {resolved.planetSeed}

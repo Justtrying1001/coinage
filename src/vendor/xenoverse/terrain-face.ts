@@ -99,6 +99,7 @@ export function buildTerrainFaceGeometry(input: TerrainFaceInput): THREE.BufferG
   let positions: Float32Array;
   let elevations: Float32Array;
   let usedCompute = false;
+  let fallbackReason: string | undefined;
 
   if (preferCompute && renderer) {
     try {
@@ -117,6 +118,7 @@ export function buildTerrainFaceGeometry(input: TerrainFaceInput): THREE.BufferG
       elevations = computed.elevations;
       usedCompute = computed.usedCompute;
     } catch (error) {
+      fallbackReason = error instanceof Error ? error.message : 'unknown-compute-error';
       if (process.env.NODE_ENV !== 'production') {
         console.warn('[XenoverseCompute] GPU path unavailable for face, CPU fallback used', error);
       }
@@ -139,6 +141,7 @@ export function buildTerrainFaceGeometry(input: TerrainFaceInput): THREE.BufferG
   geometry.setAttribute('aUnscaledElevation', new THREE.BufferAttribute(elevations, 1));
   geometry.setIndex(fillIndices(resolution));
   geometry.computeVertexNormals();
+  geometry.userData.computeInfo = { usedCompute, fallbackReason };
   return geometry;
 }
 

@@ -12,7 +12,6 @@ import { GALAXY_LAYOUT_RUNTIME_CONFIG } from '@/domain/world/world.constants';
 import { PLANET_RENDER_PHOTOMETRY } from '@/rendering/planet/render-photometry';
 import { createPlanetProxyInstance } from '@/rendering/planet/create-planet-proxy-instance';
 import { createNebulaBackground, createStarfield } from '@/rendering/space/create-starfield';
-import { computeGalaxyVisualRadius } from './planet-visual-scale';
 
 const GalaxyHud = dynamic(() => import('./GalaxyHud'), {
   ssr: false,
@@ -25,46 +24,6 @@ interface GalaxyViewProps {
 
 const FIELD_RADIUS = GALAXY_LAYOUT_RUNTIME_CONFIG.fieldRadius ?? 120;
 const MOVE_SPEED = 18;
-const IS_DEV = process.env.NODE_ENV !== 'production';
-
-interface GalaxyProxyInstance {
-  object: THREE.Mesh;
-  planetId: string;
-  radius: number;
-  dispose: () => void;
-}
-
-function createGalaxyPlanetProxy(
-  entry: ReturnType<typeof getGalaxyPlanetManifest>[number],
-): GalaxyProxyInstance {
-  const radius = computeGalaxyVisualRadius(entry.planet.render.scale);
-  const geometry = new THREE.SphereGeometry(radius, 20, 20);
-  const surfaceColor = new THREE.Color(...entry.planet.visualDNA.colorMid);
-  const accentColor = new THREE.Color(...entry.planet.visualDNA.accentColor);
-  const material = new THREE.MeshStandardMaterial({
-    color: surfaceColor.lerp(accentColor, 0.16),
-    roughness: 0.62,
-    metalness: 0.05,
-    emissive: accentColor.multiplyScalar(0.06),
-    emissiveIntensity: 0.28,
-  });
-
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.name = 'galaxy-planet-proxy';
-  mesh.position.set(entry.x, entry.y, 0);
-  mesh.userData.planetId = entry.id;
-
-  return {
-    object: mesh,
-    planetId: entry.id,
-    radius,
-    dispose: () => {
-      geometry.dispose();
-      material.dispose();
-    },
-  };
-}
-
 export default function GalaxyView({ worldSeed }: GalaxyViewProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();

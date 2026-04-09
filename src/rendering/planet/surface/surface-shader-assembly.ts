@@ -30,6 +30,7 @@ export const SURFACE_FRAGMENT_SHADER_PLANET = `
   uniform vec3 uLandColors[MAX_GRADIENT_SIZE];
   uniform vec3 uDepthColors[MAX_GRADIENT_SIZE];
   uniform vec3 uLightDirection;
+  uniform float uAmbientStrength;
 
   float saturate(float v) {
     return clamp(v, 0.0, 1.0);
@@ -109,7 +110,8 @@ export const SURFACE_FRAGMENT_SHADER_PLANET = `
     float ndl = max(dot(n, l), 0.0);
     float ndh = max(dot(n, h), 0.0);
 
-    float diffuse = 0.26 + ndl * 0.74;
+    float ambient = clamp(uAmbientStrength, 0.0, 0.9);
+    float diffuse = ambient + ndl * (1.0 - ambient);
     float specPower = mix(12.0, 80.0, 1.0 - roughness);
     float specular = pow(ndh, specPower) * (0.05 + metalness * 0.6);
 

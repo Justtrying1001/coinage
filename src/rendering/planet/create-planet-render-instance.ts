@@ -8,6 +8,8 @@ import {
   SURFACE_VERTEX_SHADER_PLANET,
 } from './surface/surface-shader-assembly';
 import { getFamilyGradients } from './core/planet-core-xeno';
+import { resolveSeaLevelFromRange } from './shading-contract';
+import { updatePlanetLayerAnimation, updatePlanetLighting } from './update-planet-runtime';
 
 function toColor(value: [number, number, number]): THREE.Color {
   return new THREE.Color(value[0], value[1], value[2]);
@@ -45,6 +47,19 @@ function createSurfaceLayer(
     });
   }
 
+  const { seaLevel } = resolveSeaLevelFromRange(safeMinMax.x, safeMinMax.y, render.surface.oceanLevel);
+
+  if (process.env.NODE_ENV !== 'production') {
+    if (seaLevel < safeMinMax.x || seaLevel > safeMinMax.y) {
+      console.warn('[PlanetView] Sea level outside elevation range', {
+        planetId: render.planetId,
+        seaLevel,
+        min: safeMinMax.x,
+        max: safeMinMax.y,
+      });
+    }
+  }
+
   if (process.env.NODE_ENV !== 'production') {
     const elevationAttr = built.geometry.getAttribute('aUnscaledElevation');
     if (!elevationAttr || elevationAttr.count === 0) {
@@ -68,8 +83,9 @@ function createSurfaceLayer(
       wireframe: Boolean(debug?.wireframe),
       uniforms: {
         uMinMax: { value: safeMinMax },
-        uSeaLevel: { value: 0.0 },
+        uSeaLevel: { value: seaLevel },
         uLightDirection: { value: new THREE.Vector3(0.38, 0.76, 0.52).normalize() },
+        uAmbientStrength: { value: 0.34 },
         uLandGradientSize: { value: gradients.land.length },
         uDepthGradientSize: { value: gradients.depth.length },
         uLandAnchors: { value: landStops.map((s) => s.anchor) },
@@ -152,32 +168,6 @@ function shouldRenderLayer(
   const enabledExclusive = Object.values(toggles).some(Boolean);
   if (!enabledExclusive) return true;
   return Boolean(toggles[layer]);
-}
-
-export function updatePlanetLighting(object: THREE.Object3D, lightDirection: THREE.Vector3): void {
-  const dir = lightDirection.clone().normalize();
-  object.traverse((node) => {
-    if (!(node instanceof THREE.Mesh)) return;
-    const material = node.material;
-    if (material instanceof THREE.ShaderMaterial && material.uniforms.uLightDirection) {
-      material.uniforms.uLightDirection.value.copy(dir);
-    }
-  });
-}
-
-export function updatePlanetLayerAnimation(object: THREE.Object3D, deltaSeconds: number, freezeRotation = false): void {
-  if (freezeRotation) return;
-
-  object.traverse((node) => {
-    const speed = typeof node.userData.rotationSpeed === 'number' ? node.userData.rotationSpeed : 0;
-    if (speed !== 0 && node instanceof THREE.Mesh) {
-      node.rotation.y += speed * deltaSeconds;
-    }
-    if (node instanceof THREE.Mesh && node.material instanceof THREE.ShaderMaterial) {
-      const timeUniform = node.material.uniforms.uTime;
-      if (timeUniform) timeUniform.value += deltaSeconds;
-    }
-  });
 }
 
 export function createPlanetRenderInstance(input: PlanetRenderInput): PlanetRenderInstance {
