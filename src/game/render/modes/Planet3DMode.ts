@@ -17,14 +17,6 @@ export class Planet3DMode implements RenderModeController {
 
   private planet: THREE.Mesh | null = null;
 
-  private atmosphere: THREE.Mesh | null = null;
-
-  private rimLight: THREE.PointLight | null = null;
-
-  private keyLight: THREE.DirectionalLight | null = null;
-
-  private fillLight: THREE.DirectionalLight | null = null;
-
   private generatedTextures: THREE.Texture[] = [];
 
   private inspectPanel: HTMLDivElement | null = null;
@@ -77,13 +69,11 @@ export class Planet3DMode implements RenderModeController {
     const ambient = new THREE.AmbientLight(0x9ed4ff, 0.34);
     this.scene.add(ambient);
 
-    this.keyLight = new THREE.DirectionalLight(0xddefff, 1.22);
-    this.keyLight.position.set(2.4, 1.9, 1.3);
-    this.scene.add(this.keyLight);
-
-    this.fillLight = new THREE.DirectionalLight(0x7ab6f2, 0.38);
-    this.fillLight.position.set(-2.2, -0.7, -1.8);
-    this.scene.add(this.fillLight);
+    const hemi = new THREE.HemisphereLight(0xdaf0ff, 0x425564, 0.72);
+    this.scene.add(hemi);
+    const reliefKey = new THREE.DirectionalLight(0xffffff, 0.45);
+    reliefKey.position.set(2.2, 1.4, 2.6);
+    this.scene.add(reliefKey);
 
     this.camera.position.set(0, 0, 2.6);
     this.scene.add(this.camera);
@@ -138,14 +128,6 @@ export class Planet3DMode implements RenderModeController {
       this.planet = null;
     }
 
-    if (this.atmosphere) {
-      this.atmosphere.geometry.dispose();
-      const material = this.atmosphere.material;
-      if (material instanceof THREE.Material) material.dispose();
-      this.root.remove(this.atmosphere);
-      this.atmosphere = null;
-    }
-
     for (const texture of this.generatedTextures) texture.dispose();
     this.generatedTextures = [];
 
@@ -172,14 +154,6 @@ export class Planet3DMode implements RenderModeController {
       this.planet = null;
     }
 
-    if (this.atmosphere) {
-      this.atmosphere.geometry.dispose();
-      const material = this.atmosphere.material;
-      if (material instanceof THREE.Material) material.dispose();
-      this.root.remove(this.atmosphere);
-      this.atmosphere = null;
-    }
-
     for (const texture of this.generatedTextures) texture.dispose();
     this.generatedTextures = [];
 
@@ -190,9 +164,8 @@ export class Planet3DMode implements RenderModeController {
     const seedPhaseC = rng.range(0.2, Math.PI * 2.8);
     const seedPhaseD = rng.range(0.2, Math.PI * 1.3);
 
-    const geometry = new THREE.IcosahedronGeometry(1, 5);
+    const geometry = new THREE.IcosahedronGeometry(1, 6);
     const position = geometry.attributes.position;
-    const colors: number[] = [];
 
     for (let i = 0; i < position.count; i += 1) {
       const vx = position.getX(i);
@@ -210,59 +183,31 @@ export class Planet3DMode implements RenderModeController {
       const elevation = (macroMask * 0.78 + ridgeMask - craterMask - polarMask * profile.polarWeight) * profile.reliefStrength;
 
       position.setXYZ(i, vx * (1 + elevation), vy * (1 + elevation), vz * (1 + elevation));
-
-      const oceanMask = macroMask < profile.oceanLevel;
-      const humidity = normalizedNoise(vx, vz, vy, profile.continentScale * 1.35, seedPhaseB, seedPhaseC) * profile.humidityStrength;
-      const secondaryPattern = normalizedNoise(vx + vy, vy - vz, vz + vx, profile.ridgeScale * 0.72, seedPhaseC, seedPhaseA);
-      const climateShift = (humidity - 0.5) * profile.hueDrift + latitude * -8;
-      const hue = oceanMask
-        ? wrapHue(profile.baseHue + 190 + climateShift * 0.2 + secondaryPattern * 6 + rng.range(-3, 4))
-        : wrapHue(profile.baseHue + climateShift + secondaryPattern * 10 + rng.range(-4, 5));
-      const sat = oceanMask
-        ? profile.oceanSaturation + humidity * 8 + secondaryPattern * 4
-        : profile.landSaturation + humidity * 6 + secondaryPattern * 7;
-      const light = oceanMask
-        ? profile.oceanLightness + ridgeMask * 8 + latitude * 5 + secondaryPattern * 5
-        : profile.landLightness + elevation * 120 + humidity * 6 + secondaryPattern * 10 - polarMask * 7;
-      const color = new THREE.Color(`hsl(${Math.round(hue)}, ${Math.round(sat)}%, ${Math.round(light)}%)`);
-
-      colors.push(color.r, color.g, color.b);
     }
 
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    geometry.deleteAttribute('normal');
     geometry.computeVertexNormals();
+    geometry.normalizeNormals();
 
     const maps = buildPlanetMaps(profile, planetRef.seed);
     this.generatedTextures = [maps.map, maps.roughnessMap, maps.metalnessMap, maps.bumpMap, maps.emissiveMap];
 
-    const material = new THREE.MeshPhysicalMaterial({
-      vertexColors: true,
+    const material = new THREE.MeshStandardMaterial({
       map: maps.map,
       roughnessMap: maps.roughnessMap,
       metalnessMap: maps.metalnessMap,
       bumpMap: maps.bumpMap,
-      bumpScale: 0.05 + profile.reliefStrength * 0.08,
+      bumpScale: 0.02 + profile.reliefStrength * 0.035,
       emissiveMap: maps.emissiveMap,
-      roughness: profile.roughness,
-      metalness: profile.metalness,
+      roughness: clamp(profile.roughness + 0.14, 0.38, 0.92),
+      metalness: clamp(profile.metalness * 0.45, 0, 0.16),
       flatShading: false,
       emissive: new THREE.Color(`hsl(${profile.accentHue}, 45%, ${profile.atmosphereLightness}%)`),
-      emissiveIntensity: profile.emissiveIntensity,
-      clearcoat: profile.archetype === 'frozen' || profile.archetype === 'mineral' ? 0.09 : 0.03,
-      clearcoatRoughness: profile.archetype === 'frozen' ? 0.72 : 0.86,
-      specularIntensity: profile.archetype === 'mineral' ? 0.42 : 0.28,
+      emissiveIntensity: profile.emissiveIntensity * 0.45,
     });
 
     this.planet = new THREE.Mesh(geometry, material);
     this.root.add(this.planet);
-
-    this.rimLight?.removeFromParent();
-    this.rimLight = new THREE.PointLight(new THREE.Color(`hsl(${profile.accentHue}, 72%, ${profile.atmosphereLightness}%)`), profile.lightIntensity, 14, 2);
-    this.rimLight.position.set(-1.8, -1.2, 2.1);
-    this.scene.add(this.rimLight);
-
-    this.applyArchetypeLighting(profile);
-    this.buildAtmosphere(profile);
 
     this.updateInspectIdentity(planetRef, profile);
   }
@@ -360,71 +305,6 @@ export class Planet3DMode implements RenderModeController {
     }
   }
 
-  private applyArchetypeLighting(profile: PlanetVisualProfile) {
-    const style = lightingByArchetype(profile.archetype);
-    if (this.keyLight) {
-      this.keyLight.color = new THREE.Color(style.keyColor);
-      this.keyLight.intensity = style.keyIntensity + profile.lightIntensity * 0.12;
-      this.keyLight.position.set(style.keyPosition[0], style.keyPosition[1], style.keyPosition[2]);
-    }
-    if (this.fillLight) {
-      this.fillLight.color = new THREE.Color(style.fillColor);
-      this.fillLight.intensity = style.fillIntensity;
-      this.fillLight.position.set(style.fillPosition[0], style.fillPosition[1], style.fillPosition[2]);
-    }
-    if (this.rimLight) {
-      this.rimLight.color = new THREE.Color(style.rimColor);
-      this.rimLight.intensity = style.rimIntensity + profile.lightIntensity * 0.22;
-      this.rimLight.position.set(style.rimPosition[0], style.rimPosition[1], style.rimPosition[2]);
-    }
-    if (this.renderer) {
-      this.renderer.toneMappingExposure = style.exposure;
-    }
-  }
-
-  private buildAtmosphere(profile: PlanetVisualProfile) {
-    const intensity = atmosphereStrength(profile.archetype);
-    if (intensity <= 0) return;
-
-    const atmosphereMaterial = new THREE.ShaderMaterial({
-      transparent: true,
-      blending: THREE.NormalBlending,
-      depthWrite: false,
-      side: THREE.BackSide,
-      uniforms: {
-        glowColor: { value: new THREE.Color(`hsl(${profile.accentHue}, 68%, ${profile.atmosphereLightness}%)`) },
-        glowStrength: { value: intensity },
-        glowFalloff: { value: profile.archetype === 'frozen' ? 3.6 : 3.1 },
-      },
-      vertexShader: `
-        varying vec3 vNormalW;
-        varying vec3 vViewDirW;
-
-        void main() {
-          vec4 worldPos = modelMatrix * vec4(position, 1.0);
-          vNormalW = normalize(mat3(modelMatrix) * normal);
-          vViewDirW = normalize(cameraPosition - worldPos.xyz);
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform vec3 glowColor;
-        uniform float glowStrength;
-        uniform float glowFalloff;
-        varying vec3 vNormalW;
-        varying vec3 vViewDirW;
-
-        void main() {
-          float fresnel = pow(1.0 - max(dot(normalize(vNormalW), normalize(vViewDirW)), 0.0), glowFalloff);
-          float alpha = fresnel * glowStrength * 0.65;
-          gl_FragColor = vec4(glowColor * alpha, alpha);
-        }
-      `,
-    });
-
-    this.atmosphere = new THREE.Mesh(new THREE.SphereGeometry(1.04, 48, 48), atmosphereMaterial);
-    this.root.add(this.atmosphere);
-  }
 }
 
 function derivePlanetTags(seed: number, profile: PlanetVisualProfile): string[] {
@@ -477,130 +357,6 @@ function normalize(value: number, min: number, max: number) {
 
 function wrapHue(value: number) {
   return ((value % 360) + 360) % 360;
-}
-
-interface ArchetypeLightingProfile {
-  keyColor: string;
-  fillColor: string;
-  rimColor: string;
-  keyIntensity: number;
-  fillIntensity: number;
-  rimIntensity: number;
-  keyPosition: [number, number, number];
-  fillPosition: [number, number, number];
-  rimPosition: [number, number, number];
-  exposure: number;
-}
-
-function lightingByArchetype(archetype: PlanetVisualProfile['archetype']): ArchetypeLightingProfile {
-  switch (archetype) {
-    case 'volcanic':
-      return {
-        keyColor: '#ffd9bc',
-        fillColor: '#7d4c3f',
-        rimColor: '#ff7c42',
-        keyIntensity: 1.2,
-        fillIntensity: 0.33,
-        rimIntensity: 0.98,
-        keyPosition: [2.8, 1.5, 1.2],
-        fillPosition: [-1.6, -1.2, -1.8],
-        rimPosition: [-1.9, -1.0, 2.3],
-        exposure: 1.03,
-      };
-    case 'frozen':
-      return {
-        keyColor: '#d7ebff',
-        fillColor: '#7db7f7',
-        rimColor: '#b6f1ff',
-        keyIntensity: 1.16,
-        fillIntensity: 0.4,
-        rimIntensity: 0.9,
-        keyPosition: [2.2, 2.1, 1.1],
-        fillPosition: [-2.3, -0.7, -1.9],
-        rimPosition: [-1.7, -1.0, 2.0],
-        exposure: 1.04,
-      };
-    case 'mineral':
-      return {
-        keyColor: '#ffe5c8',
-        fillColor: '#9ba8ba',
-        rimColor: '#ffd5a4',
-        keyIntensity: 1.15,
-        fillIntensity: 0.36,
-        rimIntensity: 0.86,
-        keyPosition: [2.5, 1.9, 1.4],
-        fillPosition: [-2.4, -0.8, -1.6],
-        rimPosition: [-1.8, -1.2, 2.15],
-        exposure: 1.01,
-      };
-    case 'oceanic':
-      return {
-        keyColor: '#c7e9ff',
-        fillColor: '#4d86bc',
-        rimColor: '#77ddff',
-        keyIntensity: 1.12,
-        fillIntensity: 0.44,
-        rimIntensity: 0.84,
-        keyPosition: [2.1, 2.0, 1.3],
-        fillPosition: [-2.2, -0.5, -1.7],
-        rimPosition: [-1.6, -1.2, 2.0],
-        exposure: 1.05,
-      };
-    case 'arid':
-      return {
-        keyColor: '#ffe4b7',
-        fillColor: '#9c7a53',
-        rimColor: '#ffbe83',
-        keyIntensity: 1.14,
-        fillIntensity: 0.35,
-        rimIntensity: 0.82,
-        keyPosition: [2.7, 1.6, 1.2],
-        fillPosition: [-2.0, -1.0, -1.8],
-        rimPosition: [-1.75, -1.15, 2.0],
-        exposure: 1.02,
-      };
-    case 'fractured':
-      return {
-        keyColor: '#ebd6ff',
-        fillColor: '#6d5fa1',
-        rimColor: '#d3a8ff',
-        keyIntensity: 1.18,
-        fillIntensity: 0.31,
-        rimIntensity: 0.9,
-        keyPosition: [2.6, 1.8, 1.4],
-        fillPosition: [-2.1, -0.9, -1.9],
-        rimPosition: [-1.9, -1.15, 2.2],
-        exposure: 1.02,
-      };
-    case 'barren':
-    default:
-      return {
-        keyColor: '#f1e2cc',
-        fillColor: '#7f8794',
-        rimColor: '#d9cab8',
-        keyIntensity: 1.08,
-        fillIntensity: 0.32,
-        rimIntensity: 0.74,
-        keyPosition: [2.4, 1.8, 1.2],
-        fillPosition: [-2.4, -0.9, -1.8],
-        rimPosition: [-1.7, -1.2, 2.0],
-        exposure: 0.99,
-      };
-  }
-}
-
-function atmosphereStrength(archetype: PlanetVisualProfile['archetype']) {
-  switch (archetype) {
-    case 'oceanic': return 0.14;
-    case 'frozen': return 0.12;
-    case 'volcanic': return 0.08;
-    case 'arid': return 0.06;
-    case 'fractured': return 0.07;
-    case 'mineral': return 0.05;
-    case 'barren':
-    default:
-      return 0;
-  }
 }
 
 interface PlanetMaps {
