@@ -666,6 +666,9 @@ function paintPlanetTextures(
   const accentMaskField = new Float32Array(width * height);
   const fractureMaskField = new Float32Array(width * height);
   const frostMaskField = new Float32Array(width * height);
+  const erosionFieldField = new Float32Array(width * height);
+  const massFieldField = new Float32Array(width * height);
+  const seaLevelField = new Float32Array(width * height);
   const microField = new Float32Array(width * height);
   const upliftField = new Float32Array(width * height);
   const depressionField = new Float32Array(width * height);
@@ -871,6 +874,9 @@ function paintPlanetTextures(
       accentMaskField[fieldIndex] = accentMask;
       fractureMaskField[fieldIndex] = fractureMask;
       frostMaskField[fieldIndex] = frostMask;
+      erosionFieldField[fieldIndex] = erosionField;
+      massFieldField[fieldIndex] = worldMasks.massField;
+      seaLevelField[fieldIndex] = worldMasks.seaLevel;
       microField[fieldIndex] = micro;
       upliftField[fieldIndex] = uplift;
       depressionField[fieldIndex] = depression;
@@ -887,43 +893,52 @@ function paintPlanetTextures(
   }
 
   applySemanticSpatialCoherence(profile.archetype, semanticMasks, width, height);
+  const coherentSurfaceContext = deriveCoherentSurfaceContext(
+    semanticMasks,
+    width,
+    height,
+    seaLevelField,
+    massFieldField,
+    regionMaskField,
+    valleyMaskField,
+    accentMaskField,
+    fractureMaskField,
+    frostMaskField,
+    microField,
+    erosionFieldField,
+    {
+      volcanoField,
+      calderaField,
+      mountainChainField,
+      plateauField,
+      basinField,
+      trenchField,
+      riftField,
+      craterField,
+      iceShelfField: shelfMaskField,
+      compressionRidgeField: compressionRidgeMask,
+      upliftField,
+      depressionField,
+      finalSignedRelief: displacementField,
+    },
+  );
 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       const fieldIndex = y * width + x;
       const semanticSample = getSemanticMaskSample(semanticMasks, fieldIndex);
+      const coherentContext = coherentSurfaceContext[fieldIndex];
       const semanticShading = colorizeTerrainFromSemantics(profile.archetype, {
         semanticMasks: semanticSample,
-        worldMasks: {
-          seaLevel: clamp(profile.oceanLevel + signature.seaLevelShift, 0.2, 0.82),
-          massField: 0,
-          landMask: emergentLandMask[fieldIndex],
-          waterMask: 1 - emergentLandMask[fieldIndex],
-          coastMask: semanticSample.coastMask,
-          shelfMask: semanticSample.shelfMask,
-        },
-        regionMask: regionMaskField[fieldIndex],
-        valleyMask: valleyMaskField[fieldIndex],
-        accentMask: accentMaskField[fieldIndex],
-        fractureMask: fractureMaskField[fieldIndex],
-        frostMask: frostMaskField[fieldIndex],
-        micro: microField[fieldIndex],
-        erosionField: 0,
-        terrain: {
-          volcanoField: volcanoField[fieldIndex],
-          calderaField: calderaField[fieldIndex],
-          mountainChainField: mountainChainField[fieldIndex],
-          plateauField: plateauField[fieldIndex],
-          basinField: basinField[fieldIndex],
-          trenchField: trenchField[fieldIndex],
-          riftField: riftField[fieldIndex],
-          craterField: craterField[fieldIndex],
-          iceShelfField: 0,
-          compressionRidgeField: compressionRidgeMask[fieldIndex],
-          upliftField: upliftField[fieldIndex],
-          depressionField: depressionField[fieldIndex],
-          finalSignedRelief: displacementField[fieldIndex],
-        },
+        worldMasks: coherentContext.worldMasks,
+        regionMask: coherentContext.regionMask,
+        valleyMask: coherentContext.valleyMask,
+        accentMask: coherentContext.accentMask,
+        fractureMask: coherentContext.fractureMask,
+        frostMask: coherentContext.frostMask,
+        micro: coherentContext.micro,
+        erosionField: coherentContext.erosionField,
+        terrain: coherentContext.terrain,
       });
 
       const i = (y * width + x) * 4;
@@ -1211,6 +1226,18 @@ interface WorldSurfaceMasks {
   shelfMask: number;
 }
 
+interface CoherentSurfaceContextSample {
+  worldMasks: WorldSurfaceMasks;
+  regionMask: number;
+  valleyMask: number;
+  accentMask: number;
+  fractureMask: number;
+  frostMask: number;
+  micro: number;
+  erosionField: number;
+  terrain: TerrainSample;
+}
+
 interface SemanticColorizeInput {
   semanticMasks: SemanticTerrainMaskSet;
   worldMasks: WorldSurfaceMasks;
@@ -1253,10 +1280,40 @@ function applySemanticSpatialCoherence(
   width: number,
   height: number,
 ) {
-  const reinforced = createSemanticMaskFields(width * height);
+  const coherentMasks = createSemanticMaskFields(width * height);
+  const broadAreaMasks: SemanticMaskName[] = [
+    'openOceanMask',
+    'oceanMask',
+    'continentMask',
+    'dryPlainMask',
+    'dustPlainMask',
+    'iceSheetMask',
+    'iceCapMask',
+    'snowOrPolarMask',
+    'forestOrVegetatedMask',
+    'dryInteriorMask',
+    'plateauTopMask',
+    'plateauMask',
+    'lowlandMask',
+    'uplandMask',
+    'mountainMask',
+    'wornHighlandMask',
+    'degradedBasinMask',
+    'rockySystemMask',
+    'hardRidgeMask',
+  ];
+  const edgeBandMasks: SemanticMaskName[] = ['coastMask', 'shelfMask', 'iceShelfMask', 'escarpmentMask', 'shallowWaterMask'];
+  const lineCutMasks: SemanticMaskName[] = ['trenchMask', 'fissureMask', 'crevasseMask', 'canyonMask', 'depositSeamMask', 'valleyMask', 'compressionRidgeMask', 'scarpMask'];
+  const pointDepressionMasks: SemanticMaskName[] = ['impactCraterMask', 'calderaMask', 'volcanicConeMask', 'fractureCavityMask', 'collapseBasinMask', 'basinDepthMask'];
+
+  const broadAreaSet = new Set<SemanticMaskName>(broadAreaMasks);
+  const edgeBandSet = new Set<SemanticMaskName>(edgeBandMasks);
+  const lineCutSet = new Set<SemanticMaskName>(lineCutMasks);
+  const pointDepressionSet = new Set<SemanticMaskName>(pointDepressionMasks);
+
   for (const name of SEMANTIC_MASK_NAMES) {
     const src = semanticMasks[name];
-    const dst = reinforced[name];
+    const dst = coherentMasks[name];
     for (let y = 0; y < height; y += 1) {
       const yPrev = y > 0 ? y - 1 : y;
       const yNext = y < height - 1 ? y + 1 : y;
@@ -1272,8 +1329,29 @@ function applySemanticSpatialCoherence(
         const n5 = yNext * width + xPrev;
         const n6 = yNext * width + x;
         const n7 = yNext * width + xNext;
-        const neighborhood = (src[n0] + src[n1] + src[n2] + src[n3] + src[n4] + src[n5] + src[n6] + src[n7]) / 8;
-        dst[index] = clamp(src[index] * 0.62 + neighborhood * 0.38, 0, 1);
+        const orthMean = (src[n1] + src[n3] + src[n4] + src[n6]) * 0.25;
+        const diagMean = (src[n0] + src[n2] + src[n5] + src[n7]) * 0.25;
+        const broadNeighborhood = orthMean * 0.72 + diagMean * 0.28;
+        const edgeBandSupport = Math.max(src[n1], src[n3], src[n4], src[n6]);
+        const horizontal = Math.max(src[n3], src[n4]);
+        const vertical = Math.max(src[n1], src[n6]);
+        const diagA = Math.max(src[n0], src[n7]);
+        const diagB = Math.max(src[n2], src[n5]);
+        const directionalSupport = Math.max(horizontal, vertical, diagA, diagB);
+        const pointSupport = Math.max(src[n0], src[n1], src[n2], src[n3], src[n4], src[n5], src[n6], src[n7]);
+        const center = src[index];
+        if (broadAreaSet.has(name)) {
+          dst[index] = clamp(center * 0.7 + broadNeighborhood * 0.3, 0, 1);
+        } else if (edgeBandSet.has(name)) {
+          dst[index] = clamp(Math.max(center * 0.85, edgeBandSupport * 0.92), 0, 1);
+        } else if (lineCutSet.has(name)) {
+          dst[index] = clamp(Math.max(center * 0.9, directionalSupport * 0.95), 0, 1);
+        } else if (pointDepressionSet.has(name)) {
+          const localMean = (center + orthMean * 2 + diagMean) * 0.25;
+          dst[index] = clamp(Math.max(center * 0.93, pointSupport * 0.88, localMean * 0.8), 0, 1);
+        } else {
+          dst[index] = clamp(center * 0.82 + broadNeighborhood * 0.18, 0, 1);
+        }
       }
     }
   }
@@ -1291,7 +1369,7 @@ function applySemanticSpatialCoherence(
   const activeFamily = primaryFamilies[archetype] ?? [];
   for (let index = 0; index < width * height; index += 1) {
     for (const name of activeFamily) {
-      semanticMasks[name][index] = reinforced[name][index];
+      semanticMasks[name][index] = coherentMasks[name][index];
     }
   }
 
@@ -1389,6 +1467,86 @@ function applySemanticSpatialCoherence(
     normalizeExclusiveFamily(semanticMasks, index, ['lowlandMask', 'uplandMask', 'mountainMask', 'plateauMask']);
     normalizeExclusiveFamily(semanticMasks, index, ['iceCapMask', 'exposedRockMask']);
   }
+}
+
+function deriveCoherentSurfaceContext(
+  semanticMasks: Record<SemanticMaskName, Float32Array>,
+  width: number,
+  height: number,
+  seaLevelField: Float32Array,
+  massField: Float32Array,
+  regionMaskField: Float32Array,
+  valleyMaskField: Float32Array,
+  accentMaskField: Float32Array,
+  fractureMaskField: Float32Array,
+  frostMaskField: Float32Array,
+  microField: Float32Array,
+  erosionField: Float32Array,
+  terrainFields: {
+    volcanoField: Float32Array;
+    calderaField: Float32Array;
+    mountainChainField: Float32Array;
+    plateauField: Float32Array;
+    basinField: Float32Array;
+    trenchField: Float32Array;
+    riftField: Float32Array;
+    craterField: Float32Array;
+    iceShelfField: Float32Array;
+    compressionRidgeField: Float32Array;
+    upliftField: Float32Array;
+    depressionField: Float32Array;
+    finalSignedRelief: Float32Array;
+  },
+): CoherentSurfaceContextSample[] {
+  const coherentContext: CoherentSurfaceContextSample[] = new Array(width * height);
+  for (let index = 0; index < width * height; index += 1) {
+    const semanticSample = getSemanticMaskSample(semanticMasks, index);
+    const coherentLandMask = clamp(
+      Math.max(semanticSample.emergentLandMask, semanticSample.continentMask, semanticSample.lowlandMask, semanticSample.uplandMask),
+      0,
+      1,
+    );
+    const coherentWaterMask = clamp(
+      Math.max(semanticSample.oceanMask, semanticSample.openOceanMask, semanticSample.abyssalDepthMask, semanticSample.shallowWaterMask),
+      0,
+      1,
+    );
+    const coherentCoastMask = clamp(Math.max(semanticSample.coastMask, Math.min(coherentLandMask, coherentWaterMask)), 0, 1);
+    const coherentShelfMask = clamp(Math.max(semanticSample.shelfMask, semanticSample.iceShelfMask * 0.55), 0, 1);
+    coherentContext[index] = {
+      worldMasks: {
+        seaLevel: seaLevelField[index],
+        massField: massField[index],
+        landMask: coherentLandMask,
+        waterMask: coherentWaterMask,
+        coastMask: coherentCoastMask,
+        shelfMask: coherentShelfMask,
+      },
+      regionMask: regionMaskField[index],
+      valleyMask: valleyMaskField[index],
+      accentMask: accentMaskField[index],
+      fractureMask: fractureMaskField[index],
+      frostMask: frostMaskField[index],
+      micro: microField[index],
+      erosionField: erosionField[index],
+      terrain: {
+        volcanoField: terrainFields.volcanoField[index],
+        calderaField: terrainFields.calderaField[index],
+        mountainChainField: terrainFields.mountainChainField[index],
+        plateauField: terrainFields.plateauField[index],
+        basinField: terrainFields.basinField[index],
+        trenchField: terrainFields.trenchField[index],
+        riftField: terrainFields.riftField[index],
+        craterField: terrainFields.craterField[index],
+        iceShelfField: terrainFields.iceShelfField[index],
+        compressionRidgeField: terrainFields.compressionRidgeField[index],
+        upliftField: terrainFields.upliftField[index],
+        depressionField: terrainFields.depressionField[index],
+        finalSignedRelief: terrainFields.finalSignedRelief[index],
+      },
+    };
+  }
+  return coherentContext;
 }
 
 function normalizeExclusiveFamily(
