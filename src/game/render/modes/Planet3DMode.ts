@@ -698,6 +698,7 @@ function paintPlanetTextures(
       const terrain = evaluateTerrainSample(nx, ny, nz, terrainModel);
       const canyonNoise = fbm3(nx * 6.4 + phaseA * 0.6, ny * 6.4 - phaseB * 0.4, nz * 6.4 + phaseC * 0.2, seed ^ 0xc2b2ae35, 3);
 
+      // Stage 1: world masks from terrain/noise sampling.
       const seaLevel = clamp(profile.oceanLevel + signature.seaLevelShift, 0.2, 0.82);
       const massField = clamp(primaryMass * 0.72 + plateMass * 0.28 + signature.coverageBias, 0, 1);
       const landMask = smoothstep(seaLevel - 0.035, seaLevel + 0.035, massField);
@@ -705,6 +706,16 @@ function paintPlanetTextures(
       const shorelineDistance = Math.abs(massField - seaLevel);
       const coastMask = (1 - smoothstep(signature.coastWidth, signature.coastWidth + 0.11, shorelineDistance + (coastlineNoise - 0.5) * 0.05));
       const shelfMask = smoothstep(seaLevel - signature.shelfWidth, seaLevel - 0.01, massField) * waterMask;
+      const worldMasks: WorldSurfaceMasks = {
+        seaLevel,
+        massField,
+        landMask,
+        waterMask,
+        coastMask,
+        shelfMask,
+      };
+
+      // Stage 2: archetype-aware terrain signals used for semantic classification.
       const regionMask = smoothstep(0.43, 0.72, regionNoise + plateMass * 0.14) * landMask;
       let accentMask = smoothstep(0.61, 0.89, accentNoise + regionMask * 0.18) * landMask;
       let fractureMask = smoothstep(0.74, 0.96, fractureNoise + plateMass * 0.2) * signature.fractureStrength;
@@ -762,17 +773,62 @@ function paintPlanetTextures(
           break;
       }
 
+      // Stage 3: canonical semantic surface classification.
+      const semanticSample = deriveSemanticTerrainMasks(profile.archetype, {
+        landMask: worldMasks.landMask,
+        waterMask: worldMasks.waterMask,
+        massField: worldMasks.massField,
+        seaLevel: worldMasks.seaLevel,
+        coastMask: worldMasks.coastMask,
+        shelfMask: worldMasks.shelfMask,
+        regionMask,
+        valleyMask,
+        accentMask,
+        fractureMask,
+        frostMask,
+        polarMask,
+        mountainChainMask,
+        plateauMask,
+        basinMask,
+        trenchMask,
+        riftMask,
+        craterMask,
+        terrain,
+      });
+      const classification: TerrainClassificationSample = {
+        worldMasks,
+        regionMask,
+        valleyMask,
+        accentMask,
+        fractureMask,
+        frostMask,
+        polarMask,
+        mountainChainMask,
+        plateauMask,
+        basinMask,
+        trenchMask,
+        riftMask,
+        craterMask,
+        semanticMasks: semanticSample,
+      };
+      const surfaceWeights = deriveCanonicalSurfaceWeights(classification);
+      const canonicalWaterMask = surfaceWeights.waterMask;
+      const canonicalLandMask = surfaceWeights.landMask;
+      const canonicalCoastMask = surfaceWeights.coastMask;
+      const canonicalShelfMask = surfaceWeights.shelfMask;
+
+      // Stage 4: temporary albedo/material logic (still legacy), now downstream of semantic classification.
       const hue = wrapHue(
         profile.baseHue
-        + signature.waterHueShift * waterMask
-        + signature.landHueShift * landMask
+        + signature.waterHueShift * canonicalWaterMask
+        + signature.landHueShift * canonicalLandMask
         + (regionMask - 0.5) * signature.regionHueShift
         + (accentMask - 0.25) * signature.accentHueShift
         + (fractureMask - 0.2) * signature.fractureHueShift,
       );
       const sat = clamp(
-        profile.oceanSaturation * waterMask
-        + profile.landSaturation * landMask
+        profile.oceanSaturation * canonicalWaterMask
+        + profile.landSaturation * canonicalLandMask
         + (regionMask - 0.5) * signature.regionSatShift
         + accentMask * signature.accentSatBoost
         + fractureMask * signature.fractureSatShift
@@ -781,10 +837,10 @@ function paintPlanetTextures(
         86,
       );
       const lightness = clamp(
-        profile.oceanLightness * waterMask
-        + profile.landLightness * landMask
-        + coastMask * signature.coastLightBoost
-        + shelfMask * signature.shelfLightBoost
+        profile.oceanLightness * canonicalWaterMask
+        + profile.landLightness * canonicalLandMask
+        + canonicalCoastMask * signature.coastLightBoost
+        + canonicalShelfMask * signature.shelfLightBoost
         + (regionMask - 0.5) * signature.regionLightShift
         + accentMask * signature.accentLightShift
         + fractureMask * signature.fractureLightShift
@@ -806,11 +862,11 @@ function paintPlanetTextures(
       const layered = blendRgb(
         rgb,
         deepWaterTint,
-        waterMask * smoothstep(seaLevel - 0.25, seaLevel + 0.01, seaLevel - massField) * 0.55,
+        canonicalWaterMask * smoothstep(seaLevel - 0.25, seaLevel + 0.01, seaLevel - massField) * 0.55,
         shelfTint,
-        shelfMask * 0.54,
+        canonicalShelfMask * 0.54,
         coastTint,
-        coastMask * 0.42,
+        canonicalCoastMask * 0.42,
         regionTint,
         regionMask * 0.34,
         accentTint,
@@ -829,12 +885,12 @@ function paintPlanetTextures(
 
       const roughness = clamp(
         profile.roughness
-        + waterMask * signature.roughWaterShift
-        + landMask * signature.roughLandShift
+        + canonicalWaterMask * signature.roughWaterShift
+        + canonicalLandMask * signature.roughLandShift
         + regionMask * 0.05
         + accentMask * signature.roughAccentShift
         + fractureMask * signature.roughFractureShift
-        - shelfMask * 0.05
+        - canonicalShelfMask * 0.05
         - frostMask * 0.08
         + (1 - coastlineNoise) * 0.03,
         0.56,
@@ -851,7 +907,7 @@ function paintPlanetTextures(
         + signature.metalBase
         + accentMask * signature.metalAccentBoost
         + fractureMask * signature.metalFractureBoost
-        - waterMask * 0.06,
+        - canonicalWaterMask * 0.06,
         0,
         profile.archetype === 'mineral' ? 0.18 : 0.035,
       );
@@ -861,8 +917,8 @@ function paintPlanetTextures(
       metalData.data[i + 2] = metalValue;
       metalData.data[i + 3] = 255;
 
-      const baseUplift = clamp(terrain.upliftField + landMask * regionMask * 0.16 + waterMask * shelfMask * 0.14 + micro * 0.07, 0, 1);
-      const baseDepression = clamp(terrain.depressionField + valleyMask * 0.16 + (1 - landMask) * terrain.trenchField * 0.14, 0, 1);
+      const baseUplift = clamp(terrain.upliftField + canonicalLandMask * regionMask * 0.16 + canonicalWaterMask * canonicalShelfMask * 0.14 + micro * 0.07, 0, 1);
+      const baseDepression = clamp(terrain.depressionField + valleyMask * 0.16 + (1 - canonicalLandMask) * terrain.trenchField * 0.14, 0, 1);
 
       let uplift = baseUplift;
       let depression = baseDepression;
@@ -872,7 +928,7 @@ function paintPlanetTextures(
           depression = clamp(depression + basinMask * 0.16 + craterMask * 0.14 + riftMask * 0.08, 0, 1);
           break;
         case 'oceanic':
-          uplift = clamp(uplift * 0.72 + shelfMask * 0.2 + mountainChainMask * 0.08, 0, 1);
+          uplift = clamp(uplift * 0.72 + canonicalShelfMask * 0.2 + mountainChainMask * 0.08, 0, 1);
           depression = clamp(depression + trenchMask * 0.28 + basinMask * 0.22 + (1 - massField) * 0.12, 0, 1);
           break;
         case 'frozen':
@@ -892,7 +948,7 @@ function paintPlanetTextures(
           depression = clamp(depression + riftMask * 0.24 + trenchMask * 0.12 + basinMask * 0.14, 0, 1);
           break;
         case 'terrestrial':
-          uplift = clamp(uplift + mountainChainMask * 0.26 + plateauMask * 0.22 + landMask * 0.08, 0, 1);
+          uplift = clamp(uplift + mountainChainMask * 0.26 + plateauMask * 0.22 + canonicalLandMask * 0.08, 0, 1);
           depression = clamp(depression + valleyMask * 0.28 + basinMask * 0.24 + riftMask * 0.16 + craterMask * 0.06, 0, 1);
           break;
         default:
@@ -914,33 +970,12 @@ function paintPlanetTextures(
       iceCapMask[fieldIndex] = frostMask;
       compressionRidgeMask[fieldIndex] = terrain.compressionRidgeField;
       depositMask[fieldIndex] = profile.archetype === 'mineral' ? accentMask : 0;
-      emergentLandMask[fieldIndex] = landMask;
-      shelfMaskField[fieldIndex] = shelfMask;
+      emergentLandMask[fieldIndex] = canonicalLandMask;
+      shelfMaskField[fieldIndex] = canonicalShelfMask;
       upliftField[fieldIndex] = uplift;
       depressionField[fieldIndex] = depression;
       displacementField[fieldIndex] = signedRelief;
       heightField[fieldIndex] = heightValue;
-      const semanticSample = deriveSemanticTerrainMasks(profile.archetype, {
-        landMask,
-        waterMask,
-        massField,
-        seaLevel,
-        coastMask,
-        shelfMask,
-        regionMask,
-        valleyMask,
-        accentMask,
-        fractureMask,
-        frostMask,
-        polarMask,
-        mountainChainMask,
-        plateauMask,
-        basinMask,
-        trenchMask,
-        riftMask,
-        craterMask,
-        terrain,
-      });
       for (const name of SEMANTIC_MASK_NAMES) {
         semanticMasks[name][fieldIndex] = semanticSample[name];
       }
@@ -1232,6 +1267,32 @@ interface SemanticMaskDeriveInput {
   terrain: TerrainSample;
 }
 
+interface WorldSurfaceMasks {
+  seaLevel: number;
+  massField: number;
+  landMask: number;
+  waterMask: number;
+  coastMask: number;
+  shelfMask: number;
+}
+
+interface TerrainClassificationSample {
+  worldMasks: WorldSurfaceMasks;
+  regionMask: number;
+  valleyMask: number;
+  accentMask: number;
+  fractureMask: number;
+  frostMask: number;
+  polarMask: number;
+  mountainChainMask: number;
+  plateauMask: number;
+  basinMask: number;
+  trenchMask: number;
+  riftMask: number;
+  craterMask: number;
+  semanticMasks: SemanticTerrainMaskSet;
+}
+
 function createSemanticMaskFields(length: number): Record<SemanticMaskName, Float32Array> {
   return Object.fromEntries(SEMANTIC_MASK_NAMES.map((name) => [name, new Float32Array(length)])) as Record<SemanticMaskName, Float32Array>;
 }
@@ -1329,6 +1390,34 @@ function deriveSemanticTerrainMasks(
   }
 
   return masks;
+}
+
+function deriveCanonicalSurfaceWeights(classification: TerrainClassificationSample) {
+  const { semanticMasks } = classification;
+  const semanticWater = clamp(
+    semanticMasks.oceanMask
+    + semanticMasks.openOceanMask
+    + semanticMasks.abyssalDepthMask
+    + semanticMasks.shallowWaterMask
+    + semanticMasks.shelfMask * 0.9,
+    0,
+    1,
+  );
+  const semanticLand = clamp(
+    semanticMasks.continentMask
+    + semanticMasks.emergentLandMask
+    + semanticMasks.rockyIslandMask
+    + semanticMasks.exposedRockMask * 0.6,
+    0,
+    1,
+  );
+
+  return {
+    waterMask: clamp(Math.max(classification.worldMasks.waterMask, semanticWater), 0, 1),
+    landMask: clamp(Math.max(classification.worldMasks.landMask, semanticLand), 0, 1),
+    coastMask: clamp(Math.max(classification.worldMasks.coastMask, semanticMasks.coastMask), 0, 1),
+    shelfMask: clamp(Math.max(classification.worldMasks.shelfMask, semanticMasks.shelfMask), 0, 1),
+  };
 }
 
 function archetypeSignature(archetype: PlanetVisualProfile['archetype']): ArchetypeSignature {
