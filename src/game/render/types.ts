@@ -1,6 +1,7 @@
 export type RenderMode = 'galaxy2d' | 'planet3d';
 
 export type PlanetSeed = number;
+export type PlanetArchetype = 'arid' | 'frozen' | 'volcanic' | 'mineral' | 'fractured' | 'oceanic' | 'barren';
 
 export interface SelectedPlanetRef {
   id: string;
@@ -8,6 +9,7 @@ export interface SelectedPlanetRef {
 }
 
 export interface PlanetVisualProfile {
+  archetype: PlanetArchetype;
   baseHue: number;
   accentHue: number;
   hueDrift: number;
@@ -25,6 +27,12 @@ export interface PlanetVisualProfile {
   landLightness: number;
   lightIntensity: number;
   atmosphereLightness: number;
+  macroBias: number;
+  ridgeWeight: number;
+  craterWeight: number;
+  polarWeight: number;
+  humidityStrength: number;
+  emissiveIntensity: number;
 }
 
 export interface GalaxyNode {

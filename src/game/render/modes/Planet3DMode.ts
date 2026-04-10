@@ -172,24 +172,27 @@ export class Planet3DMode implements RenderModeController {
       const continentNoise = normalizedNoise(vx, vy, vz, profile.continentScale, seedPhaseA, seedPhaseB);
       const ridgeNoise = normalizedNoise(vz, vx, vy, profile.ridgeScale, seedPhaseC, seedPhaseD);
       const craterNoise = normalizedNoise(vy, vz, vx, profile.craterScale, seedPhaseD, seedPhaseA);
-      const macroMask = Math.pow(continentNoise, profile.reliefSharpness);
-      const ridgeMask = Math.max(0, ridgeNoise - 0.5) * 1.8;
-      const craterMask = (0.5 - Math.abs(craterNoise - 0.5)) * 0.12;
+      const macroMask = clamp(Math.pow(continentNoise, profile.reliefSharpness) + profile.macroBias, 0, 1);
+      const ridgeMask = Math.max(0, ridgeNoise - 0.5) * 1.8 * profile.ridgeWeight;
+      const craterMask = (0.5 - Math.abs(craterNoise - 0.5)) * profile.craterWeight;
       const polarMask = Math.pow(Math.abs(latitude), 1.3);
-      const elevation = (macroMask * 0.8 + ridgeMask * 0.35 - craterMask - polarMask * 0.08) * profile.reliefStrength;
+      const elevation = (macroMask * 0.78 + ridgeMask - craterMask - polarMask * profile.polarWeight) * profile.reliefStrength;
 
       position.setXYZ(i, vx * (1 + elevation), vy * (1 + elevation), vz * (1 + elevation));
 
       const oceanMask = macroMask < profile.oceanLevel;
-      const humidity = normalizedNoise(vx, vz, vy, profile.continentScale * 1.35, seedPhaseB, seedPhaseC);
+      const humidity = normalizedNoise(vx, vz, vy, profile.continentScale * 1.35, seedPhaseB, seedPhaseC) * profile.humidityStrength;
+      const secondaryPattern = normalizedNoise(vx + vy, vy - vz, vz + vx, profile.ridgeScale * 0.72, seedPhaseC, seedPhaseA);
       const climateShift = (humidity - 0.5) * profile.hueDrift + latitude * -8;
       const hue = oceanMask
-        ? wrapHue(profile.baseHue + 190 + climateShift * 0.2 + rng.range(-3, 4))
-        : wrapHue(profile.baseHue + climateShift + rng.range(-4, 5));
-      const sat = oceanMask ? profile.oceanSaturation + humidity * 6 : profile.landSaturation + humidity * 4;
+        ? wrapHue(profile.baseHue + 190 + climateShift * 0.2 + secondaryPattern * 6 + rng.range(-3, 4))
+        : wrapHue(profile.baseHue + climateShift + secondaryPattern * 10 + rng.range(-4, 5));
+      const sat = oceanMask
+        ? profile.oceanSaturation + humidity * 8 + secondaryPattern * 4
+        : profile.landSaturation + humidity * 6 + secondaryPattern * 7;
       const light = oceanMask
-        ? profile.oceanLightness + ridgeMask * 12 + latitude * 5
-        : profile.landLightness + elevation * 120 + humidity * 8 - polarMask * 7;
+        ? profile.oceanLightness + ridgeMask * 8 + latitude * 5 + secondaryPattern * 5
+        : profile.landLightness + elevation * 120 + humidity * 6 + secondaryPattern * 10 - polarMask * 7;
       const color = new THREE.Color(`hsl(${Math.round(hue)}, ${Math.round(sat)}%, ${Math.round(light)}%)`);
 
       colors.push(color.r, color.g, color.b);
@@ -204,7 +207,7 @@ export class Planet3DMode implements RenderModeController {
       metalness: profile.metalness,
       flatShading: false,
       emissive: new THREE.Color(`hsl(${profile.accentHue}, 45%, ${profile.atmosphereLightness}%)`),
-      emissiveIntensity: 0.04,
+      emissiveIntensity: profile.emissiveIntensity,
     });
 
     this.planet = new THREE.Mesh(geometry, material);
@@ -303,7 +306,7 @@ export class Planet3DMode implements RenderModeController {
     if (!this.inspectTitle || !this.inspectSubtitle || !this.inspectTags) return;
 
     this.inspectTitle.textContent = `Planet ${planetRef.id.toUpperCase()}`;
-    this.inspectSubtitle.textContent = `Seed ${planetRef.seed.toString(16).toUpperCase().padStart(8, '0')}`;
+    this.inspectSubtitle.textContent = `${toDisplayArchetype(profile.archetype)} world · Seed ${planetRef.seed.toString(16).toUpperCase().padStart(8, '0')}`;
 
     const tags = derivePlanetTags(planetRef.seed, profile);
     this.inspectTags.innerHTML = '';
@@ -321,16 +324,14 @@ function derivePlanetTags(seed: number, profile: PlanetVisualProfile): string[] 
   const rng = new SeededRng(seed ^ 0x9e3779b9);
 
   const candidates: Array<{ label: string; score: number }> = [
-    { label: 'oceanic', score: normalize(profile.oceanLevel, 0.44, 0.62) },
-    { label: 'arid', score: normalize(0.47 - profile.oceanLevel, 0.06, 0.29) },
-    { label: 'high-relief', score: normalize(profile.reliefStrength, 0.12, 0.19) },
-    { label: 'fractured', score: normalize(profile.craterScale, 5.8, 8.0) + normalize(profile.reliefSharpness, 1.2, 1.75) * 0.35 },
-    { label: 'rugged', score: normalize(profile.roughness, 0.64, 0.92) + normalize(profile.ridgeScale, 9.0, 16.5) * 0.25 },
-    { label: 'temperate', score: normalize(58 - Math.abs(profile.baseHue - 220), 8, 58) * normalize(profile.oceanLevel, 0.3, 0.58) },
-    { label: 'polar', score: normalize(profile.atmosphereLightness, 77, 82) + normalize(0.3 - profile.hueDrift, -22, 0.3) * 0.2 },
-    { label: 'metallic', score: normalize(profile.metalness, 0.06, 0.12) + normalize(profile.roughness, 0.36, 0.62) * 0.2 },
-    { label: 'mineral-rich', score: normalize(profile.landSaturation, 52, 68) + normalize(profile.metalness, 0.04, 0.12) * 0.5 },
-    { label: 'volatile', score: normalize(profile.hueDrift, 4, 24) + normalize(profile.lightIntensity, 1.22, 1.75) * 0.3 },
+    { label: profile.archetype, score: 1.25 },
+    { label: 'high-relief', score: normalize(profile.reliefStrength, 0.12, 0.23) + normalize(profile.ridgeWeight, 0.2, 0.6) * 0.4 },
+    { label: 'fractured crust', score: normalize(profile.craterWeight, 0.14, 0.36) + normalize(profile.reliefSharpness, 1.2, 2.3) * 0.35 },
+    { label: 'metallic sheen', score: normalize(profile.metalness, 0.06, 0.28) + normalize(0.78 - profile.roughness, 0, 0.45) * 0.22 },
+    { label: 'deep basins', score: normalize(profile.oceanLevel, 0.45, 0.82) + normalize(0.1 - profile.macroBias, -0.2, 0.1) * 0.3 },
+    { label: 'dry plateaus', score: normalize(0.3 - profile.oceanLevel, 0.02, 0.3) + normalize(profile.macroBias, 0.12, 0.44) * 0.25 },
+    { label: 'volatile mantle', score: normalize(profile.emissiveIntensity, 0.03, 0.12) + normalize(profile.lightIntensity, 1.2, 1.95) * 0.24 },
+    { label: 'polar stress', score: normalize(profile.polarWeight, 0.14, 0.44) + normalize(profile.atmosphereLightness, 72, 88) * 0.2 },
   ];
 
   const picked = candidates
@@ -343,9 +344,13 @@ function derivePlanetTags(seed: number, profile: PlanetVisualProfile): string[] 
     .slice(0, 3)
     .map((candidate) => candidate.label);
 
-  if (picked.length >= 2) return picked;
+  if (picked.length >= 2) return picked.slice(0, 3);
   if (picked.length === 1) return [picked[0], 'charted'];
   return ['charted', 'stable'];
+}
+
+function toDisplayArchetype(archetype: PlanetVisualProfile['archetype']) {
+  return `${archetype.charAt(0).toUpperCase()}${archetype.slice(1)}`;
 }
 
 function normalizedNoise(a: number, b: number, c: number, scale: number, phaseA: number, phaseB: number) {
