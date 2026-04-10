@@ -1,10 +1,20 @@
 import type { GalaxyData, GalaxyNode } from '@/game/render/types';
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
+import type { SelectedPlanetRef } from '@/game/render/types';
 
 interface ViewTransform {
   x: number;
   y: number;
   zoom: number;
+}
+
+export interface Galaxy2DViewSnapshot {
+  transform: ViewTransform;
+}
+
+interface Galaxy2DModeOptions {
+  initialSelectedPlanet?: SelectedPlanetRef | null;
+  initialViewSnapshot?: Galaxy2DViewSnapshot | null;
 }
 
 export class Galaxy2DMode implements RenderModeController {
@@ -42,10 +52,24 @@ export class Galaxy2DMode implements RenderModeController {
 
   private readonly maxZoom = 2.8;
 
+  private entryTransition:
+    | {
+        nodeId: string;
+        startedAt: number;
+        durationMs: number;
+      }
+    | null = null;
+
+  private initialViewSnapshot: Galaxy2DViewSnapshot | null = null;
+
   constructor(
     private readonly galaxy: GalaxyData,
     private readonly context: ModeContext,
-  ) {}
+    options?: Galaxy2DModeOptions,
+  ) {
+    this.selectedNodeId = options?.initialSelectedPlanet?.id ?? null;
+    this.initialViewSnapshot = options?.initialViewSnapshot ?? null;
+  }
 
   mount() {
     if (!this.ctx) return;
@@ -60,7 +84,12 @@ export class Galaxy2DMode implements RenderModeController {
     window.addEventListener('pointercancel', this.onPointerUp);
     this.canvas.addEventListener('wheel', this.onWheel, { passive: false });
 
-    this.centerMap();
+    if (this.initialViewSnapshot) {
+      this.transform = { ...this.initialViewSnapshot.transform };
+      this.clampTransform();
+    } else {
+      this.centerMap();
+    }
     this.draw();
   }
 
@@ -79,6 +108,16 @@ export class Galaxy2DMode implements RenderModeController {
   }
 
   update() {
+    if (this.entryTransition) {
+      this.invalidate();
+      const elapsed = performance.now() - this.entryTransition.startedAt;
+      if (elapsed >= this.entryTransition.durationMs) {
+        this.entryTransition = null;
+        this.context.onRequestMode('planet3d');
+        return;
+      }
+    }
+
     if (!this.dirty) return;
     this.draw();
     this.dirty = false;
@@ -92,10 +131,12 @@ export class Galaxy2DMode implements RenderModeController {
     this.canvas.removeEventListener('wheel', this.onWheel);
     this.canvas.remove();
     this.context.host.style.cursor = 'default';
+    this.entryTransition = null;
   }
 
   private readonly onPointerDown = (event: PointerEvent) => {
     if (event.button !== 0) return;
+    if (this.entryTransition) return;
     this.pointerId = event.pointerId;
     this.isDragging = true;
     this.lastX = event.clientX;
@@ -107,6 +148,7 @@ export class Galaxy2DMode implements RenderModeController {
   };
 
   private readonly onPointerMove = (event: PointerEvent) => {
+    if (this.entryTransition) return;
     const rect = this.canvas.getBoundingClientRect();
     const localX = event.clientX - rect.left;
     const localY = event.clientY - rect.top;
@@ -143,8 +185,12 @@ export class Galaxy2DMode implements RenderModeController {
       if (node) {
         this.selectedNodeId = node.id;
         this.context.onSelectPlanet({ id: node.id, seed: node.seed });
+        this.entryTransition = {
+          nodeId: node.id,
+          startedAt: performance.now(),
+          durationMs: 220,
+        };
         this.invalidate();
-        this.context.onRequestMode('planet3d');
       }
     }
 
@@ -155,6 +201,7 @@ export class Galaxy2DMode implements RenderModeController {
   };
 
   private readonly onWheel = (event: WheelEvent) => {
+    if (this.entryTransition) return;
     event.preventDefault();
     const previous = this.transform.zoom;
     const next = clamp(previous * (event.deltaY < 0 ? 1.08 : 0.92), this.minZoom, this.maxZoom);
@@ -215,8 +262,10 @@ export class Galaxy2DMode implements RenderModeController {
 
     const isHovered = node.id === this.hoveredNodeId;
     const isSelected = node.id === this.selectedNodeId;
+    const transitionSelected = node.id === this.entryTransition?.nodeId;
+    const transitionT = transitionSelected ? this.getEntryProgress() : 0;
     const alpha = node.populationBand === 'dense' ? 0.92 : node.populationBand === 'settled' ? 0.72 : 0.5;
-    const radius = this.getNodeRadius(node) * (isHovered ? 1.18 : 1);
+    const radius = this.getNodeRadius(node) * (isHovered ? 1.18 : 1) + transitionT * 1.8;
     const fillColor =
       node.populationBand === 'dense'
         ? `rgba(180, 235, 255, ${alpha})`
@@ -229,18 +278,18 @@ export class Galaxy2DMode implements RenderModeController {
     this.ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
     this.ctx.fill();
 
-    if (isHovered || isSelected) {
+    if (isHovered || isSelected || transitionSelected) {
       this.ctx.beginPath();
-      this.ctx.strokeStyle = isSelected ? 'rgba(149, 236, 255, 0.96)' : 'rgba(149, 236, 255, 0.72)';
+      this.ctx.strokeStyle = isSelected || transitionSelected ? 'rgba(149, 236, 255, 0.96)' : 'rgba(149, 236, 255, 0.72)';
       this.ctx.lineWidth = clamp(1.6 / this.transform.zoom, 0.8, 2);
       this.ctx.arc(node.x, node.y, radius + this.getFocusHalo(), 0, Math.PI * 2);
       this.ctx.stroke();
 
-      if (isSelected) {
+      if (isSelected || transitionSelected) {
         this.ctx.beginPath();
-        this.ctx.strokeStyle = 'rgba(149, 236, 255, 0.48)';
+        this.ctx.strokeStyle = transitionSelected ? `rgba(149, 236, 255, ${0.45 + transitionT * 0.45})` : 'rgba(149, 236, 255, 0.48)';
         this.ctx.lineWidth = clamp(1 / this.transform.zoom, 0.6, 1.4);
-        this.ctx.arc(node.x, node.y, radius + this.getFocusHalo() + 4.4, 0, Math.PI * 2);
+        this.ctx.arc(node.x, node.y, radius + this.getFocusHalo() + 4.4 + transitionT * 9.5, 0, Math.PI * 2);
         this.ctx.stroke();
       }
     }
@@ -327,6 +376,23 @@ export class Galaxy2DMode implements RenderModeController {
   private getFocusHalo() {
     const zoomT = normalize(this.transform.zoom, this.minZoom, this.maxZoom);
     return 5.4 - zoomT * 2.2;
+  }
+
+  setSelectedPlanet(nextPlanet: SelectedPlanetRef) {
+    this.selectedNodeId = nextPlanet.id;
+    this.invalidate();
+  }
+
+  getViewSnapshot(): Galaxy2DViewSnapshot {
+    return {
+      transform: { ...this.transform },
+    };
+  }
+
+  private getEntryProgress() {
+    if (!this.entryTransition) return 0;
+    const elapsed = performance.now() - this.entryTransition.startedAt;
+    return clamp(elapsed / this.entryTransition.durationMs, 0, 1);
   }
 }
 
