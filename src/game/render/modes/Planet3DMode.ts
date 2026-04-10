@@ -65,7 +65,7 @@ export class Planet3DMode implements RenderModeController {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.06;
+    renderer.toneMappingExposure = 1;
     renderer.domElement.className = 'render-surface render-surface--planet';
 
     this.renderer = renderer;
@@ -74,7 +74,7 @@ export class Planet3DMode implements RenderModeController {
     this.scene.background = new THREE.Color(0x040811);
     this.scene.add(this.root);
 
-    const ambient = new THREE.AmbientLight(0x9ed4ff, 0.22);
+    const ambient = new THREE.AmbientLight(0x9ed4ff, 0.34);
     this.scene.add(ambient);
 
     this.keyLight = new THREE.DirectionalLight(0xddefff, 1.22);
@@ -241,15 +241,16 @@ export class Planet3DMode implements RenderModeController {
       roughnessMap: maps.roughnessMap,
       metalnessMap: maps.metalnessMap,
       bumpMap: maps.bumpMap,
-      bumpScale: profile.reliefStrength * 0.22,
+      bumpScale: 0.05 + profile.reliefStrength * 0.08,
       emissiveMap: maps.emissiveMap,
       roughness: profile.roughness,
       metalness: profile.metalness,
       flatShading: false,
       emissive: new THREE.Color(`hsl(${profile.accentHue}, 45%, ${profile.atmosphereLightness}%)`),
       emissiveIntensity: profile.emissiveIntensity,
-      clearcoat: profile.archetype === 'frozen' || profile.archetype === 'mineral' ? 0.28 : 0.08,
-      clearcoatRoughness: profile.archetype === 'frozen' ? 0.2 : 0.45,
+      clearcoat: profile.archetype === 'frozen' || profile.archetype === 'mineral' ? 0.09 : 0.03,
+      clearcoatRoughness: profile.archetype === 'frozen' ? 0.72 : 0.86,
+      specularIntensity: profile.archetype === 'mineral' ? 0.42 : 0.28,
     });
 
     this.planet = new THREE.Mesh(geometry, material);
@@ -387,13 +388,13 @@ export class Planet3DMode implements RenderModeController {
 
     const atmosphereMaterial = new THREE.ShaderMaterial({
       transparent: true,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending,
       depthWrite: false,
       side: THREE.BackSide,
       uniforms: {
         glowColor: { value: new THREE.Color(`hsl(${profile.accentHue}, 68%, ${profile.atmosphereLightness}%)`) },
         glowStrength: { value: intensity },
-        glowFalloff: { value: profile.archetype === 'frozen' ? 2.7 : 2.2 },
+        glowFalloff: { value: profile.archetype === 'frozen' ? 3.6 : 3.1 },
       },
       vertexShader: `
         varying vec3 vNormalW;
@@ -415,7 +416,8 @@ export class Planet3DMode implements RenderModeController {
 
         void main() {
           float fresnel = pow(1.0 - max(dot(normalize(vNormalW), normalize(vViewDirW)), 0.0), glowFalloff);
-          gl_FragColor = vec4(glowColor * fresnel * glowStrength, fresnel * glowStrength);
+          float alpha = fresnel * glowStrength * 0.65;
+          gl_FragColor = vec4(glowColor * alpha, alpha);
         }
       `,
     });
@@ -494,64 +496,64 @@ function lightingByArchetype(archetype: PlanetVisualProfile['archetype']): Arche
   switch (archetype) {
     case 'volcanic':
       return {
-        keyColor: '#ffd9b3',
-        fillColor: '#864737',
+        keyColor: '#ffd9bc',
+        fillColor: '#7d4c3f',
         rimColor: '#ff7c42',
-        keyIntensity: 1.38,
-        fillIntensity: 0.24,
-        rimIntensity: 1.52,
+        keyIntensity: 1.2,
+        fillIntensity: 0.33,
+        rimIntensity: 0.98,
         keyPosition: [2.8, 1.5, 1.2],
         fillPosition: [-1.6, -1.2, -1.8],
         rimPosition: [-1.9, -1.0, 2.3],
-        exposure: 1.1,
+        exposure: 1.03,
       };
     case 'frozen':
       return {
         keyColor: '#d7ebff',
         fillColor: '#7db7f7',
         rimColor: '#b6f1ff',
-        keyIntensity: 1.24,
-        fillIntensity: 0.34,
-        rimIntensity: 1.2,
+        keyIntensity: 1.16,
+        fillIntensity: 0.4,
+        rimIntensity: 0.9,
         keyPosition: [2.2, 2.1, 1.1],
         fillPosition: [-2.3, -0.7, -1.9],
         rimPosition: [-1.7, -1.0, 2.0],
-        exposure: 1.05,
+        exposure: 1.04,
       };
     case 'mineral':
       return {
         keyColor: '#ffe5c8',
         fillColor: '#9ba8ba',
         rimColor: '#ffd5a4',
-        keyIntensity: 1.32,
-        fillIntensity: 0.29,
-        rimIntensity: 1.28,
+        keyIntensity: 1.15,
+        fillIntensity: 0.36,
+        rimIntensity: 0.86,
         keyPosition: [2.5, 1.9, 1.4],
         fillPosition: [-2.4, -0.8, -1.6],
         rimPosition: [-1.8, -1.2, 2.15],
-        exposure: 1.04,
+        exposure: 1.01,
       };
     case 'oceanic':
       return {
         keyColor: '#c7e9ff',
         fillColor: '#4d86bc',
         rimColor: '#77ddff',
-        keyIntensity: 1.2,
-        fillIntensity: 0.37,
-        rimIntensity: 1.18,
+        keyIntensity: 1.12,
+        fillIntensity: 0.44,
+        rimIntensity: 0.84,
         keyPosition: [2.1, 2.0, 1.3],
         fillPosition: [-2.2, -0.5, -1.7],
         rimPosition: [-1.6, -1.2, 2.0],
-        exposure: 1.08,
+        exposure: 1.05,
       };
     case 'arid':
       return {
         keyColor: '#ffe4b7',
         fillColor: '#9c7a53',
         rimColor: '#ffbe83',
-        keyIntensity: 1.28,
-        fillIntensity: 0.25,
-        rimIntensity: 1.16,
+        keyIntensity: 1.14,
+        fillIntensity: 0.35,
+        rimIntensity: 0.82,
         keyPosition: [2.7, 1.6, 1.2],
         fillPosition: [-2.0, -1.0, -1.8],
         rimPosition: [-1.75, -1.15, 2.0],
@@ -562,13 +564,13 @@ function lightingByArchetype(archetype: PlanetVisualProfile['archetype']): Arche
         keyColor: '#ebd6ff',
         fillColor: '#6d5fa1',
         rimColor: '#d3a8ff',
-        keyIntensity: 1.31,
-        fillIntensity: 0.24,
-        rimIntensity: 1.32,
+        keyIntensity: 1.18,
+        fillIntensity: 0.31,
+        rimIntensity: 0.9,
         keyPosition: [2.6, 1.8, 1.4],
         fillPosition: [-2.1, -0.9, -1.9],
         rimPosition: [-1.9, -1.15, 2.2],
-        exposure: 1.03,
+        exposure: 1.02,
       };
     case 'barren':
     default:
@@ -576,28 +578,28 @@ function lightingByArchetype(archetype: PlanetVisualProfile['archetype']): Arche
         keyColor: '#f1e2cc',
         fillColor: '#7f8794',
         rimColor: '#d9cab8',
-        keyIntensity: 1.18,
-        fillIntensity: 0.2,
-        rimIntensity: 1.02,
+        keyIntensity: 1.08,
+        fillIntensity: 0.32,
+        rimIntensity: 0.74,
         keyPosition: [2.4, 1.8, 1.2],
         fillPosition: [-2.4, -0.9, -1.8],
         rimPosition: [-1.7, -1.2, 2.0],
-        exposure: 1.0,
+        exposure: 0.99,
       };
   }
 }
 
 function atmosphereStrength(archetype: PlanetVisualProfile['archetype']) {
   switch (archetype) {
-    case 'oceanic': return 0.42;
-    case 'frozen': return 0.36;
-    case 'volcanic': return 0.28;
-    case 'arid': return 0.24;
-    case 'fractured': return 0.22;
-    case 'mineral': return 0.18;
+    case 'oceanic': return 0.14;
+    case 'frozen': return 0.12;
+    case 'volcanic': return 0.08;
+    case 'arid': return 0.06;
+    case 'fractured': return 0.07;
+    case 'mineral': return 0.05;
     case 'barren':
     default:
-      return 0.1;
+      return 0;
   }
 }
 
@@ -702,13 +704,13 @@ function paintPlanetTextures(
       const nz = Math.cos(latitude) * Math.sin(longitude);
 
       const macro = fbm3(nx * profile.continentScale, ny * profile.continentScale, nz * profile.continentScale, seed + 17, 4);
-      const medium = fbm3(nx * profile.ridgeScale * 0.2, ny * profile.ridgeScale * 0.2, nz * profile.ridgeScale * 0.2, seed + 313, 3);
-      const micro = fbm3(nx * 18.5, ny * 18.5, nz * 18.5, seed + 997, 2);
+      const medium = fbm3(nx * profile.ridgeScale * 0.16, ny * profile.ridgeScale * 0.16, nz * profile.ridgeScale * 0.16, seed + 313, 2);
+      const micro = fbm3(nx * 10.4, ny * 10.4, nz * 10.4, seed + 997, 2);
 
-      const bands = Math.sin((ny + phaseA) * signature.bandFrequency + medium * 2.4 + phaseB) * 0.5 + 0.5;
-      const fracture = Math.abs(Math.sin((nx + nz + phaseC) * signature.fractureFrequency + micro * 5.0));
-      const basin = clamp(Math.pow(1 - Math.abs(macro - 0.5) * 2, 1.5) * 0.7 + medium * 0.3, 0, 1);
-      const coverage = clamp(macro * 0.7 + medium * 0.2 + bands * 0.1 + signature.coverageBias, 0, 1);
+      const bands = Math.sin((ny + phaseA) * signature.bandFrequency + medium * 1.4 + phaseB) * 0.5 + 0.5;
+      const fracture = Math.abs(Math.sin((nx + nz + phaseC) * signature.fractureFrequency + medium * 2.1));
+      const basin = clamp(Math.pow(1 - Math.abs(macro - 0.5) * 2, 1.6) * 0.82 + medium * 0.18, 0, 1);
+      const coverage = clamp(macro * 0.8 + medium * 0.12 + bands * 0.08 + signature.coverageBias, 0, 1);
       const ocean = coverage < profile.oceanLevel;
 
       const hue = wrapHue(
@@ -717,14 +719,14 @@ function paintPlanetTextures(
         + (bands - 0.5) * signature.hueVariance
         + (fracture - 0.5) * signature.fractureHueShift,
       );
-      const sat = clamp((ocean ? profile.oceanSaturation : profile.landSaturation) + (medium - 0.5) * 18 + signature.saturationOffset, 8, 92);
+      const sat = clamp((ocean ? profile.oceanSaturation : profile.landSaturation) + (medium - 0.5) * 12 + signature.saturationOffset, 12, 86);
       const lightness = clamp(
         (ocean ? profile.oceanLightness : profile.landLightness)
         + (macro - 0.5) * signature.macroLightness
         + (basin - 0.5) * signature.basinLightness
         - Math.abs(ny) * signature.polarDarkening,
-        8,
-        92,
+        16,
+        82,
       );
 
       const rgb = hslToRgb(hue / 360, sat / 100, lightness / 100);
@@ -734,28 +736,28 @@ function paintPlanetTextures(
       colorData.data[i + 2] = rgb[2];
       colorData.data[i + 3] = 255;
 
-      const roughness = clamp(profile.roughness + (ocean ? signature.waterSmoothness : signature.landRoughBoost) + (1 - micro) * 0.12, 0.08, 0.98);
+      const roughness = clamp(profile.roughness + (ocean ? signature.waterSmoothness : signature.landRoughBoost) + (1 - medium) * 0.08, 0.2, 0.95);
       const roughValue = Math.round(roughness * 255);
       roughData.data[i] = roughValue;
       roughData.data[i + 1] = roughValue;
       roughData.data[i + 2] = roughValue;
       roughData.data[i + 3] = 255;
 
-      const metal = clamp(profile.metalness + signature.metalBias + (fracture > 0.82 ? signature.metalVeinBoost : 0), 0, 1);
+      const metal = clamp(profile.metalness + signature.metalBias + (fracture > 0.88 ? signature.metalVeinBoost : 0), 0, 0.78);
       const metalValue = Math.round(metal * 255);
       metalData.data[i] = metalValue;
       metalData.data[i + 1] = metalValue;
       metalData.data[i + 2] = metalValue;
       metalData.data[i + 3] = 255;
 
-      const bump = clamp(macro * 0.46 + medium * 0.38 + micro * 0.16 + signature.bumpBias - (ocean ? signature.oceanBasinFlatten : 0), 0, 1);
+      const bump = clamp(macro * 0.62 + medium * 0.28 + micro * 0.1 + signature.bumpBias - (ocean ? signature.oceanBasinFlatten : 0), 0.08, 0.92);
       const bumpValue = Math.round(bump * 255);
       bumpData.data[i] = bumpValue;
       bumpData.data[i + 1] = bumpValue;
       bumpData.data[i + 2] = bumpValue;
       bumpData.data[i + 3] = 255;
 
-      const emissiveMask = clamp(signature.emissiveBase + (fracture > signature.emissiveThreshold ? (fracture - signature.emissiveThreshold) * signature.emissiveGain : 0), 0, 1);
+      const emissiveMask = clamp(signature.emissiveBase + (fracture > signature.emissiveThreshold ? (fracture - signature.emissiveThreshold) * signature.emissiveGain : 0), 0, 0.58);
       const eHue = wrapHue(profile.accentHue + signature.emissiveHueShift);
       const eRgb = hslToRgb(eHue / 360, clamp(0.55 + signature.emissiveSaturationBoost, 0, 1), clamp(0.2 + emissiveMask * 0.7, 0, 1));
       emissiveData.data[i] = Math.round(eRgb[0] * emissiveMask);
@@ -800,20 +802,20 @@ interface ArchetypeSignature {
 function archetypeSignature(archetype: PlanetVisualProfile['archetype']): ArchetypeSignature {
   switch (archetype) {
     case 'volcanic':
-      return { coverageBias: 0.22, bandFrequency: 6.3, fractureFrequency: 14.8, hueVariance: 22, fractureHueShift: 12, landHueShift: 10, waterHueShift: 5, saturationOffset: 8, macroLightness: 18, basinLightness: -10, polarDarkening: 8, waterSmoothness: -0.1, landRoughBoost: 0.08, metalBias: 0.04, metalVeinBoost: 0.15, bumpBias: 0.12, oceanBasinFlatten: 0.02, emissiveBase: 0.03, emissiveThreshold: 0.82, emissiveGain: 1.35, emissiveHueShift: -8, emissiveSaturationBoost: 0.35 };
+      return { coverageBias: 0.26, bandFrequency: 5.8, fractureFrequency: 12.8, hueVariance: 14, fractureHueShift: 14, landHueShift: 12, waterHueShift: 5, saturationOffset: 10, macroLightness: 14, basinLightness: -12, polarDarkening: 4, waterSmoothness: -0.06, landRoughBoost: 0.1, metalBias: 0.03, metalVeinBoost: 0.08, bumpBias: 0.12, oceanBasinFlatten: 0.02, emissiveBase: 0.03, emissiveThreshold: 0.86, emissiveGain: 1.05, emissiveHueShift: -10, emissiveSaturationBoost: 0.28 };
     case 'frozen':
-      return { coverageBias: -0.05, bandFrequency: 8.4, fractureFrequency: 11.2, hueVariance: 16, fractureHueShift: -10, landHueShift: -18, waterHueShift: -6, saturationOffset: -6, macroLightness: 24, basinLightness: 12, polarDarkening: -7, waterSmoothness: -0.2, landRoughBoost: -0.08, metalBias: 0.02, metalVeinBoost: 0.05, bumpBias: -0.04, oceanBasinFlatten: 0.06, emissiveBase: 0.0, emissiveThreshold: 0.92, emissiveGain: 0.25, emissiveHueShift: -25, emissiveSaturationBoost: 0.05 };
+      return { coverageBias: -0.1, bandFrequency: 10.8, fractureFrequency: 8.8, hueVariance: 9, fractureHueShift: -6, landHueShift: -24, waterHueShift: -10, saturationOffset: -12, macroLightness: 18, basinLightness: 10, polarDarkening: -12, waterSmoothness: -0.22, landRoughBoost: -0.12, metalBias: 0.01, metalVeinBoost: 0.03, bumpBias: -0.06, oceanBasinFlatten: 0.12, emissiveBase: 0.0, emissiveThreshold: 0.95, emissiveGain: 0.18, emissiveHueShift: -22, emissiveSaturationBoost: 0.03 };
     case 'arid':
-      return { coverageBias: 0.12, bandFrequency: 4.8, fractureFrequency: 8.6, hueVariance: 12, fractureHueShift: 6, landHueShift: 8, waterHueShift: 0, saturationOffset: -3, macroLightness: 15, basinLightness: -5, polarDarkening: 4, waterSmoothness: -0.06, landRoughBoost: 0.11, metalBias: -0.01, metalVeinBoost: 0.04, bumpBias: 0.08, oceanBasinFlatten: 0.12, emissiveBase: 0.0, emissiveThreshold: 0.95, emissiveGain: 0.18, emissiveHueShift: 6, emissiveSaturationBoost: 0.06 };
+      return { coverageBias: 0.14, bandFrequency: 3.6, fractureFrequency: 6.6, hueVariance: 8, fractureHueShift: 4, landHueShift: 10, waterHueShift: 0, saturationOffset: -6, macroLightness: 12, basinLightness: -6, polarDarkening: 5, waterSmoothness: -0.05, landRoughBoost: 0.13, metalBias: -0.02, metalVeinBoost: 0.03, bumpBias: 0.09, oceanBasinFlatten: 0.15, emissiveBase: 0.0, emissiveThreshold: 0.97, emissiveGain: 0.12, emissiveHueShift: 6, emissiveSaturationBoost: 0.03 };
     case 'mineral':
-      return { coverageBias: 0.08, bandFrequency: 7.2, fractureFrequency: 12.6, hueVariance: 14, fractureHueShift: 8, landHueShift: 5, waterHueShift: 0, saturationOffset: -8, macroLightness: 12, basinLightness: 6, polarDarkening: 6, waterSmoothness: -0.05, landRoughBoost: -0.03, metalBias: 0.18, metalVeinBoost: 0.22, bumpBias: 0.05, oceanBasinFlatten: 0.04, emissiveBase: 0.01, emissiveThreshold: 0.88, emissiveGain: 0.32, emissiveHueShift: 18, emissiveSaturationBoost: 0.12 };
+      return { coverageBias: 0.08, bandFrequency: 6.2, fractureFrequency: 10.8, hueVariance: 10, fractureHueShift: 10, landHueShift: 6, waterHueShift: 0, saturationOffset: -14, macroLightness: 11, basinLightness: 4, polarDarkening: 6, waterSmoothness: -0.04, landRoughBoost: -0.02, metalBias: 0.22, metalVeinBoost: 0.16, bumpBias: 0.05, oceanBasinFlatten: 0.06, emissiveBase: 0.0, emissiveThreshold: 0.9, emissiveGain: 0.24, emissiveHueShift: 18, emissiveSaturationBoost: 0.08 };
     case 'oceanic':
-      return { coverageBias: -0.16, bandFrequency: 5.4, fractureFrequency: 9.2, hueVariance: 20, fractureHueShift: -12, landHueShift: -4, waterHueShift: -24, saturationOffset: 5, macroLightness: 16, basinLightness: 16, polarDarkening: -3, waterSmoothness: -0.24, landRoughBoost: -0.04, metalBias: -0.03, metalVeinBoost: 0.01, bumpBias: -0.02, oceanBasinFlatten: 0.16, emissiveBase: 0.0, emissiveThreshold: 0.95, emissiveGain: 0.16, emissiveHueShift: -30, emissiveSaturationBoost: 0.06 };
+      return { coverageBias: -0.2, bandFrequency: 4.6, fractureFrequency: 7.2, hueVariance: 12, fractureHueShift: -10, landHueShift: -6, waterHueShift: -28, saturationOffset: 8, macroLightness: 14, basinLightness: 14, polarDarkening: -7, waterSmoothness: -0.26, landRoughBoost: -0.06, metalBias: -0.04, metalVeinBoost: 0.01, bumpBias: -0.05, oceanBasinFlatten: 0.2, emissiveBase: 0.0, emissiveThreshold: 0.97, emissiveGain: 0.1, emissiveHueShift: -28, emissiveSaturationBoost: 0.04 };
     case 'fractured':
-      return { coverageBias: 0.16, bandFrequency: 9.6, fractureFrequency: 17.5, hueVariance: 26, fractureHueShift: 24, landHueShift: 18, waterHueShift: 6, saturationOffset: 3, macroLightness: 10, basinLightness: -12, polarDarkening: 9, waterSmoothness: -0.08, landRoughBoost: 0.14, metalBias: 0.04, metalVeinBoost: 0.18, bumpBias: 0.15, oceanBasinFlatten: 0.03, emissiveBase: 0.015, emissiveThreshold: 0.78, emissiveGain: 0.9, emissiveHueShift: 22, emissiveSaturationBoost: 0.18 };
+      return { coverageBias: 0.2, bandFrequency: 8.8, fractureFrequency: 14.6, hueVariance: 18, fractureHueShift: 18, landHueShift: 16, waterHueShift: 6, saturationOffset: 0, macroLightness: 9, basinLightness: -10, polarDarkening: 8, waterSmoothness: -0.06, landRoughBoost: 0.12, metalBias: 0.03, metalVeinBoost: 0.12, bumpBias: 0.14, oceanBasinFlatten: 0.03, emissiveBase: 0.01, emissiveThreshold: 0.82, emissiveGain: 0.62, emissiveHueShift: 20, emissiveSaturationBoost: 0.12 };
     case 'barren':
     default:
-      return { coverageBias: 0.1, bandFrequency: 4.2, fractureFrequency: 7.5, hueVariance: 8, fractureHueShift: 0, landHueShift: 4, waterHueShift: 0, saturationOffset: -12, macroLightness: 9, basinLightness: -4, polarDarkening: 7, waterSmoothness: -0.03, landRoughBoost: 0.08, metalBias: 0.01, metalVeinBoost: 0.03, bumpBias: 0.06, oceanBasinFlatten: 0.05, emissiveBase: 0.0, emissiveThreshold: 0.97, emissiveGain: 0.1, emissiveHueShift: 0, emissiveSaturationBoost: 0.02 };
+      return { coverageBias: 0.12, bandFrequency: 3.2, fractureFrequency: 5.6, hueVariance: 4, fractureHueShift: 0, landHueShift: 2, waterHueShift: 0, saturationOffset: -18, macroLightness: 8, basinLightness: -4, polarDarkening: 8, waterSmoothness: -0.02, landRoughBoost: 0.08, metalBias: 0.0, metalVeinBoost: 0.01, bumpBias: 0.05, oceanBasinFlatten: 0.06, emissiveBase: 0.0, emissiveThreshold: 0.98, emissiveGain: 0.08, emissiveHueShift: 0, emissiveSaturationBoost: 0.0 };
   }
 }
 
