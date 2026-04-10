@@ -223,11 +223,11 @@ export class Planet3DMode implements RenderModeController {
       normalMap: maps.normalMap,
       normalScale: new THREE.Vector2(0.34, 0.34),
       emissiveMap: maps.emissiveMap,
-      roughness: 0.9,
-      metalness: profile.archetype === 'mineral' ? 0.08 : 0.004,
+      roughness: 1,
+      metalness: 1,
       flatShading: false,
       emissive: new THREE.Color(0xffffff),
-      emissiveIntensity: profile.archetype === 'volcanic' ? 0.9 : 0.55,
+      emissiveIntensity: 0.72,
     });
 
     this.planet = new THREE.Mesh(geometry, material);
@@ -1310,155 +1310,226 @@ function colorizeTerrainFromSemantics(
 
 function colorizeOceanicTerrain(input: SemanticColorizeInput): SemanticColorMaterialSample {
   const m = input.semanticMasks;
-  const albedo = semanticPaletteBlend(
-    [12, 30, 56],
-    [[5, 16, 30], m.abyssalDepthMask],
-    [[2, 8, 16], m.trenchMask],
-    [[10, 28, 52], m.basinDepthMask],
-    [[24, 66, 112], m.openOceanMask],
-    [[66, 142, 164], m.shelfMask + m.shallowWaterMask * 0.6],
-    [[207, 196, 168], m.coastMask],
-    [[92, 114, 76], m.emergentLandMask],
-    [[82, 92, 102], m.rockyIslandMask],
-  );
-  const emissive = [0, 0, 0] as [number, number, number];
-  const roughness = clamp(0.9 - m.openOceanMask * 0.13 - m.shallowWaterMask * 0.08 + m.rockyIslandMask * 0.05 + input.micro * 0.03, 0.72, 0.98);
-  const metalness = clamp(m.exposedMetallicPatchMask * 0.02, 0, 0.02);
-  return { albedo, roughness, metalness, emissive };
+  return resolveSemanticSurfaceClass({
+    primaryClasses: [
+      { key: 'trench', weight: m.trenchMask, albedo: [2, 8, 16], roughness: 0.78, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'abyssal', weight: m.abyssalDepthMask, albedo: [5, 16, 30], roughness: 0.76, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'openOcean', weight: m.openOceanMask + m.basinDepthMask * 0.4, albedo: [24, 66, 112], roughness: 0.74, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'shelf', weight: m.shelfMask + m.shallowWaterMask * 0.8, albedo: [66, 142, 164], roughness: 0.69, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'coast', weight: m.coastMask, albedo: [207, 196, 168], roughness: 0.9, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'emergent', weight: m.emergentLandMask, albedo: [92, 114, 76], roughness: 0.95, metalness: 0.01, emissive: [0, 0, 0] },
+    ],
+    overlays: [
+      { key: 'rockyIslandOverlay', weight: m.rockyIslandMask, albedo: [82, 92, 102], roughness: 0.96, metalness: 0.02, emissive: [0, 0, 0], influence: 0.45 },
+    ],
+    fallback: { albedo: [12, 30, 56], roughness: 0.78, metalness: 0, emissive: [0, 0, 0] },
+    microVariance: input.micro * 0.03,
+  });
 }
 
 function colorizeFrozenTerrain(input: SemanticColorizeInput): SemanticColorMaterialSample {
   const m = input.semanticMasks;
-  const albedo = semanticPaletteBlend(
-    [114, 130, 142],
-    [[72, 92, 112], m.deepFrozenBasinMask],
-    [[198, 214, 224], m.iceSheetMask],
-    [[232, 242, 248], m.iceCapMask],
-    [[186, 222, 228], m.iceShelfMask],
-    [[242, 248, 252], m.compressionRidgeMask],
-    [[70, 86, 104], m.crevasseMask],
-    [[212, 226, 236], m.frozenHighlandMask],
-    [[114, 118, 122], m.exposedRockMask],
-  );
-  const roughness = clamp(0.93 + m.compressionRidgeMask * 0.03 - m.iceShelfMask * 0.08 + input.micro * 0.02, 0.8, 0.99);
-  return { albedo, roughness, metalness: 0, emissive: [0, 0, 0] };
+  return resolveSemanticSurfaceClass({
+    primaryClasses: [
+      { key: 'deepFrozenBasin', weight: m.deepFrozenBasinMask, albedo: [72, 92, 112], roughness: 0.88, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'iceSheet', weight: m.iceSheetMask, albedo: [198, 214, 224], roughness: 0.86, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'iceCap', weight: m.iceCapMask, albedo: [232, 242, 248], roughness: 0.82, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'iceShelf', weight: m.iceShelfMask, albedo: [186, 222, 228], roughness: 0.8, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'frozenHighland', weight: m.frozenHighlandMask, albedo: [212, 226, 236], roughness: 0.9, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'exposedRock', weight: m.exposedRockMask, albedo: [114, 118, 122], roughness: 0.97, metalness: 0.01, emissive: [0, 0, 0] },
+    ],
+    overlays: [
+      { key: 'compressionRidgeOverlay', weight: m.compressionRidgeMask, albedo: [242, 248, 252], roughness: 0.92, metalness: 0, emissive: [0, 0, 0], influence: 0.34 },
+      { key: 'crevasseOverlay', weight: m.crevasseMask, albedo: [70, 86, 104], roughness: 0.98, metalness: 0, emissive: [0, 0, 0], influence: 0.3 },
+    ],
+    fallback: { albedo: [114, 130, 142], roughness: 0.9, metalness: 0, emissive: [0, 0, 0] },
+    microVariance: input.micro * 0.02,
+  });
 }
 
 function colorizeVolcanicTerrain(input: SemanticColorizeInput): SemanticColorMaterialSample {
   const m = input.semanticMasks;
   const fissureGlow = clamp(m.fissureMask * (0.18 + input.fractureMask * 0.14), 0, 0.24);
-  const albedo = semanticPaletteBlend(
-    [58, 54, 50],
-    [[34, 34, 36], m.volcanicConeMask],
-    [[22, 20, 18], m.calderaMask],
-    [[54, 42, 40], m.lavaPlainMask],
-    [[74, 56, 44], m.fissureMask * 0.18],
-    [[30, 28, 30], m.collapseBasinMask],
-    [[98, 92, 88], m.ashFieldMask],
-    [[72, 70, 68], m.cooledRockMask],
-  );
-  const roughness = clamp(0.9 + m.ashFieldMask * 0.05 - m.fissureMask * 0.08 + input.micro * 0.03, 0.74, 0.99);
-  const emissive: [number, number, number] = [
+  const emissiveFissure: [number, number, number] = [
     Math.round(255 * fissureGlow),
     Math.round(88 * fissureGlow),
     Math.round(26 * fissureGlow),
   ];
-  return { albedo, roughness, metalness: 0.01, emissive };
+  return resolveSemanticSurfaceClass({
+    primaryClasses: [
+      { key: 'caldera', weight: m.calderaMask, albedo: [22, 20, 18], roughness: 0.92, metalness: 0.01, emissive: [0, 0, 0] },
+      { key: 'volcanicCone', weight: m.volcanicConeMask, albedo: [34, 34, 36], roughness: 0.94, metalness: 0.01, emissive: [0, 0, 0] },
+      { key: 'lavaPlain', weight: m.lavaPlainMask, albedo: [54, 42, 40], roughness: 0.84, metalness: 0.01, emissive: [0, 0, 0] },
+      { key: 'collapseBasin', weight: m.collapseBasinMask, albedo: [30, 28, 30], roughness: 0.95, metalness: 0.01, emissive: [0, 0, 0] },
+      { key: 'cooledRock', weight: m.cooledRockMask, albedo: [72, 70, 68], roughness: 0.9, metalness: 0.01, emissive: [0, 0, 0] },
+      { key: 'ashField', weight: m.ashFieldMask, albedo: [98, 92, 88], roughness: 0.98, metalness: 0, emissive: [0, 0, 0] },
+    ],
+    overlays: [
+      { key: 'fissureThermalOverlay', weight: m.fissureMask, albedo: [74, 56, 44], roughness: 0.78, metalness: 0.01, emissive: emissiveFissure, influence: 0.5 },
+    ],
+    fallback: { albedo: [58, 54, 50], roughness: 0.9, metalness: 0.01, emissive: [0, 0, 0] },
+    microVariance: input.micro * 0.03,
+  });
 }
 
 function colorizeAridTerrain(input: SemanticColorizeInput): SemanticColorMaterialSample {
   const m = input.semanticMasks;
-  const albedo = semanticPaletteBlend(
-    [168, 142, 104],
-    [[202, 176, 122], m.plateauTopMask],
-    [[184, 128, 78], m.mesaMask],
-    [[142, 110, 86], m.escarpmentMask],
-    [[150, 126, 96], m.dryPlainMask],
-    [[104, 72, 48], m.canyonMask],
-    [[132, 112, 92], m.dryBasinMask],
-    [[118, 102, 90], m.exposedBedrockMask],
-  );
-  const roughness = clamp(0.9 + m.dryPlainMask * 0.05 + m.exposedBedrockMask * 0.03 + input.micro * 0.03, 0.82, 0.99);
-  return { albedo, roughness, metalness: 0, emissive: [0, 0, 0] };
+  return resolveSemanticSurfaceClass({
+    primaryClasses: [
+      { key: 'plateauTop', weight: m.plateauTopMask, albedo: [202, 176, 122], roughness: 0.87, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'mesa', weight: m.mesaMask, albedo: [184, 128, 78], roughness: 0.9, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'escarpment', weight: m.escarpmentMask, albedo: [142, 110, 86], roughness: 0.95, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'dryPlain', weight: m.dryPlainMask, albedo: [150, 126, 96], roughness: 0.92, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'dryBasin', weight: m.dryBasinMask, albedo: [132, 112, 92], roughness: 0.94, metalness: 0, emissive: [0, 0, 0] },
+    ],
+    overlays: [
+      { key: 'canyonOverlay', weight: m.canyonMask, albedo: [104, 72, 48], roughness: 0.97, metalness: 0, emissive: [0, 0, 0], influence: 0.38 },
+      { key: 'bedrockOverlay', weight: m.exposedBedrockMask, albedo: [118, 102, 90], roughness: 0.98, metalness: 0.01, emissive: [0, 0, 0], influence: 0.34 },
+    ],
+    fallback: { albedo: [168, 142, 104], roughness: 0.92, metalness: 0, emissive: [0, 0, 0] },
+    microVariance: input.micro * 0.03,
+  });
 }
 
 function colorizeBarrenTerrain(input: SemanticColorizeInput): SemanticColorMaterialSample {
   const m = input.semanticMasks;
-  const albedo = semanticPaletteBlend(
-    [122, 114, 104],
-    [[86, 78, 70], m.impactCraterMask],
-    [[108, 98, 90], m.degradedBasinMask],
-    [[130, 126, 120], m.wornHighlandMask],
-    [[164, 154, 138], m.scarpMask],
-    [[148, 136, 120], m.dustPlainMask],
-    [[120, 114, 108], m.exposedRockMask],
-  );
-  const roughness = clamp(0.93 + m.dustPlainMask * 0.04 + input.micro * 0.03, 0.84, 0.99);
-  return { albedo, roughness, metalness: 0, emissive: [0, 0, 0] };
+  return resolveSemanticSurfaceClass({
+    primaryClasses: [
+      { key: 'dustPlain', weight: m.dustPlainMask, albedo: [148, 136, 120], roughness: 0.94, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'wornHighland', weight: m.wornHighlandMask, albedo: [130, 126, 120], roughness: 0.95, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'degradedBasin', weight: m.degradedBasinMask, albedo: [108, 98, 90], roughness: 0.96, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'scarp', weight: m.scarpMask, albedo: [164, 154, 138], roughness: 0.91, metalness: 0, emissive: [0, 0, 0] },
+    ],
+    overlays: [
+      { key: 'impactCraterOverlay', weight: m.impactCraterMask, albedo: [86, 78, 70], roughness: 0.98, metalness: 0, emissive: [0, 0, 0], influence: 0.45 },
+      { key: 'exposedRockOverlay', weight: m.exposedRockMask, albedo: [120, 114, 108], roughness: 0.97, metalness: 0.01, emissive: [0, 0, 0], influence: 0.32 },
+    ],
+    fallback: { albedo: [122, 114, 104], roughness: 0.95, metalness: 0, emissive: [0, 0, 0] },
+    microVariance: input.micro * 0.03,
+  });
 }
 
 function colorizeMineralTerrain(input: SemanticColorizeInput): SemanticColorMaterialSample {
   const m = input.semanticMasks;
-  const albedo = semanticPaletteBlend(
-    [92, 98, 104],
-    [[112, 118, 124], m.hardRidgeMask],
-    [[92, 130, 146], m.depositSeamMask * 0.6],
-    [[54, 58, 62], m.fractureCavityMask],
-    [[88, 90, 92], m.rockySystemMask],
-    [[96, 138, 156], m.mineralDepositMask * 0.78],
-    [[156, 168, 176], m.exposedMetallicPatchMask * 0.6],
-  );
-  const roughness = clamp(0.84 + m.rockySystemMask * 0.08 - m.exposedMetallicPatchMask * 0.2 + input.micro * 0.03, 0.58, 0.97);
-  const metalness = clamp(m.exposedMetallicPatchMask * 0.34 + m.mineralDepositMask * 0.1, 0.02, 0.36);
-  return { albedo, roughness, metalness, emissive: [0, 0, 0] };
+  return resolveSemanticSurfaceClass({
+    primaryClasses: [
+      { key: 'hardRidge', weight: m.hardRidgeMask, albedo: [112, 118, 124], roughness: 0.9, metalness: 0.06, emissive: [0, 0, 0] },
+      { key: 'fractureCavity', weight: m.fractureCavityMask, albedo: [54, 58, 62], roughness: 0.95, metalness: 0.08, emissive: [0, 0, 0] },
+      { key: 'rockySystem', weight: m.rockySystemMask, albedo: [88, 90, 92], roughness: 0.92, metalness: 0.08, emissive: [0, 0, 0] },
+      { key: 'mineralDeposit', weight: m.mineralDepositMask, albedo: [96, 138, 156], roughness: 0.72, metalness: 0.24, emissive: [0, 0, 0] },
+    ],
+    overlays: [
+      { key: 'depositSeamOverlay', weight: m.depositSeamMask, albedo: [92, 130, 146], roughness: 0.76, metalness: 0.22, emissive: [0, 0, 0], influence: 0.42 },
+      { key: 'metallicPatchOverlay', weight: m.exposedMetallicPatchMask, albedo: [156, 168, 176], roughness: 0.6, metalness: 0.34, emissive: [0, 0, 0], influence: 0.56 },
+    ],
+    fallback: { albedo: [92, 98, 104], roughness: 0.9, metalness: 0.08, emissive: [0, 0, 0] },
+    microVariance: input.micro * 0.03,
+  });
 }
 
 function colorizeTerrestrialTerrain(input: SemanticColorizeInput): SemanticColorMaterialSample {
   const m = input.semanticMasks;
-  const albedo = semanticPaletteBlend(
-    [86, 112, 82],
-    [[16, 46, 90], m.oceanMask],
-    [[66, 138, 156], m.shelfMask],
-    [[210, 198, 164], m.coastMask],
-    [[126, 144, 96], m.continentMask],
-    [[80, 130, 76], m.lowlandMask],
-    [[112, 126, 88], m.uplandMask],
-    [[112, 116, 124], m.mountainMask],
-    [[142, 124, 98], m.plateauMask],
-    [[92, 98, 74], m.inlandBasinMask],
-    [[74, 106, 66], m.valleyMask],
-    [[64, 126, 64], m.forestOrVegetatedMask],
-    [[164, 142, 96], m.dryInteriorMask],
-    [[232, 238, 242], m.snowOrPolarMask],
-  );
-  const roughness = clamp(
-    0.88
-      - m.oceanMask * 0.12
-      - m.shelfMask * 0.08
-      + m.mountainMask * 0.06
-      + m.plateauMask * 0.04
-      + m.snowOrPolarMask * 0.04
-      + input.micro * 0.03,
-    0.7,
-    0.99,
-  );
-  return { albedo, roughness, metalness: 0, emissive: [0, 0, 0] };
+  return resolveSemanticSurfaceClass({
+    primaryClasses: [
+      { key: 'ocean', weight: m.oceanMask, albedo: [16, 46, 90], roughness: 0.76, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'shelf', weight: m.shelfMask, albedo: [66, 138, 156], roughness: 0.72, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'coast', weight: m.coastMask, albedo: [210, 198, 164], roughness: 0.89, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'lowland', weight: m.lowlandMask + m.continentMask * 0.26, albedo: [80, 130, 76], roughness: 0.9, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'upland', weight: m.uplandMask, albedo: [112, 126, 88], roughness: 0.92, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'mountain', weight: m.mountainMask, albedo: [112, 116, 124], roughness: 0.97, metalness: 0.01, emissive: [0, 0, 0] },
+      { key: 'plateau', weight: m.plateauMask, albedo: [142, 124, 98], roughness: 0.95, metalness: 0, emissive: [0, 0, 0] },
+      { key: 'basin', weight: m.inlandBasinMask, albedo: [92, 98, 74], roughness: 0.94, metalness: 0, emissive: [0, 0, 0] },
+    ],
+    overlays: [
+      { key: 'valleyOverlay', weight: m.valleyMask, albedo: [74, 106, 66], roughness: 0.93, metalness: 0, emissive: [0, 0, 0], influence: 0.26 },
+      { key: 'vegetationOverlay', weight: m.forestOrVegetatedMask, albedo: [64, 126, 64], roughness: 0.88, metalness: 0, emissive: [0, 0, 0], influence: 0.42 },
+      { key: 'dryInteriorOverlay', weight: m.dryInteriorMask, albedo: [164, 142, 96], roughness: 0.94, metalness: 0, emissive: [0, 0, 0], influence: 0.34 },
+      { key: 'snowOverlay', weight: m.snowOrPolarMask, albedo: [232, 238, 242], roughness: 0.96, metalness: 0, emissive: [0, 0, 0], influence: 0.48 },
+    ],
+    fallback: { albedo: [86, 112, 82], roughness: 0.9, metalness: 0, emissive: [0, 0, 0] },
+    microVariance: input.micro * 0.03,
+  });
 }
 
-function semanticPaletteBlend(
-  base: [number, number, number],
-  ...layers: Array<[[number, number, number], number]>
-): [number, number, number] {
-  let r = base[0];
-  let g = base[1];
-  let b = base[2];
-  for (const [color, rawWeight] of layers) {
-    const weight = clamp(rawWeight, 0, 1);
-    r = lerp(r, color[0], weight);
-    g = lerp(g, color[1], weight);
-    b = lerp(b, color[2], weight);
+interface SemanticClassDefinition {
+  key: string;
+  weight: number;
+  albedo: [number, number, number];
+  roughness: number;
+  metalness: number;
+  emissive: [number, number, number];
+  influence?: number;
+}
+
+interface SemanticSurfaceResolverInput {
+  primaryClasses: SemanticClassDefinition[];
+  overlays: SemanticClassDefinition[];
+  fallback: Omit<SemanticClassDefinition, 'key' | 'weight' | 'influence'>;
+  microVariance: number;
+}
+
+function resolveSemanticSurfaceClass(input: SemanticSurfaceResolverInput): SemanticColorMaterialSample {
+  const primaries = input.primaryClasses
+    .map((entry) => ({ ...entry, weight: clamp(entry.weight, 0, 1) }))
+    .sort((a, b) => b.weight - a.weight || a.key.localeCompare(b.key));
+
+  const dominant = primaries[0];
+  const secondary = primaries[1];
+  const base = dominant && dominant.weight > 0.001 ? dominant : { ...input.fallback, key: 'fallback', weight: 1 };
+
+  let albedo: [number, number, number] = [...base.albedo];
+  let roughness = base.roughness;
+  let metalness = base.metalness;
+  let emissive: [number, number, number] = [...base.emissive];
+
+  if (secondary && dominant) {
+    const secondaryBlend = clamp((secondary.weight / (dominant.weight + secondary.weight + 1e-5)) * 0.32, 0, 0.32);
+    albedo = blendRgb(albedo, secondary.albedo, secondaryBlend);
+    roughness = lerp(roughness, secondary.roughness, secondaryBlend);
+    metalness = lerp(metalness, secondary.metalness, secondaryBlend);
+    emissive = blendRgb(emissive, secondary.emissive, secondaryBlend);
   }
-  return [Math.round(r), Math.round(g), Math.round(b)];
+
+  const overlays = input.overlays
+    .map((entry) => ({
+      ...entry,
+      weight: clamp(entry.weight, 0, 1),
+      influence: clamp(entry.influence ?? 0.35, 0, 0.65),
+    }))
+    .map((entry) => ({ ...entry, resolvedAlpha: clamp(entry.weight * entry.influence, 0, entry.influence) }))
+    .filter((entry) => entry.resolvedAlpha > 0.02)
+    .sort((a, b) => b.resolvedAlpha - a.resolvedAlpha || a.key.localeCompare(b.key))
+    .slice(0, 2);
+
+  for (const overlay of overlays) {
+    albedo = blendRgb(albedo, overlay.albedo, overlay.resolvedAlpha);
+    roughness = lerp(roughness, overlay.roughness, overlay.resolvedAlpha);
+    metalness = lerp(metalness, overlay.metalness, overlay.resolvedAlpha);
+    emissive = blendRgb(emissive, overlay.emissive, overlay.resolvedAlpha);
+  }
+
+  return {
+    albedo: roundRgb(albedo),
+    roughness: clamp(roughness + input.microVariance, 0.55, 0.99),
+    metalness: clamp(metalness, 0, 0.4),
+    emissive: roundRgb(emissive),
+  };
+}
+
+function blendRgb(a: [number, number, number], b: [number, number, number], alpha: number): [number, number, number] {
+  return [
+    lerp(a[0], b[0], alpha),
+    lerp(a[1], b[1], alpha),
+    lerp(a[2], b[2], alpha),
+  ];
+}
+
+function roundRgb(color: [number, number, number]): [number, number, number] {
+  return [
+    Math.round(clamp(color[0], 0, 255)),
+    Math.round(clamp(color[1], 0, 255)),
+    Math.round(clamp(color[2], 0, 255)),
+  ];
 }
 
 function archetypeSignature(archetype: PlanetVisualProfile['archetype']): ArchetypeSignature {
