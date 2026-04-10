@@ -661,6 +661,12 @@ function paintPlanetTextures(
   const depositMask = new Float32Array(width * height);
   const emergentLandMask = new Float32Array(width * height);
   const shelfMaskField = new Float32Array(width * height);
+  const regionMaskField = new Float32Array(width * height);
+  const valleyMaskField = new Float32Array(width * height);
+  const accentMaskField = new Float32Array(width * height);
+  const fractureMaskField = new Float32Array(width * height);
+  const frostMaskField = new Float32Array(width * height);
+  const microField = new Float32Array(width * height);
   const upliftField = new Float32Array(width * height);
   const depressionField = new Float32Array(width * height);
   const displacementField = new Float32Array(width * height);
@@ -791,39 +797,7 @@ function paintPlanetTextures(
         craterMask,
         terrain,
       });
-      // Stage 4: semantic-first archetype color/material mapping.
-      const semanticShading = colorizeTerrainFromSemantics(profile.archetype, {
-        semanticMasks: semanticSample,
-        worldMasks,
-        regionMask,
-        valleyMask,
-        accentMask,
-        fractureMask,
-        frostMask,
-        micro,
-        erosionField,
-        terrain,
-      });
-      const finalColor = semanticShading.albedo;
       const i = (y * width + x) * 4;
-      colorData.data[i] = finalColor[0];
-      colorData.data[i + 1] = finalColor[1];
-      colorData.data[i + 2] = finalColor[2];
-      colorData.data[i + 3] = 255;
-
-      const roughness = semanticShading.roughness;
-      const roughValue = Math.round(roughness * 255);
-      roughData.data[i] = roughValue;
-      roughData.data[i + 1] = roughValue;
-      roughData.data[i + 2] = roughValue;
-      roughData.data[i + 3] = 255;
-
-      const metal = semanticShading.metalness;
-      const metalValue = Math.round(metal * 255);
-      metalData.data[i] = metalValue;
-      metalData.data[i + 1] = metalValue;
-      metalData.data[i + 2] = metalValue;
-      metalData.data[i + 3] = 255;
 
       const canonicalLandMask = clamp(
         Math.max(worldMasks.landMask, semanticSample.continentMask, semanticSample.emergentLandMask),
@@ -892,6 +866,12 @@ function paintPlanetTextures(
       depositMask[fieldIndex] = profile.archetype === 'mineral' ? accentMask : 0;
       emergentLandMask[fieldIndex] = canonicalLandMask;
       shelfMaskField[fieldIndex] = canonicalShelfMask;
+      regionMaskField[fieldIndex] = regionMask;
+      valleyMaskField[fieldIndex] = valleyMask;
+      accentMaskField[fieldIndex] = accentMask;
+      fractureMaskField[fieldIndex] = fractureMask;
+      frostMaskField[fieldIndex] = frostMask;
+      microField[fieldIndex] = micro;
       upliftField[fieldIndex] = uplift;
       depressionField[fieldIndex] = depression;
       displacementField[fieldIndex] = signedRelief;
@@ -899,6 +879,71 @@ function paintPlanetTextures(
       for (const name of SEMANTIC_MASK_NAMES) {
         semanticMasks[name][fieldIndex] = semanticSample[name];
       }
+      emissiveData.data[i] = 0;
+      emissiveData.data[i + 1] = 0;
+      emissiveData.data[i + 2] = 0;
+      emissiveData.data[i + 3] = 255;
+    }
+  }
+
+  applySemanticSpatialCoherence(profile.archetype, semanticMasks, width, height);
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const fieldIndex = y * width + x;
+      const semanticSample = getSemanticMaskSample(semanticMasks, fieldIndex);
+      const semanticShading = colorizeTerrainFromSemantics(profile.archetype, {
+        semanticMasks: semanticSample,
+        worldMasks: {
+          seaLevel: clamp(profile.oceanLevel + signature.seaLevelShift, 0.2, 0.82),
+          massField: 0,
+          landMask: emergentLandMask[fieldIndex],
+          waterMask: 1 - emergentLandMask[fieldIndex],
+          coastMask: semanticSample.coastMask,
+          shelfMask: semanticSample.shelfMask,
+        },
+        regionMask: regionMaskField[fieldIndex],
+        valleyMask: valleyMaskField[fieldIndex],
+        accentMask: accentMaskField[fieldIndex],
+        fractureMask: fractureMaskField[fieldIndex],
+        frostMask: frostMaskField[fieldIndex],
+        micro: microField[fieldIndex],
+        erosionField: 0,
+        terrain: {
+          volcanoField: volcanoField[fieldIndex],
+          calderaField: calderaField[fieldIndex],
+          mountainChainField: mountainChainField[fieldIndex],
+          plateauField: plateauField[fieldIndex],
+          basinField: basinField[fieldIndex],
+          trenchField: trenchField[fieldIndex],
+          riftField: riftField[fieldIndex],
+          craterField: craterField[fieldIndex],
+          iceShelfField: 0,
+          compressionRidgeField: compressionRidgeMask[fieldIndex],
+          upliftField: upliftField[fieldIndex],
+          depressionField: depressionField[fieldIndex],
+          finalSignedRelief: displacementField[fieldIndex],
+        },
+      });
+
+      const i = (y * width + x) * 4;
+      const finalColor = semanticShading.albedo;
+      colorData.data[i] = finalColor[0];
+      colorData.data[i + 1] = finalColor[1];
+      colorData.data[i + 2] = finalColor[2];
+      colorData.data[i + 3] = 255;
+
+      const roughValue = Math.round(semanticShading.roughness * 255);
+      roughData.data[i] = roughValue;
+      roughData.data[i + 1] = roughValue;
+      roughData.data[i + 2] = roughValue;
+      roughData.data[i + 3] = 255;
+
+      const metalValue = Math.round(semanticShading.metalness * 255);
+      metalData.data[i] = metalValue;
+      metalData.data[i + 1] = metalValue;
+      metalData.data[i + 2] = metalValue;
+      metalData.data[i + 3] = 255;
 
       const eRgb = semanticShading.emissive;
       emissiveData.data[i] = eRgb[0];
@@ -1192,6 +1237,181 @@ function createSemanticMaskFields(length: number): Record<SemanticMaskName, Floa
 
 function createEmptySemanticMaskSet(): SemanticTerrainMaskSet {
   return Object.fromEntries(SEMANTIC_MASK_NAMES.map((name) => [name, 0])) as SemanticTerrainMaskSet;
+}
+
+function getSemanticMaskSample(semanticMasks: Record<SemanticMaskName, Float32Array>, index: number): SemanticTerrainMaskSet {
+  const sample = createEmptySemanticMaskSet();
+  for (const name of SEMANTIC_MASK_NAMES) {
+    sample[name] = semanticMasks[name][index];
+  }
+  return sample;
+}
+
+function applySemanticSpatialCoherence(
+  archetype: PlanetVisualProfile['archetype'],
+  semanticMasks: Record<SemanticMaskName, Float32Array>,
+  width: number,
+  height: number,
+) {
+  const reinforced = createSemanticMaskFields(width * height);
+  for (const name of SEMANTIC_MASK_NAMES) {
+    const src = semanticMasks[name];
+    const dst = reinforced[name];
+    for (let y = 0; y < height; y += 1) {
+      const yPrev = y > 0 ? y - 1 : y;
+      const yNext = y < height - 1 ? y + 1 : y;
+      for (let x = 0; x < width; x += 1) {
+        const xPrev = x > 0 ? x - 1 : width - 1;
+        const xNext = x < width - 1 ? x + 1 : 0;
+        const index = y * width + x;
+        const n0 = yPrev * width + xPrev;
+        const n1 = yPrev * width + x;
+        const n2 = yPrev * width + xNext;
+        const n3 = y * width + xPrev;
+        const n4 = y * width + xNext;
+        const n5 = yNext * width + xPrev;
+        const n6 = yNext * width + x;
+        const n7 = yNext * width + xNext;
+        const neighborhood = (src[n0] + src[n1] + src[n2] + src[n3] + src[n4] + src[n5] + src[n6] + src[n7]) / 8;
+        dst[index] = clamp(src[index] * 0.62 + neighborhood * 0.38, 0, 1);
+      }
+    }
+  }
+
+  const primaryFamilies: Partial<Record<PlanetVisualProfile['archetype'], SemanticMaskName[]>> = {
+    oceanic: ['abyssalDepthMask', 'openOceanMask', 'shelfMask', 'coastMask', 'emergentLandMask'],
+    terrestrial: ['oceanMask', 'shelfMask', 'coastMask', 'lowlandMask', 'uplandMask', 'mountainMask', 'plateauMask'],
+    frozen: ['iceCapMask', 'iceSheetMask', 'iceShelfMask', 'exposedRockMask'],
+    volcanic: ['calderaMask', 'volcanicConeMask', 'lavaPlainMask', 'collapseBasinMask', 'ashFieldMask', 'cooledRockMask'],
+    arid: ['plateauTopMask', 'mesaMask', 'escarpmentMask', 'dryPlainMask', 'dryBasinMask'],
+    mineral: ['hardRidgeMask', 'fractureCavityMask', 'rockySystemMask', 'mineralDepositMask'],
+    barren: ['dustPlainMask', 'wornHighlandMask', 'degradedBasinMask', 'scarpMask'],
+  };
+
+  const activeFamily = primaryFamilies[archetype] ?? [];
+  for (let index = 0; index < width * height; index += 1) {
+    for (const name of activeFamily) {
+      semanticMasks[name][index] = reinforced[name][index];
+    }
+  }
+
+  for (let y = 0; y < height; y += 1) {
+    const yPrev = y > 0 ? y - 1 : y;
+    const yNext = y < height - 1 ? y + 1 : y;
+    for (let x = 0; x < width; x += 1) {
+      const xPrev = x > 0 ? x - 1 : width - 1;
+      const xNext = x < width - 1 ? x + 1 : 0;
+      const index = y * width + x;
+
+      const coastAdjacency = Math.max(
+        semanticMasks.coastMask[yPrev * width + x],
+        semanticMasks.coastMask[yNext * width + x],
+        semanticMasks.coastMask[y * width + xPrev],
+        semanticMasks.coastMask[y * width + xNext],
+      );
+      const shelfAdjacency = Math.max(
+        semanticMasks.shelfMask[yPrev * width + x],
+        semanticMasks.shelfMask[yNext * width + x],
+        semanticMasks.shelfMask[y * width + xPrev],
+        semanticMasks.shelfMask[y * width + xNext],
+      );
+      const mountainAdjacency = Math.max(
+        semanticMasks.mountainMask[yPrev * width + x],
+        semanticMasks.mountainMask[yNext * width + x],
+        semanticMasks.mountainMask[y * width + xPrev],
+        semanticMasks.mountainMask[y * width + xNext],
+      );
+
+      if (archetype === 'oceanic') {
+        semanticMasks.abyssalDepthMask[index] = clamp(semanticMasks.abyssalDepthMask[index] * (1 - semanticMasks.shelfMask[index] * 0.75), 0, 1);
+        semanticMasks.openOceanMask[index] = clamp(semanticMasks.openOceanMask[index] * (1 - semanticMasks.coastMask[index] * 0.8), 0, 1);
+        semanticMasks.shelfMask[index] = clamp(semanticMasks.shelfMask[index] * (0.56 + coastAdjacency * 0.44), 0, 1);
+        semanticMasks.emergentLandMask[index] = clamp(
+          semanticMasks.emergentLandMask[index] * (0.42 + (coastAdjacency + shelfAdjacency) * 0.58),
+          0,
+          1,
+        );
+        semanticMasks.rockyIslandMask[index] = clamp(
+          semanticMasks.rockyIslandMask[index] * (0.3 + semanticMasks.emergentLandMask[index] * 0.7),
+          0,
+          1,
+        );
+      } else if (archetype === 'terrestrial') {
+        semanticMasks.shelfMask[index] = clamp(semanticMasks.shelfMask[index] * (0.52 + coastAdjacency * 0.48), 0, 1);
+        semanticMasks.coastMask[index] = clamp(semanticMasks.coastMask[index] * (0.44 + (semanticMasks.shelfMask[index] + semanticMasks.lowlandMask[index]) * 0.56), 0, 1);
+        semanticMasks.lowlandMask[index] = clamp(semanticMasks.lowlandMask[index] * (1 - semanticMasks.oceanMask[index] * 0.8), 0, 1);
+        semanticMasks.uplandMask[index] = clamp(semanticMasks.uplandMask[index] * (0.48 + semanticMasks.lowlandMask[index] * 0.28 + mountainAdjacency * 0.24), 0, 1);
+        semanticMasks.mountainMask[index] = clamp(semanticMasks.mountainMask[index] * (0.56 + semanticMasks.uplandMask[index] * 0.44), 0, 1);
+        semanticMasks.plateauMask[index] = clamp(semanticMasks.plateauMask[index] * (0.48 + semanticMasks.uplandMask[index] * 0.52), 0, 1);
+        semanticMasks.valleyMask[index] = clamp(semanticMasks.valleyMask[index] * (0.2 + semanticMasks.lowlandMask[index] * 0.4 + semanticMasks.inlandBasinMask[index] * 0.4), 0, 1);
+        semanticMasks.inlandBasinMask[index] = clamp(semanticMasks.inlandBasinMask[index] * (1 - semanticMasks.coastMask[index] * 0.72), 0, 1);
+      } else if (archetype === 'frozen') {
+        semanticMasks.iceShelfMask[index] = clamp(semanticMasks.iceShelfMask[index] * (0.52 + coastAdjacency * 0.48), 0, 1);
+        semanticMasks.iceSheetMask[index] = clamp(semanticMasks.iceSheetMask[index] * (0.56 + semanticMasks.iceCapMask[index] * 0.44), 0, 1);
+        semanticMasks.exposedRockMask[index] = clamp(
+          semanticMasks.exposedRockMask[index] * (0.35 + (semanticMasks.frozenHighlandMask[index] + (1 - semanticMasks.iceCapMask[index])) * 0.65),
+          0,
+          1,
+        );
+        semanticMasks.crevasseMask[index] = clamp(semanticMasks.crevasseMask[index] * (0.48 + semanticMasks.iceSheetMask[index] * 0.52), 0, 1);
+      } else if (archetype === 'volcanic') {
+        const volcanicCore = Math.max(semanticMasks.volcanicConeMask[index], semanticMasks.calderaMask[index]);
+        semanticMasks.lavaPlainMask[index] = clamp(semanticMasks.lavaPlainMask[index] * (0.38 + volcanicCore * 0.62), 0, 1);
+        semanticMasks.fissureMask[index] = clamp(semanticMasks.fissureMask[index] * (0.34 + volcanicCore * 0.66), 0, 1);
+        semanticMasks.ashFieldMask[index] = clamp(semanticMasks.ashFieldMask[index] * (0.36 + semanticMasks.lavaPlainMask[index] * 0.64), 0, 1);
+        semanticMasks.cooledRockMask[index] = clamp(semanticMasks.cooledRockMask[index] * (0.42 + semanticMasks.ashFieldMask[index] * 0.58), 0, 1);
+      } else if (archetype === 'arid') {
+        const highArid = Math.max(semanticMasks.plateauTopMask[index], semanticMasks.escarpmentMask[index]);
+        semanticMasks.mesaMask[index] = clamp(semanticMasks.mesaMask[index] * (0.34 + highArid * 0.66), 0, 1);
+        semanticMasks.canyonMask[index] = clamp(semanticMasks.canyonMask[index] * (0.26 + (semanticMasks.escarpmentMask[index] + semanticMasks.dryBasinMask[index]) * 0.74), 0, 1);
+        semanticMasks.dryPlainMask[index] = clamp(semanticMasks.dryPlainMask[index] * (1 - semanticMasks.plateauTopMask[index] * 0.62), 0, 1);
+      } else if (archetype === 'mineral') {
+        const ridgeFrame = Math.max(semanticMasks.hardRidgeMask[index], semanticMasks.rockySystemMask[index]);
+        semanticMasks.depositSeamMask[index] = clamp(semanticMasks.depositSeamMask[index] * (0.26 + ridgeFrame * 0.74), 0, 1);
+        semanticMasks.mineralDepositMask[index] = clamp(semanticMasks.mineralDepositMask[index] * (0.32 + semanticMasks.depositSeamMask[index] * 0.68), 0, 1);
+        semanticMasks.exposedMetallicPatchMask[index] = clamp(
+          semanticMasks.exposedMetallicPatchMask[index] * (0.24 + semanticMasks.mineralDepositMask[index] * 0.76),
+          0,
+          1,
+        );
+        semanticMasks.fractureCavityMask[index] = clamp(semanticMasks.fractureCavityMask[index] * (0.32 + semanticMasks.depositSeamMask[index] * 0.68), 0, 1);
+      } else {
+        const barrenFrame = Math.max(semanticMasks.degradedBasinMask[index], semanticMasks.scarpMask[index]);
+        semanticMasks.impactCraterMask[index] = clamp(semanticMasks.impactCraterMask[index] * (0.42 + barrenFrame * 0.58), 0, 1);
+        semanticMasks.dustPlainMask[index] = clamp(semanticMasks.dustPlainMask[index] * (1 - semanticMasks.wornHighlandMask[index] * 0.58), 0, 1);
+      }
+    }
+  }
+
+  for (let index = 0; index < width * height; index += 1) {
+    normalizeExclusiveFamily(semanticMasks, index, ['abyssalDepthMask', 'openOceanMask', 'shelfMask', 'coastMask', 'emergentLandMask']);
+    normalizeExclusiveFamily(semanticMasks, index, ['oceanMask', 'shelfMask', 'coastMask', 'continentMask']);
+    normalizeExclusiveFamily(semanticMasks, index, ['lowlandMask', 'uplandMask', 'mountainMask', 'plateauMask']);
+    normalizeExclusiveFamily(semanticMasks, index, ['iceCapMask', 'exposedRockMask']);
+  }
+}
+
+function normalizeExclusiveFamily(
+  semanticMasks: Record<SemanticMaskName, Float32Array>,
+  index: number,
+  family: SemanticMaskName[],
+) {
+  let maxName = family[0];
+  let maxValue = semanticMasks[maxName][index];
+  for (let i = 1; i < family.length; i += 1) {
+    const name = family[i];
+    const value = semanticMasks[name][index];
+    if (value > maxValue) {
+      maxValue = value;
+      maxName = name;
+    }
+  }
+  if (maxValue <= 0.0001) {
+    return;
+  }
+  for (const name of family) {
+    semanticMasks[name][index] = name === maxName ? clamp(maxValue, 0, 1) : clamp(semanticMasks[name][index] * 0.18, 0, 1);
+  }
 }
 
 function deriveSemanticTerrainMasks(
