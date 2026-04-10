@@ -107,64 +107,73 @@ This foundation is designed to evolve toward:
 
 The current implementation intentionally stops at map generation + rendering baseline to keep the first milestone stable and extensible.
 
-## Map View art-direction reset (from failed debug-map to command-world prototype)
+## Map View fundamental rework (second pass)
 
-The previous Map View failed visually because it looked like rendering diagnostics, not a strategy-game world. Islands read as flat procedural blobs, slot points read as generic markers, and the ocean behaved like empty canvas filler. The result did not meet the Coinage DA target.
+The prior visual rework still failed because it over-invested in layered effects while core map fundamentals remained weak. The main issues were:
+- island silhouettes still read as generic procedural blobs
+- slot placement still looked mathematically sampled instead of settlement-driven
+- faction spacing was too cramped in many visible regions
+- render cost increased faster than visual quality
 
-### Visual target now followed
+### What changed now (fundamentals first)
 
-The active target is a dense, dark, premium command-map language aligned with the provided reference direction:
-- many faction-islands visible in one frame
-- layered digital-ocean atmosphere
-- textured territorial island masses
-- integrated settlement anchors
-- subtle strategic connection hints
-- restrained command-center framing
+This pass prioritizes structure before atmosphere:
+1. stronger island silhouette families
+2. structured slot placement logic
+3. improved macro spacing / composition
+4. rendering simplification for stable performance
 
-### Density and composition changes
+### Faction-island generation rework
 
-- world generation keeps deterministic seeded behavior and 500+ factions, but placement now uses denser spacing and smaller average island radii
-- cluster strategy increased local concentration while reducing oversized void pockets
-- viewport now reads as a populated strategic surface rather than sparse isolated samples
+Island silhouette generation now uses deterministic family-based profiles instead of generic noise-only modulation.
 
-### Island rendering changes
+Implemented families:
+- compact
+- stretched
+- twin-lobed
+- broken-coast
+- crescent
+- plateau
 
-Island rendering moved to a stronger layered stack:
-- under-glow and shadow base for grounding
-- core mass silhouette for territory readability
-- masked surface/ridge/micro texture passes for material variation
-- interior band + contour hierarchy for map-native structure
-- restrained faction rim for interaction feedback
+Each family uses controlled directional math (primary axis, orthogonal response, family-specific lobes/cavity/coast roughness) plus restrained micro-jitter. This keeps organic irregularity while producing readable territorial identities.
 
-This keeps islands top-down and readable, but removes the flat-blob prototype look.
+### City-slot placement rework
 
-### Slot rendering changes
+Slot placement no longer samples generic random points inside the polygon.
 
-Slot presentation now uses integrated settlement-anchor language:
-- dark embedded pad tied to island surface
-- thin anchor bar to imply emplacement
-- luminous micro-node core (occupied-ready visual state)
+New logic:
+- derives structural hubs from each island profile (primary/secondary axis + family center bias)
+- places slots around those hubs with directional spread
+- validates points against silhouette interior margin
+- enforces stronger minimum slot distance
 
-Slots stay visible and playable while feeling attached to the landmass.
+Result: slots read more like intentional settlement anchors following island structure, not uniform scatter.
 
-### Ocean/background rendering changes
+### World spacing / composition rework
 
-The ocean is now a layered digital field:
-- deep dark base
-- nebula-like atmospheric tiling layer
-- flowing data-current passes
-- broad haze ellipses
-- sparse glints/star points
+Macro world composition was retuned for breathing room while preserving 500+ deterministic factions:
+- larger spacing rejection thresholds
+- larger spatial hash cells for conflict checks
+- adjusted cluster count and ring distribution
+- stronger void pockets and central void preservation
+- larger world extents in viewport setup
 
-This increases depth and premium atmosphere without overpowering island readability.
+This improves navigability and strategic geography without turning the world empty.
 
-### Strategic links + command-map framing
+### Performance optimizations
 
-- subtle, low-alpha curved inter-island traces now provide strategic network hints without turning the map into a graph
-- restrained HUD-style edge frame and corner readouts add command-center presentation tone with minimal clutter
+Rendering was simplified to reduce unnecessary per-frame cost:
+- reduced ocean to one animated tiling field + restrained atmospheric pass
+- removed extra ocean flow/current layers and dense glint loops
+- removed HUD frame overlay pass
+- reduced island stack complexity (kept core, one surface pass, limited contour/rim)
+- removed per-frame slot pulsing across all factions
+
+The map now favors readable structure and stable runtime over decorative overdraw.
 
 ### What remains temporary
 
-- visual kit still uses generated lightweight textures (replaceable later with authored art packs)
-- no free zoom remains intentional for Map View phase
-- no faction/city gameplay ownership layer yet (visual-only milestone)
+- visual kit still uses lightweight generated textures (replaceable by authored assets)
+- strategic links are visual hints only (no gameplay pathing semantics yet)
+- Map View remains no-free-zoom by design for this phase
+- faction/city gameplay ownership systems are not part of this milestone

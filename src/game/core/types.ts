@@ -17,6 +17,8 @@ export interface CitySlot {
   occupied: boolean;
 }
 
+export type ShapeFamily = 'compact' | 'stretched' | 'twin-lobed' | 'broken-coast' | 'crescent' | 'plateau';
+
 export interface Faction {
   id: string;
   name: string;
@@ -24,6 +26,7 @@ export interface Faction {
   sizeCategory: SizeCategory;
   radius: number;
   shapeSeed: number;
+  shapeFamily: ShapeFamily;
   silhouette: IslandShapePoint[];
   slots: CitySlot[];
 }
