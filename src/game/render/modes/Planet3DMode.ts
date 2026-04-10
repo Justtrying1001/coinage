@@ -53,10 +53,13 @@ export class Planet3DMode implements RenderModeController {
 
   private readonly debugViewModes: Array<keyof PlanetMaps['debugMaps'] | 'beauty'> = [
     'beauty',
-    'tectonicHeight',
-    'regionalHeight',
-    'detailHeight',
-    'displacementField',
+    'upliftField',
+    'depressionField',
+    'craterMask',
+    'trenchMask',
+    'basinMask',
+    'riftMask',
+    'finalDisplacementSigned',
     'finalNormal',
   ];
 
@@ -190,10 +193,13 @@ export class Planet3DMode implements RenderModeController {
       maps.metalnessMap,
       maps.normalMap,
       maps.emissiveMap,
-      maps.debugMaps.tectonicHeight,
-      maps.debugMaps.regionalHeight,
-      maps.debugMaps.detailHeight,
-      maps.debugMaps.displacementField,
+      maps.debugMaps.upliftField,
+      maps.debugMaps.depressionField,
+      maps.debugMaps.craterMask,
+      maps.debugMaps.trenchMask,
+      maps.debugMaps.basinMask,
+      maps.debugMaps.riftMask,
+      maps.debugMaps.finalDisplacementSigned,
       maps.debugMaps.finalNormal,
     ];
     this.currentMaps = maps;
@@ -205,13 +211,13 @@ export class Planet3DMode implements RenderModeController {
       roughnessMap: maps.roughnessMap,
       metalnessMap: maps.metalnessMap,
       normalMap: maps.normalMap,
-      normalScale: new THREE.Vector2(0.76, 0.76),
+      normalScale: new THREE.Vector2(0.46, 0.46),
       emissiveMap: maps.emissiveMap,
-      roughness: clamp(profile.roughness + 0.22, 0.48, 0.95),
-      metalness: clamp(profile.metalness * 0.1, 0, 0.06),
+      roughness: clamp(profile.roughness + 0.28, 0.62, 0.97),
+      metalness: profile.archetype === 'mineral' ? clamp(profile.metalness * 0.32, 0.02, 0.14) : clamp(profile.metalness * 0.06, 0, 0.025),
       flatShading: false,
       emissive: new THREE.Color(`hsl(${profile.accentHue}, 45%, ${profile.atmosphereLightness}%)`),
-      emissiveIntensity: profile.emissiveIntensity * 0.16,
+      emissiveIntensity: profile.emissiveIntensity * 0.08,
     });
 
     this.planet = new THREE.Mesh(geometry, material);
@@ -340,7 +346,7 @@ function derivePlanetTags(seed: number, profile: PlanetVisualProfile): string[] 
   const candidates: Array<{ label: string; score: number }> = [
     { label: profile.archetype, score: 1.25 },
     { label: 'high-relief', score: normalize(profile.reliefStrength, 0.12, 0.23) + normalize(profile.ridgeWeight, 0.2, 0.6) * 0.4 },
-    { label: 'fractured crust', score: normalize(profile.craterWeight, 0.14, 0.36) + normalize(profile.reliefSharpness, 1.2, 2.3) * 0.35 },
+    { label: 'rifted crust', score: normalize(profile.craterWeight, 0.14, 0.36) + normalize(profile.reliefSharpness, 1.2, 2.3) * 0.35 },
     { label: 'metallic sheen', score: normalize(profile.metalness, 0.06, 0.28) + normalize(0.78 - profile.roughness, 0, 0.45) * 0.22 },
     { label: 'deep basins', score: normalize(profile.oceanLevel, 0.45, 0.82) + normalize(0.1 - profile.macroBias, -0.2, 0.1) * 0.3 },
     { label: 'dry plateaus', score: normalize(0.3 - profile.oceanLevel, 0.02, 0.3) + normalize(profile.macroBias, 0.12, 0.44) * 0.25 },
@@ -390,10 +396,13 @@ interface PlanetMaps {
   emissiveMap: THREE.CanvasTexture;
   displacementField: Float32Array;
   debugMaps: {
-    tectonicHeight: THREE.CanvasTexture;
-    regionalHeight: THREE.CanvasTexture;
-    detailHeight: THREE.CanvasTexture;
-    displacementField: THREE.CanvasTexture;
+    upliftField: THREE.CanvasTexture;
+    depressionField: THREE.CanvasTexture;
+    craterMask: THREE.CanvasTexture;
+    trenchMask: THREE.CanvasTexture;
+    basinMask: THREE.CanvasTexture;
+    riftMask: THREE.CanvasTexture;
+    finalDisplacementSigned: THREE.CanvasTexture;
     finalNormal: THREE.CanvasTexture;
   };
 }
@@ -446,10 +455,13 @@ function buildPlanetMaps(profile: PlanetVisualProfile, seed: number): PlanetMaps
   emissiveMap.wrapT = THREE.ClampToEdgeWrapping;
   emissiveMap.anisotropy = 2;
 
-  const tectonicHeight = createFieldTexture(derivedFields.tectonicHeight, width, height);
-  const regionalHeight = createFieldTexture(derivedFields.regionalHeight, width, height);
-  const detailHeight = createFieldTexture(derivedFields.detailHeight, width, height);
-  const displacementField = createFieldTexture(derivedFields.displacementField, width, height);
+  const upliftField = createFieldTexture(derivedFields.upliftField, width, height);
+  const depressionField = createFieldTexture(derivedFields.depressionField, width, height);
+  const craterMask = createFieldTexture(derivedFields.craterMask, width, height);
+  const trenchMask = createFieldTexture(derivedFields.trenchMask, width, height);
+  const basinMask = createFieldTexture(derivedFields.basinMask, width, height);
+  const riftMask = createFieldTexture(derivedFields.riftMask, width, height);
+  const finalDisplacementSigned = createSignedFieldTexture(derivedFields.displacementField, width, height);
 
   return {
     width,
@@ -461,10 +473,13 @@ function buildPlanetMaps(profile: PlanetVisualProfile, seed: number): PlanetMaps
     emissiveMap,
     displacementField: derivedFields.displacementField,
     debugMaps: {
-      tectonicHeight,
-      regionalHeight,
-      detailHeight,
-      displacementField,
+      upliftField,
+      depressionField,
+      craterMask,
+      trenchMask,
+      basinMask,
+      riftMask,
+      finalDisplacementSigned,
       finalNormal: normalMap,
     },
   };
@@ -479,9 +494,12 @@ function paintPlanetTextures(
   normalCanvas: HTMLCanvasElement,
   emissiveCanvas: HTMLCanvasElement,
 ): {
-  tectonicHeight: Float32Array;
-  regionalHeight: Float32Array;
-  detailHeight: Float32Array;
+  upliftField: Float32Array;
+  depressionField: Float32Array;
+  craterMask: Float32Array;
+  trenchMask: Float32Array;
+  basinMask: Float32Array;
+  riftMask: Float32Array;
   displacementField: Float32Array;
 } {
   const width = colorCanvas.width;
@@ -493,9 +511,12 @@ function paintPlanetTextures(
   const emissiveCtx = emissiveCanvas.getContext('2d');
   if (!colorCtx || !roughCtx || !metalCtx || !normalCtx || !emissiveCtx) {
     return {
-      tectonicHeight: new Float32Array(width * height),
-      regionalHeight: new Float32Array(width * height),
-      detailHeight: new Float32Array(width * height),
+      upliftField: new Float32Array(width * height),
+      depressionField: new Float32Array(width * height),
+      craterMask: new Float32Array(width * height),
+      trenchMask: new Float32Array(width * height),
+      basinMask: new Float32Array(width * height),
+      riftMask: new Float32Array(width * height),
       displacementField: new Float32Array(width * height),
     };
   }
@@ -506,9 +527,12 @@ function paintPlanetTextures(
   const normalData = normalCtx.createImageData(width, height);
   const emissiveData = emissiveCtx.createImageData(width, height);
   const heightField = new Float32Array(width * height);
-  const tectonicField = new Float32Array(width * height);
-  const regionalField = new Float32Array(width * height);
-  const detailField = new Float32Array(width * height);
+  const upliftField = new Float32Array(width * height);
+  const depressionField = new Float32Array(width * height);
+  const craterMaskField = new Float32Array(width * height);
+  const trenchMaskField = new Float32Array(width * height);
+  const basinMaskField = new Float32Array(width * height);
+  const riftMaskField = new Float32Array(width * height);
   const displacementField = new Float32Array(width * height);
 
   const signature = archetypeSignature(profile.archetype);
@@ -535,6 +559,10 @@ function paintPlanetTextures(
       const accentNoise = fbm3(nx * 4.9 + phaseC, ny * 4.9, nz * 4.9 + phaseB, seed ^ 0x6d2b79f5, 3);
       const fractureNoise = fbm3(nx * 5.2 + phaseA, ny * 5.2, nz * 5.2 + phaseC, seed ^ 0x45d9f3b, 3);
       const micro = fbm3(nx * 12.2, ny * 12.2, nz * 12.2, seed + 997, 2);
+      const chainNoise = fbm3(nx * 2.5 + phaseA, ny * 2.5 + phaseB, nz * 2.5 + phaseC, seed ^ 0x9e3779b1, 4);
+      const trenchNoise = fbm3(nx * 3.7 - phaseA, ny * 3.7 + phaseB, nz * 3.7 - phaseC, seed ^ 0x4f1bbcdc, 4);
+      const basinNoise = fbm3(nx * 1.75 + phaseC, ny * 1.75 + phaseA, nz * 1.75 + phaseB, seed ^ 0x85ebca6b, 3);
+      const canyonNoise = fbm3(nx * 6.4 + phaseA * 0.6, ny * 6.4 - phaseB * 0.4, nz * 6.4 + phaseC * 0.2, seed ^ 0xc2b2ae35, 3);
 
       const seaLevel = clamp(profile.oceanLevel + signature.seaLevelShift, 0.2, 0.82);
       const massField = clamp(primaryMass * 0.72 + plateMass * 0.28 + signature.coverageBias, 0, 1);
@@ -548,34 +576,55 @@ function paintPlanetTextures(
       let fractureMask = smoothstep(0.74, 0.96, fractureNoise + plateMass * 0.2) * signature.fractureStrength;
       const polarMask = smoothstep(0.56, 0.95, Math.abs(ny) + (1 - primaryMass) * 0.18);
       let frostMask = polarMask * signature.frostStrength;
+      const mountainChainMask = smoothstep(0.57, 0.87, chainNoise + plateMass * 0.28) * landMask;
+      const plateauMask = smoothstep(0.58, 0.9, plateMass + regionNoise * 0.18) * landMask;
+      const valleyMask = smoothstep(0.63, 0.94, canyonNoise + (1 - plateauMask) * 0.2) * landMask;
+      let craterMask = craterSystemMask(nx, ny, nz, seed + 101);
+      let trenchMask = smoothstep(0.72, 0.95, Math.abs(Math.sin((nx * 2.9 + nz * 2.4 + phaseA) * 4.4 + trenchNoise * 3.4)) + (1 - landMask) * 0.16);
+      let basinMask = smoothstep(0.48, 0.86, (1 - basinNoise) + waterMask * 0.2);
+      let riftMask = smoothstep(0.74, 0.94, Math.abs(Math.sin((nx * 3.4 - nz * 3.6 + phaseB) * 6.1 + trenchNoise * 4.6)));
+      const erosionField = clamp((1 - canyonNoise) * 0.54 + (1 - accentNoise) * 0.46, 0, 1);
 
       switch (profile.archetype) {
         case 'oceanic':
           accentMask *= smoothstep(0.24, 0.74, 1 - Math.abs(ny));
           fractureMask *= 0.2;
+          trenchMask = clamp(trenchMask + waterMask * 0.4, 0, 1);
+          basinMask = clamp(basinMask + waterMask * 0.36, 0, 1);
+          craterMask *= 0.3;
           break;
         case 'frozen':
           frostMask = clamp(frostMask + smoothstep(0.45, 0.8, 1 - massField) * 0.35 + shelfMask * 0.32, 0, 1);
           fractureMask = clamp(fractureMask * 0.6 + smoothstep(0.82, 0.96, fractureNoise) * 0.34, 0, 1);
+          riftMask = clamp(riftMask + smoothstep(0.64, 0.9, fractureNoise + polarMask * 0.18) * 0.35, 0, 1);
           break;
         case 'volcanic':
           fractureMask = clamp(fractureMask + smoothstep(0.7, 0.94, Math.abs(Math.sin((nx * 2.1 + nz * 2.3 + phaseC) * 3.2 + plateMass * 2.8))) * 0.45, 0, 1);
           accentMask *= 0.62;
+          basinMask = clamp(basinMask + smoothstep(0.66, 0.94, fractureNoise + accentNoise * 0.2) * 0.28, 0, 1);
+          craterMask = clamp(craterMask + smoothstep(0.68, 0.9, accentNoise + fractureNoise * 0.3) * 0.22, 0, 1);
           break;
         case 'arid':
           accentMask = clamp(accentMask + smoothstep(0.32, 0.8, 1 - regionNoise) * landMask * 0.3, 0, 1);
           fractureMask *= 0.28;
+          basinMask = clamp(basinMask + valleyMask * 0.24, 0, 1);
+          trenchMask *= 0.64;
           break;
         case 'mineral':
           accentMask = clamp(accentMask + smoothstep(0.75, 0.96, fractureNoise + primaryMass * 0.2) * 0.48, 0, 1);
+          riftMask = clamp(riftMask + smoothstep(0.7, 0.94, fractureNoise + accentNoise * 0.2) * 0.4, 0, 1);
           break;
-        case 'fractured':
-          fractureMask = clamp(fractureMask + smoothstep(0.62, 0.9, Math.abs(Math.sin((nx + nz + phaseC) * 10.6 + plateMass * 2.2))) * 0.56, 0, 1);
+        case 'terrestrial':
+          trenchMask *= 0.55;
+          craterMask *= 0.4;
+          basinMask = clamp(basinMask + smoothstep(0.6, 0.9, valleyMask + coastlineNoise * 0.2) * 0.2, 0, 1);
+          riftMask = clamp(riftMask + smoothstep(0.74, 0.93, fractureNoise + plateMass * 0.16) * 0.22, 0, 1);
           break;
         case 'barren':
         default:
           accentMask *= 0.46;
           fractureMask *= 0.34;
+          craterMask = clamp(craterMask + smoothstep(0.68, 0.92, basinNoise + fractureNoise * 0.2) * 0.28, 0, 1);
           break;
       }
 
@@ -655,7 +704,7 @@ function paintPlanetTextures(
         - frostMask * 0.08
         + (1 - coastlineNoise) * 0.03,
         0.42,
-        0.96,
+        0.98,
       );
       const roughValue = Math.round(roughness * 255);
       roughData.data[i] = roughValue;
@@ -670,7 +719,7 @@ function paintPlanetTextures(
         + fractureMask * signature.metalFractureBoost
         - waterMask * 0.06,
         0,
-        0.22,
+        0.18,
       );
       const metalValue = Math.round(metal * 255);
       metalData.data[i] = metalValue;
@@ -678,94 +727,70 @@ function paintPlanetTextures(
       metalData.data[i + 2] = metalValue;
       metalData.data[i + 3] = 255;
 
-      let tectonicHeight = clamp(primaryMass * 0.72 + plateMass * 0.28 + (landMask - waterMask) * 0.08, 0, 1);
-      let regionalHeight = clamp(
-        landMask * (regionMask * 0.48 + accentMask * 0.2 + coastMask * 0.14)
-        + waterMask * (shelfMask * 0.2 - smoothstep(0.28, 0.7, seaLevel - massField) * 0.18)
-        + fractureMask * 0.22,
+      const baseUplift = clamp(
+        landMask * (regionMask * 0.34 + mountainChainMask * 0.4 + plateauMask * 0.26)
+        + waterMask * shelfMask * 0.18
+        + accentMask * 0.12
+        + micro * 0.08,
         0,
         1,
       );
-      let detailHeight = clamp(micro * 0.68 + accentMask * 0.12 + fractureMask * 0.2, 0, 1);
+      const baseDepression = clamp(
+        basinMask * 0.36
+        + trenchMask * 0.34
+        + craterMask * 0.3
+        + valleyMask * 0.22
+        + riftMask * 0.16,
+        0,
+        1,
+      );
 
+      let uplift = baseUplift;
+      let depression = baseDepression;
       switch (profile.archetype) {
+        case 'volcanic':
+          uplift = clamp(uplift + accentMask * 0.28 + fractureMask * 0.18 + mountainChainMask * 0.1, 0, 1);
+          depression = clamp(depression + basinMask * 0.16 + craterMask * 0.14 + riftMask * 0.08, 0, 1);
+          break;
         case 'oceanic':
-          tectonicHeight = clamp(tectonicHeight - waterMask * 0.08, 0, 1);
-          regionalHeight = clamp(regionalHeight + shelfMask * 0.2 - waterMask * smoothstep(0.32, 0.84, seaLevel - massField) * 0.2, 0, 1);
+          uplift = clamp(uplift * 0.72 + shelfMask * 0.2 + mountainChainMask * 0.08, 0, 1);
+          depression = clamp(depression + trenchMask * 0.28 + basinMask * 0.22 + (1 - massField) * 0.12, 0, 1);
           break;
         case 'frozen':
-          regionalHeight = clamp(regionalHeight + frostMask * 0.26 + shelfMask * 0.12, 0, 1);
-          detailHeight = clamp(detailHeight + fractureMask * 0.12, 0, 1);
-          break;
-        case 'volcanic':
-          tectonicHeight = clamp(tectonicHeight + accentMask * 0.14, 0, 1);
-          regionalHeight = clamp(regionalHeight + fractureMask * 0.24, 0, 1);
+          uplift = clamp(uplift + frostMask * 0.26 + mountainChainMask * 0.12, 0, 1);
+          depression = clamp(depression + riftMask * 0.22 + basinMask * 0.12 + valleyMask * 0.1, 0, 1);
           break;
         case 'arid':
-          regionalHeight = clamp(regionalHeight + accentMask * 0.16 - waterMask * 0.12, 0, 1);
-          detailHeight = clamp(detailHeight + smoothstep(0.58, 0.9, accentNoise) * 0.14, 0, 1);
+          uplift = clamp(uplift + plateauMask * 0.22 + accentMask * 0.14, 0, 1);
+          depression = clamp(depression + valleyMask * 0.26 + basinMask * 0.2 + trenchMask * 0.08, 0, 1);
           break;
         case 'barren':
-          regionalHeight = clamp(regionalHeight + smoothstep(0.64, 0.92, fractureNoise) * 0.18, 0, 1);
+          uplift = clamp(uplift + mountainChainMask * 0.16 + fractureMask * 0.08, 0, 1);
+          depression = clamp(depression + craterMask * 0.3 + basinMask * 0.2, 0, 1);
           break;
         case 'mineral':
-          regionalHeight = clamp(regionalHeight + accentMask * 0.18 + fractureMask * 0.12, 0, 1);
-          detailHeight = clamp(detailHeight + accentMask * 0.12, 0, 1);
+          uplift = clamp(uplift + fractureMask * 0.2 + accentMask * 0.2 + mountainChainMask * 0.1, 0, 1);
+          depression = clamp(depression + riftMask * 0.24 + trenchMask * 0.12 + basinMask * 0.14, 0, 1);
           break;
-        case 'fractured':
-          tectonicHeight = clamp(tectonicHeight + fractureMask * 0.1, 0, 1);
-          regionalHeight = clamp(regionalHeight + fractureMask * 0.28, 0, 1);
+        case 'terrestrial':
+          uplift = clamp(uplift + mountainChainMask * 0.26 + plateauMask * 0.22 + landMask * 0.08, 0, 1);
+          depression = clamp(depression + valleyMask * 0.28 + basinMask * 0.24 + riftMask * 0.16 + craterMask * 0.06, 0, 1);
           break;
         default:
           break;
       }
 
-      let regionalDisplacementWeight = 0.36;
-      switch (profile.archetype) {
-        case 'volcanic':
-          regionalDisplacementWeight = 0.72;
-          break;
-        case 'arid':
-          regionalDisplacementWeight = 0.64;
-          break;
-        case 'fractured':
-          regionalDisplacementWeight = 0.78;
-          break;
-        case 'barren':
-          regionalDisplacementWeight = 0.58;
-          break;
-        case 'oceanic':
-          regionalDisplacementWeight = 0.42;
-          break;
-        case 'frozen':
-          regionalDisplacementWeight = 0.46;
-          break;
-        case 'mineral':
-          regionalDisplacementWeight = 0.54;
-          break;
-        default:
-          break;
-      }
-      const displacementInfluence = clamp(
-        tectonicHeight * (1 - regionalDisplacementWeight)
-        + regionalHeight * regionalDisplacementWeight
-        + (detailHeight - 0.5) * 0.08,
-        0,
-        1,
-      );
-      const heightValue = clamp(
-        tectonicHeight * 0.62
-        + regionalHeight * 0.28
-        + detailHeight * 0.1
-        + signature.heightBias,
-        0.16,
-        0.88,
-      );
+      const erosionMod = (erosionField - 0.5) * 0.09;
+      const signedRelief = clamp((uplift - depression) + erosionMod + signature.heightBias * 0.8, -1, 1);
+      const heightValue = clamp(0.5 + signedRelief * 0.5, 0, 1);
       const fieldIndex = y * width + x;
-      tectonicField[fieldIndex] = tectonicHeight;
-      regionalField[fieldIndex] = regionalHeight;
-      detailField[fieldIndex] = detailHeight;
-      displacementField[fieldIndex] = displacementInfluence;
+      upliftField[fieldIndex] = uplift;
+      depressionField[fieldIndex] = depression;
+      craterMaskField[fieldIndex] = craterMask;
+      trenchMaskField[fieldIndex] = trenchMask;
+      basinMaskField[fieldIndex] = basinMask;
+      riftMaskField[fieldIndex] = riftMask;
+      displacementField[fieldIndex] = signedRelief;
       heightField[fieldIndex] = heightValue;
 
       const emissiveMask = clamp(fractureMask * signature.emissiveFromFracture + accentMask * signature.emissiveFromAccent + signature.emissiveBase, 0, 0.2);
@@ -812,46 +837,19 @@ function paintPlanetTextures(
   emissiveCtx.putImageData(emissiveData, 0, 0);
 
   const displacementStats = getFieldMinMax(displacementField);
-  const displacementRange = Math.max(displacementStats.max - displacementStats.min, 1e-5);
-  const contrastBase = 1.24 + normalize(profile.reliefStrength, 0.1, 0.26) * 0.54;
-  let archetypeContrastBoost = 1;
-  switch (profile.archetype) {
-    case 'volcanic':
-      archetypeContrastBoost = 1.2;
-      break;
-    case 'arid':
-      archetypeContrastBoost = 1.16;
-      break;
-    case 'fractured':
-      archetypeContrastBoost = 1.24;
-      break;
-    case 'barren':
-      archetypeContrastBoost = 1.14;
-      break;
-    case 'oceanic':
-      archetypeContrastBoost = 1.06;
-      break;
-    case 'frozen':
-      archetypeContrastBoost = 1.08;
-      break;
-    default:
-      break;
-  }
-
   for (let i = 0; i < displacementField.length; i += 1) {
-    const normalizedDisplacement = (displacementField[i] - displacementStats.min) / displacementRange;
-    const centered = normalizedDisplacement - 0.5;
-    const contrasted = clamp(0.5 + centered * contrastBase * archetypeContrastBoost, 0, 1);
-    const curved = smoothstep(0.06, 0.94, contrasted);
-    const peaks = Math.pow(curved, 0.86);
-    const trenches = 1 - Math.pow(1 - curved, 0.82);
-    displacementField[i] = lerp(peaks, trenches, 0.5);
+    const normalizedDisplacement = normalize(displacementField[i], displacementStats.min, displacementStats.max);
+    const centered = normalizedDisplacement * 2 - 1;
+    displacementField[i] = clamp(centered * 0.42, -0.42, 0.42);
   }
 
   return {
-    tectonicHeight: tectonicField,
-    regionalHeight: regionalField,
-    detailHeight: detailField,
+    upliftField,
+    depressionField,
+    craterMask: craterMaskField,
+    trenchMask: trenchMaskField,
+    basinMask: basinMaskField,
+    riftMask: riftMaskField,
     displacementField,
   };
 }
@@ -899,15 +897,15 @@ function archetypeSignature(archetype: PlanetVisualProfile['archetype']): Archet
     case 'volcanic':
       return { coverageBias: 0.23, seaLevelShift: 0.22, coastWidth: 0.06, shelfWidth: 0.08, fractureStrength: 1, frostStrength: 0.06, fractureHueShift: 18, regionHueShift: 8, accentHueShift: 14, landHueShift: 14, waterHueShift: 8, regionSatShift: -4, accentSatBoost: 8, fractureSatShift: 12, regionLightShift: -8, accentLightShift: -6, fractureLightShift: -10, coastLightBoost: 4, shelfLightBoost: 2, polarDarkening: 6, roughWaterShift: 0.06, roughLandShift: 0.12, roughAccentShift: 0.05, roughFractureShift: 0.1, metalBase: 0.02, metalAccentBoost: 0.03, metalFractureBoost: 0.05, accentColorBlend: 0.34, fractureColorBlend: 0.44, heightBias: 0.03, emissiveBase: 0.01, emissiveFromFracture: 0.18, emissiveFromAccent: 0.04, emissiveHueShift: -8, emissiveSaturationBoost: 0.3 };
     case 'frozen':
-      return { coverageBias: -0.08, seaLevelShift: 0.08, coastWidth: 0.05, shelfWidth: 0.14, fractureStrength: 0.72, frostStrength: 0.84, fractureHueShift: -8, regionHueShift: -10, accentHueShift: -6, landHueShift: -22, waterHueShift: -14, regionSatShift: -14, accentSatBoost: -8, fractureSatShift: -10, regionLightShift: 8, accentLightShift: 6, fractureLightShift: 2, coastLightBoost: 5, shelfLightBoost: 8, polarDarkening: -10, roughWaterShift: -0.14, roughLandShift: -0.08, roughAccentShift: -0.04, roughFractureShift: 0.03, metalBase: 0.01, metalAccentBoost: 0.01, metalFractureBoost: 0.02, accentColorBlend: 0.3, fractureColorBlend: 0.22, heightBias: -0.02, emissiveBase: 0, emissiveFromFracture: 0.02, emissiveFromAccent: 0, emissiveHueShift: -20, emissiveSaturationBoost: 0.04 };
+      return { coverageBias: -0.08, seaLevelShift: 0.08, coastWidth: 0.05, shelfWidth: 0.14, fractureStrength: 0.72, frostStrength: 0.84, fractureHueShift: -8, regionHueShift: -10, accentHueShift: -6, landHueShift: -22, waterHueShift: -14, regionSatShift: -14, accentSatBoost: -8, fractureSatShift: -10, regionLightShift: 8, accentLightShift: 6, fractureLightShift: 2, coastLightBoost: 5, shelfLightBoost: 8, polarDarkening: -10, roughWaterShift: 0.02, roughLandShift: 0.08, roughAccentShift: 0.02, roughFractureShift: 0.04, metalBase: 0.005, metalAccentBoost: 0.005, metalFractureBoost: 0.015, accentColorBlend: 0.3, fractureColorBlend: 0.22, heightBias: -0.02, emissiveBase: 0, emissiveFromFracture: 0.01, emissiveFromAccent: 0, emissiveHueShift: -20, emissiveSaturationBoost: 0.04 };
     case 'arid':
       return { coverageBias: 0.12, seaLevelShift: 0.16, coastWidth: 0.07, shelfWidth: 0.09, fractureStrength: 0.45, frostStrength: 0.04, fractureHueShift: 8, regionHueShift: 10, accentHueShift: 16, landHueShift: 10, waterHueShift: 2, regionSatShift: -6, accentSatBoost: 4, fractureSatShift: 5, regionLightShift: 5, accentLightShift: 3, fractureLightShift: -3, coastLightBoost: 4, shelfLightBoost: 2, polarDarkening: 6, roughWaterShift: 0.02, roughLandShift: 0.14, roughAccentShift: 0.06, roughFractureShift: 0.04, metalBase: 0, metalAccentBoost: 0.01, metalFractureBoost: 0.02, accentColorBlend: 0.36, fractureColorBlend: 0.18, heightBias: 0.025, emissiveBase: 0, emissiveFromFracture: 0.01, emissiveFromAccent: 0, emissiveHueShift: 8, emissiveSaturationBoost: 0.02 };
     case 'mineral':
-      return { coverageBias: 0.06, seaLevelShift: 0.1, coastWidth: 0.06, shelfWidth: 0.08, fractureStrength: 0.78, frostStrength: 0.14, fractureHueShift: 16, regionHueShift: 8, accentHueShift: 22, landHueShift: 8, waterHueShift: 4, regionSatShift: 5, accentSatBoost: 14, fractureSatShift: 8, regionLightShift: -2, accentLightShift: 2, fractureLightShift: -5, coastLightBoost: 2, shelfLightBoost: 1, polarDarkening: 8, roughWaterShift: 0.04, roughLandShift: 0, roughAccentShift: -0.06, roughFractureShift: -0.04, metalBase: 0.1, metalAccentBoost: 0.08, metalFractureBoost: 0.06, accentColorBlend: 0.4, fractureColorBlend: 0.3, heightBias: 0.02, emissiveBase: 0, emissiveFromFracture: 0.04, emissiveFromAccent: 0.02, emissiveHueShift: 18, emissiveSaturationBoost: 0.1 };
+      return { coverageBias: 0.06, seaLevelShift: 0.1, coastWidth: 0.06, shelfWidth: 0.08, fractureStrength: 0.78, frostStrength: 0.14, fractureHueShift: 16, regionHueShift: 8, accentHueShift: 22, landHueShift: 8, waterHueShift: 4, regionSatShift: 5, accentSatBoost: 14, fractureSatShift: 8, regionLightShift: -2, accentLightShift: 2, fractureLightShift: -5, coastLightBoost: 2, shelfLightBoost: 1, polarDarkening: 8, roughWaterShift: 0.08, roughLandShift: 0.1, roughAccentShift: 0.03, roughFractureShift: 0.04, metalBase: 0.06, metalAccentBoost: 0.05, metalFractureBoost: 0.05, accentColorBlend: 0.4, fractureColorBlend: 0.3, heightBias: 0.02, emissiveBase: 0, emissiveFromFracture: 0.02, emissiveFromAccent: 0.01, emissiveHueShift: 18, emissiveSaturationBoost: 0.1 };
     case 'oceanic':
-      return { coverageBias: -0.2, seaLevelShift: -0.08, coastWidth: 0.04, shelfWidth: 0.16, fractureStrength: 0.3, frostStrength: 0.2, fractureHueShift: -6, regionHueShift: -10, accentHueShift: -20, landHueShift: -8, waterHueShift: -26, regionSatShift: 8, accentSatBoost: 6, fractureSatShift: -4, regionLightShift: 7, accentLightShift: 2, fractureLightShift: -2, coastLightBoost: 8, shelfLightBoost: 10, polarDarkening: -6, roughWaterShift: -0.22, roughLandShift: -0.06, roughAccentShift: 0.02, roughFractureShift: 0.02, metalBase: -0.02, metalAccentBoost: 0.01, metalFractureBoost: 0.01, accentColorBlend: 0.3, fractureColorBlend: 0.12, heightBias: -0.025, emissiveBase: 0, emissiveFromFracture: 0, emissiveFromAccent: 0, emissiveHueShift: -26, emissiveSaturationBoost: 0.03 };
-    case 'fractured':
-      return { coverageBias: 0.2, seaLevelShift: 0.22, coastWidth: 0.08, shelfWidth: 0.07, fractureStrength: 1, frostStrength: 0.06, fractureHueShift: 22, regionHueShift: 14, accentHueShift: 12, landHueShift: 14, waterHueShift: 4, regionSatShift: 4, accentSatBoost: 10, fractureSatShift: 10, regionLightShift: -6, accentLightShift: -2, fractureLightShift: -10, coastLightBoost: 3, shelfLightBoost: 1, polarDarkening: 10, roughWaterShift: 0.08, roughLandShift: 0.12, roughAccentShift: 0.08, roughFractureShift: 0.12, metalBase: 0.02, metalAccentBoost: 0.03, metalFractureBoost: 0.08, accentColorBlend: 0.34, fractureColorBlend: 0.44, heightBias: 0.03, emissiveBase: 0.005, emissiveFromFracture: 0.1, emissiveFromAccent: 0.03, emissiveHueShift: 22, emissiveSaturationBoost: 0.14 };
+      return { coverageBias: -0.2, seaLevelShift: -0.08, coastWidth: 0.04, shelfWidth: 0.16, fractureStrength: 0.3, frostStrength: 0.2, fractureHueShift: -6, regionHueShift: -10, accentHueShift: -20, landHueShift: -8, waterHueShift: -26, regionSatShift: 8, accentSatBoost: 6, fractureSatShift: -4, regionLightShift: 7, accentLightShift: 2, fractureLightShift: -2, coastLightBoost: 8, shelfLightBoost: 10, polarDarkening: -6, roughWaterShift: 0.12, roughLandShift: 0.05, roughAccentShift: 0.03, roughFractureShift: 0.03, metalBase: 0, metalAccentBoost: 0.005, metalFractureBoost: 0.01, accentColorBlend: 0.3, fractureColorBlend: 0.12, heightBias: -0.025, emissiveBase: 0, emissiveFromFracture: 0, emissiveFromAccent: 0, emissiveHueShift: -26, emissiveSaturationBoost: 0.03 };
+    case 'terrestrial':
+      return { coverageBias: -0.04, seaLevelShift: 0.02, coastWidth: 0.055, shelfWidth: 0.13, fractureStrength: 0.48, frostStrength: 0.18, fractureHueShift: 6, regionHueShift: 7, accentHueShift: 12, landHueShift: 6, waterHueShift: -10, regionSatShift: -2, accentSatBoost: 5, fractureSatShift: 2, regionLightShift: 2, accentLightShift: 1, fractureLightShift: -4, coastLightBoost: 5, shelfLightBoost: 7, polarDarkening: 4, roughWaterShift: 0.09, roughLandShift: 0.08, roughAccentShift: 0.04, roughFractureShift: 0.06, metalBase: 0.005, metalAccentBoost: 0.01, metalFractureBoost: 0.015, accentColorBlend: 0.32, fractureColorBlend: 0.24, heightBias: 0.01, emissiveBase: 0, emissiveFromFracture: 0.005, emissiveFromAccent: 0, emissiveHueShift: 6, emissiveSaturationBoost: 0.04 };
     case 'barren':
     default:
       return { coverageBias: 0.11, seaLevelShift: 0.18, coastWidth: 0.08, shelfWidth: 0.08, fractureStrength: 0.48, frostStrength: 0.12, fractureHueShift: 4, regionHueShift: 4, accentHueShift: 6, landHueShift: 4, waterHueShift: 0, regionSatShift: -6, accentSatBoost: -2, fractureSatShift: 2, regionLightShift: -4, accentLightShift: -2, fractureLightShift: -4, coastLightBoost: 3, shelfLightBoost: 2, polarDarkening: 9, roughWaterShift: 0.05, roughLandShift: 0.09, roughAccentShift: 0.04, roughFractureShift: 0.06, metalBase: 0.01, metalAccentBoost: 0.01, metalFractureBoost: 0.02, accentColorBlend: 0.22, fractureColorBlend: 0.2, heightBias: 0.02, emissiveBase: 0, emissiveFromFracture: 0, emissiveFromAccent: 0, emissiveHueShift: 0, emissiveSaturationBoost: 0 };
@@ -939,6 +937,39 @@ function createFieldTexture(field: Float32Array, width: number, height: number):
   return texture;
 }
 
+function createSignedFieldTexture(field: Float32Array, width: number, height: number): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return new THREE.CanvasTexture(canvas);
+  }
+  const img = ctx.createImageData(width, height);
+  for (let i = 0; i < field.length; i += 1) {
+    const v = Math.round(clamp(0.5 + field[i] * 0.5, 0, 1) * 255);
+    const k = i * 4;
+    img.data[k] = v;
+    img.data[k + 1] = v;
+    img.data[k + 2] = v;
+    img.data[k + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.anisotropy = 2;
+  return texture;
+}
+
+function craterSystemMask(nx: number, ny: number, nz: number, seed: number) {
+  const craterBand = smoothstep(0.58, 0.88, fbm3(nx * 2.2, ny * 2.2, nz * 2.2, seed, 3));
+  const ringA = Math.abs(fbm3(nx * 10.4, ny * 10.4, nz * 10.4, seed + 17, 2) - 0.5);
+  const ringB = Math.abs(fbm3(nx * 16.8, ny * 16.8, nz * 16.8, seed + 53, 2) - 0.5);
+  const ringMask = (1 - smoothstep(0.16, 0.36, ringA)) * 0.65 + (1 - smoothstep(0.2, 0.42, ringB)) * 0.35;
+  return clamp(craterBand * ringMask, 0, 1);
+}
+
 function applyPlanetReliefToGeometry(
   geometry: THREE.SphereGeometry,
   displacementField: Float32Array,
@@ -950,15 +981,14 @@ function applyPlanetReliefToGeometry(
   const positions = geometry.attributes.position;
   const vertex = new THREE.Vector3();
   const rng = new SeededRng(seed ^ 0xa24baed4);
-  const baseScale = profile.reliefStrength * 0.44 + rng.range(0.018, 0.036);
-  const displacementScale = clamp(baseScale, 0.052, 0.128);
+  const baseScale = profile.reliefStrength * 0.22 + rng.range(0.008, 0.018);
+  const displacementScale = clamp(baseScale, 0.016, 0.045);
   for (let i = 0; i < positions.count; i += 1) {
     vertex.set(positions.getX(i), positions.getY(i), positions.getZ(i));
     const normal = vertex.clone().normalize();
     const u = 0.5 + Math.atan2(normal.z, normal.x) / (Math.PI * 2);
     const v = 0.5 - Math.asin(clamp(normal.y, -1, 1)) / Math.PI;
-    const displacement = sampleFieldBilinear(displacementField, width, height, u, v);
-    const signed = displacement * 2 - 1;
+    const signed = sampleFieldBilinear(displacementField, width, height, u, v);
     const curved = Math.sign(signed) * Math.pow(Math.abs(signed), 0.84);
     const radius = 1 + curved * displacementScale;
     positions.setXYZ(i, normal.x * radius, normal.y * radius, normal.z * radius);

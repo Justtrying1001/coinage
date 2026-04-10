@@ -1,7 +1,7 @@
 export type RenderMode = 'galaxy2d' | 'planet3d';
 
 export type PlanetSeed = number;
-export type PlanetArchetype = 'arid' | 'frozen' | 'volcanic' | 'mineral' | 'fractured' | 'oceanic' | 'barren';
+export type PlanetArchetype = 'arid' | 'frozen' | 'volcanic' | 'mineral' | 'terrestrial' | 'oceanic' | 'barren';
 
 export interface SelectedPlanetRef {
   id: string;
