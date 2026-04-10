@@ -66,14 +66,17 @@ export class Planet3DMode implements RenderModeController {
     this.scene.background = new THREE.Color(0x040811);
     this.scene.add(this.root);
 
-    const ambient = new THREE.AmbientLight(0x9ed4ff, 0.34);
+    const ambient = new THREE.AmbientLight(0xb8dcff, 0.56);
     this.scene.add(ambient);
 
-    const hemi = new THREE.HemisphereLight(0xdaf0ff, 0x425564, 0.72);
+    const hemi = new THREE.HemisphereLight(0xe7f3ff, 0x5a6976, 0.78);
     this.scene.add(hemi);
-    const reliefKey = new THREE.DirectionalLight(0xffffff, 0.45);
+    const reliefKey = new THREE.DirectionalLight(0xffffff, 0.24);
     reliefKey.position.set(2.2, 1.4, 2.6);
     this.scene.add(reliefKey);
+    const reliefFill = new THREE.DirectionalLight(0xdcecff, 0.16);
+    reliefFill.position.set(-2.1, 0.9, -2.2);
+    this.scene.add(reliefFill);
 
     this.camera.position.set(0, 0, 2.6);
     this.scene.add(this.camera);
@@ -180,7 +183,8 @@ export class Planet3DMode implements RenderModeController {
       const ridgeMask = Math.max(0, ridgeNoise - 0.5) * 1.8 * profile.ridgeWeight;
       const craterMask = (0.5 - Math.abs(craterNoise - 0.5)) * profile.craterWeight;
       const polarMask = Math.pow(Math.abs(latitude), 1.3);
-      const elevation = (macroMask * 0.78 + ridgeMask - craterMask - polarMask * profile.polarWeight) * profile.reliefStrength;
+      const elevationRaw = (macroMask * 0.72 + ridgeMask * 0.74 - craterMask * 0.65 - polarMask * profile.polarWeight * 0.78) * profile.reliefStrength;
+      const elevation = elevationRaw * 0.84;
 
       position.setXYZ(i, vx * (1 + elevation), vy * (1 + elevation), vz * (1 + elevation));
     }
@@ -197,9 +201,9 @@ export class Planet3DMode implements RenderModeController {
       roughnessMap: maps.roughnessMap,
       metalnessMap: maps.metalnessMap,
       bumpMap: maps.bumpMap,
-      bumpScale: 0.02 + profile.reliefStrength * 0.035,
+      bumpScale: 0.008 + profile.reliefStrength * 0.022,
       emissiveMap: maps.emissiveMap,
-      roughness: clamp(profile.roughness + 0.14, 0.38, 0.92),
+      roughness: clamp(profile.roughness + 0.2, 0.46, 0.95),
       metalness: clamp(profile.metalness * 0.45, 0, 0.16),
       flatShading: false,
       emissive: new THREE.Color(`hsl(${profile.accentHue}, 45%, ${profile.atmosphereLightness}%)`),
