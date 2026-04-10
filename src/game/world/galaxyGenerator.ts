@@ -55,14 +55,27 @@ export function generateGalaxyData({
 export function planetProfileFromSeed(seed: PlanetSeed): PlanetVisualProfile {
   const rng = new SeededRng(seed);
   const baseHue = Math.floor(rng.range(160, 340));
+  const reliefStrength = rng.range(0.05, 0.19);
+  const ruggedness = rng.range(0, 1);
 
   return {
     baseHue,
     accentHue: (baseHue + Math.floor(rng.range(24, 90))) % 360,
+    hueDrift: rng.range(-22, 24),
     oceanLevel: rng.range(0.18, 0.62),
-    roughness: rng.range(0.45, 0.92),
-    reliefStrength: rng.range(0.03, 0.15),
-    lightIntensity: rng.range(1.0, 1.7),
+    roughness: rng.range(0.36, 0.92),
+    metalness: rng.range(0.01, 0.12),
+    reliefStrength,
+    reliefSharpness: rng.range(0.85, 1.75),
+    continentScale: rng.range(1.2, 3.4),
+    ridgeScale: rng.range(5.5, 12.5) + ruggedness * 4,
+    craterScale: rng.range(3.0, 8.0),
+    oceanSaturation: rng.range(42, 62),
+    landSaturation: rng.range(38, 68),
+    oceanLightness: rng.range(31, 46),
+    landLightness: rng.range(30, 55),
+    lightIntensity: rng.range(1.05, 1.75),
+    atmosphereLightness: rng.range(70, 82),
   };
 }
 
