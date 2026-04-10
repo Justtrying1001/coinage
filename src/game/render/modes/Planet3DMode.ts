@@ -223,11 +223,11 @@ export class Planet3DMode implements RenderModeController {
       normalMap: maps.normalMap,
       normalScale: new THREE.Vector2(0.34, 0.34),
       emissiveMap: maps.emissiveMap,
-      roughness: clamp(profile.roughness + 0.36, 0.72, 0.99),
-      metalness: profile.archetype === 'mineral' ? clamp(profile.metalness * 0.26, 0.03, 0.12) : clamp(profile.metalness * 0.03, 0, 0.012),
+      roughness: 0.9,
+      metalness: profile.archetype === 'mineral' ? 0.08 : 0.004,
       flatShading: false,
-      emissive: new THREE.Color(`hsl(${profile.accentHue}, 45%, ${profile.atmosphereLightness}%)`),
-      emissiveIntensity: profile.emissiveIntensity * 0.04,
+      emissive: new THREE.Color(0xffffff),
+      emissiveIntensity: profile.archetype === 'volcanic' ? 0.9 : 0.55,
     });
 
     this.planet = new THREE.Mesh(geometry, material);
@@ -390,10 +390,6 @@ function clamp(value: number, min: number, max: number) {
 function normalize(value: number, min: number, max: number) {
   if (max <= min) return 0;
   return clamp((value - min) / (max - min), 0, 1);
-}
-
-function wrapHue(value: number) {
-  return ((value % 360) + 360) % 360;
 }
 
 const SEMANTIC_MASK_NAMES = [
@@ -795,127 +791,51 @@ function paintPlanetTextures(
         craterMask,
         terrain,
       });
-      const classification: TerrainClassificationSample = {
+      // Stage 4: semantic-first archetype color/material mapping.
+      const semanticShading = colorizeTerrainFromSemantics(profile.archetype, {
+        semanticMasks: semanticSample,
         worldMasks,
         regionMask,
         valleyMask,
         accentMask,
         fractureMask,
         frostMask,
-        polarMask,
-        mountainChainMask,
-        plateauMask,
-        basinMask,
-        trenchMask,
-        riftMask,
-        craterMask,
-        semanticMasks: semanticSample,
-      };
-      const surfaceWeights = deriveCanonicalSurfaceWeights(classification);
-      const canonicalWaterMask = surfaceWeights.waterMask;
-      const canonicalLandMask = surfaceWeights.landMask;
-      const canonicalCoastMask = surfaceWeights.coastMask;
-      const canonicalShelfMask = surfaceWeights.shelfMask;
-
-      // Stage 4: temporary albedo/material logic (still legacy), now downstream of semantic classification.
-      const hue = wrapHue(
-        profile.baseHue
-        + signature.waterHueShift * canonicalWaterMask
-        + signature.landHueShift * canonicalLandMask
-        + (regionMask - 0.5) * signature.regionHueShift
-        + (accentMask - 0.25) * signature.accentHueShift
-        + (fractureMask - 0.2) * signature.fractureHueShift,
-      );
-      const sat = clamp(
-        profile.oceanSaturation * canonicalWaterMask
-        + profile.landSaturation * canonicalLandMask
-        + (regionMask - 0.5) * signature.regionSatShift
-        + accentMask * signature.accentSatBoost
-        + fractureMask * signature.fractureSatShift
-        - frostMask * 18,
-        10,
-        86,
-      );
-      const lightness = clamp(
-        profile.oceanLightness * canonicalWaterMask
-        + profile.landLightness * canonicalLandMask
-        + canonicalCoastMask * signature.coastLightBoost
-        + canonicalShelfMask * signature.shelfLightBoost
-        + (regionMask - 0.5) * signature.regionLightShift
-        + accentMask * signature.accentLightShift
-        + fractureMask * signature.fractureLightShift
-        + frostMask * 18
-        - Math.abs(ny) * signature.polarDarkening,
-        16,
-        90,
-      );
-
-      const rgb = hslToRgb(hue / 360, sat / 100, lightness / 100);
-      const deepWaterTint = hslToRgb(wrapHue(profile.baseHue + signature.waterHueShift - 12) / 360, clamp((profile.oceanSaturation + 6) / 100, 0, 1), clamp((profile.oceanLightness - 14) / 100, 0, 1));
-      const shelfTint = hslToRgb(wrapHue(profile.baseHue + signature.waterHueShift + 8) / 360, clamp((profile.oceanSaturation + 3) / 100, 0, 1), clamp((profile.oceanLightness + 8) / 100, 0, 1));
-      const coastTint = hslToRgb(wrapHue(profile.baseHue + signature.landHueShift + 4) / 360, clamp((profile.landSaturation - 8) / 100, 0, 1), clamp((profile.landLightness + 12) / 100, 0, 1));
-      const regionTint = hslToRgb(wrapHue(profile.baseHue + signature.landHueShift + signature.regionHueShift * 0.55) / 360, clamp((profile.landSaturation + 4) / 100, 0, 1), clamp((profile.landLightness + 2) / 100, 0, 1));
-      const accentTint = hslToRgb(wrapHue(profile.baseHue + signature.landHueShift + signature.accentHueShift) / 360, clamp((profile.landSaturation + 8) / 100, 0, 1), clamp((profile.landLightness - 2) / 100, 0, 1));
-      const fractureTint = hslToRgb(wrapHue(profile.baseHue + signature.fractureHueShift) / 360, clamp((profile.landSaturation + 10) / 100, 0, 1), clamp((profile.landLightness - 8) / 100, 0, 1));
-      const frostTint = hslToRgb(wrapHue(profile.baseHue - 22) / 360, 0.2, 0.88);
-
-      const layered = blendRgb(
-        rgb,
-        deepWaterTint,
-        canonicalWaterMask * smoothstep(seaLevel - 0.25, seaLevel + 0.01, seaLevel - massField) * 0.55,
-        shelfTint,
-        canonicalShelfMask * 0.54,
-        coastTint,
-        canonicalCoastMask * 0.42,
-        regionTint,
-        regionMask * 0.34,
-        accentTint,
-        accentMask * signature.accentColorBlend,
-        fractureTint,
-        fractureMask * signature.fractureColorBlend,
-        frostTint,
-        frostMask,
-      );
-      const finalColor = layered;
+        micro,
+        erosionField,
+        terrain,
+      });
+      const finalColor = semanticShading.albedo;
       const i = (y * width + x) * 4;
       colorData.data[i] = finalColor[0];
       colorData.data[i + 1] = finalColor[1];
       colorData.data[i + 2] = finalColor[2];
       colorData.data[i + 3] = 255;
 
-      const roughness = clamp(
-        profile.roughness
-        + canonicalWaterMask * signature.roughWaterShift
-        + canonicalLandMask * signature.roughLandShift
-        + regionMask * 0.05
-        + accentMask * signature.roughAccentShift
-        + fractureMask * signature.roughFractureShift
-        - canonicalShelfMask * 0.05
-        - frostMask * 0.08
-        + (1 - coastlineNoise) * 0.03,
-        0.56,
-        0.99,
-      );
+      const roughness = semanticShading.roughness;
       const roughValue = Math.round(roughness * 255);
       roughData.data[i] = roughValue;
       roughData.data[i + 1] = roughValue;
       roughData.data[i + 2] = roughValue;
       roughData.data[i + 3] = 255;
 
-      const metal = clamp(
-        profile.metalness * (profile.archetype === 'mineral' ? 0.18 : 0.04)
-        + signature.metalBase
-        + accentMask * signature.metalAccentBoost
-        + fractureMask * signature.metalFractureBoost
-        - canonicalWaterMask * 0.06,
-        0,
-        profile.archetype === 'mineral' ? 0.18 : 0.035,
-      );
+      const metal = semanticShading.metalness;
       const metalValue = Math.round(metal * 255);
       metalData.data[i] = metalValue;
       metalData.data[i + 1] = metalValue;
       metalData.data[i + 2] = metalValue;
       metalData.data[i + 3] = 255;
+
+      const canonicalLandMask = clamp(
+        Math.max(worldMasks.landMask, semanticSample.continentMask, semanticSample.emergentLandMask),
+        0,
+        1,
+      );
+      const canonicalWaterMask = clamp(
+        Math.max(worldMasks.waterMask, semanticSample.oceanMask, semanticSample.openOceanMask, semanticSample.abyssalDepthMask),
+        0,
+        1,
+      );
+      const canonicalShelfMask = clamp(Math.max(worldMasks.shelfMask, semanticSample.shelfMask), 0, 1);
 
       const baseUplift = clamp(terrain.upliftField + canonicalLandMask * regionMask * 0.16 + canonicalWaterMask * canonicalShelfMask * 0.14 + micro * 0.07, 0, 1);
       const baseDepression = clamp(terrain.depressionField + valleyMask * 0.16 + (1 - canonicalLandMask) * terrain.trenchField * 0.14, 0, 1);
@@ -980,12 +900,10 @@ function paintPlanetTextures(
         semanticMasks[name][fieldIndex] = semanticSample[name];
       }
 
-      const emissiveMask = clamp(fractureMask * signature.emissiveFromFracture + accentMask * signature.emissiveFromAccent + signature.emissiveBase, 0, 0.2);
-      const eHue = wrapHue(profile.accentHue + signature.emissiveHueShift);
-      const eRgb = hslToRgb(eHue / 360, clamp(0.55 + signature.emissiveSaturationBoost, 0, 1), clamp(0.2 + emissiveMask * 0.7, 0, 1));
-      emissiveData.data[i] = Math.round(eRgb[0] * emissiveMask);
-      emissiveData.data[i + 1] = Math.round(eRgb[1] * emissiveMask);
-      emissiveData.data[i + 2] = Math.round(eRgb[2] * emissiveMask);
+      const eRgb = semanticShading.emissive;
+      emissiveData.data[i] = eRgb[0];
+      emissiveData.data[i + 1] = eRgb[1];
+      emissiveData.data[i + 2] = eRgb[2];
       emissiveData.data[i + 3] = 255;
     }
   }
@@ -1059,35 +977,7 @@ interface ArchetypeSignature {
   shelfWidth: number;
   fractureStrength: number;
   frostStrength: number;
-  fractureHueShift: number;
-  regionHueShift: number;
-  accentHueShift: number;
-  landHueShift: number;
-  waterHueShift: number;
-  regionSatShift: number;
-  accentSatBoost: number;
-  fractureSatShift: number;
-  regionLightShift: number;
-  accentLightShift: number;
-  fractureLightShift: number;
-  coastLightBoost: number;
-  shelfLightBoost: number;
-  polarDarkening: number;
-  roughWaterShift: number;
-  roughLandShift: number;
-  roughAccentShift: number;
-  roughFractureShift: number;
-  metalBase: number;
-  metalAccentBoost: number;
-  metalFractureBoost: number;
-  accentColorBlend: number;
-  fractureColorBlend: number;
   heightBias: number;
-  emissiveBase: number;
-  emissiveFromFracture: number;
-  emissiveFromAccent: number;
-  emissiveHueShift: number;
-  emissiveSaturationBoost: number;
 }
 
 interface RadialFeature {
@@ -1276,21 +1166,24 @@ interface WorldSurfaceMasks {
   shelfMask: number;
 }
 
-interface TerrainClassificationSample {
+interface SemanticColorizeInput {
+  semanticMasks: SemanticTerrainMaskSet;
   worldMasks: WorldSurfaceMasks;
   regionMask: number;
   valleyMask: number;
   accentMask: number;
   fractureMask: number;
   frostMask: number;
-  polarMask: number;
-  mountainChainMask: number;
-  plateauMask: number;
-  basinMask: number;
-  trenchMask: number;
-  riftMask: number;
-  craterMask: number;
-  semanticMasks: SemanticTerrainMaskSet;
+  micro: number;
+  erosionField: number;
+  terrain: TerrainSample;
+}
+
+interface SemanticColorMaterialSample {
+  albedo: [number, number, number];
+  roughness: number;
+  metalness: number;
+  emissive: [number, number, number];
 }
 
 function createSemanticMaskFields(length: number): Record<SemanticMaskName, Float32Array> {
@@ -1392,51 +1285,199 @@ function deriveSemanticTerrainMasks(
   return masks;
 }
 
-function deriveCanonicalSurfaceWeights(classification: TerrainClassificationSample) {
-  const { semanticMasks } = classification;
-  const semanticWater = clamp(
-    semanticMasks.oceanMask
-    + semanticMasks.openOceanMask
-    + semanticMasks.abyssalDepthMask
-    + semanticMasks.shallowWaterMask
-    + semanticMasks.shelfMask * 0.9,
-    0,
-    1,
-  );
-  const semanticLand = clamp(
-    semanticMasks.continentMask
-    + semanticMasks.emergentLandMask
-    + semanticMasks.rockyIslandMask
-    + semanticMasks.exposedRockMask * 0.6,
-    0,
-    1,
-  );
+function colorizeTerrainFromSemantics(
+  archetype: PlanetVisualProfile['archetype'],
+  input: SemanticColorizeInput,
+): SemanticColorMaterialSample {
+  switch (archetype) {
+    case 'oceanic':
+      return colorizeOceanicTerrain(input);
+    case 'frozen':
+      return colorizeFrozenTerrain(input);
+    case 'volcanic':
+      return colorizeVolcanicTerrain(input);
+    case 'arid':
+      return colorizeAridTerrain(input);
+    case 'mineral':
+      return colorizeMineralTerrain(input);
+    case 'terrestrial':
+      return colorizeTerrestrialTerrain(input);
+    case 'barren':
+    default:
+      return colorizeBarrenTerrain(input);
+  }
+}
 
-  return {
-    waterMask: clamp(Math.max(classification.worldMasks.waterMask, semanticWater), 0, 1),
-    landMask: clamp(Math.max(classification.worldMasks.landMask, semanticLand), 0, 1),
-    coastMask: clamp(Math.max(classification.worldMasks.coastMask, semanticMasks.coastMask), 0, 1),
-    shelfMask: clamp(Math.max(classification.worldMasks.shelfMask, semanticMasks.shelfMask), 0, 1),
-  };
+function colorizeOceanicTerrain(input: SemanticColorizeInput): SemanticColorMaterialSample {
+  const m = input.semanticMasks;
+  const albedo = semanticPaletteBlend(
+    [12, 30, 56],
+    [[5, 16, 30], m.abyssalDepthMask],
+    [[2, 8, 16], m.trenchMask],
+    [[10, 28, 52], m.basinDepthMask],
+    [[24, 66, 112], m.openOceanMask],
+    [[66, 142, 164], m.shelfMask + m.shallowWaterMask * 0.6],
+    [[207, 196, 168], m.coastMask],
+    [[92, 114, 76], m.emergentLandMask],
+    [[82, 92, 102], m.rockyIslandMask],
+  );
+  const emissive = [0, 0, 0] as [number, number, number];
+  const roughness = clamp(0.9 - m.openOceanMask * 0.13 - m.shallowWaterMask * 0.08 + m.rockyIslandMask * 0.05 + input.micro * 0.03, 0.72, 0.98);
+  const metalness = clamp(m.exposedMetallicPatchMask * 0.02, 0, 0.02);
+  return { albedo, roughness, metalness, emissive };
+}
+
+function colorizeFrozenTerrain(input: SemanticColorizeInput): SemanticColorMaterialSample {
+  const m = input.semanticMasks;
+  const albedo = semanticPaletteBlend(
+    [114, 130, 142],
+    [[72, 92, 112], m.deepFrozenBasinMask],
+    [[198, 214, 224], m.iceSheetMask],
+    [[232, 242, 248], m.iceCapMask],
+    [[186, 222, 228], m.iceShelfMask],
+    [[242, 248, 252], m.compressionRidgeMask],
+    [[70, 86, 104], m.crevasseMask],
+    [[212, 226, 236], m.frozenHighlandMask],
+    [[114, 118, 122], m.exposedRockMask],
+  );
+  const roughness = clamp(0.93 + m.compressionRidgeMask * 0.03 - m.iceShelfMask * 0.08 + input.micro * 0.02, 0.8, 0.99);
+  return { albedo, roughness, metalness: 0, emissive: [0, 0, 0] };
+}
+
+function colorizeVolcanicTerrain(input: SemanticColorizeInput): SemanticColorMaterialSample {
+  const m = input.semanticMasks;
+  const fissureGlow = clamp(m.fissureMask * (0.18 + input.fractureMask * 0.14), 0, 0.24);
+  const albedo = semanticPaletteBlend(
+    [58, 54, 50],
+    [[34, 34, 36], m.volcanicConeMask],
+    [[22, 20, 18], m.calderaMask],
+    [[54, 42, 40], m.lavaPlainMask],
+    [[74, 56, 44], m.fissureMask * 0.18],
+    [[30, 28, 30], m.collapseBasinMask],
+    [[98, 92, 88], m.ashFieldMask],
+    [[72, 70, 68], m.cooledRockMask],
+  );
+  const roughness = clamp(0.9 + m.ashFieldMask * 0.05 - m.fissureMask * 0.08 + input.micro * 0.03, 0.74, 0.99);
+  const emissive: [number, number, number] = [
+    Math.round(255 * fissureGlow),
+    Math.round(88 * fissureGlow),
+    Math.round(26 * fissureGlow),
+  ];
+  return { albedo, roughness, metalness: 0.01, emissive };
+}
+
+function colorizeAridTerrain(input: SemanticColorizeInput): SemanticColorMaterialSample {
+  const m = input.semanticMasks;
+  const albedo = semanticPaletteBlend(
+    [168, 142, 104],
+    [[202, 176, 122], m.plateauTopMask],
+    [[184, 128, 78], m.mesaMask],
+    [[142, 110, 86], m.escarpmentMask],
+    [[150, 126, 96], m.dryPlainMask],
+    [[104, 72, 48], m.canyonMask],
+    [[132, 112, 92], m.dryBasinMask],
+    [[118, 102, 90], m.exposedBedrockMask],
+  );
+  const roughness = clamp(0.9 + m.dryPlainMask * 0.05 + m.exposedBedrockMask * 0.03 + input.micro * 0.03, 0.82, 0.99);
+  return { albedo, roughness, metalness: 0, emissive: [0, 0, 0] };
+}
+
+function colorizeBarrenTerrain(input: SemanticColorizeInput): SemanticColorMaterialSample {
+  const m = input.semanticMasks;
+  const albedo = semanticPaletteBlend(
+    [122, 114, 104],
+    [[86, 78, 70], m.impactCraterMask],
+    [[108, 98, 90], m.degradedBasinMask],
+    [[130, 126, 120], m.wornHighlandMask],
+    [[164, 154, 138], m.scarpMask],
+    [[148, 136, 120], m.dustPlainMask],
+    [[120, 114, 108], m.exposedRockMask],
+  );
+  const roughness = clamp(0.93 + m.dustPlainMask * 0.04 + input.micro * 0.03, 0.84, 0.99);
+  return { albedo, roughness, metalness: 0, emissive: [0, 0, 0] };
+}
+
+function colorizeMineralTerrain(input: SemanticColorizeInput): SemanticColorMaterialSample {
+  const m = input.semanticMasks;
+  const albedo = semanticPaletteBlend(
+    [92, 98, 104],
+    [[112, 118, 124], m.hardRidgeMask],
+    [[92, 130, 146], m.depositSeamMask * 0.6],
+    [[54, 58, 62], m.fractureCavityMask],
+    [[88, 90, 92], m.rockySystemMask],
+    [[96, 138, 156], m.mineralDepositMask * 0.78],
+    [[156, 168, 176], m.exposedMetallicPatchMask * 0.6],
+  );
+  const roughness = clamp(0.84 + m.rockySystemMask * 0.08 - m.exposedMetallicPatchMask * 0.2 + input.micro * 0.03, 0.58, 0.97);
+  const metalness = clamp(m.exposedMetallicPatchMask * 0.34 + m.mineralDepositMask * 0.1, 0.02, 0.36);
+  return { albedo, roughness, metalness, emissive: [0, 0, 0] };
+}
+
+function colorizeTerrestrialTerrain(input: SemanticColorizeInput): SemanticColorMaterialSample {
+  const m = input.semanticMasks;
+  const albedo = semanticPaletteBlend(
+    [86, 112, 82],
+    [[16, 46, 90], m.oceanMask],
+    [[66, 138, 156], m.shelfMask],
+    [[210, 198, 164], m.coastMask],
+    [[126, 144, 96], m.continentMask],
+    [[80, 130, 76], m.lowlandMask],
+    [[112, 126, 88], m.uplandMask],
+    [[112, 116, 124], m.mountainMask],
+    [[142, 124, 98], m.plateauMask],
+    [[92, 98, 74], m.inlandBasinMask],
+    [[74, 106, 66], m.valleyMask],
+    [[64, 126, 64], m.forestOrVegetatedMask],
+    [[164, 142, 96], m.dryInteriorMask],
+    [[232, 238, 242], m.snowOrPolarMask],
+  );
+  const roughness = clamp(
+    0.88
+      - m.oceanMask * 0.12
+      - m.shelfMask * 0.08
+      + m.mountainMask * 0.06
+      + m.plateauMask * 0.04
+      + m.snowOrPolarMask * 0.04
+      + input.micro * 0.03,
+    0.7,
+    0.99,
+  );
+  return { albedo, roughness, metalness: 0, emissive: [0, 0, 0] };
+}
+
+function semanticPaletteBlend(
+  base: [number, number, number],
+  ...layers: Array<[[number, number, number], number]>
+): [number, number, number] {
+  let r = base[0];
+  let g = base[1];
+  let b = base[2];
+  for (const [color, rawWeight] of layers) {
+    const weight = clamp(rawWeight, 0, 1);
+    r = lerp(r, color[0], weight);
+    g = lerp(g, color[1], weight);
+    b = lerp(b, color[2], weight);
+  }
+  return [Math.round(r), Math.round(g), Math.round(b)];
 }
 
 function archetypeSignature(archetype: PlanetVisualProfile['archetype']): ArchetypeSignature {
   switch (archetype) {
     case 'volcanic':
-      return { coverageBias: 0.23, seaLevelShift: 0.22, coastWidth: 0.06, shelfWidth: 0.08, fractureStrength: 1, frostStrength: 0.06, fractureHueShift: 18, regionHueShift: 8, accentHueShift: 14, landHueShift: 14, waterHueShift: 8, regionSatShift: -4, accentSatBoost: 8, fractureSatShift: 12, regionLightShift: -8, accentLightShift: -6, fractureLightShift: -10, coastLightBoost: 4, shelfLightBoost: 2, polarDarkening: 6, roughWaterShift: 0.06, roughLandShift: 0.12, roughAccentShift: 0.05, roughFractureShift: 0.1, metalBase: 0.02, metalAccentBoost: 0.03, metalFractureBoost: 0.05, accentColorBlend: 0.34, fractureColorBlend: 0.44, heightBias: 0.03, emissiveBase: 0.01, emissiveFromFracture: 0.18, emissiveFromAccent: 0.04, emissiveHueShift: -8, emissiveSaturationBoost: 0.3 };
+      return { coverageBias: 0.23, seaLevelShift: 0.22, coastWidth: 0.06, shelfWidth: 0.08, fractureStrength: 1, frostStrength: 0.06, heightBias: 0.03 };
     case 'frozen':
-      return { coverageBias: -0.08, seaLevelShift: 0.08, coastWidth: 0.05, shelfWidth: 0.14, fractureStrength: 0.72, frostStrength: 0.84, fractureHueShift: -8, regionHueShift: -10, accentHueShift: -6, landHueShift: -22, waterHueShift: -14, regionSatShift: -14, accentSatBoost: -8, fractureSatShift: -10, regionLightShift: 8, accentLightShift: 6, fractureLightShift: 2, coastLightBoost: 5, shelfLightBoost: 8, polarDarkening: -10, roughWaterShift: 0.02, roughLandShift: 0.08, roughAccentShift: 0.02, roughFractureShift: 0.04, metalBase: 0.005, metalAccentBoost: 0.005, metalFractureBoost: 0.015, accentColorBlend: 0.3, fractureColorBlend: 0.22, heightBias: -0.02, emissiveBase: 0, emissiveFromFracture: 0.01, emissiveFromAccent: 0, emissiveHueShift: -20, emissiveSaturationBoost: 0.04 };
+      return { coverageBias: -0.08, seaLevelShift: 0.08, coastWidth: 0.05, shelfWidth: 0.14, fractureStrength: 0.72, frostStrength: 0.84, heightBias: -0.02 };
     case 'arid':
-      return { coverageBias: 0.12, seaLevelShift: 0.16, coastWidth: 0.07, shelfWidth: 0.09, fractureStrength: 0.45, frostStrength: 0.04, fractureHueShift: 8, regionHueShift: 10, accentHueShift: 16, landHueShift: 10, waterHueShift: 2, regionSatShift: -6, accentSatBoost: 4, fractureSatShift: 5, regionLightShift: 5, accentLightShift: 3, fractureLightShift: -3, coastLightBoost: 4, shelfLightBoost: 2, polarDarkening: 6, roughWaterShift: 0.02, roughLandShift: 0.14, roughAccentShift: 0.06, roughFractureShift: 0.04, metalBase: 0, metalAccentBoost: 0.01, metalFractureBoost: 0.02, accentColorBlend: 0.36, fractureColorBlend: 0.18, heightBias: 0.025, emissiveBase: 0, emissiveFromFracture: 0.01, emissiveFromAccent: 0, emissiveHueShift: 8, emissiveSaturationBoost: 0.02 };
+      return { coverageBias: 0.12, seaLevelShift: 0.16, coastWidth: 0.07, shelfWidth: 0.09, fractureStrength: 0.45, frostStrength: 0.04, heightBias: 0.025 };
     case 'mineral':
-      return { coverageBias: 0.06, seaLevelShift: 0.1, coastWidth: 0.06, shelfWidth: 0.08, fractureStrength: 0.78, frostStrength: 0.14, fractureHueShift: 16, regionHueShift: 8, accentHueShift: 22, landHueShift: 8, waterHueShift: 4, regionSatShift: 5, accentSatBoost: 14, fractureSatShift: 8, regionLightShift: -2, accentLightShift: 2, fractureLightShift: -5, coastLightBoost: 2, shelfLightBoost: 1, polarDarkening: 8, roughWaterShift: 0.08, roughLandShift: 0.1, roughAccentShift: 0.03, roughFractureShift: 0.04, metalBase: 0.06, metalAccentBoost: 0.05, metalFractureBoost: 0.05, accentColorBlend: 0.4, fractureColorBlend: 0.3, heightBias: 0.02, emissiveBase: 0, emissiveFromFracture: 0.02, emissiveFromAccent: 0.01, emissiveHueShift: 18, emissiveSaturationBoost: 0.1 };
+      return { coverageBias: 0.06, seaLevelShift: 0.1, coastWidth: 0.06, shelfWidth: 0.08, fractureStrength: 0.78, frostStrength: 0.14, heightBias: 0.02 };
     case 'oceanic':
-      return { coverageBias: -0.2, seaLevelShift: -0.08, coastWidth: 0.04, shelfWidth: 0.16, fractureStrength: 0.3, frostStrength: 0.2, fractureHueShift: -6, regionHueShift: -10, accentHueShift: -20, landHueShift: -8, waterHueShift: -26, regionSatShift: 8, accentSatBoost: 6, fractureSatShift: -4, regionLightShift: 7, accentLightShift: 2, fractureLightShift: -2, coastLightBoost: 8, shelfLightBoost: 10, polarDarkening: -6, roughWaterShift: 0.12, roughLandShift: 0.05, roughAccentShift: 0.03, roughFractureShift: 0.03, metalBase: 0, metalAccentBoost: 0.005, metalFractureBoost: 0.01, accentColorBlend: 0.3, fractureColorBlend: 0.12, heightBias: -0.025, emissiveBase: 0, emissiveFromFracture: 0, emissiveFromAccent: 0, emissiveHueShift: -26, emissiveSaturationBoost: 0.03 };
+      return { coverageBias: -0.2, seaLevelShift: -0.08, coastWidth: 0.04, shelfWidth: 0.16, fractureStrength: 0.3, frostStrength: 0.2, heightBias: -0.025 };
     case 'terrestrial':
-      return { coverageBias: -0.04, seaLevelShift: 0.02, coastWidth: 0.055, shelfWidth: 0.13, fractureStrength: 0.48, frostStrength: 0.18, fractureHueShift: 6, regionHueShift: 7, accentHueShift: 12, landHueShift: 6, waterHueShift: -10, regionSatShift: -2, accentSatBoost: 5, fractureSatShift: 2, regionLightShift: 2, accentLightShift: 1, fractureLightShift: -4, coastLightBoost: 5, shelfLightBoost: 7, polarDarkening: 4, roughWaterShift: 0.09, roughLandShift: 0.08, roughAccentShift: 0.04, roughFractureShift: 0.06, metalBase: 0.005, metalAccentBoost: 0.01, metalFractureBoost: 0.015, accentColorBlend: 0.32, fractureColorBlend: 0.24, heightBias: 0.01, emissiveBase: 0, emissiveFromFracture: 0.005, emissiveFromAccent: 0, emissiveHueShift: 6, emissiveSaturationBoost: 0.04 };
+      return { coverageBias: -0.04, seaLevelShift: 0.02, coastWidth: 0.055, shelfWidth: 0.13, fractureStrength: 0.48, frostStrength: 0.18, heightBias: 0.01 };
     case 'barren':
     default:
-      return { coverageBias: 0.11, seaLevelShift: 0.18, coastWidth: 0.08, shelfWidth: 0.08, fractureStrength: 0.48, frostStrength: 0.12, fractureHueShift: 4, regionHueShift: 4, accentHueShift: 6, landHueShift: 4, waterHueShift: 0, regionSatShift: -6, accentSatBoost: -2, fractureSatShift: 2, regionLightShift: -4, accentLightShift: -2, fractureLightShift: -4, coastLightBoost: 3, shelfLightBoost: 2, polarDarkening: 9, roughWaterShift: 0.05, roughLandShift: 0.09, roughAccentShift: 0.04, roughFractureShift: 0.06, metalBase: 0.01, metalAccentBoost: 0.01, metalFractureBoost: 0.02, accentColorBlend: 0.22, fractureColorBlend: 0.2, heightBias: 0.02, emissiveBase: 0, emissiveFromFracture: 0, emissiveFromAccent: 0, emissiveHueShift: 0, emissiveSaturationBoost: 0 };
+      return { coverageBias: 0.11, seaLevelShift: 0.18, coastWidth: 0.08, shelfWidth: 0.08, fractureStrength: 0.48, frostStrength: 0.12, heightBias: 0.02 };
   }
 }
 
@@ -2129,46 +2170,7 @@ function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t;
 }
 
-function blendRgb(base: [number, number, number], ...layers: Array<[number, number, number] | number>): [number, number, number] {
-  let outR = base[0];
-  let outG = base[1];
-  let outB = base[2];
-  for (let i = 0; i < layers.length; i += 2) {
-    const color = layers[i] as [number, number, number];
-    const alpha = clamp(layers[i + 1] as number, 0, 1);
-    outR = Math.round(lerp(outR, color[0], alpha));
-    outG = Math.round(lerp(outG, color[1], alpha));
-    outB = Math.round(lerp(outB, color[2], alpha));
-  }
-  return [outR, outG, outB];
-}
-
 function smoothstep(edge0: number, edge1: number, x: number) {
   const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
   return t * t * (3 - 2 * t);
-}
-
-function hslToRgb(h: number, s: number, l: number): [number, number, number] {
-  if (s === 0) {
-    const gray = Math.round(l * 255);
-    return [gray, gray, gray];
-  }
-
-  const hue2rgb = (p: number, q: number, t: number) => {
-    let next = t;
-    if (next < 0) next += 1;
-    if (next > 1) next -= 1;
-    if (next < 1 / 6) return p + (q - p) * 6 * next;
-    if (next < 1 / 2) return q;
-    if (next < 2 / 3) return p + (q - p) * (2 / 3 - next) * 6;
-    return p;
-  };
-
-  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-  const p = 2 * l - q;
-  const r = hue2rgb(p, q, h + 1 / 3);
-  const g = hue2rgb(p, q, h);
-  const b = hue2rgb(p, q, h - 1 / 3);
-
-  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
 }
