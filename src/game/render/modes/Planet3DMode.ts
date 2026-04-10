@@ -53,13 +53,15 @@ export class Planet3DMode implements RenderModeController {
 
   private readonly debugViewModes: Array<keyof PlanetMaps['debugMaps'] | 'beauty'> = [
     'beauty',
+    'volcanoField',
+    'mountainChainField',
+    'craterField',
+    'trenchField',
+    'basinField',
+    'riftField',
     'upliftField',
     'depressionField',
-    'craterMask',
-    'trenchMask',
-    'basinMask',
-    'riftMask',
-    'finalDisplacementSigned',
+    'finalSignedRelief',
     'finalNormal',
   ];
 
@@ -193,31 +195,33 @@ export class Planet3DMode implements RenderModeController {
       maps.metalnessMap,
       maps.normalMap,
       maps.emissiveMap,
+      maps.debugMaps.volcanoField,
+      maps.debugMaps.mountainChainField,
+      maps.debugMaps.craterField,
+      maps.debugMaps.trenchField,
+      maps.debugMaps.basinField,
+      maps.debugMaps.riftField,
       maps.debugMaps.upliftField,
       maps.debugMaps.depressionField,
-      maps.debugMaps.craterMask,
-      maps.debugMaps.trenchMask,
-      maps.debugMaps.basinMask,
-      maps.debugMaps.riftMask,
-      maps.debugMaps.finalDisplacementSigned,
+      maps.debugMaps.finalSignedRelief,
       maps.debugMaps.finalNormal,
     ];
     this.currentMaps = maps;
 
-    applyPlanetReliefToGeometry(geometry, maps.displacementField, maps.width, maps.height, profile, planetRef.seed);
+    applyPlanetReliefToGeometry(geometry, maps.terrainModel, profile, planetRef.seed);
 
     const material = new THREE.MeshStandardMaterial({
       map: maps.map,
       roughnessMap: maps.roughnessMap,
       metalnessMap: maps.metalnessMap,
       normalMap: maps.normalMap,
-      normalScale: new THREE.Vector2(0.46, 0.46),
+      normalScale: new THREE.Vector2(0.34, 0.34),
       emissiveMap: maps.emissiveMap,
-      roughness: clamp(profile.roughness + 0.28, 0.62, 0.97),
-      metalness: profile.archetype === 'mineral' ? clamp(profile.metalness * 0.32, 0.02, 0.14) : clamp(profile.metalness * 0.06, 0, 0.025),
+      roughness: clamp(profile.roughness + 0.36, 0.72, 0.99),
+      metalness: profile.archetype === 'mineral' ? clamp(profile.metalness * 0.26, 0.03, 0.12) : clamp(profile.metalness * 0.03, 0, 0.012),
       flatShading: false,
       emissive: new THREE.Color(`hsl(${profile.accentHue}, 45%, ${profile.atmosphereLightness}%)`),
-      emissiveIntensity: profile.emissiveIntensity * 0.08,
+      emissiveIntensity: profile.emissiveIntensity * 0.04,
     });
 
     this.planet = new THREE.Mesh(geometry, material);
@@ -395,14 +399,17 @@ interface PlanetMaps {
   normalMap: THREE.CanvasTexture;
   emissiveMap: THREE.CanvasTexture;
   displacementField: Float32Array;
+  terrainModel: TerrainModel;
   debugMaps: {
+    volcanoField: THREE.CanvasTexture;
+    mountainChainField: THREE.CanvasTexture;
+    craterField: THREE.CanvasTexture;
+    trenchField: THREE.CanvasTexture;
+    basinField: THREE.CanvasTexture;
+    riftField: THREE.CanvasTexture;
     upliftField: THREE.CanvasTexture;
     depressionField: THREE.CanvasTexture;
-    craterMask: THREE.CanvasTexture;
-    trenchMask: THREE.CanvasTexture;
-    basinMask: THREE.CanvasTexture;
-    riftMask: THREE.CanvasTexture;
-    finalDisplacementSigned: THREE.CanvasTexture;
+    finalSignedRelief: THREE.CanvasTexture;
     finalNormal: THREE.CanvasTexture;
   };
 }
@@ -455,13 +462,15 @@ function buildPlanetMaps(profile: PlanetVisualProfile, seed: number): PlanetMaps
   emissiveMap.wrapT = THREE.ClampToEdgeWrapping;
   emissiveMap.anisotropy = 2;
 
+  const volcanoField = createFieldTexture(derivedFields.volcanoField, width, height);
+  const mountainChainField = createFieldTexture(derivedFields.mountainChainField, width, height);
+  const craterField = createFieldTexture(derivedFields.craterField, width, height);
+  const trenchField = createFieldTexture(derivedFields.trenchField, width, height);
+  const basinField = createFieldTexture(derivedFields.basinField, width, height);
+  const riftField = createFieldTexture(derivedFields.riftField, width, height);
   const upliftField = createFieldTexture(derivedFields.upliftField, width, height);
   const depressionField = createFieldTexture(derivedFields.depressionField, width, height);
-  const craterMask = createFieldTexture(derivedFields.craterMask, width, height);
-  const trenchMask = createFieldTexture(derivedFields.trenchMask, width, height);
-  const basinMask = createFieldTexture(derivedFields.basinMask, width, height);
-  const riftMask = createFieldTexture(derivedFields.riftMask, width, height);
-  const finalDisplacementSigned = createSignedFieldTexture(derivedFields.displacementField, width, height);
+  const finalSignedRelief = createSignedFieldTexture(derivedFields.displacementField, width, height);
 
   return {
     width,
@@ -471,15 +480,18 @@ function buildPlanetMaps(profile: PlanetVisualProfile, seed: number): PlanetMaps
     metalnessMap,
     normalMap,
     emissiveMap,
+    terrainModel: derivedFields.terrainModel,
     displacementField: derivedFields.displacementField,
     debugMaps: {
+      volcanoField,
+      mountainChainField,
+      craterField,
+      trenchField,
+      basinField,
+      riftField,
       upliftField,
       depressionField,
-      craterMask,
-      trenchMask,
-      basinMask,
-      riftMask,
-      finalDisplacementSigned,
+      finalSignedRelief,
       finalNormal: normalMap,
     },
   };
@@ -494,12 +506,15 @@ function paintPlanetTextures(
   normalCanvas: HTMLCanvasElement,
   emissiveCanvas: HTMLCanvasElement,
 ): {
+  terrainModel: TerrainModel;
+  volcanoField: Float32Array;
+  mountainChainField: Float32Array;
+  craterField: Float32Array;
+  trenchField: Float32Array;
+  basinField: Float32Array;
+  riftField: Float32Array;
   upliftField: Float32Array;
   depressionField: Float32Array;
-  craterMask: Float32Array;
-  trenchMask: Float32Array;
-  basinMask: Float32Array;
-  riftMask: Float32Array;
   displacementField: Float32Array;
 } {
   const width = colorCanvas.width;
@@ -510,13 +525,17 @@ function paintPlanetTextures(
   const normalCtx = normalCanvas.getContext('2d');
   const emissiveCtx = emissiveCanvas.getContext('2d');
   if (!colorCtx || !roughCtx || !metalCtx || !normalCtx || !emissiveCtx) {
+    const emptyModel = createTerrainModel(profile, seed);
     return {
+      terrainModel: emptyModel,
+      volcanoField: new Float32Array(width * height),
+      mountainChainField: new Float32Array(width * height),
+      craterField: new Float32Array(width * height),
+      trenchField: new Float32Array(width * height),
+      basinField: new Float32Array(width * height),
+      riftField: new Float32Array(width * height),
       upliftField: new Float32Array(width * height),
       depressionField: new Float32Array(width * height),
-      craterMask: new Float32Array(width * height),
-      trenchMask: new Float32Array(width * height),
-      basinMask: new Float32Array(width * height),
-      riftMask: new Float32Array(width * height),
       displacementField: new Float32Array(width * height),
     };
   }
@@ -527,15 +546,18 @@ function paintPlanetTextures(
   const normalData = normalCtx.createImageData(width, height);
   const emissiveData = emissiveCtx.createImageData(width, height);
   const heightField = new Float32Array(width * height);
+  const volcanoField = new Float32Array(width * height);
+  const mountainChainField = new Float32Array(width * height);
+  const craterField = new Float32Array(width * height);
+  const trenchField = new Float32Array(width * height);
+  const basinField = new Float32Array(width * height);
+  const riftField = new Float32Array(width * height);
   const upliftField = new Float32Array(width * height);
   const depressionField = new Float32Array(width * height);
-  const craterMaskField = new Float32Array(width * height);
-  const trenchMaskField = new Float32Array(width * height);
-  const basinMaskField = new Float32Array(width * height);
-  const riftMaskField = new Float32Array(width * height);
   const displacementField = new Float32Array(width * height);
 
   const signature = archetypeSignature(profile.archetype);
+  const terrainModel = createTerrainModel(profile, seed);
   const rng = new SeededRng(seed ^ 0x6a09e667);
   const phaseA = rng.range(0.12, Math.PI * 1.3);
   const phaseB = rng.range(0.2, Math.PI * 1.8);
@@ -559,9 +581,7 @@ function paintPlanetTextures(
       const accentNoise = fbm3(nx * 4.9 + phaseC, ny * 4.9, nz * 4.9 + phaseB, seed ^ 0x6d2b79f5, 3);
       const fractureNoise = fbm3(nx * 5.2 + phaseA, ny * 5.2, nz * 5.2 + phaseC, seed ^ 0x45d9f3b, 3);
       const micro = fbm3(nx * 12.2, ny * 12.2, nz * 12.2, seed + 997, 2);
-      const chainNoise = fbm3(nx * 2.5 + phaseA, ny * 2.5 + phaseB, nz * 2.5 + phaseC, seed ^ 0x9e3779b1, 4);
-      const trenchNoise = fbm3(nx * 3.7 - phaseA, ny * 3.7 + phaseB, nz * 3.7 - phaseC, seed ^ 0x4f1bbcdc, 4);
-      const basinNoise = fbm3(nx * 1.75 + phaseC, ny * 1.75 + phaseA, nz * 1.75 + phaseB, seed ^ 0x85ebca6b, 3);
+      const terrain = evaluateTerrainSample(nx, ny, nz, terrainModel, profile);
       const canyonNoise = fbm3(nx * 6.4 + phaseA * 0.6, ny * 6.4 - phaseB * 0.4, nz * 6.4 + phaseC * 0.2, seed ^ 0xc2b2ae35, 3);
 
       const seaLevel = clamp(profile.oceanLevel + signature.seaLevelShift, 0.2, 0.82);
@@ -576,13 +596,13 @@ function paintPlanetTextures(
       let fractureMask = smoothstep(0.74, 0.96, fractureNoise + plateMass * 0.2) * signature.fractureStrength;
       const polarMask = smoothstep(0.56, 0.95, Math.abs(ny) + (1 - primaryMass) * 0.18);
       let frostMask = polarMask * signature.frostStrength;
-      const mountainChainMask = smoothstep(0.57, 0.87, chainNoise + plateMass * 0.28) * landMask;
-      const plateauMask = smoothstep(0.58, 0.9, plateMass + regionNoise * 0.18) * landMask;
+      const mountainChainMask = terrain.mountainChainField;
+      const plateauMask = terrain.plateauField;
       const valleyMask = smoothstep(0.63, 0.94, canyonNoise + (1 - plateauMask) * 0.2) * landMask;
-      let craterMask = craterSystemMask(nx, ny, nz, seed + 101);
-      let trenchMask = smoothstep(0.72, 0.95, Math.abs(Math.sin((nx * 2.9 + nz * 2.4 + phaseA) * 4.4 + trenchNoise * 3.4)) + (1 - landMask) * 0.16);
-      let basinMask = smoothstep(0.48, 0.86, (1 - basinNoise) + waterMask * 0.2);
-      let riftMask = smoothstep(0.74, 0.94, Math.abs(Math.sin((nx * 3.4 - nz * 3.6 + phaseB) * 6.1 + trenchNoise * 4.6)));
+      let craterMask = terrain.craterField;
+      let trenchMask = terrain.trenchField;
+      let basinMask = terrain.basinField;
+      let riftMask = terrain.riftField;
       const erosionField = clamp((1 - canyonNoise) * 0.54 + (1 - accentNoise) * 0.46, 0, 1);
 
       switch (profile.archetype) {
@@ -624,7 +644,7 @@ function paintPlanetTextures(
         default:
           accentMask *= 0.46;
           fractureMask *= 0.34;
-          craterMask = clamp(craterMask + smoothstep(0.68, 0.92, basinNoise + fractureNoise * 0.2) * 0.28, 0, 1);
+          craterMask = clamp(craterMask + smoothstep(0.68, 0.92, terrain.basinField + fractureNoise * 0.2) * 0.28, 0, 1);
           break;
       }
 
@@ -703,8 +723,8 @@ function paintPlanetTextures(
         - shelfMask * 0.05
         - frostMask * 0.08
         + (1 - coastlineNoise) * 0.03,
-        0.42,
-        0.98,
+        0.56,
+        0.99,
       );
       const roughValue = Math.round(roughness * 255);
       roughData.data[i] = roughValue;
@@ -713,13 +733,13 @@ function paintPlanetTextures(
       roughData.data[i + 3] = 255;
 
       const metal = clamp(
-        profile.metalness * 0.12
+        profile.metalness * (profile.archetype === 'mineral' ? 0.18 : 0.04)
         + signature.metalBase
         + accentMask * signature.metalAccentBoost
         + fractureMask * signature.metalFractureBoost
         - waterMask * 0.06,
         0,
-        0.18,
+        profile.archetype === 'mineral' ? 0.18 : 0.035,
       );
       const metalValue = Math.round(metal * 255);
       metalData.data[i] = metalValue;
@@ -727,23 +747,8 @@ function paintPlanetTextures(
       metalData.data[i + 2] = metalValue;
       metalData.data[i + 3] = 255;
 
-      const baseUplift = clamp(
-        landMask * (regionMask * 0.34 + mountainChainMask * 0.4 + plateauMask * 0.26)
-        + waterMask * shelfMask * 0.18
-        + accentMask * 0.12
-        + micro * 0.08,
-        0,
-        1,
-      );
-      const baseDepression = clamp(
-        basinMask * 0.36
-        + trenchMask * 0.34
-        + craterMask * 0.3
-        + valleyMask * 0.22
-        + riftMask * 0.16,
-        0,
-        1,
-      );
+      const baseUplift = clamp(terrain.upliftField + landMask * regionMask * 0.16 + waterMask * shelfMask * 0.14 + micro * 0.07, 0, 1);
+      const baseDepression = clamp(terrain.depressionField + valleyMask * 0.16 + (1 - landMask) * terrain.trenchField * 0.14, 0, 1);
 
       let uplift = baseUplift;
       let depression = baseDepression;
@@ -781,15 +786,17 @@ function paintPlanetTextures(
       }
 
       const erosionMod = (erosionField - 0.5) * 0.09;
-      const signedRelief = clamp((uplift - depression) + erosionMod + signature.heightBias * 0.8, -1, 1);
+      const signedRelief = clamp((uplift - depression) + terrain.finalSignedRelief * 0.6 + erosionMod + signature.heightBias * 0.45, -1, 1);
       const heightValue = clamp(0.5 + signedRelief * 0.5, 0, 1);
       const fieldIndex = y * width + x;
+      volcanoField[fieldIndex] = terrain.volcanoField;
+      mountainChainField[fieldIndex] = mountainChainMask;
+      craterField[fieldIndex] = craterMask;
+      trenchField[fieldIndex] = trenchMask;
+      basinField[fieldIndex] = basinMask;
+      riftField[fieldIndex] = riftMask;
       upliftField[fieldIndex] = uplift;
       depressionField[fieldIndex] = depression;
-      craterMaskField[fieldIndex] = craterMask;
-      trenchMaskField[fieldIndex] = trenchMask;
-      basinMaskField[fieldIndex] = basinMask;
-      riftMaskField[fieldIndex] = riftMask;
       displacementField[fieldIndex] = signedRelief;
       heightField[fieldIndex] = heightValue;
 
@@ -844,12 +851,15 @@ function paintPlanetTextures(
   }
 
   return {
+    terrainModel,
+    volcanoField,
+    mountainChainField,
+    craterField,
+    trenchField,
+    basinField,
+    riftField,
     upliftField,
     depressionField,
-    craterMask: craterMaskField,
-    trenchMask: trenchMaskField,
-    basinMask: basinMaskField,
-    riftMask: riftMaskField,
     displacementField,
   };
 }
@@ -890,6 +900,51 @@ interface ArchetypeSignature {
   emissiveFromAccent: number;
   emissiveHueShift: number;
   emissiveSaturationBoost: number;
+}
+
+interface RadialFeature {
+  x: number;
+  y: number;
+  z: number;
+  radius: number;
+  amplitude: number;
+}
+
+interface ArcFeature {
+  nx: number;
+  ny: number;
+  nz: number;
+  width: number;
+  amplitude: number;
+}
+
+interface TerrainModel {
+  volcanoes: RadialFeature[];
+  calderas: RadialFeature[];
+  mountainChains: ArcFeature[];
+  plateaus: RadialFeature[];
+  basins: RadialFeature[];
+  trenches: ArcFeature[];
+  rifts: ArcFeature[];
+  craters: RadialFeature[];
+  iceShelves: ArcFeature[];
+  compressionRidges: ArcFeature[];
+}
+
+interface TerrainSample {
+  volcanoField: number;
+  calderaField: number;
+  mountainChainField: number;
+  plateauField: number;
+  basinField: number;
+  trenchField: number;
+  riftField: number;
+  craterField: number;
+  iceShelfField: number;
+  compressionRidgeField: number;
+  upliftField: number;
+  depressionField: number;
+  finalSignedRelief: number;
 }
 
 function archetypeSignature(archetype: PlanetVisualProfile['archetype']): ArchetypeSignature {
@@ -962,19 +1017,165 @@ function createSignedFieldTexture(field: Float32Array, width: number, height: nu
   return texture;
 }
 
-function craterSystemMask(nx: number, ny: number, nz: number, seed: number) {
-  const craterBand = smoothstep(0.58, 0.88, fbm3(nx * 2.2, ny * 2.2, nz * 2.2, seed, 3));
-  const ringA = Math.abs(fbm3(nx * 10.4, ny * 10.4, nz * 10.4, seed + 17, 2) - 0.5);
-  const ringB = Math.abs(fbm3(nx * 16.8, ny * 16.8, nz * 16.8, seed + 53, 2) - 0.5);
-  const ringMask = (1 - smoothstep(0.16, 0.36, ringA)) * 0.65 + (1 - smoothstep(0.2, 0.42, ringB)) * 0.35;
-  return clamp(craterBand * ringMask, 0, 1);
+function createTerrainModel(profile: PlanetVisualProfile, seed: number): TerrainModel {
+  const rng = new SeededRng(seed ^ 0x7f4a7c15);
+  const volumeByType = {
+    volcanic: [10, 8, 4, 5, 4, 5, 7, 3, 0, 2],
+    oceanic: [3, 2, 5, 3, 8, 8, 3, 2, 7, 2],
+    frozen: [1, 1, 4, 3, 5, 2, 4, 3, 10, 8],
+    arid: [2, 1, 6, 8, 7, 2, 5, 3, 1, 3],
+    barren: [1, 1, 5, 3, 6, 3, 3, 11, 0, 2],
+    mineral: [3, 2, 7, 4, 5, 4, 7, 4, 0, 5],
+    terrestrial: [2, 1, 9, 7, 8, 3, 6, 3, 2, 4],
+  }[profile.archetype];
+
+  return {
+    volcanoes: createRadialFeatures(rng, volumeByType[0], 0.12, 0.26, 0.25, 0.7),
+    calderas: createRadialFeatures(rng, volumeByType[1], 0.1, 0.21, 0.12, 0.42),
+    mountainChains: createArcFeatures(rng, volumeByType[2], 0.06, 0.14, 0.18, 0.52),
+    plateaus: createRadialFeatures(rng, volumeByType[3], 0.16, 0.38, 0.12, 0.36),
+    basins: createRadialFeatures(rng, volumeByType[4], 0.14, 0.34, 0.15, 0.44),
+    trenches: createArcFeatures(rng, volumeByType[5], 0.035, 0.09, 0.15, 0.5),
+    rifts: createArcFeatures(rng, volumeByType[6], 0.028, 0.075, 0.12, 0.42),
+    craters: createRadialFeatures(rng, volumeByType[7], 0.045, 0.12, 0.1, 0.42),
+    iceShelves: createArcFeatures(rng, volumeByType[8], 0.08, 0.22, 0.14, 0.35),
+    compressionRidges: createArcFeatures(rng, volumeByType[9], 0.028, 0.082, 0.1, 0.34),
+  };
+}
+
+function createRadialFeatures(rng: SeededRng, count: number, minRadius: number, maxRadius: number, minAmp: number, maxAmp: number): RadialFeature[] {
+  const out: RadialFeature[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const z = rng.range(-1, 1);
+    const theta = rng.range(0, Math.PI * 2);
+    const r = Math.sqrt(Math.max(0, 1 - z * z));
+    out.push({
+      x: Math.cos(theta) * r,
+      y: z,
+      z: Math.sin(theta) * r,
+      radius: rng.range(minRadius, maxRadius),
+      amplitude: rng.range(minAmp, maxAmp),
+    });
+  }
+  return out;
+}
+
+function createArcFeatures(rng: SeededRng, count: number, minWidth: number, maxWidth: number, minAmp: number, maxAmp: number): ArcFeature[] {
+  const out: ArcFeature[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const z = rng.range(-1, 1);
+    const theta = rng.range(0, Math.PI * 2);
+    const r = Math.sqrt(Math.max(0, 1 - z * z));
+    out.push({
+      nx: Math.cos(theta) * r,
+      ny: z,
+      nz: Math.sin(theta) * r,
+      width: rng.range(minWidth, maxWidth),
+      amplitude: rng.range(minAmp, maxAmp),
+    });
+  }
+  return out;
+}
+
+function evaluateTerrainSample(nx: number, ny: number, nz: number, model: TerrainModel, profile: PlanetVisualProfile): TerrainSample {
+  const volcanoField = sampleRadialFeatures(nx, ny, nz, model.volcanoes);
+  const calderaField = sampleRingDepressions(nx, ny, nz, model.calderas);
+  const mountainChainField = sampleArcFeatures(nx, ny, nz, model.mountainChains);
+  const plateauField = sampleRadialFeatures(nx, ny, nz, model.plateaus);
+  const basinField = sampleRadialFeatures(nx, ny, nz, model.basins);
+  const trenchField = sampleArcFeatures(nx, ny, nz, model.trenches);
+  const riftField = sampleArcFeatures(nx, ny, nz, model.rifts);
+  const craterField = sampleRingDepressions(nx, ny, nz, model.craters);
+  const iceShelfField = samplePolarArcFeatures(nx, ny, nz, model.iceShelves);
+  const compressionRidgeField = sampleArcFeatures(nx, ny, nz, model.compressionRidges);
+
+  let uplift = volcanoField * 0.36 + mountainChainField * 0.34 + plateauField * 0.22 + compressionRidgeField * 0.18 + iceShelfField * 0.2;
+  let depression = basinField * 0.34 + trenchField * 0.32 + riftField * 0.26 + craterField * 0.22 + calderaField * 0.26;
+  switch (profile.archetype) {
+    case 'volcanic':
+      uplift += volcanoField * 0.35 + plateauField * 0.12;
+      depression += calderaField * 0.28 + basinField * 0.14;
+      break;
+    case 'oceanic':
+      uplift += mountainChainField * 0.12;
+      depression += trenchField * 0.4 + basinField * 0.22;
+      break;
+    case 'frozen':
+      uplift += iceShelfField * 0.36 + compressionRidgeField * 0.32;
+      depression += basinField * 0.18 + riftField * 0.2;
+      break;
+    case 'arid':
+      uplift += plateauField * 0.34 + mountainChainField * 0.14;
+      depression += basinField * 0.24 + riftField * 0.16;
+      break;
+    case 'barren':
+      uplift += mountainChainField * 0.12;
+      depression += craterField * 0.36 + basinField * 0.2;
+      break;
+    case 'mineral':
+      uplift += mountainChainField * 0.22 + compressionRidgeField * 0.24;
+      depression += riftField * 0.24 + basinField * 0.16;
+      break;
+    case 'terrestrial':
+      uplift += mountainChainField * 0.28 + plateauField * 0.28;
+      depression += basinField * 0.22 + riftField * 0.2 + craterField * 0.08;
+      break;
+    default:
+      break;
+  }
+
+  uplift = clamp(uplift, 0, 1);
+  depression = clamp(depression, 0, 1);
+  const finalSignedRelief = clamp(uplift - depression, -1, 1);
+
+  return { volcanoField, calderaField, mountainChainField, plateauField, basinField, trenchField, riftField, craterField, iceShelfField, compressionRidgeField, upliftField: uplift, depressionField: depression, finalSignedRelief };
+}
+
+function sampleRadialFeatures(nx: number, ny: number, nz: number, features: RadialFeature[]) {
+  let sum = 0;
+  for (let i = 0; i < features.length; i += 1) {
+    const feature = features[i];
+    const dot = clamp(nx * feature.x + ny * feature.y + nz * feature.z, -1, 1);
+    const d = Math.acos(dot);
+    const g = Math.exp(-((d / feature.radius) ** 2));
+    sum += g * feature.amplitude;
+  }
+  return clamp(sum, 0, 1);
+}
+
+function sampleRingDepressions(nx: number, ny: number, nz: number, features: RadialFeature[]) {
+  let sum = 0;
+  for (let i = 0; i < features.length; i += 1) {
+    const feature = features[i];
+    const dot = clamp(nx * feature.x + ny * feature.y + nz * feature.z, -1, 1);
+    const d = Math.acos(dot);
+    const ring = Math.abs(d - feature.radius * 0.62);
+    const g = Math.exp(-((ring / (feature.radius * 0.38)) ** 2));
+    const core = Math.exp(-((d / (feature.radius * 0.8)) ** 2));
+    sum += clamp((g * 0.55 + core * 0.45) * feature.amplitude, 0, 1);
+  }
+  return clamp(sum, 0, 1);
+}
+
+function sampleArcFeatures(nx: number, ny: number, nz: number, features: ArcFeature[]) {
+  let sum = 0;
+  for (let i = 0; i < features.length; i += 1) {
+    const feature = features[i];
+    const distance = Math.abs(nx * feature.nx + ny * feature.ny + nz * feature.nz);
+    const g = Math.exp(-((distance / feature.width) ** 2));
+    sum += g * feature.amplitude;
+  }
+  return clamp(sum, 0, 1);
+}
+
+function samplePolarArcFeatures(nx: number, ny: number, nz: number, features: ArcFeature[]) {
+  const polar = smoothstep(0.48, 0.96, Math.abs(ny));
+  return clamp(sampleArcFeatures(nx, ny, nz, features) * polar, 0, 1);
 }
 
 function applyPlanetReliefToGeometry(
   geometry: THREE.SphereGeometry,
-  displacementField: Float32Array,
-  width: number,
-  height: number,
+  terrainModel: TerrainModel,
   profile: PlanetVisualProfile,
   seed: number,
 ) {
@@ -986,10 +1187,9 @@ function applyPlanetReliefToGeometry(
   for (let i = 0; i < positions.count; i += 1) {
     vertex.set(positions.getX(i), positions.getY(i), positions.getZ(i));
     const normal = vertex.clone().normalize();
-    const u = 0.5 + Math.atan2(normal.z, normal.x) / (Math.PI * 2);
-    const v = 0.5 - Math.asin(clamp(normal.y, -1, 1)) / Math.PI;
-    const signed = sampleFieldBilinear(displacementField, width, height, u, v);
-    const curved = Math.sign(signed) * Math.pow(Math.abs(signed), 0.84);
+    const terrain = evaluateTerrainSample(normal.x, normal.y, normal.z, terrainModel, profile);
+    const signed = terrain.finalSignedRelief;
+    const curved = Math.sign(signed) * Math.pow(Math.abs(signed), 0.9);
     const radius = 1 + curved * displacementScale;
     positions.setXYZ(i, normal.x * radius, normal.y * radius, normal.z * radius);
   }
@@ -1007,22 +1207,6 @@ function getFieldMinMax(field: Float32Array) {
   }
   if (!Number.isFinite(min) || !Number.isFinite(max)) return { min: 0, max: 1 };
   return { min, max };
-}
-
-function sampleFieldBilinear(field: Float32Array, width: number, height: number, u: number, v: number) {
-  const x = ((u % 1) + 1) % 1 * (width - 1);
-  const y = clamp(v, 0, 1) * (height - 1);
-  const x0 = Math.floor(x);
-  const y0 = Math.floor(y);
-  const x1 = (x0 + 1) % width;
-  const y1 = Math.min(y0 + 1, height - 1);
-  const tx = x - x0;
-  const ty = y - y0;
-  const i00 = field[y0 * width + x0];
-  const i10 = field[y0 * width + x1];
-  const i01 = field[y1 * width + x0];
-  const i11 = field[y1 * width + x1];
-  return lerp(lerp(i00, i10, tx), lerp(i01, i11, tx), ty);
 }
 
 function fbm3(x: number, y: number, z: number, seed: number, octaves: number) {
