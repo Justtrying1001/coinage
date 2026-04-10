@@ -1,6 +1,6 @@
 'use client';
 
-import { PixiGameViewport } from '@/components/game/PixiGameViewport';
+import { ThreeGameViewport } from '@/components/game/ThreeGameViewport';
 
 export function GameShell() {
   return (
@@ -12,7 +12,7 @@ export function GameShell() {
         </div>
       </header>
       <section className="game-canvas-shell">
-        <PixiGameViewport />
+        <ThreeGameViewport />
       </section>
     </main>
   );

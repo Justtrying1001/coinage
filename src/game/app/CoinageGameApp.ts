@@ -1,6 +1,5 @@
-import * as PIXI from 'pixi.js';
+import { WebGLRenderer } from 'three';
 import { PanController } from '@/game/input/PanController';
-import type { GameScene } from '@/game/scenes/GameScene';
 import { MapViewScene } from '@/game/scenes/MapViewScene';
 import { generateWorld } from '@/game/world/worldGenerator';
 
@@ -11,11 +10,9 @@ interface CoinageGameConfig {
 }
 
 export class CoinageGameApp {
-  private app: PIXI.Application | null = null;
+  private renderer: WebGLRenderer | null = null;
 
-  private worldContainer = new PIXI.Container();
-
-  private scene: GameScene | null = null;
+  private scene: MapViewScene | null = null;
 
   private resizeObserver: ResizeObserver | null = null;
 
@@ -23,54 +20,17 @@ export class CoinageGameApp {
 
   private mounted = false;
 
+  private rafId = 0;
+
+  private previousTick = 0;
+
   constructor(
     private readonly host: HTMLDivElement,
     private readonly config: CoinageGameConfig,
   ) {}
 
   mount() {
-    void this.bootstrap();
-  }
-
-  destroy() {
-    if (!this.mounted) return;
-
-    this.resizeObserver?.disconnect();
-    this.resizeObserver = null;
-
-    this.panController?.destroy();
-    this.panController = null;
-
-    this.scene?.destroy();
-    this.scene = null;
-
-    this.worldContainer.removeChildren();
-
-    this.app?.destroy(true, { children: true, texture: false, textureSource: false });
-    this.app = null;
-
-    this.host.innerHTML = '';
-    this.mounted = false;
-  }
-
-  private async bootstrap() {
     if (this.mounted) return;
-
-    const app = new PIXI.Application();
-    await app.init({
-      antialias: true,
-      autoDensity: true,
-      backgroundAlpha: 0,
-      resizeTo: this.host,
-      preference: 'webgl',
-      powerPreference: 'high-performance',
-    });
-
-    this.app = app;
-    this.mounted = true;
-
-    this.host.appendChild(app.canvas);
-    app.stage.addChild(this.worldContainer);
 
     const world = generateWorld({
       seed: this.config.seed,
@@ -79,28 +39,90 @@ export class CoinageGameApp {
       factionCount: 560,
     });
 
-    const scene = new MapViewScene(world);
-    this.scene = scene;
-    this.worldContainer.addChild(scene.root);
+    const width = Math.max(1, this.host.clientWidth);
+    const height = Math.max(1, this.host.clientHeight);
 
-    this.panController = new PanController(
-      this.host,
-      this.worldContainer,
-      { width: app.screen.width, height: app.screen.height },
-      { width: world.width, height: world.height },
-    );
-    this.panController.mount();
-    this.panController.centerOn({ x: world.width * 0.5, y: world.height * 0.58 });
+    const renderer = new WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(width, height);
+    this.host.appendChild(renderer.domElement);
 
-    app.ticker.add((ticker) => {
-      scene.update(ticker.deltaMS);
-    });
+    const scene = new MapViewScene(world, { width, height });
+    const panController = new PanController(this.host, scene.camera, { width, height }, { width: world.width, height: world.height });
+
+    panController.mount();
+    panController.centerOn({ x: world.width * 0.5, y: world.height * 0.58 });
+
+    this.host.addEventListener('pointermove', this.handlePointerMove);
+    this.host.addEventListener('pointerup', this.handlePointerUp);
 
     this.resizeObserver = new ResizeObserver(() => {
-      if (!this.app || !this.scene || !this.panController) return;
-      this.panController.setViewport({ width: this.app.screen.width, height: this.app.screen.height });
-      this.scene.onResize(this.app.screen.width, this.app.screen.height);
+      if (!this.renderer || !this.scene || !this.panController) return;
+      const nextWidth = Math.max(1, this.host.clientWidth);
+      const nextHeight = Math.max(1, this.host.clientHeight);
+      this.renderer.setSize(nextWidth, nextHeight);
+      this.panController.setViewport({ width: nextWidth, height: nextHeight });
+      this.panController.updateViewportRect();
+      this.scene.onResize(nextWidth, nextHeight);
     });
     this.resizeObserver.observe(this.host);
+
+    this.renderer = renderer;
+    this.scene = scene;
+    this.panController = panController;
+    this.mounted = true;
+
+    this.previousTick = performance.now();
+    this.rafId = requestAnimationFrame(this.renderLoop);
   }
+
+  destroy() {
+    if (!this.mounted) return;
+
+    cancelAnimationFrame(this.rafId);
+    this.rafId = 0;
+
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
+
+    this.host.removeEventListener('pointermove', this.handlePointerMove);
+    this.host.removeEventListener('pointerup', this.handlePointerUp);
+
+    this.panController?.destroy();
+    this.panController = null;
+
+    this.scene?.destroy();
+    this.scene = null;
+
+    this.renderer?.dispose();
+    this.renderer = null;
+
+    this.host.innerHTML = '';
+    this.mounted = false;
+  }
+
+  private readonly renderLoop = (timestamp: number) => {
+    if (!this.renderer || !this.scene || !this.panController) return;
+
+    const delta = timestamp - this.previousTick;
+    this.previousTick = timestamp;
+
+    this.scene.setPointerNdc(this.panController.getPointerNdc());
+    this.scene.update(delta);
+    this.renderer.render(this.scene.scene, this.scene.camera);
+
+    this.rafId = requestAnimationFrame(this.renderLoop);
+  };
+
+  private readonly handlePointerMove = () => {
+    if (!this.scene || !this.panController) return;
+    this.scene.setPointerNdc(this.panController.getPointerNdc());
+    this.scene.pointerMove();
+  };
+
+  private readonly handlePointerUp = () => {
+    if (!this.scene || !this.panController) return;
+    this.scene.setPointerNdc(this.panController.getPointerNdc());
+    this.scene.pointerTap();
+  };
 }

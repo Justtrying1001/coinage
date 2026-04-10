@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { CoinageGameApp } from '@/game/app/CoinageGameApp';
 
-export function PixiGameViewport() {
+export function ThreeGameViewport() {
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -20,5 +20,5 @@ export function PixiGameViewport() {
     };
   }, []);
 
-  return <div ref={rootRef} className="pixi-root" aria-label="Coinage map viewport" />;
+  return <div ref={rootRef} className="three-root" aria-label="Coinage map viewport" />;
 }

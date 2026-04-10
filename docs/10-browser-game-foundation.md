@@ -1,31 +1,35 @@
 # 10 - Browser Game Foundation
 
-## Why Next.js + PixiJS
+## Why the Map View renderer pivoted from PixiJS to Three.js
 
-Coinage needs a browser-native game shell with clean routing and long-term maintainability. Next.js App Router handles page-level structure (`/` landing and `/game` runtime entry), while PixiJS owns real-time rendering and simulation-friendly update loops for the world map.
+The original PixiJS Map View validated route separation, deterministic world generation, and panning, but it failed to deliver the intended game-map presence.
 
-## Route separation
+Primary reasons for the pivot:
+- faction-islands still read as technical procedural blobs
+- city slot markers still looked like abstract UI markers
+- map mass/depth remained too flat to feel like a premium strategy world
+- additional 2D layers/effects did not resolve the core artistic problem
 
-- `/`: minimal, stylized entry page with a single CTA to start the game session.
-- `/game`: dedicated map entry route where the canvas and game renderer become the primary UI.
+Coinage now uses **Three.js for Map View rendering only**, keeping the broader Next.js game architecture intact.
 
-This keeps web navigation concerns separate from game-scene concerns.
+## Why orthographic 2.5D was chosen
 
-## PixiJS integration details
+The target is not a cinematic free-camera 3D world. The target is strategic readability with stronger territorial presence.
 
-PixiJS is isolated in `CoinageGameApp`, mounted from a client component (`PixiGameViewport`).
+Orthographic 2.5D gives:
+- Grepolis-like map readability at command scale
+- believable island thickness/mass without diorama framing
+- stable strategic composition with no perspective distortion
+- a clean progression path for view transitions (**Map -> Faction -> City**) without free zoom
 
-Key integration traits:
-- client-side mount/unmount lifecycle
-- Pixi Application bootstrap and destroy flow
-- resize observer for viewport changes
-- ticker update loop
-- world container camera basis
-- pan input controller with world bounds clamping
+## Route separation (unchanged)
 
-React renders the shell only; map objects are rendered by PixiJS, not React.
+- `/`: landing page
+- `/game`: playable runtime shell with map canvas
 
-## Foundation folder structure
+React/Next.js continue to own shell + routing. Three.js owns realtime map rendering in `/game`.
+
+## Updated foundation structure
 
 ```text
 src/
@@ -35,126 +39,102 @@ src/
   components/
     landing/
     game/
+      GameShell.tsx
+      ThreeGameViewport.tsx
   game/
     app/
+      CoinageGameApp.ts
     core/
+      types.ts
     scenes/
-    systems/
-    world/
-    renderers/
+      MapViewScene.ts
     input/
+      PanController.ts
+    world/
+      worldGenerator.ts
+      rng.ts
   styles/
 ```
 
-- `app/` + `components/`: Next.js shell and routing
-- `game/`: renderer runtime and world logic
-- `world/`: deterministic procedural generation
-- `scenes/`: scene-level game view composition
+## Renderer architecture (Three.js)
 
-## Renderer architecture
+`CoinageGameApp` now owns Three.js runtime lifecycle:
+1. generate deterministic world from seed
+2. create WebGL renderer and mount canvas
+3. create `MapViewScene` (scene graph + orthographic camera)
+4. attach `PanController` (panning + world bounds clamp)
+5. run RAF loop for update/render
+6. cleanly dispose on unmount
 
-`CoinageGameApp` is the bootstrap owner:
-1. initializes Pixi application
-2. generates world data from seed
-3. mounts `MapViewScene`
-4. manages update loop + lifecycle
-5. delegates drag-pan to `PanController`
+This preserves browser-game architecture while replacing only the map rendering layer.
 
-This allows future scene orchestration for Map / Faction / City views without rewriting the renderer base.
+## Orthographic Map View behavior
 
-## World generation approach
+Map View camera:
+- uses `OrthographicCamera`
+- fixed frustum (no free zoom)
+- top-down strategic framing
+- panning only
+- clamped world bounds
 
-World generation is deterministic via seeded RNG.
+Interaction:
+- pointer hover/select via raycasting against faction meshes
+- subtle emissive/rim feedback for selection readability
 
-Macro logic:
-- world size is much larger than viewport
-- weighted clusters create density variation
-- spatial hash + min-distance rejection preserve spacing and voids
-- supports central/peripheral geography with uneven concentration
+## Faction-island representation (2.5D)
 
-This avoids a uniform scatter and gives panning meaning.
+Each faction-island is now rendered as a layered 2.5D territorial mass:
+- silhouette-derived `Shape`
+- lightly extruded body (`ExtrudeGeometry`) for thickness
+- distinct top surface mesh (`ShapeGeometry`) for readable territory plate
+- contour rim line for strategic edge definition
+- per-size palette/depth variation (small/medium/large)
 
-## Faction generation approach
+This shifts islands from flat-debug blobs to structured strategic landmasses while keeping top-down readability.
 
-Each faction is generated with:
-- id + generated name
-- world position
-- size category (small/medium/large)
-- base radius
-- shape seed + silhouette control points
-- slot list
+## City slot representation
 
-Silhouettes are generated from angular points with constrained wave/noise modulation so islands remain irregular but readable.
+City slots remain generated from faction silhouettes/sizes and remain directly visible on islands.
 
-## City slot generation approach
+Rendering approach:
+- all slot pads rendered with one `InstancedMesh` for performance
+- compact embedded circular anchor pads
+- slight variation in rotation/scale to avoid graph-node uniformity
+- z-layered onto faction top surfaces so slots feel integrated, not overlaid UI dots
 
-Slots are generated per faction using radial sampling constrained by silhouette radius at sampled angles.
+## Digital ocean representation
 
-Rules:
-- 10 to 25 slots depending on size category
-- slot points kept within island bounds
-- rejection checks reduce overlap
-- no grid regularity
-- slots include `occupied` state for future ownership systems
+The ocean is now a large world plane with a restrained shader-driven look:
+- dark depth gradient foundation
+- subtle flow-distortion to imply digital current motion
+- faint linefield accents for command-grid atmosphere
+- restrained luminance to keep islands as primary focus
 
-## Evolution path
+The ocean now acts as compositional space (clusters + voids) rather than empty background fill.
 
-This foundation is designed to evolve toward:
-- **Faction View** scene: local faction-island tactical view
-- **City View** scene: internal city management layer
-- view transitions + camera jumps
-- ownership/occupation and later combat/economy systems
+## Performance decisions
 
-The current implementation intentionally stops at map generation + rendering baseline to keep the first milestone stable and extensible.
+Map View stays browser-practical by design:
+- single orthographic pass, no expensive post-processing chain
+- one shared shader material for ocean
+- instanced slot rendering across all factions
+- lightweight materials (`Lambert` / `Basic`) and restrained animation
+- fixed camera scale (no free zoom complexity)
 
-## Map View rework (from procedural debug look to hybrid visual kit)
+## What remains temporary / placeholder
 
-The earlier prototype validated architecture and generation, but remained visually insufficient because final perception relied mostly on primitive fills/strokes/glows. That created a debug-map feeling instead of a game-map identity.
+Current renderer intentionally remains a foundation layer:
+- faction surface art is procedural/material-driven, not final authored art assets
+- slot pads are stylized anchors, not final faction-specific structures
+- no ownership/combat/economy simulation rendering yet
+- no Map->Faction->City transition animation pass yet
 
-### What changed in rendering strategy
-
-The map remains procedurally generated (world layout, islands, slots), but rendering is now hybrid:
-- procedural placement/composition is preserved
-- a reusable visual kit provides texture-assisted surface language
-- primitives still define structure, while textures/overlays provide art direction
-
-### What remains procedural
+## Core truths preserved
 
 - deterministic seeded world generation
-- cluster/void composition
-- faction positions, sizes, and silhouettes
-- city slot placement and neutral occupancy state
-
-### What is now asset-assisted / systematized
-
-A reusable map visual kit now supplies:
-- ocean noise field texture
-- ocean flow texture
-- island surface texture
-- island vein/segmentation texture
-- slot glyph texture
-
-These are small reusable assets generated once and reused across all factions/tiles for coherence.
-
-### Faction-island rendering now
-
-- multi-layer island stack: under-glow, core silhouette, textured surface pass, vein pass, accent mass, contour, rim
-- texture passes are masked by procedural island silhouettes
-- result preserves top-down readability while removing flat-blob debug perception
-
-### City slot rendering now
-
-- slots now render as integrated emplacement anchors
-- marker stack uses base bed + halo + glyph texture
-- markers remain compact/readable and ready for future occupied/free state differentiation
-
-### Digital ocean rendering now
-
-- ocean now combines base depth fill + tiled noise + tiled flow structures + broad field ellipses + sparse glints + faint macro grid
-- digital ocean behaves as compositional sea-equivalent (spacing, separation, navigation support)
-
-### Still placeholder for now
-
-- no zoom system (view progression remains Map -> Faction -> City)
-- no gameplay ownership/combat/economy systems yet
-- visual kit is intentionally lightweight and can later be replaced by authored art assets without changing architecture
+- 500+ factions
+- faction size variation and slot-count coupling
+- visible city slots directly on faction-islands
+- neutral launch-state assumptions
+- world panning with bounds
+- Map View as main strategic play surface
