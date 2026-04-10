@@ -19,6 +19,10 @@ export class Planet3DMode implements RenderModeController {
 
   private generatedTextures: THREE.Texture[] = [];
 
+  private currentMaps: PlanetMaps | null = null;
+
+  private debugViewIndex = 0;
+
   private inspectPanel: HTMLDivElement | null = null;
 
   private inspectTitle: HTMLHeadingElement | null = null;
@@ -46,6 +50,15 @@ export class Planet3DMode implements RenderModeController {
   private readonly dragPitch = new THREE.Quaternion();
 
   private readonly dragPitchAxis = new THREE.Vector3(1, 0, 0);
+
+  private readonly debugViewModes: Array<keyof PlanetMaps['debugMaps'] | 'beauty'> = [
+    'beauty',
+    'macroHeight',
+    'regionalHeight',
+    'detailHeight',
+    'displacementInfluence',
+    'finalNormal',
+  ];
 
   constructor(
     private selectedPlanet: SelectedPlanetRef,
@@ -137,6 +150,7 @@ export class Planet3DMode implements RenderModeController {
 
     for (const texture of this.generatedTextures) texture.dispose();
     this.generatedTextures = [];
+    this.currentMaps = null;
 
     this.renderer?.dispose();
     this.renderer?.domElement.remove();
@@ -163,13 +177,28 @@ export class Planet3DMode implements RenderModeController {
 
     for (const texture of this.generatedTextures) texture.dispose();
     this.generatedTextures = [];
+    this.currentMaps = null;
 
     const profile = planetProfileFromSeed(planetRef.seed);
     const geometry = new THREE.SphereGeometry(1, 196, 128);
     geometry.computeVertexNormals();
 
     const maps = buildPlanetMaps(profile, planetRef.seed);
-    this.generatedTextures = [maps.map, maps.roughnessMap, maps.metalnessMap, maps.normalMap, maps.emissiveMap];
+    this.generatedTextures = [
+      maps.map,
+      maps.roughnessMap,
+      maps.metalnessMap,
+      maps.normalMap,
+      maps.emissiveMap,
+      maps.debugMaps.macroHeight,
+      maps.debugMaps.regionalHeight,
+      maps.debugMaps.detailHeight,
+      maps.debugMaps.displacementInfluence,
+      maps.debugMaps.finalNormal,
+    ];
+    this.currentMaps = maps;
+
+    applyPlanetReliefToGeometry(geometry, maps.displacementField, maps.width, maps.height, profile, planetRef.seed);
 
     const material = new THREE.MeshStandardMaterial({
       map: maps.map,
@@ -187,6 +216,7 @@ export class Planet3DMode implements RenderModeController {
 
     this.planet = new THREE.Mesh(geometry, material);
     this.root.add(this.planet);
+    this.applyDebugView();
 
     this.updateInspectIdentity(planetRef, profile);
   }
@@ -227,8 +257,26 @@ export class Planet3DMode implements RenderModeController {
   private readonly onKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
       this.context.onRequestMode('galaxy2d');
+      return;
+    }
+    if (event.key.toLowerCase() === 'h') {
+      this.debugViewIndex = (this.debugViewIndex + 1) % this.debugViewModes.length;
+      this.applyDebugView();
     }
   };
+
+  private applyDebugView() {
+    if (!this.planet || !this.currentMaps) return;
+    const material = this.planet.material;
+    if (!(material instanceof THREE.MeshStandardMaterial)) return;
+    const mode = this.debugViewModes[this.debugViewIndex];
+    if (mode === 'beauty') {
+      material.map = this.currentMaps.map;
+    } else {
+      material.map = this.currentMaps.debugMaps[mode];
+    }
+    material.needsUpdate = true;
+  }
 
   private mountInspectPanel() {
     const panel = document.createElement('div');
@@ -333,11 +381,21 @@ function wrapHue(value: number) {
 }
 
 interface PlanetMaps {
+  width: number;
+  height: number;
   map: THREE.CanvasTexture;
   roughnessMap: THREE.CanvasTexture;
   metalnessMap: THREE.CanvasTexture;
   normalMap: THREE.CanvasTexture;
   emissiveMap: THREE.CanvasTexture;
+  displacementField: Float32Array;
+  debugMaps: {
+    macroHeight: THREE.CanvasTexture;
+    regionalHeight: THREE.CanvasTexture;
+    detailHeight: THREE.CanvasTexture;
+    displacementInfluence: THREE.CanvasTexture;
+    finalNormal: THREE.CanvasTexture;
+  };
 }
 
 function buildPlanetMaps(profile: PlanetVisualProfile, seed: number): PlanetMaps {
@@ -359,7 +417,7 @@ function buildPlanetMaps(profile: PlanetVisualProfile, seed: number): PlanetMaps
   emissiveCanvas.width = width;
   emissiveCanvas.height = height;
 
-  paintPlanetTextures(profile, seed, colorCanvas, roughCanvas, metalCanvas, normalCanvas, emissiveCanvas);
+  const derivedFields = paintPlanetTextures(profile, seed, colorCanvas, roughCanvas, metalCanvas, normalCanvas, emissiveCanvas);
 
   const map = new THREE.CanvasTexture(colorCanvas);
   map.colorSpace = THREE.SRGBColorSpace;
@@ -388,7 +446,28 @@ function buildPlanetMaps(profile: PlanetVisualProfile, seed: number): PlanetMaps
   emissiveMap.wrapT = THREE.ClampToEdgeWrapping;
   emissiveMap.anisotropy = 2;
 
-  return { map, roughnessMap, metalnessMap, normalMap, emissiveMap };
+  const macroHeight = createFieldTexture(derivedFields.tectonicHeight, width, height);
+  const regionalHeight = createFieldTexture(derivedFields.regionalHeight, width, height);
+  const detailHeight = createFieldTexture(derivedFields.detailHeight, width, height);
+  const displacementInfluence = createFieldTexture(derivedFields.displacementField, width, height);
+
+  return {
+    width,
+    height,
+    map,
+    roughnessMap,
+    metalnessMap,
+    normalMap,
+    emissiveMap,
+    displacementField: derivedFields.displacementField,
+    debugMaps: {
+      macroHeight,
+      regionalHeight,
+      detailHeight,
+      displacementInfluence,
+      finalNormal: normalMap,
+    },
+  };
 }
 
 function paintPlanetTextures(
@@ -399,7 +478,12 @@ function paintPlanetTextures(
   metalCanvas: HTMLCanvasElement,
   normalCanvas: HTMLCanvasElement,
   emissiveCanvas: HTMLCanvasElement,
-) {
+): {
+  tectonicHeight: Float32Array;
+  regionalHeight: Float32Array;
+  detailHeight: Float32Array;
+  displacementField: Float32Array;
+} {
   const width = colorCanvas.width;
   const height = colorCanvas.height;
   const colorCtx = colorCanvas.getContext('2d');
@@ -407,7 +491,14 @@ function paintPlanetTextures(
   const metalCtx = metalCanvas.getContext('2d');
   const normalCtx = normalCanvas.getContext('2d');
   const emissiveCtx = emissiveCanvas.getContext('2d');
-  if (!colorCtx || !roughCtx || !metalCtx || !normalCtx || !emissiveCtx) return;
+  if (!colorCtx || !roughCtx || !metalCtx || !normalCtx || !emissiveCtx) {
+    return {
+      tectonicHeight: new Float32Array(width * height),
+      regionalHeight: new Float32Array(width * height),
+      detailHeight: new Float32Array(width * height),
+      displacementField: new Float32Array(width * height),
+    };
+  }
 
   const colorData = colorCtx.createImageData(width, height);
   const roughData = roughCtx.createImageData(width, height);
@@ -415,6 +506,10 @@ function paintPlanetTextures(
   const normalData = normalCtx.createImageData(width, height);
   const emissiveData = emissiveCtx.createImageData(width, height);
   const heightField = new Float32Array(width * height);
+  const tectonicField = new Float32Array(width * height);
+  const regionalField = new Float32Array(width * height);
+  const detailField = new Float32Array(width * height);
+  const displacementField = new Float32Array(width * height);
 
   const signature = archetypeSignature(profile.archetype);
   const rng = new SeededRng(seed ^ 0x6a09e667);
@@ -583,20 +678,63 @@ function paintPlanetTextures(
       metalData.data[i + 2] = metalValue;
       metalData.data[i + 3] = 255;
 
-      const heightValue = clamp(
-        landMask * (0.49 + primaryMass * 0.2 + plateMass * 0.12 + regionMask * 0.06)
-        + waterMask * (0.36 + primaryMass * 0.06)
-        + coastMask * 0.025
-        + shelfMask * 0.015
-        + accentMask * 0.02
-        + fractureMask * 0.018
-        + micro * 0.01
-        - waterMask * 0.04
-        + signature.heightBias,
-        0.2,
-        0.84,
+      let tectonicHeight = clamp(primaryMass * 0.72 + plateMass * 0.28 + (landMask - waterMask) * 0.08, 0, 1);
+      let regionalHeight = clamp(
+        landMask * (regionMask * 0.48 + accentMask * 0.2 + coastMask * 0.14)
+        + waterMask * (shelfMask * 0.2 - smoothstep(0.28, 0.7, seaLevel - massField) * 0.18)
+        + fractureMask * 0.22,
+        0,
+        1,
       );
-      heightField[y * width + x] = heightValue;
+      let detailHeight = clamp(micro * 0.68 + accentMask * 0.12 + fractureMask * 0.2, 0, 1);
+
+      switch (profile.archetype) {
+        case 'oceanic':
+          tectonicHeight = clamp(tectonicHeight - waterMask * 0.08, 0, 1);
+          regionalHeight = clamp(regionalHeight + shelfMask * 0.2 - waterMask * smoothstep(0.32, 0.84, seaLevel - massField) * 0.2, 0, 1);
+          break;
+        case 'frozen':
+          regionalHeight = clamp(regionalHeight + frostMask * 0.26 + shelfMask * 0.12, 0, 1);
+          detailHeight = clamp(detailHeight + fractureMask * 0.12, 0, 1);
+          break;
+        case 'volcanic':
+          tectonicHeight = clamp(tectonicHeight + accentMask * 0.14, 0, 1);
+          regionalHeight = clamp(regionalHeight + fractureMask * 0.24, 0, 1);
+          break;
+        case 'arid':
+          regionalHeight = clamp(regionalHeight + accentMask * 0.16 - waterMask * 0.12, 0, 1);
+          detailHeight = clamp(detailHeight + smoothstep(0.58, 0.9, accentNoise) * 0.14, 0, 1);
+          break;
+        case 'barren':
+          regionalHeight = clamp(regionalHeight + smoothstep(0.64, 0.92, fractureNoise) * 0.18, 0, 1);
+          break;
+        case 'mineral':
+          regionalHeight = clamp(regionalHeight + accentMask * 0.18 + fractureMask * 0.12, 0, 1);
+          detailHeight = clamp(detailHeight + accentMask * 0.12, 0, 1);
+          break;
+        case 'fractured':
+          tectonicHeight = clamp(tectonicHeight + fractureMask * 0.1, 0, 1);
+          regionalHeight = clamp(regionalHeight + fractureMask * 0.28, 0, 1);
+          break;
+        default:
+          break;
+      }
+
+      const displacementInfluence = clamp(tectonicHeight * 0.84 + regionalHeight * 0.16, 0, 1);
+      const heightValue = clamp(
+        tectonicHeight * 0.62
+        + regionalHeight * 0.28
+        + detailHeight * 0.1
+        + signature.heightBias,
+        0.16,
+        0.88,
+      );
+      const fieldIndex = y * width + x;
+      tectonicField[fieldIndex] = tectonicHeight;
+      regionalField[fieldIndex] = regionalHeight;
+      detailField[fieldIndex] = detailHeight;
+      displacementField[fieldIndex] = displacementInfluence;
+      heightField[fieldIndex] = heightValue;
 
       const emissiveMask = clamp(fractureMask * signature.emissiveFromFracture + accentMask * signature.emissiveFromAccent + signature.emissiveBase, 0, 0.2);
       const eHue = wrapHue(profile.accentHue + signature.emissiveHueShift);
@@ -640,6 +778,13 @@ function paintPlanetTextures(
   metalCtx.putImageData(metalData, 0, 0);
   normalCtx.putImageData(normalData, 0, 0);
   emissiveCtx.putImageData(emissiveData, 0, 0);
+
+  return {
+    tectonicHeight: tectonicField,
+    regionalHeight: regionalField,
+    detailHeight: detailField,
+    displacementField,
+  };
 }
 
 interface ArchetypeSignature {
@@ -698,6 +843,72 @@ function archetypeSignature(archetype: PlanetVisualProfile['archetype']): Archet
     default:
       return { coverageBias: 0.11, seaLevelShift: 0.18, coastWidth: 0.08, shelfWidth: 0.08, fractureStrength: 0.48, frostStrength: 0.12, fractureHueShift: 4, regionHueShift: 4, accentHueShift: 6, landHueShift: 4, waterHueShift: 0, regionSatShift: -6, accentSatBoost: -2, fractureSatShift: 2, regionLightShift: -4, accentLightShift: -2, fractureLightShift: -4, coastLightBoost: 3, shelfLightBoost: 2, polarDarkening: 9, roughWaterShift: 0.05, roughLandShift: 0.09, roughAccentShift: 0.04, roughFractureShift: 0.06, metalBase: 0.01, metalAccentBoost: 0.01, metalFractureBoost: 0.02, accentColorBlend: 0.22, fractureColorBlend: 0.2, heightBias: 0.02, emissiveBase: 0, emissiveFromFracture: 0, emissiveFromAccent: 0, emissiveHueShift: 0, emissiveSaturationBoost: 0 };
   }
+}
+
+function createFieldTexture(field: Float32Array, width: number, height: number): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return new THREE.CanvasTexture(canvas);
+  }
+  const img = ctx.createImageData(width, height);
+  for (let i = 0; i < field.length; i += 1) {
+    const v = Math.round(clamp(field[i], 0, 1) * 255);
+    const k = i * 4;
+    img.data[k] = v;
+    img.data[k + 1] = v;
+    img.data[k + 2] = v;
+    img.data[k + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.anisotropy = 2;
+  return texture;
+}
+
+function applyPlanetReliefToGeometry(
+  geometry: THREE.SphereGeometry,
+  displacementField: Float32Array,
+  width: number,
+  height: number,
+  profile: PlanetVisualProfile,
+  seed: number,
+) {
+  const positions = geometry.attributes.position;
+  const vertex = new THREE.Vector3();
+  const rng = new SeededRng(seed ^ 0xa24baed4);
+  const displacementScale = clamp(profile.reliefStrength * 0.16 + rng.range(0.006, 0.014), 0.014, 0.038);
+  for (let i = 0; i < positions.count; i += 1) {
+    vertex.set(positions.getX(i), positions.getY(i), positions.getZ(i));
+    const normal = vertex.clone().normalize();
+    const u = 0.5 + Math.atan2(normal.z, normal.x) / (Math.PI * 2);
+    const v = 0.5 - Math.asin(clamp(normal.y, -1, 1)) / Math.PI;
+    const displacement = sampleFieldBilinear(displacementField, width, height, u, v);
+    const radius = 1 + (displacement - 0.5) * displacementScale;
+    positions.setXYZ(i, normal.x * radius, normal.y * radius, normal.z * radius);
+  }
+  positions.needsUpdate = true;
+  geometry.computeVertexNormals();
+}
+
+function sampleFieldBilinear(field: Float32Array, width: number, height: number, u: number, v: number) {
+  const x = ((u % 1) + 1) % 1 * (width - 1);
+  const y = clamp(v, 0, 1) * (height - 1);
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const x1 = (x0 + 1) % width;
+  const y1 = Math.min(y0 + 1, height - 1);
+  const tx = x - x0;
+  const ty = y - y0;
+  const i00 = field[y0 * width + x0];
+  const i10 = field[y0 * width + x1];
+  const i01 = field[y1 * width + x0];
+  const i11 = field[y1 * width + x1];
+  return lerp(lerp(i00, i10, tx), lerp(i01, i11, tx), ty);
 }
 
 function fbm3(x: number, y: number, z: number, seed: number, octaves: number) {
