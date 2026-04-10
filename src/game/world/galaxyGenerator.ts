@@ -138,7 +138,7 @@ function pickArchetype(rng: SeededRng): PlanetArchetype {
   if (roll < 0.42) return 'frozen';
   if (roll < 0.56) return 'volcanic';
   if (roll < 0.7) return 'mineral';
-  if (roll < 0.85) return 'fractured';
+  if (roll < 0.85) return 'terrestrial';
   return 'barren';
 }
 
@@ -196,11 +196,11 @@ const ARCHETYPE_CONFIGS: Record<PlanetArchetype, ArchetypeConfig> = {
     oceanSaturation: [18, 32], landSaturation: [30, 56], oceanLightness: [25, 35], landLightness: [35, 52], lightIntensity: [1.18, 1.6], atmosphereLightness: [64, 75],
     ruggedness: [0.2, 0.75], macroBias: [0.15, 0.31], ridgeWeight: [0.2, 0.39], craterWeight: [0.14, 0.26], polarWeight: [0.05, 0.16], humidityStrength: [0.08, 0.28], emissiveIntensity: [0.02, 0.05],
   },
-  fractured: {
-    baseHue: [248, 318], accentOffset: [15, 44], hueDrift: [-18, 18], oceanLevel: [0.02, 0.19], roughness: [0.62, 0.94], metalness: [0.02, 0.12],
-    reliefStrength: [0.14, 0.23], reliefSharpness: [1.5, 2.35], continentScale: [2.4, 4.4], ridgeScale: [10.8, 18.5], ridgeScaleBonus: 5.2, craterScale: [6.2, 10.2],
-    oceanSaturation: [24, 36], landSaturation: [34, 62], oceanLightness: [23, 34], landLightness: [32, 50], lightIntensity: [1.12, 1.62], atmosphereLightness: [66, 78],
-    ruggedness: [0.5, 1], macroBias: [0.23, 0.42], ridgeWeight: [0.38, 0.64], craterWeight: [0.22, 0.36], polarWeight: [0.05, 0.16], humidityStrength: [0.08, 0.26], emissiveIntensity: [0.02, 0.05],
+  terrestrial: {
+    baseHue: [88, 162], accentOffset: [10, 34], hueDrift: [-10, 10], oceanLevel: [0.34, 0.62], roughness: [0.62, 0.9], metalness: [0.01, 0.06],
+    reliefStrength: [0.08, 0.16], reliefSharpness: [1.05, 1.78], continentScale: [1.5, 3.3], ridgeScale: [7.1, 12.4], ridgeScaleBonus: 2.8, craterScale: [3.8, 7.2],
+    oceanSaturation: [34, 62], landSaturation: [30, 58], oceanLightness: [28, 48], landLightness: [36, 58], lightIntensity: [1.12, 1.5], atmosphereLightness: [70, 84],
+    ruggedness: [0.2, 0.76], macroBias: [0.02, 0.24], ridgeWeight: [0.18, 0.4], craterWeight: [0.1, 0.24], polarWeight: [0.08, 0.24], humidityStrength: [0.24, 0.52], emissiveIntensity: [0, 0.03],
   },
   oceanic: {
     baseHue: [186, 242], accentOffset: [14, 40], hueDrift: [-14, 10], oceanLevel: [0.56, 0.82], roughness: [0.35, 0.58], metalness: [0.01, 0.05],
