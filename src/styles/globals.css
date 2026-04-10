@@ -175,13 +175,62 @@ a {
   height: 100%;
 }
 
-.planet-back-button {
+.planet-inspect-panel {
   position: absolute;
   right: 1rem;
   bottom: 1rem;
   z-index: 12;
+  display: flex;
+  flex-direction: column;
+  gap: 0.52rem;
+  min-width: 220px;
+  max-width: min(300px, calc(100vw - 2rem));
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(123, 202, 241, 0.38);
+  background: linear-gradient(180deg, rgba(9, 23, 37, 0.92) 0%, rgba(6, 17, 29, 0.93) 100%);
+  box-shadow: 0 8px 26px rgba(3, 10, 18, 0.46), 0 0 0 1px rgba(91, 173, 214, 0.12) inset;
+  backdrop-filter: blur(3px);
+}
+
+.planet-inspect-title {
+  margin: 0;
+  font-size: 0.86rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #e9f7ff;
+}
+
+.planet-inspect-subtitle {
+  margin: -0.2rem 0 0;
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(157, 199, 227, 0.82);
+}
+
+.planet-inspect-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+}
+
+.planet-inspect-tag {
+  border-radius: 999px;
+  border: 1px solid rgba(134, 205, 243, 0.42);
+  background: rgba(13, 41, 63, 0.74);
+  color: #d2ecff;
+  font-size: 0.64rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1;
+  padding: 0.28rem 0.5rem;
+}
+
+.planet-back-button {
+  align-self: flex-start;
   border: 1px solid rgba(147, 217, 255, 0.55);
-  background: rgba(6, 20, 35, 0.85);
+  background: rgba(6, 20, 35, 0.88);
   color: #d7efff;
   border-radius: 999px;
   padding: 0.42rem 0.82rem;

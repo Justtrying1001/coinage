@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
-import type { SelectedPlanetRef } from '@/game/render/types';
+import type { PlanetVisualProfile, SelectedPlanetRef } from '@/game/render/types';
 import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
 import { SeededRng } from '@/game/world/rng';
 
@@ -21,6 +21,14 @@ export class Planet3DMode implements RenderModeController {
 
   private fillLight: THREE.DirectionalLight | null = null;
 
+  private inspectPanel: HTMLDivElement | null = null;
+
+  private inspectTitle: HTMLHeadingElement | null = null;
+
+  private inspectSubtitle: HTMLParagraphElement | null = null;
+
+  private inspectTags: HTMLDivElement | null = null;
+
   private backButton: HTMLButtonElement | null = null;
 
   private width = 1;
@@ -35,7 +43,11 @@ export class Planet3DMode implements RenderModeController {
 
   private lastY = 0;
 
-  private rotationVelocity = new THREE.Vector2(0, 0);
+  private readonly dragYaw = new THREE.Quaternion();
+
+  private readonly dragPitch = new THREE.Quaternion();
+
+  private readonly dragPitchAxis = new THREE.Vector3(1, 0, 0);
 
   constructor(
     private selectedPlanet: SelectedPlanetRef,
@@ -68,7 +80,7 @@ export class Planet3DMode implements RenderModeController {
     this.scene.add(this.camera);
 
     this.rebuildPlanet(this.selectedPlanet);
-    this.mountBackButton();
+    this.mountInspectPanel();
 
     renderer.domElement.addEventListener('pointerdown', this.onPointerDown);
     window.addEventListener('pointermove', this.onPointerMove);
@@ -88,17 +100,7 @@ export class Planet3DMode implements RenderModeController {
   }
 
   update(deltaMs: number) {
-    if (this.planet) {
-      if (this.isDragging) {
-        this.rotationVelocity.multiplyScalar(0.9);
-      } else {
-        this.rotationVelocity.multiplyScalar(0.94);
-        this.planet.rotation.y += this.rotationVelocity.x;
-        this.planet.rotation.x = clamp(this.planet.rotation.x + this.rotationVelocity.y, -0.68, 0.68);
-      }
-
-      this.planet.rotation.y += deltaMs * 0.00012;
-    }
+    void deltaMs;
 
     this.renderer?.render(this.scene, this.camera);
   }
@@ -130,7 +132,12 @@ export class Planet3DMode implements RenderModeController {
     this.renderer?.dispose();
     this.renderer?.domElement.remove();
     this.renderer = null;
-    this.backButton?.remove();
+
+    this.inspectPanel?.remove();
+    this.inspectPanel = null;
+    this.inspectTitle = null;
+    this.inspectSubtitle = null;
+    this.inspectTags = null;
     this.backButton = null;
 
     this.scene.clear();
@@ -212,6 +219,8 @@ export class Planet3DMode implements RenderModeController {
       this.fillLight.color = new THREE.Color(`hsl(${profile.accentHue}, 52%, 62%)`);
       this.fillLight.intensity = 0.3 + profile.lightIntensity * 0.11;
     }
+
+    this.updateInspectIdentity(planetRef, profile);
   }
 
   private readonly onPointerDown = (event: PointerEvent) => {
@@ -220,7 +229,6 @@ export class Planet3DMode implements RenderModeController {
     this.isDragging = true;
     this.lastX = event.clientX;
     this.lastY = event.clientY;
-    this.rotationVelocity.set(0, 0);
   };
 
   private readonly onPointerMove = (event: PointerEvent) => {
@@ -231,12 +239,15 @@ export class Planet3DMode implements RenderModeController {
     this.lastX = event.clientX;
     this.lastY = event.clientY;
 
-    const nextYaw = dx * 0.0105;
-    const nextPitch = dy * 0.0085;
-    this.rotationVelocity.set(nextYaw, nextPitch);
+    const yaw = dx * 0.0088;
+    const pitch = dy * 0.0088;
 
-    this.planet.rotation.y += nextYaw;
-    this.planet.rotation.x = clamp(this.planet.rotation.x + nextPitch, -0.68, 0.68);
+    this.dragYaw.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, yaw);
+    this.dragPitchAxis.set(1, 0, 0).applyQuaternion(this.camera.quaternion);
+    this.dragPitch.setFromAxisAngle(this.dragPitchAxis, pitch);
+
+    this.planet.quaternion.premultiply(this.dragYaw);
+    this.planet.quaternion.premultiply(this.dragPitch);
   };
 
   private readonly onPointerUp = (event: PointerEvent) => {
@@ -251,7 +262,19 @@ export class Planet3DMode implements RenderModeController {
     }
   };
 
-  private mountBackButton() {
+  private mountInspectPanel() {
+    const panel = document.createElement('div');
+    panel.className = 'planet-inspect-panel';
+
+    const title = document.createElement('h2');
+    title.className = 'planet-inspect-title';
+
+    const subtitle = document.createElement('p');
+    subtitle.className = 'planet-inspect-subtitle';
+
+    const tags = document.createElement('div');
+    tags.className = 'planet-inspect-tags';
+
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'planet-back-button';
@@ -259,9 +282,70 @@ export class Planet3DMode implements RenderModeController {
     button.addEventListener('click', () => {
       this.context.onRequestMode('galaxy2d');
     });
-    this.context.host.appendChild(button);
+
+    panel.appendChild(title);
+    panel.appendChild(subtitle);
+    panel.appendChild(tags);
+    panel.appendChild(button);
+
+    this.context.host.appendChild(panel);
+    this.inspectPanel = panel;
+    this.inspectTitle = title;
+    this.inspectSubtitle = subtitle;
+    this.inspectTags = tags;
     this.backButton = button;
+
+    const profile = planetProfileFromSeed(this.selectedPlanet.seed);
+    this.updateInspectIdentity(this.selectedPlanet, profile);
   }
+
+  private updateInspectIdentity(planetRef: SelectedPlanetRef, profile: PlanetVisualProfile) {
+    if (!this.inspectTitle || !this.inspectSubtitle || !this.inspectTags) return;
+
+    this.inspectTitle.textContent = `Planet ${planetRef.id.toUpperCase()}`;
+    this.inspectSubtitle.textContent = `Seed ${planetRef.seed.toString(16).toUpperCase().padStart(8, '0')}`;
+
+    const tags = derivePlanetTags(planetRef.seed, profile);
+    this.inspectTags.innerHTML = '';
+
+    for (const tag of tags) {
+      const chip = document.createElement('span');
+      chip.className = 'planet-inspect-tag';
+      chip.textContent = tag;
+      this.inspectTags.appendChild(chip);
+    }
+  }
+}
+
+function derivePlanetTags(seed: number, profile: PlanetVisualProfile): string[] {
+  const rng = new SeededRng(seed ^ 0x9e3779b9);
+
+  const candidates: Array<{ label: string; score: number }> = [
+    { label: 'oceanic', score: normalize(profile.oceanLevel, 0.44, 0.62) },
+    { label: 'arid', score: normalize(0.47 - profile.oceanLevel, 0.06, 0.29) },
+    { label: 'high-relief', score: normalize(profile.reliefStrength, 0.12, 0.19) },
+    { label: 'fractured', score: normalize(profile.craterScale, 5.8, 8.0) + normalize(profile.reliefSharpness, 1.2, 1.75) * 0.35 },
+    { label: 'rugged', score: normalize(profile.roughness, 0.64, 0.92) + normalize(profile.ridgeScale, 9.0, 16.5) * 0.25 },
+    { label: 'temperate', score: normalize(58 - Math.abs(profile.baseHue - 220), 8, 58) * normalize(profile.oceanLevel, 0.3, 0.58) },
+    { label: 'polar', score: normalize(profile.atmosphereLightness, 77, 82) + normalize(0.3 - profile.hueDrift, -22, 0.3) * 0.2 },
+    { label: 'metallic', score: normalize(profile.metalness, 0.06, 0.12) + normalize(profile.roughness, 0.36, 0.62) * 0.2 },
+    { label: 'mineral-rich', score: normalize(profile.landSaturation, 52, 68) + normalize(profile.metalness, 0.04, 0.12) * 0.5 },
+    { label: 'volatile', score: normalize(profile.hueDrift, 4, 24) + normalize(profile.lightIntensity, 1.22, 1.75) * 0.3 },
+  ];
+
+  const picked = candidates
+    .map((candidate) => ({
+      ...candidate,
+      score: candidate.score + rng.range(0, 0.06),
+    }))
+    .sort((a, b) => b.score - a.score)
+    .filter((candidate) => candidate.score > 0.16)
+    .slice(0, 3)
+    .map((candidate) => candidate.label);
+
+  if (picked.length >= 2) return picked;
+  if (picked.length === 1) return [picked[0], 'charted'];
+  return ['charted', 'stable'];
 }
 
 function normalizedNoise(a: number, b: number, c: number, scale: number, phaseA: number, phaseB: number) {
@@ -272,6 +356,11 @@ function normalizedNoise(a: number, b: number, c: number, scale: number, phaseA:
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
+}
+
+function normalize(value: number, min: number, max: number) {
+  if (max <= min) return 0;
+  return clamp((value - min) / (max - min), 0, 1);
 }
 
 function wrapHue(value: number) {
