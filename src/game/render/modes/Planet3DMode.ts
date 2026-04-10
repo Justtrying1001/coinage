@@ -66,15 +66,6 @@ export class Planet3DMode implements RenderModeController {
     this.scene.background = new THREE.Color(0x040811);
     this.scene.add(this.root);
 
-    const ambient = new THREE.AmbientLight(0x9ed4ff, 0.34);
-    this.scene.add(ambient);
-
-    const hemi = new THREE.HemisphereLight(0xdaf0ff, 0x425564, 0.72);
-    this.scene.add(hemi);
-    const reliefKey = new THREE.DirectionalLight(0xffffff, 0.45);
-    reliefKey.position.set(2.2, 1.4, 2.6);
-    this.scene.add(reliefKey);
-
     this.camera.position.set(0, 0, 2.6);
     this.scene.add(this.camera);
 
@@ -164,7 +155,7 @@ export class Planet3DMode implements RenderModeController {
     const seedPhaseC = rng.range(0.2, Math.PI * 2.8);
     const seedPhaseD = rng.range(0.2, Math.PI * 1.3);
 
-    const geometry = new THREE.IcosahedronGeometry(1, 6);
+    const geometry = new THREE.SphereGeometry(1, 160, 112);
     const position = geometry.attributes.position;
 
     for (let i = 0; i < position.count; i += 1) {
@@ -174,13 +165,11 @@ export class Planet3DMode implements RenderModeController {
 
       const latitude = Math.asin(clamp(vy, -1, 1)) / (Math.PI * 0.5);
       const continentNoise = normalizedNoise(vx, vy, vz, profile.continentScale, seedPhaseA, seedPhaseB);
-      const ridgeNoise = normalizedNoise(vz, vx, vy, profile.ridgeScale, seedPhaseC, seedPhaseD);
-      const craterNoise = normalizedNoise(vy, vz, vx, profile.craterScale, seedPhaseD, seedPhaseA);
-      const macroMask = clamp(Math.pow(continentNoise, profile.reliefSharpness) + profile.macroBias, 0, 1);
-      const ridgeMask = Math.max(0, ridgeNoise - 0.5) * 1.8 * profile.ridgeWeight;
-      const craterMask = (0.5 - Math.abs(craterNoise - 0.5)) * profile.craterWeight;
+      const ridgeNoise = normalizedNoise(vz, vx, vy, profile.ridgeScale * 0.6, seedPhaseC, seedPhaseD);
+      const macroMask = clamp(Math.pow(continentNoise, profile.reliefSharpness * 0.8) + profile.macroBias * 0.6, 0, 1);
+      const ridgeMask = Math.max(0, ridgeNoise - 0.56) * profile.ridgeWeight * 0.28;
       const polarMask = Math.pow(Math.abs(latitude), 1.3);
-      const elevation = (macroMask * 0.78 + ridgeMask - craterMask - polarMask * profile.polarWeight) * profile.reliefStrength;
+      const elevation = (macroMask * 0.35 + ridgeMask - polarMask * profile.polarWeight * 0.18) * profile.reliefStrength * 0.16;
 
       position.setXYZ(i, vx * (1 + elevation), vy * (1 + elevation), vz * (1 + elevation));
     }
@@ -190,21 +179,24 @@ export class Planet3DMode implements RenderModeController {
     geometry.normalizeNormals();
 
     const maps = buildPlanetMaps(profile, planetRef.seed);
-    this.generatedTextures = [maps.map, maps.roughnessMap, maps.metalnessMap, maps.bumpMap, maps.emissiveMap];
+    this.generatedTextures = [maps.map, maps.roughnessMap, maps.metalnessMap, maps.bumpMap, maps.normalMap, maps.emissiveMap];
 
     const material = new THREE.MeshStandardMaterial({
       map: maps.map,
       roughnessMap: maps.roughnessMap,
       metalnessMap: maps.metalnessMap,
+      normalMap: maps.normalMap,
+      normalScale: new THREE.Vector2(0.68, 0.68),
       bumpMap: maps.bumpMap,
-      bumpScale: 0.02 + profile.reliefStrength * 0.035,
+      bumpScale: 0.0025,
       emissiveMap: maps.emissiveMap,
       roughness: clamp(profile.roughness + 0.14, 0.38, 0.92),
       metalness: clamp(profile.metalness * 0.45, 0, 0.16),
       flatShading: false,
       emissive: new THREE.Color(`hsl(${profile.accentHue}, 45%, ${profile.atmosphereLightness}%)`),
-      emissiveIntensity: profile.emissiveIntensity * 0.45,
+      emissiveIntensity: 0.12 + profile.emissiveIntensity * 0.18,
     });
+    applyPlanetFullVisibilityShading(material, profile);
 
     this.planet = new THREE.Mesh(geometry, material);
     this.root.add(this.planet);
@@ -364,6 +356,7 @@ interface PlanetMaps {
   roughnessMap: THREE.CanvasTexture;
   metalnessMap: THREE.CanvasTexture;
   bumpMap: THREE.CanvasTexture;
+  normalMap: THREE.CanvasTexture;
   emissiveMap: THREE.CanvasTexture;
 }
 
@@ -409,13 +402,18 @@ function buildPlanetMaps(profile: PlanetVisualProfile, seed: number): PlanetMaps
   bumpMap.wrapT = THREE.ClampToEdgeWrapping;
   bumpMap.anisotropy = 2;
 
+  const normalMap = new THREE.CanvasTexture(heightToNormalCanvas(bumpCanvas, 2.6));
+  normalMap.wrapS = THREE.RepeatWrapping;
+  normalMap.wrapT = THREE.ClampToEdgeWrapping;
+  normalMap.anisotropy = 4;
+
   const emissiveMap = new THREE.CanvasTexture(emissiveCanvas);
   emissiveMap.colorSpace = THREE.SRGBColorSpace;
   emissiveMap.wrapS = THREE.RepeatWrapping;
   emissiveMap.wrapT = THREE.ClampToEdgeWrapping;
   emissiveMap.anisotropy = 2;
 
-  return { map, roughnessMap, metalnessMap, bumpMap, emissiveMap };
+  return { map, roughnessMap, metalnessMap, bumpMap, normalMap, emissiveMap };
 }
 
 function paintPlanetTextures(
@@ -528,6 +526,85 @@ function paintPlanetTextures(
   metalCtx.putImageData(metalData, 0, 0);
   bumpCtx.putImageData(bumpData, 0, 0);
   emissiveCtx.putImageData(emissiveData, 0, 0);
+}
+
+function heightToNormalCanvas(source: HTMLCanvasElement, strength: number) {
+  const width = source.width;
+  const height = source.height;
+  const src = source.getContext('2d');
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width = width;
+  outCanvas.height = height;
+  const outCtx = outCanvas.getContext('2d');
+  if (!src || !outCtx) return outCanvas;
+
+  const srcData = src.getImageData(0, 0, width, height).data;
+  const outData = outCtx.createImageData(width, height);
+
+  const sample = (x: number, y: number) => {
+    const sx = (x + width) % width;
+    const sy = (y + height) % height;
+    return srcData[(sy * width + sx) * 4] / 255;
+  };
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const left = sample(x - 1, y);
+      const right = sample(x + 1, y);
+      const up = sample(x, y - 1);
+      const down = sample(x, y + 1);
+
+      const dx = (right - left) * strength;
+      const dy = (down - up) * strength;
+      const normal = new THREE.Vector3(-dx, -dy, 1).normalize();
+
+      const i = (y * width + x) * 4;
+      outData.data[i] = Math.round((normal.x * 0.5 + 0.5) * 255);
+      outData.data[i + 1] = Math.round((normal.y * 0.5 + 0.5) * 255);
+      outData.data[i + 2] = Math.round((normal.z * 0.5 + 0.5) * 255);
+      outData.data[i + 3] = 255;
+    }
+  }
+
+  outCtx.putImageData(outData, 0, 0);
+  return outCanvas;
+}
+
+function applyPlanetFullVisibilityShading(material: THREE.MeshStandardMaterial, profile: PlanetVisualProfile) {
+  material.onBeforeCompile = (shader: THREE.Shader) => {
+    shader.uniforms.uPlanetLightDir = { value: new THREE.Vector3(0.35, 0.45, 1).normalize() };
+    shader.uniforms.uWrapStrength = { value: 0.78 };
+    shader.uniforms.uLightFloor = { value: 0.53 };
+    shader.uniforms.uReliefContrast = { value: 0.86 + profile.reliefStrength * 0.25 };
+
+    shader.fragmentShader = shader.fragmentShader.replace(
+      'void main() {',
+      `
+      uniform vec3 uPlanetLightDir;
+      uniform float uWrapStrength;
+      uniform float uLightFloor;
+      uniform float uReliefContrast;
+      void main() {
+      `,
+    );
+
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <lights_fragment_begin>',
+      `
+      vec3 geometryNormal = normalize( normal );
+      vec3 stylizedLight = normalize( ( viewMatrix * vec4( uPlanetLightDir, 0.0 ) ).xyz );
+      float ndl = dot( geometryNormal, stylizedLight );
+      float wrapped = clamp( (ndl + uWrapStrength) / (1.0 + uWrapStrength), 0.0, 1.0 );
+      float lit = max( uLightFloor, pow( wrapped, uReliefContrast ) );
+      reflectedLight.directDiffuse = vec3( lit );
+      reflectedLight.indirectDiffuse = vec3( 0.0 );
+      reflectedLight.directSpecular = vec3( 0.0 );
+      reflectedLight.indirectSpecular = vec3( 0.0 );
+      `
+    );
+  };
+  material.customProgramCacheKey = () => `planet-full-visibility-v3-${profile.archetype}`;
+  material.needsUpdate = true;
 }
 
 interface ArchetypeSignature {
