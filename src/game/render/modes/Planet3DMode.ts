@@ -63,10 +63,10 @@ export class Planet3DMode implements RenderModeController {
     this.renderer = renderer;
     this.context.host.appendChild(renderer.domElement);
 
-    this.scene.background = new THREE.Color(0x040811);
+    this.scene.background = new THREE.Color(0x0a1220);
     this.scene.add(this.root);
 
-    const ambient = new THREE.AmbientLight(0xd8ecff, 0.86);
+    const ambient = new THREE.AmbientLight(0xe0efff, 0.96);
     this.scene.add(ambient);
 
     const skylight = new THREE.DirectionalLight(0xcfe3ff, 0.46);
@@ -78,6 +78,9 @@ export class Planet3DMode implements RenderModeController {
     const topFill = new THREE.DirectionalLight(0xb9ddff, 0.28);
     topFill.position.set(0, 3.2, 0.4);
     this.scene.add(topFill);
+    const frontFill = new THREE.DirectionalLight(0xe6f2ff, 0.18);
+    frontFill.position.set(0.2, 0.3, 3);
+    this.scene.add(frontFill);
 
     this.camera.position.set(0, 0, 2.6);
     this.scene.add(this.camera);
@@ -435,13 +438,22 @@ function paintPlanetTextures(
       const micro = fbm3(nx * 12.2, ny * 12.2, nz * 12.2, seed + 997, 2);
 
       const bands = Math.sin((ny + phaseA) * signature.bandFrequency + medium * 1.15 + phaseB) * 0.5 + 0.5;
+      const plateNoise = fbm3(nx * 1.35 + phaseA, ny * 1.35, nz * 1.35 + phaseC, seed + 1229, 3);
       const regionNoise = fbm3(nx * 2.35 + phaseA, ny * 2.35, nz * 2.35 + phaseC, seed + 7919, 3);
       const regionMaskA = smoothstep(0.3, 0.65, regionNoise);
       const regionMaskB = smoothstep(0.52, 0.88, macro + medium * 0.2);
-      const continentalField = clamp(macro * 0.72 + medium * 0.18 + bands * 0.1 + signature.coverageBias, 0, 1);
+      const continentalField = clamp(macro * 0.66 + medium * 0.2 + bands * 0.06 + plateNoise * 0.08 + signature.coverageBias, 0, 1);
       const waterMask = smoothstep(profile.oceanLevel - 0.05, profile.oceanLevel + 0.06, continentalField);
       const landMask = 1 - waterMask;
       const coastalMask = 1 - Math.abs(waterMask - 0.5) * 2;
+      const continentCore = smoothstep(profile.oceanLevel + 0.06, profile.oceanLevel + 0.2, continentalField) * landMask;
+      const basinMask = smoothstep(0.08, 0.38, 1 - continentalField) * waterMask;
+      const shelfMask = smoothstep(0.25, 0.55, continentalField) * waterMask;
+      const frostMask = smoothstep(0.36, 0.85, Math.abs(ny) + (1 - medium) * 0.18);
+      const equatorialMask = 1 - smoothstep(0.22, 0.7, Math.abs(ny));
+      const lushMask = continentCore * smoothstep(0.42, 0.78, regionNoise) * equatorialMask;
+      const aridMask = continentCore * smoothstep(0.38, 0.76, 1 - regionNoise) * smoothstep(0.18, 0.62, Math.abs(ny));
+      const fracturedBelt = smoothstep(0.68, 0.93, Math.abs(Math.sin((nx * 2.1 + nz * 2.3 + phaseC) * 3.2 + medium * 2.4)));
       const fracture = Math.abs(Math.sin((nx + nz + phaseC) * signature.fractureFrequency + medium * 1.8));
 
       const hue = wrapHue(
@@ -476,10 +488,39 @@ function paintPlanetTextures(
       );
 
       const rgb = hslToRgb(hue / 360, sat / 100, lightness / 100);
+      const deepWaterTint = hslToRgb(wrapHue(profile.baseHue + signature.waterHueShift - 14) / 360, clamp((profile.oceanSaturation + 8) / 100, 0, 1), clamp((profile.oceanLightness - 14) / 100, 0, 1));
+      const shelfTint = hslToRgb(wrapHue(profile.baseHue + signature.waterHueShift + 5) / 360, clamp((profile.oceanSaturation + 4) / 100, 0, 1), clamp((profile.oceanLightness + 10) / 100, 0, 1));
+      const coastTint = hslToRgb(wrapHue(profile.baseHue + signature.landHueShift + 2) / 360, clamp((profile.landSaturation - 10) / 100, 0, 1), clamp((profile.landLightness + 12) / 100, 0, 1));
+      const lushTint = hslToRgb(wrapHue(profile.baseHue + signature.landHueShift - 24) / 360, clamp((profile.landSaturation + 8) / 100, 0, 1), clamp((profile.landLightness - 4) / 100, 0, 1));
+      const dryTint = hslToRgb(wrapHue(profile.baseHue + signature.landHueShift + 14) / 360, clamp((profile.landSaturation - 6) / 100, 0, 1), clamp((profile.landLightness + 3) / 100, 0, 1));
+      const frostTint = hslToRgb(wrapHue(profile.baseHue - 18) / 360, 0.2, 0.86);
+
+      const layered = blendRgb(
+        rgb,
+        deepWaterTint,
+        basinMask * 0.55,
+        shelfTint,
+        shelfMask * 0.52,
+        coastTint,
+        coastalMask * 0.38,
+        lushTint,
+        lushMask * 0.36,
+        dryTint,
+        aridMask * 0.33,
+        frostTint,
+        frostMask * signature.frostStrength,
+      );
+
+      const archetypeAccent = archetypeSurfaceAccent(profile.archetype, seed, nx, ny, nz, macro, medium, fracture, fracturedBelt);
+      const finalColor = blendRgb(
+        layered,
+        archetypeAccent.color,
+        archetypeAccent.mask * archetypeAccent.strength,
+      );
       const i = (y * width + x) * 4;
-      colorData.data[i] = rgb[0];
-      colorData.data[i + 1] = rgb[1];
-      colorData.data[i + 2] = rgb[2];
+      colorData.data[i] = finalColor[0];
+      colorData.data[i + 1] = finalColor[1];
+      colorData.data[i + 2] = finalColor[2];
       colorData.data[i + 3] = 255;
 
       const roughness = clamp(
@@ -487,7 +528,10 @@ function paintPlanetTextures(
         + signature.waterSmoothness * waterMask
         + signature.landRoughBoost * landMask
         + (1 - medium) * 0.05
-        + regionMaskB * 0.03,
+        + regionMaskB * 0.03
+        - shelfMask * 0.03
+        + aridMask * 0.05
+        + fracturedBelt * 0.04,
         0.38,
         0.97,
       );
@@ -497,7 +541,7 @@ function paintPlanetTextures(
       roughData.data[i + 2] = roughValue;
       roughData.data[i + 3] = 255;
 
-      const metal = clamp(profile.metalness * 0.18 + signature.metalBias + (fracture > 0.92 ? signature.metalVeinBoost : 0), 0, 0.24);
+      const metal = clamp(profile.metalness * 0.18 + signature.metalBias + (fracture > 0.92 ? signature.metalVeinBoost : 0) + archetypeAccent.metalBoost, 0, 0.24);
       const metalValue = Math.round(metal * 255);
       metalData.data[i] = metalValue;
       metalData.data[i + 1] = metalValue;
@@ -508,6 +552,8 @@ function paintPlanetTextures(
         landMask * (0.46 + macro * 0.26 + medium * 0.2 + regionMaskA * 0.05)
         + waterMask * (0.34 + macro * 0.07 + medium * 0.04)
         + micro * 0.03
+        + coastalMask * 0.03
+        + fracturedBelt * 0.025
         + signature.bumpBias
         - waterMask * signature.oceanBasinFlatten,
         0.15,
@@ -515,7 +561,7 @@ function paintPlanetTextures(
       );
       heightField[y * width + x] = heightValue;
 
-      const emissiveMask = clamp(signature.emissiveBase + (fracture > signature.emissiveThreshold ? (fracture - signature.emissiveThreshold) * signature.emissiveGain : 0), 0, 0.2);
+      const emissiveMask = clamp(signature.emissiveBase + (fracture > signature.emissiveThreshold ? (fracture - signature.emissiveThreshold) * signature.emissiveGain : 0) + archetypeAccent.emissiveBoost, 0, 0.22);
       const eHue = wrapHue(profile.accentHue + signature.emissiveHueShift);
       const eRgb = hslToRgb(eHue / 360, clamp(0.55 + signature.emissiveSaturationBoost, 0, 1), clamp(0.2 + emissiveMask * 0.7, 0, 1));
       emissiveData.data[i] = Math.round(eRgb[0] * emissiveMask);
@@ -576,6 +622,7 @@ interface ArchetypeSignature {
   regionLightShiftA: number;
   regionLightShiftB: number;
   coastLift: number;
+  frostStrength: number;
   polarDarkening: number;
   waterSmoothness: number;
   landRoughBoost: number;
@@ -593,20 +640,59 @@ interface ArchetypeSignature {
 function archetypeSignature(archetype: PlanetVisualProfile['archetype']): ArchetypeSignature {
   switch (archetype) {
     case 'volcanic':
-      return { coverageBias: 0.26, bandFrequency: 5.8, fractureFrequency: 12.8, hueVariance: 14, fractureHueShift: 14, regionHueShiftA: 12, regionHueShiftB: 8, landHueShift: 12, waterHueShift: 5, saturationOffset: 10, regionSatShiftA: 8, regionSatShiftB: -4, macroLightness: 14, regionLightShiftA: -6, regionLightShiftB: 8, coastLift: 3, polarDarkening: 4, waterSmoothness: -0.06, landRoughBoost: 0.1, metalBias: 0.03, metalVeinBoost: 0.08, bumpBias: 0.12, oceanBasinFlatten: 0.02, emissiveBase: 0.03, emissiveThreshold: 0.86, emissiveGain: 1.05, emissiveHueShift: -10, emissiveSaturationBoost: 0.28 };
+      return { coverageBias: 0.26, bandFrequency: 5.8, fractureFrequency: 12.8, hueVariance: 14, fractureHueShift: 14, regionHueShiftA: 12, regionHueShiftB: 8, landHueShift: 12, waterHueShift: 5, saturationOffset: 10, regionSatShiftA: 8, regionSatShiftB: -4, macroLightness: 14, regionLightShiftA: -6, regionLightShiftB: 8, coastLift: 3, frostStrength: 0.12, polarDarkening: 4, waterSmoothness: -0.06, landRoughBoost: 0.1, metalBias: 0.03, metalVeinBoost: 0.08, bumpBias: 0.12, oceanBasinFlatten: 0.02, emissiveBase: 0.03, emissiveThreshold: 0.86, emissiveGain: 1.05, emissiveHueShift: -10, emissiveSaturationBoost: 0.28 };
     case 'frozen':
-      return { coverageBias: -0.1, bandFrequency: 10.8, fractureFrequency: 8.8, hueVariance: 9, fractureHueShift: -6, regionHueShiftA: -10, regionHueShiftB: 6, landHueShift: -24, waterHueShift: -10, saturationOffset: -12, regionSatShiftA: -10, regionSatShiftB: 4, macroLightness: 18, regionLightShiftA: 9, regionLightShiftB: -4, coastLift: 4, polarDarkening: -12, waterSmoothness: -0.22, landRoughBoost: -0.12, metalBias: 0.01, metalVeinBoost: 0.03, bumpBias: -0.06, oceanBasinFlatten: 0.12, emissiveBase: 0.0, emissiveThreshold: 0.95, emissiveGain: 0.18, emissiveHueShift: -22, emissiveSaturationBoost: 0.03 };
+      return { coverageBias: -0.1, bandFrequency: 10.8, fractureFrequency: 8.8, hueVariance: 9, fractureHueShift: -6, regionHueShiftA: -10, regionHueShiftB: 6, landHueShift: -24, waterHueShift: -10, saturationOffset: -12, regionSatShiftA: -10, regionSatShiftB: 4, macroLightness: 18, regionLightShiftA: 9, regionLightShiftB: -4, coastLift: 4, frostStrength: 0.72, polarDarkening: -12, waterSmoothness: -0.22, landRoughBoost: -0.12, metalBias: 0.01, metalVeinBoost: 0.03, bumpBias: -0.06, oceanBasinFlatten: 0.12, emissiveBase: 0.0, emissiveThreshold: 0.95, emissiveGain: 0.18, emissiveHueShift: -22, emissiveSaturationBoost: 0.03 };
     case 'arid':
-      return { coverageBias: 0.14, bandFrequency: 3.6, fractureFrequency: 6.6, hueVariance: 8, fractureHueShift: 4, regionHueShiftA: 8, regionHueShiftB: -4, landHueShift: 10, waterHueShift: 0, saturationOffset: -6, regionSatShiftA: -4, regionSatShiftB: 6, macroLightness: 12, regionLightShiftA: 5, regionLightShiftB: -5, coastLift: 4, polarDarkening: 5, waterSmoothness: -0.05, landRoughBoost: 0.13, metalBias: -0.02, metalVeinBoost: 0.03, bumpBias: 0.09, oceanBasinFlatten: 0.15, emissiveBase: 0.0, emissiveThreshold: 0.97, emissiveGain: 0.12, emissiveHueShift: 6, emissiveSaturationBoost: 0.03 };
+      return { coverageBias: 0.14, bandFrequency: 3.6, fractureFrequency: 6.6, hueVariance: 8, fractureHueShift: 4, regionHueShiftA: 8, regionHueShiftB: -4, landHueShift: 10, waterHueShift: 0, saturationOffset: -6, regionSatShiftA: -4, regionSatShiftB: 6, macroLightness: 12, regionLightShiftA: 5, regionLightShiftB: -5, coastLift: 4, frostStrength: 0.08, polarDarkening: 5, waterSmoothness: -0.05, landRoughBoost: 0.13, metalBias: -0.02, metalVeinBoost: 0.03, bumpBias: 0.09, oceanBasinFlatten: 0.15, emissiveBase: 0.0, emissiveThreshold: 0.97, emissiveGain: 0.12, emissiveHueShift: 6, emissiveSaturationBoost: 0.03 };
     case 'mineral':
-      return { coverageBias: 0.08, bandFrequency: 6.2, fractureFrequency: 10.8, hueVariance: 10, fractureHueShift: 10, regionHueShiftA: 10, regionHueShiftB: 8, landHueShift: 6, waterHueShift: 0, saturationOffset: -14, regionSatShiftA: -8, regionSatShiftB: 10, macroLightness: 11, regionLightShiftA: -4, regionLightShiftB: 5, coastLift: 2, polarDarkening: 6, waterSmoothness: -0.04, landRoughBoost: -0.02, metalBias: 0.22, metalVeinBoost: 0.16, bumpBias: 0.05, oceanBasinFlatten: 0.06, emissiveBase: 0.0, emissiveThreshold: 0.9, emissiveGain: 0.24, emissiveHueShift: 18, emissiveSaturationBoost: 0.08 };
+      return { coverageBias: 0.08, bandFrequency: 6.2, fractureFrequency: 10.8, hueVariance: 10, fractureHueShift: 10, regionHueShiftA: 10, regionHueShiftB: 8, landHueShift: 6, waterHueShift: 0, saturationOffset: -14, regionSatShiftA: -8, regionSatShiftB: 10, macroLightness: 11, regionLightShiftA: -4, regionLightShiftB: 5, coastLift: 2, frostStrength: 0.2, polarDarkening: 6, waterSmoothness: -0.04, landRoughBoost: -0.02, metalBias: 0.22, metalVeinBoost: 0.16, bumpBias: 0.05, oceanBasinFlatten: 0.06, emissiveBase: 0.0, emissiveThreshold: 0.9, emissiveGain: 0.24, emissiveHueShift: 18, emissiveSaturationBoost: 0.08 };
     case 'oceanic':
-      return { coverageBias: -0.2, bandFrequency: 4.6, fractureFrequency: 7.2, hueVariance: 12, fractureHueShift: -10, regionHueShiftA: -12, regionHueShiftB: 4, landHueShift: -6, waterHueShift: -28, saturationOffset: 8, regionSatShiftA: 8, regionSatShiftB: -5, macroLightness: 14, regionLightShiftA: 8, regionLightShiftB: -3, coastLift: 6, polarDarkening: -7, waterSmoothness: -0.26, landRoughBoost: -0.06, metalBias: -0.04, metalVeinBoost: 0.01, bumpBias: -0.05, oceanBasinFlatten: 0.2, emissiveBase: 0.0, emissiveThreshold: 0.97, emissiveGain: 0.1, emissiveHueShift: -28, emissiveSaturationBoost: 0.04 };
+      return { coverageBias: -0.2, bandFrequency: 4.6, fractureFrequency: 7.2, hueVariance: 12, fractureHueShift: -10, regionHueShiftA: -12, regionHueShiftB: 4, landHueShift: -6, waterHueShift: -28, saturationOffset: 8, regionSatShiftA: 8, regionSatShiftB: -5, macroLightness: 14, regionLightShiftA: 8, regionLightShiftB: -3, coastLift: 6, frostStrength: 0.22, polarDarkening: -7, waterSmoothness: -0.26, landRoughBoost: -0.06, metalBias: -0.04, metalVeinBoost: 0.01, bumpBias: -0.05, oceanBasinFlatten: 0.2, emissiveBase: 0.0, emissiveThreshold: 0.97, emissiveGain: 0.1, emissiveHueShift: -28, emissiveSaturationBoost: 0.04 };
     case 'fractured':
-      return { coverageBias: 0.2, bandFrequency: 8.8, fractureFrequency: 14.6, hueVariance: 18, fractureHueShift: 18, regionHueShiftA: 16, regionHueShiftB: -10, landHueShift: 16, waterHueShift: 6, saturationOffset: 0, regionSatShiftA: 10, regionSatShiftB: -8, macroLightness: 9, regionLightShiftA: -8, regionLightShiftB: 6, coastLift: 2, polarDarkening: 8, waterSmoothness: -0.06, landRoughBoost: 0.12, metalBias: 0.03, metalVeinBoost: 0.12, bumpBias: 0.14, oceanBasinFlatten: 0.03, emissiveBase: 0.01, emissiveThreshold: 0.82, emissiveGain: 0.62, emissiveHueShift: 20, emissiveSaturationBoost: 0.12 };
+      return { coverageBias: 0.2, bandFrequency: 8.8, fractureFrequency: 14.6, hueVariance: 18, fractureHueShift: 18, regionHueShiftA: 16, regionHueShiftB: -10, landHueShift: 16, waterHueShift: 6, saturationOffset: 0, regionSatShiftA: 10, regionSatShiftB: -8, macroLightness: 9, regionLightShiftA: -8, regionLightShiftB: 6, coastLift: 2, frostStrength: 0.1, polarDarkening: 8, waterSmoothness: -0.06, landRoughBoost: 0.12, metalBias: 0.03, metalVeinBoost: 0.12, bumpBias: 0.14, oceanBasinFlatten: 0.03, emissiveBase: 0.01, emissiveThreshold: 0.82, emissiveGain: 0.62, emissiveHueShift: 20, emissiveSaturationBoost: 0.12 };
     case 'barren':
     default:
-      return { coverageBias: 0.12, bandFrequency: 3.2, fractureFrequency: 5.6, hueVariance: 4, fractureHueShift: 0, regionHueShiftA: 4, regionHueShiftB: -2, landHueShift: 2, waterHueShift: 0, saturationOffset: -18, regionSatShiftA: -6, regionSatShiftB: 2, macroLightness: 8, regionLightShiftA: -3, regionLightShiftB: 3, coastLift: 2, polarDarkening: 8, waterSmoothness: -0.02, landRoughBoost: 0.08, metalBias: 0.0, metalVeinBoost: 0.01, bumpBias: 0.05, oceanBasinFlatten: 0.06, emissiveBase: 0.0, emissiveThreshold: 0.98, emissiveGain: 0.08, emissiveHueShift: 0, emissiveSaturationBoost: 0.0 };
+      return { coverageBias: 0.12, bandFrequency: 3.2, fractureFrequency: 5.6, hueVariance: 4, fractureHueShift: 0, regionHueShiftA: 4, regionHueShiftB: -2, landHueShift: 2, waterHueShift: 0, saturationOffset: -18, regionSatShiftA: -6, regionSatShiftB: 2, macroLightness: 8, regionLightShiftA: -3, regionLightShiftB: 3, coastLift: 2, frostStrength: 0.14, polarDarkening: 8, waterSmoothness: -0.02, landRoughBoost: 0.08, metalBias: 0.0, metalVeinBoost: 0.01, bumpBias: 0.05, oceanBasinFlatten: 0.06, emissiveBase: 0.0, emissiveThreshold: 0.98, emissiveGain: 0.08, emissiveHueShift: 0, emissiveSaturationBoost: 0.0 };
+  }
+}
+
+interface ArchetypeAccent {
+  color: [number, number, number];
+  mask: number;
+  strength: number;
+  metalBoost: number;
+  emissiveBoost: number;
+}
+
+function archetypeSurfaceAccent(
+  archetype: PlanetVisualProfile['archetype'],
+  seed: number,
+  nx: number,
+  ny: number,
+  nz: number,
+  macro: number,
+  medium: number,
+  fracture: number,
+  fracturedBelt: number,
+): ArchetypeAccent {
+  const accentNoise = fbm3(nx * 4.2, ny * 4.2, nz * 4.2, seed ^ 0x6d2b79f5, 3);
+  switch (archetype) {
+    case 'oceanic':
+      return { color: [108, 160, 120], mask: smoothstep(0.54, 0.86, accentNoise) * smoothstep(0.34, 0.76, 1 - Math.abs(ny)), strength: 0.26, metalBoost: 0, emissiveBoost: 0 };
+    case 'frozen':
+      return { color: [205, 226, 244], mask: smoothstep(0.34, 0.88, Math.abs(ny) + (1 - medium) * 0.28), strength: 0.44, metalBoost: 0.005, emissiveBoost: 0 };
+    case 'volcanic':
+      return { color: [156, 62, 42], mask: smoothstep(0.78, 0.96, fracture) * (0.5 + fracturedBelt * 0.5), strength: 0.38, metalBoost: 0.02, emissiveBoost: 0.04 };
+    case 'arid':
+      return { color: [201, 157, 106], mask: smoothstep(0.42, 0.84, accentNoise) * smoothstep(0.16, 0.74, Math.abs(ny)), strength: 0.3, metalBoost: 0, emissiveBoost: 0 };
+    case 'mineral':
+      return { color: [136, 152, 196], mask: smoothstep(0.74, 0.95, fracture + macro * 0.2), strength: 0.34, metalBoost: 0.05, emissiveBoost: 0.02 };
+    case 'fractured':
+      return { color: [168, 96, 84], mask: smoothstep(0.62, 0.94, fracturedBelt + fracture * 0.2), strength: 0.45, metalBoost: 0.03, emissiveBoost: 0.06 };
+    case 'barren':
+    default:
+      return { color: [148, 129, 109], mask: smoothstep(0.58, 0.9, accentNoise + (1 - medium) * 0.2), strength: 0.22, metalBoost: 0.01, emissiveBoost: 0 };
   }
 }
 
@@ -661,6 +747,20 @@ function hash3(x: number, y: number, z: number, seed: number) {
 
 function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t;
+}
+
+function blendRgb(base: [number, number, number], ...layers: Array<[number, number, number] | number>): [number, number, number] {
+  let outR = base[0];
+  let outG = base[1];
+  let outB = base[2];
+  for (let i = 0; i < layers.length; i += 2) {
+    const color = layers[i] as [number, number, number];
+    const alpha = clamp(layers[i + 1] as number, 0, 1);
+    outR = Math.round(lerp(outR, color[0], alpha));
+    outG = Math.round(lerp(outG, color[1], alpha));
+    outB = Math.round(lerp(outB, color[2], alpha));
+  }
+  return [outR, outG, outB];
 }
 
 function smoothstep(edge0: number, edge1: number, x: number) {
