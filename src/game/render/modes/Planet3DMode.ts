@@ -53,9 +53,17 @@ export class Planet3DMode implements RenderModeController {
 
   private readonly debugViewModes: Array<keyof PlanetMaps['debugMaps'] | 'beauty'> = [
     'beauty',
-    'upliftField',
-    'depressionField',
-    'finalSignedRelief',
+    'abyssalDepthMask',
+    'trenchMask',
+    'iceCapMask',
+    'calderaMask',
+    'lavaPlainMask',
+    'canyonMask',
+    'mountainMask',
+    'valleyMask',
+    'mineralDepositMask',
+    'shelfMask',
+    'emergentLandMask',
     'volcanoField',
     'mountainChainField',
     'plateauField',
@@ -63,11 +71,11 @@ export class Planet3DMode implements RenderModeController {
     'basinField',
     'riftField',
     'calderaField',
-    'iceCapMask',
     'compressionRidgeMask',
     'depositMask',
-    'emergentLandMask',
-    'shelfMask',
+    'upliftField',
+    'depressionField',
+    'finalSignedRelief',
     'craterField',
     'finalNormal',
   ];
@@ -202,23 +210,7 @@ export class Planet3DMode implements RenderModeController {
       maps.metalnessMap,
       maps.normalMap,
       maps.emissiveMap,
-      maps.debugMaps.volcanoField,
-      maps.debugMaps.mountainChainField,
-      maps.debugMaps.plateauField,
-      maps.debugMaps.craterField,
-      maps.debugMaps.trenchField,
-      maps.debugMaps.basinField,
-      maps.debugMaps.riftField,
-      maps.debugMaps.calderaField,
-      maps.debugMaps.iceCapMask,
-      maps.debugMaps.compressionRidgeMask,
-      maps.debugMaps.depositMask,
-      maps.debugMaps.emergentLandMask,
-      maps.debugMaps.shelfMask,
-      maps.debugMaps.upliftField,
-      maps.debugMaps.depressionField,
-      maps.debugMaps.finalSignedRelief,
-      maps.debugMaps.finalNormal,
+      ...Object.values(maps.debugMaps),
     ];
     this.currentMaps = maps;
 
@@ -404,6 +396,65 @@ function wrapHue(value: number) {
   return ((value % 360) + 360) % 360;
 }
 
+const SEMANTIC_MASK_NAMES = [
+  'abyssalDepthMask',
+  'trenchMask',
+  'basinDepthMask',
+  'openOceanMask',
+  'shelfMask',
+  'shallowWaterMask',
+  'coastMask',
+  'emergentLandMask',
+  'rockyIslandMask',
+  'deepFrozenBasinMask',
+  'iceCapMask',
+  'iceSheetMask',
+  'iceShelfMask',
+  'compressionRidgeMask',
+  'crevasseMask',
+  'frozenHighlandMask',
+  'exposedRockMask',
+  'volcanicConeMask',
+  'calderaMask',
+  'lavaPlainMask',
+  'fissureMask',
+  'collapseBasinMask',
+  'ashFieldMask',
+  'cooledRockMask',
+  'plateauTopMask',
+  'mesaMask',
+  'escarpmentMask',
+  'dryPlainMask',
+  'canyonMask',
+  'dryBasinMask',
+  'exposedBedrockMask',
+  'impactCraterMask',
+  'degradedBasinMask',
+  'wornHighlandMask',
+  'scarpMask',
+  'dustPlainMask',
+  'hardRidgeMask',
+  'depositSeamMask',
+  'fractureCavityMask',
+  'rockySystemMask',
+  'mineralDepositMask',
+  'exposedMetallicPatchMask',
+  'oceanMask',
+  'continentMask',
+  'lowlandMask',
+  'uplandMask',
+  'mountainMask',
+  'plateauMask',
+  'inlandBasinMask',
+  'valleyMask',
+  'forestOrVegetatedMask',
+  'dryInteriorMask',
+  'snowOrPolarMask',
+] as const;
+
+type SemanticMaskName = (typeof SEMANTIC_MASK_NAMES)[number];
+type SemanticTerrainMaskSet = Record<SemanticMaskName, number>;
+
 interface PlanetMaps {
   width: number;
   height: number;
@@ -414,7 +465,7 @@ interface PlanetMaps {
   emissiveMap: THREE.CanvasTexture;
   displacementField: Float32Array;
   terrainModel: TerrainModel;
-  debugMaps: {
+  debugMaps: Record<SemanticMaskName, THREE.CanvasTexture> & {
     volcanoField: THREE.CanvasTexture;
     mountainChainField: THREE.CanvasTexture;
     craterField: THREE.CanvasTexture;
@@ -499,6 +550,9 @@ function buildPlanetMaps(profile: PlanetVisualProfile, seed: number): PlanetMaps
   const upliftField = createFieldTexture(derivedFields.upliftField, width, height);
   const depressionField = createFieldTexture(derivedFields.depressionField, width, height);
   const finalSignedRelief = createSignedFieldTexture(derivedFields.displacementField, width, height);
+  const semanticDebugMaps = Object.fromEntries(
+    SEMANTIC_MASK_NAMES.map((name) => [name, createFieldTexture(derivedFields.semanticMasks[name], width, height)]),
+  ) as Record<SemanticMaskName, THREE.CanvasTexture>;
 
   return {
     width,
@@ -511,6 +565,7 @@ function buildPlanetMaps(profile: PlanetVisualProfile, seed: number): PlanetMaps
     terrainModel: derivedFields.terrainModel,
     displacementField: derivedFields.displacementField,
     debugMaps: {
+      ...semanticDebugMaps,
       volcanoField,
       mountainChainField,
       craterField,
@@ -558,6 +613,7 @@ function paintPlanetTextures(
   upliftField: Float32Array;
   depressionField: Float32Array;
   displacementField: Float32Array;
+  semanticMasks: Record<SemanticMaskName, Float32Array>;
 } {
   const width = colorCanvas.width;
   const height = colorCanvas.height;
@@ -586,6 +642,7 @@ function paintPlanetTextures(
       upliftField: new Float32Array(width * height),
       depressionField: new Float32Array(width * height),
       displacementField: new Float32Array(width * height),
+      semanticMasks: createSemanticMaskFields(width * height),
     };
   }
 
@@ -611,6 +668,7 @@ function paintPlanetTextures(
   const upliftField = new Float32Array(width * height);
   const depressionField = new Float32Array(width * height);
   const displacementField = new Float32Array(width * height);
+  const semanticMasks = createSemanticMaskFields(width * height);
 
   const signature = archetypeSignature(profile.archetype);
   const terrainModel = createTerrainModel(profile, seed);
@@ -862,6 +920,30 @@ function paintPlanetTextures(
       depressionField[fieldIndex] = depression;
       displacementField[fieldIndex] = signedRelief;
       heightField[fieldIndex] = heightValue;
+      const semanticSample = deriveSemanticTerrainMasks(profile.archetype, {
+        landMask,
+        waterMask,
+        massField,
+        seaLevel,
+        coastMask,
+        shelfMask,
+        regionMask,
+        valleyMask,
+        accentMask,
+        fractureMask,
+        frostMask,
+        polarMask,
+        mountainChainMask,
+        plateauMask,
+        basinMask,
+        trenchMask,
+        riftMask,
+        craterMask,
+        terrain,
+      });
+      for (const name of SEMANTIC_MASK_NAMES) {
+        semanticMasks[name][fieldIndex] = semanticSample[name];
+      }
 
       const emissiveMask = clamp(fractureMask * signature.emissiveFromFracture + accentMask * signature.emissiveFromAccent + signature.emissiveBase, 0, 0.2);
       const eHue = wrapHue(profile.accentHue + signature.emissiveHueShift);
@@ -931,6 +1013,7 @@ function paintPlanetTextures(
     upliftField,
     depressionField,
     displacementField,
+    semanticMasks,
   };
 }
 
@@ -1125,6 +1208,127 @@ interface TerrainSample {
   upliftField: number;
   depressionField: number;
   finalSignedRelief: number;
+}
+
+interface SemanticMaskDeriveInput {
+  landMask: number;
+  waterMask: number;
+  massField: number;
+  seaLevel: number;
+  coastMask: number;
+  shelfMask: number;
+  regionMask: number;
+  valleyMask: number;
+  accentMask: number;
+  fractureMask: number;
+  frostMask: number;
+  polarMask: number;
+  mountainChainMask: number;
+  plateauMask: number;
+  basinMask: number;
+  trenchMask: number;
+  riftMask: number;
+  craterMask: number;
+  terrain: TerrainSample;
+}
+
+function createSemanticMaskFields(length: number): Record<SemanticMaskName, Float32Array> {
+  return Object.fromEntries(SEMANTIC_MASK_NAMES.map((name) => [name, new Float32Array(length)])) as Record<SemanticMaskName, Float32Array>;
+}
+
+function createEmptySemanticMaskSet(): SemanticTerrainMaskSet {
+  return Object.fromEntries(SEMANTIC_MASK_NAMES.map((name) => [name, 0])) as SemanticTerrainMaskSet;
+}
+
+function deriveSemanticTerrainMasks(
+  archetype: PlanetVisualProfile['archetype'],
+  input: SemanticMaskDeriveInput,
+): SemanticTerrainMaskSet {
+  const masks = createEmptySemanticMaskSet();
+
+  switch (archetype) {
+    case 'oceanic': {
+      masks.abyssalDepthMask = clamp(input.waterMask * smoothstep(0.09, 0.32, input.seaLevel - input.massField), 0, 1);
+      masks.trenchMask = clamp(input.waterMask * (input.trenchMask * 0.86 + input.terrain.trenchField * 0.14), 0, 1);
+      masks.basinDepthMask = clamp(input.waterMask * input.basinMask * 0.92, 0, 1);
+      masks.openOceanMask = clamp(input.waterMask * (1 - input.shelfMask) * (1 - input.coastMask), 0, 1);
+      masks.shelfMask = clamp(input.shelfMask * input.waterMask, 0, 1);
+      masks.shallowWaterMask = clamp(input.waterMask * (input.shelfMask * 0.72 + input.coastMask * 0.28), 0, 1);
+      masks.coastMask = clamp(input.coastMask, 0, 1);
+      masks.emergentLandMask = clamp(input.landMask, 0, 1);
+      masks.rockyIslandMask = clamp(input.landMask * input.terrain.plateauField * (1 - input.regionMask), 0, 1);
+      break;
+    }
+    case 'frozen': {
+      masks.deepFrozenBasinMask = clamp(input.basinMask * input.frostMask * (1 - input.landMask * 0.4), 0, 1);
+      masks.iceCapMask = clamp(input.frostMask * smoothstep(0.68, 0.96, Math.abs(input.polarMask * 2 - 1)), 0, 1);
+      masks.iceSheetMask = clamp(input.frostMask * input.terrain.plateauField, 0, 1);
+      masks.iceShelfMask = clamp(input.frostMask * input.terrain.iceShelfField, 0, 1);
+      masks.compressionRidgeMask = clamp(input.terrain.compressionRidgeField, 0, 1);
+      masks.crevasseMask = clamp(input.riftMask * input.frostMask, 0, 1);
+      masks.frozenHighlandMask = clamp(input.mountainChainMask * input.frostMask, 0, 1);
+      masks.exposedRockMask = clamp(input.landMask * (1 - input.frostMask) * (input.mountainChainMask * 0.62 + input.fractureMask * 0.38), 0, 1);
+      break;
+    }
+    case 'volcanic': {
+      masks.volcanicConeMask = clamp(input.terrain.volcanoField, 0, 1);
+      masks.calderaMask = clamp(input.terrain.calderaField, 0, 1);
+      masks.lavaPlainMask = clamp(input.plateauMask * (0.68 + input.fractureMask * 0.22), 0, 1);
+      masks.fissureMask = clamp(input.riftMask * (0.72 + input.fractureMask * 0.2), 0, 1);
+      masks.collapseBasinMask = clamp(input.basinMask * (0.7 + input.riftMask * 0.2), 0, 1);
+      masks.ashFieldMask = clamp(input.accentMask * (1 - input.coastMask) * (1 - input.shelfMask), 0, 1);
+      masks.cooledRockMask = clamp((1 - input.waterMask) * (1 - input.terrain.volcanoField * 0.5) * (input.regionMask * 0.48 + input.plateauMask * 0.32), 0, 1);
+      break;
+    }
+    case 'arid': {
+      masks.plateauTopMask = clamp(input.plateauMask, 0, 1);
+      masks.mesaMask = clamp(input.plateauMask * (1 - input.regionMask * 0.55), 0, 1);
+      masks.escarpmentMask = clamp(input.mountainChainMask, 0, 1);
+      masks.dryPlainMask = clamp(input.landMask * (1 - input.plateauMask) * (1 - input.valleyMask), 0, 1);
+      masks.canyonMask = clamp(input.valleyMask * (input.riftMask * 0.6 + 0.4), 0, 1);
+      masks.dryBasinMask = clamp(input.basinMask, 0, 1);
+      masks.exposedBedrockMask = clamp(input.landMask * input.fractureMask * (1 - input.coastMask), 0, 1);
+      break;
+    }
+    case 'barren': {
+      masks.impactCraterMask = clamp(input.craterMask, 0, 1);
+      masks.degradedBasinMask = clamp(input.basinMask, 0, 1);
+      masks.wornHighlandMask = clamp(input.mountainChainMask, 0, 1);
+      masks.scarpMask = clamp(input.riftMask, 0, 1);
+      masks.dustPlainMask = clamp(input.landMask * (1 - input.mountainChainMask) * (1 - input.craterMask) * (1 - input.plateauMask * 0.5), 0, 1);
+      masks.exposedRockMask = clamp(input.landMask * (input.mountainChainMask * 0.4 + input.fractureMask * 0.6), 0, 1);
+      break;
+    }
+    case 'mineral': {
+      masks.hardRidgeMask = clamp(input.mountainChainMask, 0, 1);
+      masks.depositSeamMask = clamp(input.terrain.compressionRidgeField, 0, 1);
+      masks.fractureCavityMask = clamp(input.basinMask * (0.72 + input.riftMask * 0.2), 0, 1);
+      masks.rockySystemMask = clamp(input.plateauMask, 0, 1);
+      masks.mineralDepositMask = clamp(input.accentMask * (0.7 + input.fractureMask * 0.2), 0, 1);
+      masks.exposedMetallicPatchMask = clamp(masks.mineralDepositMask * smoothstep(0.78, 0.96, input.accentMask + input.fractureMask * 0.2), 0, 1);
+      break;
+    }
+    case 'terrestrial': {
+      masks.oceanMask = clamp(input.waterMask * (1 - input.shelfMask), 0, 1);
+      masks.shelfMask = clamp(input.shelfMask * input.waterMask, 0, 1);
+      masks.coastMask = clamp(input.coastMask, 0, 1);
+      masks.continentMask = clamp(input.landMask, 0, 1);
+      masks.lowlandMask = clamp(input.landMask * (1 - input.mountainChainMask) * (1 - input.plateauMask * 0.6), 0, 1);
+      masks.uplandMask = clamp(input.landMask * input.regionMask * (1 - input.mountainChainMask * 0.6), 0, 1);
+      masks.mountainMask = clamp(input.mountainChainMask, 0, 1);
+      masks.plateauMask = clamp(input.plateauMask, 0, 1);
+      masks.inlandBasinMask = clamp(input.basinMask * input.landMask, 0, 1);
+      masks.valleyMask = clamp(input.valleyMask, 0, 1);
+      masks.dryInteriorMask = clamp(input.landMask * (1 - input.coastMask) * (1 - input.shelfMask) * (1 - input.frostMask) * (0.42 + input.accentMask * 0.42), 0, 1);
+      masks.forestOrVegetatedMask = clamp(input.landMask * input.regionMask * (1 - masks.dryInteriorMask * 0.8), 0, 1);
+      masks.snowOrPolarMask = clamp(input.frostMask * (0.8 + input.polarMask * 0.2), 0, 1);
+      break;
+    }
+    default:
+      break;
+  }
+
+  return masks;
 }
 
 function archetypeSignature(archetype: PlanetVisualProfile['archetype']): ArchetypeSignature {
