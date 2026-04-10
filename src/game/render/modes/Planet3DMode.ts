@@ -4,6 +4,8 @@ import type { PlanetVisualProfile, SelectedPlanetRef } from '@/game/render/types
 import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
 import { SeededRng } from '@/game/world/rng';
 
+type OnBeforeCompileShader = Parameters<NonNullable<THREE.Material['onBeforeCompile']>>[0];
+
 export class Planet3DMode implements RenderModeController {
   readonly id = 'planet3d' as const;
 
@@ -571,7 +573,7 @@ function heightToNormalCanvas(source: HTMLCanvasElement, strength: number) {
 }
 
 function applyPlanetFullVisibilityShading(material: THREE.MeshStandardMaterial, profile: PlanetVisualProfile) {
-  material.onBeforeCompile = (shader: THREE.Shader) => {
+  material.onBeforeCompile = (shader: OnBeforeCompileShader) => {
     shader.uniforms.uPlanetLightDir = { value: new THREE.Vector3(0.35, 0.45, 1).normalize() };
     shader.uniforms.uWrapStrength = { value: 0.78 };
     shader.uniforms.uLightFloor = { value: 0.53 };
