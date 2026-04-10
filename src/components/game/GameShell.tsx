@@ -12,7 +12,8 @@ export function GameShell() {
     return selectPrimaryPlanet(galaxy);
   }, []);
 
-  const [renderer, setRenderer] = useState<'legacy' | 'new'>('legacy');
+  // Transitional validation toggle: new renderer is default, legacy Pixi remains as temporary fallback.
+  const [renderer, setRenderer] = useState<'legacy' | 'new'>('new');
   const [mode, setMode] = useState<RenderMode>('galaxy2d');
   const [selectedPlanet, setSelectedPlanet] = useState<SelectedPlanetRef>(initialSelectedPlanet);
 
@@ -25,10 +26,10 @@ export function GameShell() {
         </div>
         <div className="game-render-switches">
           <button type="button" className={renderer === 'legacy' ? 'is-active' : ''} onClick={() => setRenderer('legacy')}>
-            Legacy Pixi
+            Legacy Pixi (Fallback)
           </button>
           <button type="button" className={renderer === 'new' ? 'is-active' : ''} onClick={() => setRenderer('new')}>
-            New Render
+            New Renderer
           </button>
           {renderer === 'new' ? (
             <>
