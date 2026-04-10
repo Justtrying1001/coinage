@@ -10,10 +10,21 @@ export interface SelectedPlanetRef {
 export interface PlanetVisualProfile {
   baseHue: number;
   accentHue: number;
+  hueDrift: number;
   oceanLevel: number;
   roughness: number;
+  metalness: number;
   reliefStrength: number;
+  reliefSharpness: number;
+  continentScale: number;
+  ridgeScale: number;
+  craterScale: number;
+  oceanSaturation: number;
+  landSaturation: number;
+  oceanLightness: number;
+  landLightness: number;
   lightIntensity: number;
+  atmosphereLightness: number;
 }
 
 export interface GalaxyNode {

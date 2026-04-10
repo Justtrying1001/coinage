@@ -175,6 +175,26 @@ a {
   height: 100%;
 }
 
+.planet-back-button {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 12;
+  border: 1px solid rgba(147, 217, 255, 0.55);
+  background: rgba(6, 20, 35, 0.85);
+  color: #d7efff;
+  border-radius: 999px;
+  padding: 0.42rem 0.82rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.planet-back-button:hover {
+  border-color: rgba(171, 229, 255, 0.95);
+  box-shadow: 0 0 0 1px rgba(149, 226, 255, 0.32) inset;
+}
+
 canvas {
   display: block;
 }
