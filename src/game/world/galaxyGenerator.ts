@@ -1,4 +1,4 @@
-import type { GalaxyData, GalaxyNode, PlanetSeed, PlanetVisualProfile } from '@/game/render/types';
+import type { GalaxyData, GalaxyNode, PlanetSeed, PlanetVisualProfile, SelectedPlanetRef } from '@/game/render/types';
 import { SeededRng } from '@/game/world/rng';
 
 interface GalaxyGeneratorConfig {
@@ -64,6 +64,11 @@ export function planetProfileFromSeed(seed: PlanetSeed): PlanetVisualProfile {
     reliefStrength: rng.range(0.03, 0.15),
     lightIntensity: rng.range(1.0, 1.7),
   };
+}
+
+export function selectPrimaryPlanet(galaxy: GalaxyData): SelectedPlanetRef {
+  const byId = [...galaxy.nodes].sort((a, b) => a.id.localeCompare(b.id))[0];
+  return { id: byId.id, seed: byId.seed };
 }
 
 function pickPopulationBand(rng: SeededRng, coreBias: number): GalaxyNode['populationBand'] {

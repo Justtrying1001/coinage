@@ -1,8 +1,13 @@
 import type { RenderMode, SelectedPlanetRef } from '@/game/render/types';
-import { generateGalaxyData } from '@/game/world/galaxyGenerator';
+import { generateGalaxyData, selectPrimaryPlanet } from '@/game/world/galaxyGenerator';
 import { Galaxy2DMode } from '@/game/render/modes/Galaxy2DMode';
-import type { RenderModeController } from '@/game/render/modes/RenderModeController';
+import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
 import { Planet3DMode } from '@/game/render/modes/Planet3DMode';
+
+interface RenderModeFactory {
+  createGalaxyMode: (context: ModeContext) => RenderModeController;
+  createPlanetMode: (planet: SelectedPlanetRef, context: ModeContext) => RenderModeController;
+}
 
 interface CoinageRenderConfig {
   seed: number;
@@ -10,6 +15,9 @@ interface CoinageRenderConfig {
   galaxyHeight: number;
   planetCount?: number;
   initialMode?: RenderMode;
+  initialSelectedPlanet?: SelectedPlanetRef;
+  onSelectedPlanetChange?: (planet: SelectedPlanetRef) => void;
+  modeFactory?: RenderModeFactory;
 }
 
 export class CoinageRenderApp {
@@ -29,6 +37,8 @@ export class CoinageRenderApp {
 
   private galaxyData;
 
+  private readonly modeFactory: RenderModeFactory;
+
   constructor(
     private readonly host: HTMLDivElement,
     private readonly config: CoinageRenderConfig,
@@ -40,7 +50,11 @@ export class CoinageRenderApp {
       height: this.config.galaxyHeight,
       nodeCount: this.config.planetCount,
     });
-    this.selectedPlanet = this.makeDeterministicSelection();
+    this.selectedPlanet = config.initialSelectedPlanet ?? selectPrimaryPlanet(this.galaxyData);
+    this.modeFactory = config.modeFactory ?? {
+      createGalaxyMode: (context) => new Galaxy2DMode(this.galaxyData, context),
+      createPlanetMode: (planet, context) => new Planet3DMode(planet, context),
+    };
   }
 
   mount() {
@@ -62,6 +76,18 @@ export class CoinageRenderApp {
 
   setMode(nextMode: RenderMode) {
     this.switchMode(nextMode);
+  }
+
+  setSelectedPlanet(planet: SelectedPlanetRef) {
+    this.selectedPlanet = planet;
+    if (
+      this.mode === 'planet3d' &&
+      this.activeController &&
+      'setSelectedPlanet' in this.activeController &&
+      typeof this.activeController.setSelectedPlanet === 'function'
+    ) {
+      this.activeController.setSelectedPlanet(planet);
+    }
   }
 
   destroy() {
@@ -94,7 +120,12 @@ export class CoinageRenderApp {
 
   private switchMode(nextMode: RenderMode) {
     if (this.mode === nextMode && this.activeController) {
-      if (nextMode === 'planet3d' && this.activeController instanceof Planet3DMode && this.selectedPlanet) {
+      if (
+        nextMode === 'planet3d' &&
+        this.selectedPlanet &&
+        'setSelectedPlanet' in this.activeController &&
+        typeof this.activeController.setSelectedPlanet === 'function'
+      ) {
         this.activeController.setSelectedPlanet(this.selectedPlanet);
       }
       this.resize();
@@ -107,7 +138,8 @@ export class CoinageRenderApp {
     const context = {
       host: this.host,
       onSelectPlanet: (planet: SelectedPlanetRef) => {
-        this.selectedPlanet = planet;
+        this.setSelectedPlanet(planet);
+        this.config.onSelectedPlanetChange?.(planet);
       },
       onRequestMode: (mode: RenderMode) => {
         this.switchMode(mode);
@@ -116,8 +148,8 @@ export class CoinageRenderApp {
 
     this.activeController =
       nextMode === 'galaxy2d'
-        ? new Galaxy2DMode(this.galaxyData, context)
-        : new Planet3DMode(this.selectedPlanet ?? this.makeDeterministicSelection(), context);
+        ? this.modeFactory.createGalaxyMode(context)
+        : this.modeFactory.createPlanetMode(this.selectedPlanet ?? selectPrimaryPlanet(this.galaxyData), context);
 
     this.activeController.mount();
     this.resize();
@@ -129,8 +161,4 @@ export class CoinageRenderApp {
     this.activeController?.resize(width, height);
   }
 
-  private makeDeterministicSelection(): SelectedPlanetRef {
-    const first = this.galaxyData.nodes[0];
-    return { id: first.id, seed: first.seed };
-  }
 }

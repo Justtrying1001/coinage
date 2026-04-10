@@ -1,13 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { PixiGameViewport } from '@/components/game/PixiGameViewport';
 import { GameRenderViewport } from '@/components/game/GameRenderViewport';
-import type { RenderMode } from '@/game/render/types';
+import type { RenderMode, SelectedPlanetRef } from '@/game/render/types';
+import { generateGalaxyData, selectPrimaryPlanet } from '@/game/world/galaxyGenerator';
 
 export function GameShell() {
+  const initialSelectedPlanet = useMemo<SelectedPlanetRef>(() => {
+    const galaxy = generateGalaxyData({ seed: 78231, width: 18000, height: 12000, nodeCount: 560 });
+    return selectPrimaryPlanet(galaxy);
+  }, []);
+
   const [renderer, setRenderer] = useState<'legacy' | 'new'>('legacy');
   const [mode, setMode] = useState<RenderMode>('galaxy2d');
+  const [selectedPlanet, setSelectedPlanet] = useState<SelectedPlanetRef>(initialSelectedPlanet);
 
   return (
     <main className="game-root">
@@ -35,7 +42,13 @@ export function GameShell() {
           ) : null}
         </div>
       </header>
-      <section className="game-canvas-shell">{renderer === 'legacy' ? <PixiGameViewport /> : <GameRenderViewport mode={mode} />}</section>
+      <section className="game-canvas-shell">
+        {renderer === 'legacy' ? (
+          <PixiGameViewport />
+        ) : (
+          <GameRenderViewport mode={mode} selectedPlanet={selectedPlanet} onSelectedPlanetChange={setSelectedPlanet} />
+        )}
+      </section>
     </main>
   );
 }
