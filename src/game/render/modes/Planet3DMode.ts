@@ -661,6 +661,9 @@ function paintPlanetTextures(
   const depositMask = new Float32Array(width * height);
   const emergentLandMask = new Float32Array(width * height);
   const shelfMaskField = new Float32Array(width * height);
+  const landMaskField = new Float32Array(width * height);
+  const waterMaskField = new Float32Array(width * height);
+  const coastMaskField = new Float32Array(width * height);
   const regionMaskField = new Float32Array(width * height);
   const valleyMaskField = new Float32Array(width * height);
   const accentMaskField = new Float32Array(width * height);
@@ -673,6 +676,7 @@ function paintPlanetTextures(
   const upliftField = new Float32Array(width * height);
   const depressionField = new Float32Array(width * height);
   const displacementField = new Float32Array(width * height);
+  const iceShelfField = new Float32Array(width * height);
   const semanticMasks = createSemanticMaskFields(width * height);
 
   const signature = archetypeSignature(profile.archetype);
@@ -868,6 +872,9 @@ function paintPlanetTextures(
       compressionRidgeMask[fieldIndex] = terrain.compressionRidgeField;
       depositMask[fieldIndex] = profile.archetype === 'mineral' ? accentMask : 0;
       emergentLandMask[fieldIndex] = canonicalLandMask;
+      landMaskField[fieldIndex] = worldMasks.landMask;
+      waterMaskField[fieldIndex] = worldMasks.waterMask;
+      coastMaskField[fieldIndex] = worldMasks.coastMask;
       shelfMaskField[fieldIndex] = canonicalShelfMask;
       regionMaskField[fieldIndex] = regionMask;
       valleyMaskField[fieldIndex] = valleyMask;
@@ -881,6 +888,7 @@ function paintPlanetTextures(
       upliftField[fieldIndex] = uplift;
       depressionField[fieldIndex] = depression;
       displacementField[fieldIndex] = signedRelief;
+      iceShelfField[fieldIndex] = terrain.iceShelfField;
       heightField[fieldIndex] = heightValue;
       for (const name of SEMANTIC_MASK_NAMES) {
         semanticMasks[name][fieldIndex] = semanticSample[name];
@@ -897,15 +905,21 @@ function paintPlanetTextures(
     semanticMasks,
     width,
     height,
-    seaLevelField,
-    massFieldField,
-    regionMaskField,
-    valleyMaskField,
-    accentMaskField,
-    fractureMaskField,
-    frostMaskField,
-    microField,
-    erosionFieldField,
+    {
+      seaLevelField,
+      massField: massFieldField,
+      landMaskField,
+      waterMaskField,
+      coastMaskField,
+      shelfMaskField,
+      regionMaskField,
+      valleyMaskField,
+      accentMaskField,
+      fractureMaskField,
+      frostMaskField,
+      microField,
+      erosionField: erosionFieldField,
+    },
     {
       volcanoField,
       calderaField,
@@ -915,7 +929,7 @@ function paintPlanetTextures(
       trenchField,
       riftField,
       craterField,
-      iceShelfField: shelfMaskField,
+      iceShelfField,
       compressionRidgeField: compressionRidgeMask,
       upliftField,
       depressionField,
@@ -1238,6 +1252,22 @@ interface CoherentSurfaceContextSample {
   terrain: TerrainSample;
 }
 
+interface CoherentSurfaceSignalFields {
+  seaLevelField: Float32Array;
+  massField: Float32Array;
+  landMaskField: Float32Array;
+  waterMaskField: Float32Array;
+  coastMaskField: Float32Array;
+  shelfMaskField: Float32Array;
+  regionMaskField: Float32Array;
+  valleyMaskField: Float32Array;
+  accentMaskField: Float32Array;
+  fractureMaskField: Float32Array;
+  frostMaskField: Float32Array;
+  microField: Float32Array;
+  erosionField: Float32Array;
+}
+
 interface SemanticColorizeInput {
   semanticMasks: SemanticTerrainMaskSet;
   worldMasks: WorldSurfaceMasks;
@@ -1473,15 +1503,7 @@ function deriveCoherentSurfaceContext(
   semanticMasks: Record<SemanticMaskName, Float32Array>,
   width: number,
   height: number,
-  seaLevelField: Float32Array,
-  massField: Float32Array,
-  regionMaskField: Float32Array,
-  valleyMaskField: Float32Array,
-  accentMaskField: Float32Array,
-  fractureMaskField: Float32Array,
-  frostMaskField: Float32Array,
-  microField: Float32Array,
-  erosionField: Float32Array,
+  surfaceSignalFields: CoherentSurfaceSignalFields,
   terrainFields: {
     volcanoField: Float32Array;
     calderaField: Float32Array;
@@ -1502,33 +1524,53 @@ function deriveCoherentSurfaceContext(
   for (let index = 0; index < width * height; index += 1) {
     const semanticSample = getSemanticMaskSample(semanticMasks, index);
     const coherentLandMask = clamp(
-      Math.max(semanticSample.emergentLandMask, semanticSample.continentMask, semanticSample.lowlandMask, semanticSample.uplandMask),
+      Math.max(
+        surfaceSignalFields.landMaskField[index],
+        semanticSample.emergentLandMask,
+        semanticSample.continentMask,
+        semanticSample.lowlandMask,
+        semanticSample.uplandMask,
+      ),
       0,
       1,
     );
     const coherentWaterMask = clamp(
-      Math.max(semanticSample.oceanMask, semanticSample.openOceanMask, semanticSample.abyssalDepthMask, semanticSample.shallowWaterMask),
+      Math.max(
+        surfaceSignalFields.waterMaskField[index],
+        semanticSample.oceanMask,
+        semanticSample.openOceanMask,
+        semanticSample.abyssalDepthMask,
+        semanticSample.shallowWaterMask,
+      ),
       0,
       1,
     );
-    const coherentCoastMask = clamp(Math.max(semanticSample.coastMask, Math.min(coherentLandMask, coherentWaterMask)), 0, 1);
-    const coherentShelfMask = clamp(Math.max(semanticSample.shelfMask, semanticSample.iceShelfMask * 0.55), 0, 1);
+    const coherentCoastMask = clamp(
+      Math.max(surfaceSignalFields.coastMaskField[index], semanticSample.coastMask, Math.min(coherentLandMask, coherentWaterMask)),
+      0,
+      1,
+    );
+    const coherentShelfMask = clamp(
+      Math.max(surfaceSignalFields.shelfMaskField[index], semanticSample.shelfMask, semanticSample.iceShelfMask * 0.55),
+      0,
+      1,
+    );
     coherentContext[index] = {
       worldMasks: {
-        seaLevel: seaLevelField[index],
-        massField: massField[index],
+        seaLevel: surfaceSignalFields.seaLevelField[index],
+        massField: surfaceSignalFields.massField[index],
         landMask: coherentLandMask,
         waterMask: coherentWaterMask,
         coastMask: coherentCoastMask,
         shelfMask: coherentShelfMask,
       },
-      regionMask: regionMaskField[index],
-      valleyMask: valleyMaskField[index],
-      accentMask: accentMaskField[index],
-      fractureMask: fractureMaskField[index],
-      frostMask: frostMaskField[index],
-      micro: microField[index],
-      erosionField: erosionField[index],
+      regionMask: surfaceSignalFields.regionMaskField[index],
+      valleyMask: surfaceSignalFields.valleyMaskField[index],
+      accentMask: surfaceSignalFields.accentMaskField[index],
+      fractureMask: surfaceSignalFields.fractureMaskField[index],
+      frostMask: surfaceSignalFields.frostMaskField[index],
+      micro: surfaceSignalFields.microField[index],
+      erosionField: surfaceSignalFields.erosionField[index],
       terrain: {
         volcanoField: terrainFields.volcanoField[index],
         calderaField: terrainFields.calderaField[index],
