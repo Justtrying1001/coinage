@@ -43,7 +43,11 @@ export class Planet3DMode implements RenderModeController {
 
   private lastY = 0;
 
-  private rotationVelocity = new THREE.Vector2(0, 0);
+  private readonly dragYaw = new THREE.Quaternion();
+
+  private readonly dragPitch = new THREE.Quaternion();
+
+  private readonly dragPitchAxis = new THREE.Vector3(1, 0, 0);
 
   constructor(
     private selectedPlanet: SelectedPlanetRef,
@@ -96,17 +100,7 @@ export class Planet3DMode implements RenderModeController {
   }
 
   update(deltaMs: number) {
-    if (this.planet) {
-      if (this.isDragging) {
-        this.rotationVelocity.multiplyScalar(0.9);
-      } else {
-        this.rotationVelocity.multiplyScalar(0.94);
-        this.planet.rotation.y += this.rotationVelocity.x;
-        this.planet.rotation.x = clamp(this.planet.rotation.x + this.rotationVelocity.y, -0.68, 0.68);
-      }
-
-      this.planet.rotation.y += deltaMs * 0.00012;
-    }
+    void deltaMs;
 
     this.renderer?.render(this.scene, this.camera);
   }
@@ -235,7 +229,6 @@ export class Planet3DMode implements RenderModeController {
     this.isDragging = true;
     this.lastX = event.clientX;
     this.lastY = event.clientY;
-    this.rotationVelocity.set(0, 0);
   };
 
   private readonly onPointerMove = (event: PointerEvent) => {
@@ -246,12 +239,15 @@ export class Planet3DMode implements RenderModeController {
     this.lastX = event.clientX;
     this.lastY = event.clientY;
 
-    const nextYaw = dx * 0.0105;
-    const nextPitch = dy * 0.0085;
-    this.rotationVelocity.set(nextYaw, nextPitch);
+    const yaw = dx * 0.0088;
+    const pitch = dy * 0.0088;
 
-    this.planet.rotation.y += nextYaw;
-    this.planet.rotation.x = clamp(this.planet.rotation.x + nextPitch, -0.68, 0.68);
+    this.dragYaw.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, yaw);
+    this.dragPitchAxis.set(1, 0, 0).applyQuaternion(this.camera.quaternion);
+    this.dragPitch.setFromAxisAngle(this.dragPitchAxis, pitch);
+
+    this.planet.quaternion.premultiply(this.dragYaw);
+    this.planet.quaternion.premultiply(this.dragPitch);
   };
 
   private readonly onPointerUp = (event: PointerEvent) => {
