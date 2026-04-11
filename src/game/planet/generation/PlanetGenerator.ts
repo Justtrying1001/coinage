@@ -41,15 +41,24 @@ export class PlanetGenerator {
       faceGeometries.push(geometry);
     }
 
-    const material = createPlanetMaterial(
-      config.elevationGradient,
-      config.depthGradient,
-      minMax.min,
-      minMax.max,
-      config.blendDepth,
-      config.material.roughness,
-      config.material.metalness,
-    );
+    const material = createPlanetMaterial({
+      elevationGradient: config.elevationGradient,
+      depthGradient: config.depthGradient,
+      minElevation: minMax.min,
+      maxElevation: minMax.max,
+      blendDepth: config.blendDepth,
+      roughness: config.material.roughness,
+      metalness: config.material.metalness,
+      vegetatedRoughness: config.material.vegetatedRoughness,
+      rockRoughness: config.material.rockRoughness,
+      peakRoughness: config.material.peakRoughness,
+      waterRoughness: config.material.waterRoughness,
+      vegetatedMetalness: config.material.vegetatedMetalness,
+      rockMetalness: config.material.rockMetalness,
+      peakMetalness: config.material.peakMetalness,
+      waterMetalness: config.material.waterMetalness,
+      surfaceSignals: config.surfaceSignals,
+    });
 
     const merged = BufferGeometryUtils.mergeGeometries(faceGeometries, false);
     if (!merged) {

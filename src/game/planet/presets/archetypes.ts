@@ -1,158 +1,19 @@
-import type { PlanetArchetype, PlanetVisualProfile } from '@/game/render/types';
-import type { GradientStop, NoiseFilterConfig, PlanetArchetypePreset, PlanetGenerationConfig } from '@/game/planet/types';
+import type { PlanetVisualProfile } from '@/game/render/types';
+import type { PlanetGenerationConfig } from '@/game/planet/types';
 import { SeededRng } from '@/game/world/rng';
-
-const s = (anchor: number, color: [number, number, number]): GradientStop => ({ anchor, color });
-const simple = (config: Partial<NoiseFilterConfig>): NoiseFilterConfig => ({
-  kind: 'simple',
-  enabled: true,
-  strength: 0.2,
-  roughness: 2.4,
-  baseRoughness: 1,
-  persistence: 0.5,
-  minValue: 1.1,
-  layerCount: 8,
-  useFirstLayerAsMask: false,
-  center: [0, 0, 0],
-  ...config,
-});
-const ridgid = (config: Partial<NoiseFilterConfig>): NoiseFilterConfig => ({
-  ...simple(config),
-  kind: 'ridgid',
-  useFirstLayerAsMask: true,
-});
-
-const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
-  oceanic: {
-    generation: {
-      resolution: 96,
-      filters: [
-        simple({ strength: 0.23, roughness: 2.2, baseRoughness: 1.1, persistence: 0.48, minValue: 1.05 }),
-        ridgid({ strength: 0.08, roughness: 2.4, minValue: 1.7, layerCount: 4, center: [12, 3, 27] }),
-      ],
-    },
-    surface: {
-      elevationGradient: [s(0, [0.1, 0.45, 0.15]), s(0.45, [0.4, 0.5, 0.2]), s(0.8, [0.55, 0.52, 0.38]), s(1, [0.95, 0.95, 0.95])],
-      depthGradient: [s(0, [0.02, 0.08, 0.4]), s(1, [0.14, 0.45, 0.9])],
-      blendDepth: 0.01,
-      roughness: 0.42,
-      metalness: 0.08,
-    },
-    postfx: { bloom: { strength: 0.05, radius: 0.22, threshold: 0.62 }, exposure: 1.14 },
-  },
-  terrestrial: {
-    generation: {
-      resolution: 96,
-      filters: [
-        simple({ strength: 0.21, roughness: 2.3, baseRoughness: 1.05, minValue: 1.08 }),
-        ridgid({ strength: 0.09, roughness: 2.5, baseRoughness: 0.95, minValue: 1.85, layerCount: 4, center: [8, 11, 3] }),
-      ],
-    },
-    surface: {
-      elevationGradient: [s(0, [0.4, 0.62, 0.2]), s(0.3, [0.2, 0.7, 0.12]), s(0.75, [0.58, 0.4, 0.2]), s(1, [1, 1, 1])],
-      depthGradient: [s(0, [0, 0, 0.5]), s(1, [0.2, 0.6, 1])],
-      blendDepth: 0.01,
-      roughness: 0.5,
-      metalness: 0.05,
-    },
-    postfx: { bloom: { strength: 0.045, radius: 0.2, threshold: 0.6 }, exposure: 1.12 },
-  },
-  arid: {
-    generation: {
-      resolution: 96,
-      filters: [
-        simple({ strength: 0.19, roughness: 2.5, baseRoughness: 1.15, persistence: 0.52, minValue: 1.1, layerCount: 9 }),
-        ridgid({ strength: 0.14, roughness: 2.55, baseRoughness: 1.2, persistence: 0.56, minValue: 1.78, layerCount: 5, center: [5, 18, 6] }),
-      ],
-    },
-    surface: {
-      elevationGradient: [s(0, [0.58, 0.42, 0.2]), s(0.5, [0.74, 0.58, 0.28]), s(0.85, [0.64, 0.48, 0.3]), s(1, [0.94, 0.87, 0.7])],
-      depthGradient: [s(0, [0.12, 0.1, 0.2]), s(1, [0.28, 0.2, 0.25])],
-      blendDepth: 0.008,
-      roughness: 0.72,
-      metalness: 0.04,
-    },
-    postfx: { bloom: { strength: 0.03, radius: 0.16, threshold: 0.64 }, exposure: 1.08 },
-  },
-  frozen: {
-    generation: {
-      resolution: 96,
-      filters: [
-        simple({ strength: 0.15, roughness: 2.0, baseRoughness: 0.9, persistence: 0.48, minValue: 1.0 }),
-        ridgid({ strength: 0.06, roughness: 2.2, baseRoughness: 1.0, minValue: 1.82, layerCount: 4, center: [17, 2, 9] }),
-      ],
-    },
-    surface: {
-      elevationGradient: [s(0, [0.68, 0.82, 0.9]), s(0.65, [0.8, 0.88, 0.94]), s(1, [1, 1, 1])],
-      depthGradient: [s(0, [0.03, 0.2, 0.45]), s(1, [0.22, 0.55, 0.8])],
-      blendDepth: 0.01,
-      roughness: 0.38,
-      metalness: 0.12,
-    },
-    postfx: { bloom: { strength: 0.04, radius: 0.2, threshold: 0.58 }, exposure: 1.18 },
-  },
-  volcanic: {
-    generation: {
-      resolution: 96,
-      filters: [
-        simple({ strength: 0.2, roughness: 2.35, baseRoughness: 1.05, persistence: 0.52, minValue: 1.08 }),
-        ridgid({ strength: 0.18, roughness: 2.8, baseRoughness: 1.4, persistence: 0.55, minValue: 1.55, layerCount: 5, center: [14, 14, 1] }),
-      ],
-    },
-    surface: {
-      elevationGradient: [s(0, [0.22, 0.14, 0.13]), s(0.4, [0.4, 0.24, 0.18]), s(0.8, [0.62, 0.28, 0.18]), s(1, [0.96, 0.44, 0.18])],
-      depthGradient: [s(0, [0.04, 0.03, 0.06]), s(1, [0.2, 0.08, 0.08])],
-      blendDepth: 0.006,
-      roughness: 0.65,
-      metalness: 0.14,
-    },
-    postfx: { bloom: { strength: 0.055, radius: 0.24, threshold: 0.56 }, exposure: 1.14 },
-  },
-  mineral: {
-    generation: {
-      resolution: 96,
-      filters: [
-        simple({ strength: 0.2, roughness: 2.4, baseRoughness: 1.0, persistence: 0.5, minValue: 1.07 }),
-        ridgid({ strength: 0.1, roughness: 2.45, baseRoughness: 1.1, persistence: 0.54, minValue: 1.75, layerCount: 4, center: [9, 20, 5] }),
-      ],
-    },
-    surface: {
-      elevationGradient: [s(0, [0.45, 0.48, 0.42]), s(0.6, [0.58, 0.56, 0.48]), s(1, [0.9, 0.9, 0.84])],
-      depthGradient: [s(0, [0.1, 0.14, 0.24]), s(1, [0.26, 0.32, 0.45])],
-      blendDepth: 0.01,
-      roughness: 0.46,
-      metalness: 0.28,
-    },
-    postfx: { bloom: { strength: 0.035, radius: 0.16, threshold: 0.62 }, exposure: 1.1 },
-  },
-  barren: {
-    generation: {
-      resolution: 96,
-      filters: [
-        simple({ strength: 0.2, roughness: 2.45, baseRoughness: 1.12, persistence: 0.52, minValue: 1.1, layerCount: 9 }),
-        ridgid({ strength: 0.12, roughness: 2.6, baseRoughness: 1.3, persistence: 0.56, minValue: 1.72, layerCount: 5, center: [4, 3, 18] }),
-      ],
-    },
-    surface: {
-      elevationGradient: [s(0, [0.42, 0.35, 0.3]), s(0.7, [0.55, 0.46, 0.38]), s(1, [0.76, 0.68, 0.57])],
-      depthGradient: [s(0, [0.08, 0.08, 0.08]), s(1, [0.2, 0.18, 0.16])],
-      blendDepth: 0.006,
-      roughness: 0.68,
-      metalness: 0.08,
-    },
-    postfx: { bloom: { strength: 0.02, radius: 0.14, threshold: 0.66 }, exposure: 1.06 },
-  },
-};
+import { PLANET_ARCHETYPE_RULES, buildArchetypeSurfaceGradients, deriveDefinitionSignals } from '@/game/planet/presets/archetypeRules';
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
 export function createPlanetGenerationConfig(seed: number, profile: PlanetVisualProfile): PlanetGenerationConfig {
-  const preset = BASE_PRESETS[profile.archetype];
+  const definition = PLANET_ARCHETYPE_RULES[profile.archetype];
   const rng = new SeededRng(seed ^ 0x7f4a7c15);
+  const gradients = buildArchetypeSurfaceGradients(definition);
+  const signals = deriveDefinitionSignals(definition, profile);
 
-  const filters = preset.generation.filters.map((filter, index) => ({
+  const filters = definition.terrain.filters.map((filter, index) => ({
     ...filter,
     strength: clamp(filter.strength + rng.range(-0.02, 0.02) + profile.reliefStrength * 0.08, 0.04, 0.35),
     roughness: clamp(filter.roughness + rng.range(-0.2, 0.2), 1.6, 3.2),
@@ -168,19 +29,41 @@ export function createPlanetGenerationConfig(seed: number, profile: PlanetVisual
   return {
     seed,
     archetype: profile.archetype,
-    resolution: preset.generation.resolution,
+    resolution: definition.terrain.resolution,
     radius: 1,
     filters,
-    elevationGradient: preset.surface.elevationGradient,
-    depthGradient: preset.surface.depthGradient,
-    blendDepth: preset.surface.blendDepth,
+    elevationGradient: gradients.elevationGradient,
+    depthGradient: gradients.depthGradient,
+    blendDepth: signals.shoreline,
     material: {
-      roughness: clamp(preset.surface.roughness + profile.roughness * 0.2, 0.1, 0.95),
-      metalness: clamp(preset.surface.metalness + profile.metalness * 0.7, 0.02, 0.55),
+      roughness: clamp(profile.roughness, 0.1, 0.95),
+      metalness: clamp(profile.metalness, 0.02, 0.55),
+      vegetatedRoughness: clamp(signals.vegetatedRoughness + profile.roughness * 0.08, 0.15, 0.95),
+      rockRoughness: clamp(signals.rockRoughness + profile.roughness * 0.05, 0.2, 0.95),
+      peakRoughness: clamp(signals.peakRoughness + profile.roughness * 0.04, 0.1, 0.92),
+      waterRoughness: clamp(signals.waterRoughness, 0.06, 0.45),
+      vegetatedMetalness: clamp(signals.vegetatedMetalness + profile.metalness * 0.15, 0.01, 0.35),
+      rockMetalness: clamp(signals.rockMetalness + profile.metalness * 0.35, 0.01, 0.48),
+      peakMetalness: clamp(signals.peakMetalness + profile.metalness * 0.25, 0.01, 0.5),
+      waterMetalness: clamp(signals.waterMetalness, 0.01, 0.18),
+    },
+    surfaceSignals: {
+      seaLevel: 1,
+      shoreline: signals.shoreline,
+      moisture: signals.moisture,
+      temperature: signals.temperature,
+      biomeBlend: signals.biomeBlend,
+      slopeRock: signals.slopeRock,
+      peakStart: signals.peakStart,
+      humidityNoise: signals.humidityNoise,
+      activityBias: signals.activityBias,
+      wetnessBoost: signals.wetnessBoost,
+      specularBias: signals.specularBias,
+      accentColor: signals.accentColor,
     },
     postfx: {
-      bloom: preset.postfx.bloom,
-      exposure: clamp(preset.postfx.exposure + (profile.lightIntensity - 1) * 0.18, 0.92, 1.26),
+      bloom: definition.postfx.bloom,
+      exposure: clamp(definition.postfx.exposure + (profile.lightIntensity - 1) * 0.18, 0.92, 1.26),
     },
   };
 }

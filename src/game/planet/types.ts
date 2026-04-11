@@ -39,6 +39,21 @@ export interface PlanetArchetypePreset {
   };
 }
 
+export interface PlanetSurfaceSignalConfig {
+  seaLevel: number;
+  shoreline: number;
+  moisture: number;
+  temperature: number;
+  biomeBlend: number;
+  slopeRock: number;
+  peakStart: number;
+  humidityNoise: number;
+  activityBias: number;
+  wetnessBoost: number;
+  specularBias: number;
+  accentColor: Vector3Tuple;
+}
+
 export interface PlanetGenerationConfig {
   seed: number;
   archetype: PlanetArchetype;
@@ -51,6 +66,15 @@ export interface PlanetGenerationConfig {
   material: {
     roughness: number;
     metalness: number;
+    vegetatedRoughness: number;
+    rockRoughness: number;
+    peakRoughness: number;
+    waterRoughness: number;
+    vegetatedMetalness: number;
+    rockMetalness: number;
+    peakMetalness: number;
+    waterMetalness: number;
   };
+  surfaceSignals: PlanetSurfaceSignalConfig;
   postfx: PlanetArchetypePreset['postfx'];
 }
