@@ -164,8 +164,13 @@ export class Planet3DMode implements RenderModeController {
     this.planet = new THREE.Mesh(geometry, material);
     this.root.add(this.planet);
 
-    const atmosphereMaterial = createAtmosphereMaterial(beauty.atmosphereInnerColor, beauty.atmosphereOuterColor);
-    this.atmosphere = new THREE.Mesh(new THREE.SphereGeometry(1.12, 96, 96), atmosphereMaterial);
+    const atmosphereMaterial = createAtmosphereMaterial(
+      beauty.atmosphereInnerColor,
+      beauty.atmosphereOuterColor,
+      beauty.atmosphereOpacity,
+      beauty.atmospherePower,
+    );
+    this.atmosphere = new THREE.Mesh(new THREE.SphereGeometry(beauty.atmosphereScale, 96, 96), atmosphereMaterial);
     this.root.add(this.atmosphere);
 
     this.applyDebugView();
@@ -323,12 +328,19 @@ export class Planet3DMode implements RenderModeController {
   }
 }
 
-function createAtmosphereMaterial(innerColor: THREE.Color, outerColor: THREE.Color) {
+function createAtmosphereMaterial(
+  innerColor: THREE.Color,
+  outerColor: THREE.Color,
+  opacity: number,
+  rimPower: number,
+) {
   return new THREE.ShaderMaterial({
     uniforms: {
       uInnerColor: { value: innerColor },
       uOuterColor: { value: outerColor },
       uTime: { value: 0 },
+      uOpacity: { value: opacity },
+      uRimPower: { value: rimPower },
     },
     vertexShader: `
       varying vec3 vWorldPos;
@@ -345,18 +357,21 @@ function createAtmosphereMaterial(innerColor: THREE.Color, outerColor: THREE.Col
       uniform vec3 uInnerColor;
       uniform vec3 uOuterColor;
       uniform float uTime;
+      uniform float uOpacity;
+      uniform float uRimPower;
       varying vec3 vWorldPos;
       varying vec3 vNormal;
       void main() {
         vec3 V = normalize(cameraPosition - vWorldPos);
-        float rim = pow(1.0 - max(dot(normalize(vNormal), V), 0.0), 2.1);
-        float pulse = 0.92 + sin(uTime * 0.22) * 0.04;
-        vec3 c = mix(uInnerColor, uOuterColor, rim) * pulse;
-        gl_FragColor = vec4(c, rim * 0.58);
+        float rim = pow(1.0 - max(dot(normalize(vNormal), V), 0.0), uRimPower);
+        float pulse = 0.97 + sin(uTime * 0.18) * 0.02;
+        float alpha = rim * uOpacity;
+        vec3 c = mix(uInnerColor, uOuterColor, smoothstep(0.0, 1.0, rim)) * pulse;
+        gl_FragColor = vec4(c, alpha);
       }
     `,
     transparent: true,
-    blending: THREE.AdditiveBlending,
+    blending: THREE.NormalBlending,
     depthWrite: false,
     side: THREE.BackSide,
   });
