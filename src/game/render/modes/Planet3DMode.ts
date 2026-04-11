@@ -100,20 +100,20 @@ export class Planet3DMode implements RenderModeController {
     this.scene.background = new THREE.Color(0x0a1220);
     this.scene.add(this.root);
 
-    const ambient = new THREE.AmbientLight(0xe0efff, 0.66);
+    const ambient = new THREE.AmbientLight(0x90a7c4, 0.26);
     this.scene.add(ambient);
 
-    const skylight = new THREE.DirectionalLight(0xcfe3ff, 0.68);
-    skylight.position.set(2.4, 1.8, 2.2);
+    const skylight = new THREE.DirectionalLight(0xfff2dd, 1.28);
+    skylight.position.set(2.6, 1.4, 2.1);
     this.scene.add(skylight);
-    const wrapFill = new THREE.DirectionalLight(0xaecdf5, 0.24);
-    wrapFill.position.set(-2.2, 0.8, -2.4);
+    const wrapFill = new THREE.DirectionalLight(0x9bc1ff, 0.36);
+    wrapFill.position.set(-1.8, 0.5, -2.6);
     this.scene.add(wrapFill);
-    const topFill = new THREE.DirectionalLight(0xb9ddff, 0.2);
-    topFill.position.set(0, 3.2, 0.4);
+    const topFill = new THREE.DirectionalLight(0xc7e2ff, 0.18);
+    topFill.position.set(0, 2.8, 0.2);
     this.scene.add(topFill);
-    const frontFill = new THREE.DirectionalLight(0xe6f2ff, 0.12);
-    frontFill.position.set(0.2, 0.3, 3);
+    const frontFill = new THREE.DirectionalLight(0xffffff, 0.08);
+    frontFill.position.set(0.2, 0.1, 3);
     this.scene.add(frontFill);
 
     this.camera.position.set(0, 0, 2.6);
@@ -201,7 +201,7 @@ export class Planet3DMode implements RenderModeController {
     this.currentMaps = null;
 
     const profile = planetProfileFromSeed(planetRef.seed);
-    const geometry = new THREE.SphereGeometry(1, 196, 128);
+    const geometry = new THREE.IcosahedronGeometry(1, 7);
     geometry.computeVertexNormals();
 
     const maps = buildPlanetMaps(profile, planetRef.seed);
@@ -215,20 +215,20 @@ export class Planet3DMode implements RenderModeController {
     ];
     this.currentMaps = maps;
 
-    applyPlanetReliefToGeometry(geometry, maps.displacementField, maps.width, maps.height, profile, planetRef.seed);
+    applyPlanetReliefToGeometry(geometry, profile, maps.terrainModel, planetRef.seed);
 
     const material = new THREE.MeshStandardMaterial({
       map: maps.map,
       roughnessMap: maps.roughnessMap,
       metalnessMap: maps.metalnessMap,
       normalMap: maps.normalMap,
-      normalScale: new THREE.Vector2(0.34, 0.34),
+      normalScale: new THREE.Vector2(0.22, 0.22),
       emissiveMap: maps.emissiveMap,
-      roughness: 1,
-      metalness: 1,
+      roughness: clamp(profile.roughness, 0.45, 0.92),
+      metalness: clamp(profile.metalness * 0.7, 0.005, 0.18),
       flatShading: false,
       emissive: new THREE.Color(0xffffff),
-      emissiveIntensity: 0.22,
+      emissiveIntensity: clamp(profile.emissiveIntensity * 0.9, 0, 0.11),
     });
 
     this.planet = new THREE.Mesh(geometry, material);
@@ -485,25 +485,9 @@ interface PlanetMaps {
 }
 
 function buildPlanetMaps(profile: PlanetVisualProfile, seed: number): PlanetMaps {
-  const width = 512;
-  const height = 256;
-  const colorCanvas = document.createElement('canvas');
-  colorCanvas.width = width;
-  colorCanvas.height = height;
-  const roughCanvas = document.createElement('canvas');
-  roughCanvas.width = width;
-  roughCanvas.height = height;
-  const metalCanvas = document.createElement('canvas');
-  metalCanvas.width = width;
-  metalCanvas.height = height;
-  const normalCanvas = document.createElement('canvas');
-  normalCanvas.width = width;
-  normalCanvas.height = height;
-  const emissiveCanvas = document.createElement('canvas');
-  emissiveCanvas.width = width;
-  emissiveCanvas.height = height;
-
-  const derivedFields = paintPlanetTextures(profile, seed, colorCanvas, roughCanvas, metalCanvas, normalCanvas, emissiveCanvas);
+  const width = 768;
+  const height = 384;
+  const { colorCanvas, roughCanvas, metalCanvas, normalCanvas, emissiveCanvas, derivedFields } = buildHeightFirstPlanetTextures(profile, seed, width, height);
 
   const map = new THREE.CanvasTexture(colorCanvas);
   map.colorSpace = THREE.SRGBColorSpace;
@@ -585,6 +569,197 @@ function buildPlanetMaps(profile: PlanetVisualProfile, seed: number): PlanetMaps
       finalNormal: normalMap,
     },
   };
+}
+
+interface HeightFirstTextureBuild {
+  colorCanvas: HTMLCanvasElement;
+  roughCanvas: HTMLCanvasElement;
+  metalCanvas: HTMLCanvasElement;
+  normalCanvas: HTMLCanvasElement;
+  emissiveCanvas: HTMLCanvasElement;
+  derivedFields: ReturnType<typeof paintPlanetTextures>;
+}
+
+function buildHeightFirstPlanetTextures(
+  profile: PlanetVisualProfile,
+  seed: number,
+  width: number,
+  height: number,
+): HeightFirstTextureBuild {
+  const colorCanvas = document.createElement('canvas');
+  colorCanvas.width = width;
+  colorCanvas.height = height;
+  const roughCanvas = document.createElement('canvas');
+  roughCanvas.width = width;
+  roughCanvas.height = height;
+  const metalCanvas = document.createElement('canvas');
+  metalCanvas.width = width;
+  metalCanvas.height = height;
+  const normalCanvas = document.createElement('canvas');
+  normalCanvas.width = width;
+  normalCanvas.height = height;
+  const emissiveCanvas = document.createElement('canvas');
+  emissiveCanvas.width = width;
+  emissiveCanvas.height = height;
+
+  const derivedFields = paintPlanetTextures(profile, seed, colorCanvas, roughCanvas, metalCanvas, normalCanvas, emissiveCanvas);
+  rewriteWithCanonicalHeightField(profile, seed, colorCanvas, roughCanvas, metalCanvas, normalCanvas, emissiveCanvas, derivedFields);
+  return { colorCanvas, roughCanvas, metalCanvas, normalCanvas, emissiveCanvas, derivedFields };
+}
+
+function rewriteWithCanonicalHeightField(
+  profile: PlanetVisualProfile,
+  seed: number,
+  colorCanvas: HTMLCanvasElement,
+  roughCanvas: HTMLCanvasElement,
+  metalCanvas: HTMLCanvasElement,
+  normalCanvas: HTMLCanvasElement,
+  emissiveCanvas: HTMLCanvasElement,
+  derivedFields: ReturnType<typeof paintPlanetTextures>,
+) {
+  const width = colorCanvas.width;
+  const height = colorCanvas.height;
+  const colorCtx = colorCanvas.getContext('2d');
+  const roughCtx = roughCanvas.getContext('2d');
+  const metalCtx = metalCanvas.getContext('2d');
+  const normalCtx = normalCanvas.getContext('2d');
+  const emissiveCtx = emissiveCanvas.getContext('2d');
+  if (!colorCtx || !roughCtx || !metalCtx || !normalCtx || !emissiveCtx) return;
+  const colorData = colorCtx.createImageData(width, height);
+  const roughData = roughCtx.createImageData(width, height);
+  const metalData = metalCtx.createImageData(width, height);
+  const normalData = normalCtx.createImageData(width, height);
+  const emissiveData = emissiveCtx.createImageData(width, height);
+  const heightField = new Float32Array(width * height);
+  const semanticMasks = createSemanticMaskFields(width * height);
+  const seaLevel = clamp(profile.oceanLevel, 0.08, 0.84);
+
+  for (let y = 0; y < height; y += 1) {
+    const v = y / (height - 1);
+    const latitude = (v - 0.5) * Math.PI;
+    for (let x = 0; x < width; x += 1) {
+      const u = x / width;
+      const longitude = (u - 0.5) * Math.PI * 2;
+      const nx = Math.cos(latitude) * Math.cos(longitude);
+      const ny = Math.sin(latitude);
+      const nz = Math.cos(latitude) * Math.sin(longitude);
+      const terrain = evaluateTerrainSample(nx, ny, nz, derivedFields.terrainModel);
+      const fieldIndex = y * width + x;
+      const uplift = clamp(terrain.upliftField + terrain.plateauField * 0.25 + terrain.mountainChainField * 0.3 + terrain.volcanoField * 0.24, 0, 1);
+      const depression = clamp(terrain.depressionField + terrain.basinField * 0.28 + terrain.trenchField * 0.32 + terrain.riftField * 0.18, 0, 1);
+      const signed = clamp((uplift - depression) * 0.92 + terrain.finalSignedRelief * 0.66, -1, 1);
+      const massField = clamp(0.5 + signed * 0.5, 0, 1);
+      const landMask = smoothstep(seaLevel - 0.03, seaLevel + 0.03, massField);
+      const waterMask = 1 - landMask;
+      const shelfMask = smoothstep(seaLevel - 0.11, seaLevel - 0.01, massField) * waterMask;
+      const coastMask = 1 - smoothstep(0.03, 0.11, Math.abs(massField - seaLevel));
+      const semantic = deriveSemanticTerrainMasks(profile.archetype, {
+        landMask,
+        waterMask,
+        massField,
+        seaLevel,
+        coastMask,
+        shelfMask,
+        regionMask: landMask * clamp(terrain.plateauField + terrain.mountainChainField * 0.6, 0, 1),
+        valleyMask: landMask * terrain.riftField,
+        accentMask: terrain.volcanoField,
+        fractureMask: terrain.riftField,
+        frostMask: smoothstep(0.5, 0.92, Math.abs(ny)),
+        polarMask: smoothstep(0.56, 0.95, Math.abs(ny)),
+        mountainChainMask: terrain.mountainChainField,
+        plateauMask: terrain.plateauField,
+        basinMask: terrain.basinField,
+        trenchMask: terrain.trenchField,
+        riftMask: terrain.riftField,
+        craterMask: terrain.craterField,
+        terrain,
+      });
+      for (const name of SEMANTIC_MASK_NAMES) semanticMasks[name][fieldIndex] = semantic[name];
+      const material = colorizeTerrainFromSemantics(profile.archetype, {
+        semanticMasks: semantic,
+        worldMasks: { seaLevel, massField, landMask, waterMask, coastMask, shelfMask },
+        regionMask: semantic.continentMask,
+        valleyMask: semantic.valleyMask,
+        accentMask: semantic.volcanicConeMask,
+        fractureMask: Math.max(semantic.fissureMask, semantic.crevasseMask, semantic.depositSeamMask),
+        frostMask: semantic.snowOrPolarMask,
+        micro: terrain.finalSignedRelief,
+        erosionField: semantic.degradedBasinMask,
+        terrain,
+      });
+      const i = fieldIndex * 4;
+      colorData.data[i] = material.albedo[0];
+      colorData.data[i + 1] = material.albedo[1];
+      colorData.data[i + 2] = material.albedo[2];
+      colorData.data[i + 3] = 255;
+      const rough = Math.round(clamp(material.roughness, 0.18, 0.98) * 255);
+      roughData.data[i] = rough;
+      roughData.data[i + 1] = rough;
+      roughData.data[i + 2] = rough;
+      roughData.data[i + 3] = 255;
+      const metal = Math.round(clamp(material.metalness, 0, 0.34) * 255);
+      metalData.data[i] = metal;
+      metalData.data[i + 1] = metal;
+      metalData.data[i + 2] = metal;
+      metalData.data[i + 3] = 255;
+      emissiveData.data[i] = material.emissive[0];
+      emissiveData.data[i + 1] = material.emissive[1];
+      emissiveData.data[i + 2] = material.emissive[2];
+      emissiveData.data[i + 3] = 255;
+      heightField[fieldIndex] = massField;
+      derivedFields.upliftField[fieldIndex] = uplift;
+      derivedFields.depressionField[fieldIndex] = depression;
+      derivedFields.rawReliefField[fieldIndex] = signed;
+      derivedFields.displacementField[fieldIndex] = signed;
+      derivedFields.volcanoField[fieldIndex] = terrain.volcanoField;
+      derivedFields.mountainChainField[fieldIndex] = terrain.mountainChainField;
+      derivedFields.craterField[fieldIndex] = terrain.craterField;
+      derivedFields.trenchField[fieldIndex] = terrain.trenchField;
+      derivedFields.basinField[fieldIndex] = terrain.basinField;
+      derivedFields.riftField[fieldIndex] = terrain.riftField;
+      derivedFields.plateauField[fieldIndex] = terrain.plateauField;
+      derivedFields.calderaField[fieldIndex] = terrain.calderaField;
+      derivedFields.iceCapMask[fieldIndex] = semantic.iceCapMask;
+      derivedFields.compressionRidgeMask[fieldIndex] = semantic.compressionRidgeMask;
+      derivedFields.depositMask[fieldIndex] = semantic.mineralDepositMask;
+      derivedFields.emergentLandMask[fieldIndex] = semantic.emergentLandMask;
+      derivedFields.shelfMask[fieldIndex] = shelfMask;
+    }
+  }
+
+  for (let y = 0; y < height; y += 1) {
+    const yPrev = y > 0 ? y - 1 : y;
+    const yNext = y < height - 1 ? y + 1 : y;
+    for (let x = 0; x < width; x += 1) {
+      const xPrev = x > 0 ? x - 1 : width - 1;
+      const xNext = x < width - 1 ? x + 1 : 0;
+      const hL = heightField[y * width + xPrev];
+      const hR = heightField[y * width + xNext];
+      const hD = heightField[yPrev * width + x];
+      const hU = heightField[yNext * width + x];
+      const sx = (hR - hL) * 0.92;
+      const sy = (hU - hD) * 0.92;
+      const inv = 1 / Math.hypot(-sx, -sy, 1);
+      const i = (y * width + x) * 4;
+      normalData.data[i] = Math.round(((-sx * inv) * 0.5 + 0.5) * 255);
+      normalData.data[i + 1] = Math.round(((-sy * inv) * 0.5 + 0.5) * 255);
+      normalData.data[i + 2] = Math.round(((1 * inv) * 0.5 + 0.5) * 255);
+      normalData.data[i + 3] = 255;
+    }
+  }
+
+  colorCtx.putImageData(colorData, 0, 0);
+  roughCtx.putImageData(roughData, 0, 0);
+  metalCtx.putImageData(metalData, 0, 0);
+  normalCtx.putImageData(normalData, 0, 0);
+  emissiveCtx.putImageData(emissiveData, 0, 0);
+  const stats = getFieldMinMax(derivedFields.displacementField);
+  for (let i = 0; i < derivedFields.displacementField.length; i += 1) {
+    const normalized = normalize(derivedFields.displacementField[i], stats.min, stats.max) * 2 - 1;
+    derivedFields.displacementField[i] = clamp(normalized * 0.95, -0.95, 0.95);
+    derivedFields.rawReliefField[i] = derivedFields.displacementField[i];
+  }
+  derivedFields.semanticMasks = semanticMasks;
 }
 
 function paintPlanetTextures(
@@ -2724,29 +2899,24 @@ function jitterUnitVector(rng: SeededRng, base: { x: number; y: number; z: numbe
 }
 
 function applyPlanetReliefToGeometry(
-  geometry: THREE.SphereGeometry,
-  displacementField: Float32Array,
-  mapWidth: number,
-  mapHeight: number,
+  geometry: THREE.IcosahedronGeometry,
   profile: PlanetVisualProfile,
+  terrainModel: TerrainModel,
   seed: number,
 ) {
   const positions = geometry.attributes.position;
   const vertex = new THREE.Vector3();
   const rng = new SeededRng(seed ^ 0xa24baed4);
-  const baseScale = profile.reliefStrength * 0.2 + rng.range(0.006, 0.014);
-  const displacementScale = clamp(baseScale, 0.014, 0.038);
+  const baseScale = profile.reliefStrength * 0.46 + rng.range(0.02, 0.05);
+  const displacementScale = clamp(baseScale, 0.035, 0.1);
   for (let i = 0; i < positions.count; i += 1) {
     vertex.set(positions.getX(i), positions.getY(i), positions.getZ(i));
     const normal = vertex.clone().normalize();
-    const longitude = Math.atan2(normal.z, normal.x);
-    const latitude = Math.asin(clamp(normal.y, -1, 1));
-    const u = ((longitude / (Math.PI * 2)) + 0.5 + 1) % 1;
-    const v = clamp(latitude / Math.PI + 0.5, 0, 1);
-    const x = Math.floor(u * (mapWidth - 1));
-    const y = Math.floor(v * (mapHeight - 1));
-    const signed = displacementField[y * mapWidth + x] ?? 0;
-    const curved = Math.sign(signed) * Math.pow(Math.abs(signed), 0.9);
+    const terrain = evaluateTerrainSample(normal.x, normal.y, normal.z, terrainModel);
+    const uplift = clamp(terrain.upliftField + terrain.plateauField * 0.24 + terrain.mountainChainField * 0.32 + terrain.volcanoField * 0.2, 0, 1);
+    const depression = clamp(terrain.depressionField + terrain.basinField * 0.26 + terrain.trenchField * 0.3 + terrain.riftField * 0.22, 0, 1);
+    const signed = clamp((uplift - depression) * 0.94 + terrain.finalSignedRelief * 0.72, -1, 1);
+    const curved = Math.sign(signed) * Math.pow(Math.abs(signed), 0.82);
     const radius = 1 + curved * displacementScale;
     positions.setXYZ(i, normal.x * radius, normal.y * radius, normal.z * radius);
   }
