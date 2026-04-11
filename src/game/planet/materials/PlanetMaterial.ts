@@ -20,8 +20,8 @@ export function createPlanetMaterial(
   return new THREE.ShaderMaterial({
     uniforms: {
       uMinMax: { value: new THREE.Vector2(minElevation, maxElevation) },
-      uElevationSize: { value: elevationGradient.length },
-      uDepthSize: { value: depthGradient.length },
+      uElevationSize: { value: normalizedElevation.length },
+      uDepthSize: { value: normalizedDepth.length },
       uElevationAnchors: { value: normalizedElevation.map((s) => s.anchor) },
       uElevationColors: { value: normalizedElevation.map((s) => new THREE.Vector3(...s.color)) },
       uDepthAnchors: { value: normalizedDepth.map((s) => s.anchor) },
@@ -129,37 +129,41 @@ export function createPlanetMaterial(
         float depthN = invLerp(uMinMax.x, seaLevel, vElevation);
         float elevN = invLerp(seaLevel, uMinMax.y, vElevation);
 
-        float macro = fbm(vPositionW * 2.8 + vec3(5.2, 1.4, 3.7));
-        float micro = fbm(vPositionW * 10.0 + vec3(vElevation * 3.0));
-        float breakup = mix(macro, micro, 0.5);
+        float macro = fbm(vPositionW * 2.6 + vec3(5.2, 1.4, 3.7));
+        float micro = fbm(vPositionW * 7.5 + vec3(vElevation * 1.2));
+        float breakup = mix(macro, micro, 0.32);
 
         float coastMask = smoothstep(seaLevel - uBlendDepth * 0.6, seaLevel + uBlendDepth * 1.2, vElevation);
         float waterMask = 1.0 - smoothstep(seaLevel - uBlendDepth * 0.35, seaLevel + uBlendDepth * 0.9, vElevation);
 
-        float landDetail = (breakup - 0.5) * (0.08 + slope * 0.1);
-        float depthDetail = (macro - 0.5) * 0.07;
+        float landDetail = (breakup - 0.5) * (0.05 + slope * 0.08);
+        float depthDetail = (macro - 0.5) * 0.045;
 
         vec3 depthBase = gradientColor(clamp(depthN + depthDetail, 0.0, 1.0), uDepthSize, uDepthAnchors, uDepthColors);
         vec3 landBase = gradientColor(clamp(elevN + landDetail, 0.0, 1.0), uElevationSize, uElevationAnchors, uElevationColors);
 
-        float beachBand = 1.0 - smoothstep(0.02, 0.09, elevN);
-        float uplandMask = smoothstep(0.32, 0.74, elevN);
-        float peakMask = smoothstep(0.72, 0.96, elevN);
+        float beachBand = 1.0 - smoothstep(0.015, 0.08, elevN);
+        float lowlandMask = smoothstep(0.06, 0.34, elevN) * (1.0 - smoothstep(0.48, 0.68, elevN));
+        float uplandMask = smoothstep(0.34, 0.72, elevN);
+        float peakMask = smoothstep(0.7, 0.95, elevN);
 
         vec3 coastTint = mix(landBase * 1.06, depthBase * 1.05, 0.35);
         vec3 terrain = landBase;
+        float vegetationNoise = smoothstep(0.34, 0.72, breakup);
         float vegetationMask = uVegetationDensity
           * smoothstep(0.02, 0.6, elevN)
           * (1.0 - smoothstep(0.24, 0.72, slope))
+          * vegetationNoise
           * (1.0 - peakMask);
-        vec3 canopyTint = vec3(0.15, 0.37, 0.14);
-        terrain = mix(terrain, terrain * 0.92, slope * 0.35);
-        terrain = mix(terrain, mix(terrain, canopyTint, 0.6), vegetationMask);
-        terrain = mix(terrain, terrain * 1.08, uplandMask * 0.35);
-        terrain = mix(terrain, terrain * 1.14, peakMask * (0.45 + slope * 0.3));
+        vec3 canopyTint = vec3(0.1, 0.32, 0.12);
+        terrain = mix(terrain, terrain * 0.9, slope * 0.45);
+        terrain = mix(terrain, mix(terrain, canopyTint, 0.66), vegetationMask);
+        terrain = mix(terrain, terrain * 0.96, lowlandMask * uWetness * 0.36);
+        terrain = mix(terrain, terrain * 1.1, uplandMask * 0.32);
+        terrain = mix(terrain, terrain * 1.18, peakMask * (0.42 + slope * 0.34));
         terrain = mix(terrain, coastTint, beachBand * 0.5);
 
-        vec3 water = depthBase * (0.76 + depthN * 0.3 + uWetness * 0.08);
+        vec3 water = depthBase * (0.8 + depthN * 0.28 + uWetness * 0.06);
         vec3 base = mix(water, terrain, coastMask);
 
         vec3 L = normalize(-uLightDirection);
@@ -169,21 +173,21 @@ export function createPlanetMaterial(
         vec3 HFill = normalize(LFill + V);
 
         float ndotl = dot(N, L);
-        float keyDiffuse = clamp((ndotl + 0.3) / 1.3, 0.0, 1.0);
-        float fillDiffuse = clamp(dot(N, LFill) * 0.5 + 0.5, 0.0, 1.0);
+        float keyDiffuse = clamp(ndotl * 0.85 + 0.38, 0.0, 1.0);
+        float fillDiffuse = clamp(dot(N, LFill) * 0.4 + 0.5, 0.0, 1.0);
         float hemi = dot(N, up) * 0.5 + 0.5;
         float ndoth = max(dot(N, H), 0.0);
         float ndothFill = max(dot(N, HFill), 0.0);
         float fresnel = pow(clamp(1.0 - max(dot(N, V), 0.0), 0.0, 1.0), 2.1);
         float shininess = mix(16.0, 96.0, 1.0 - clamp(uRoughness, 0.0, 1.0));
 
-        float waterSpec = (pow(ndoth, 72.0) * 0.85 + pow(ndothFill, 42.0) * 0.35) * waterMask * (0.03 + (1.0 - uRoughness) * 0.14 + fresnel * 0.22);
-        float landSpec = (pow(ndoth, shininess) * 0.8 + pow(ndothFill, shininess * 0.6) * 0.2) * (1.0 - waterMask) * (0.01 + uMetalness * 0.14);
+        float waterSpec = (pow(ndoth, 72.0) * 0.82 + pow(ndothFill, 42.0) * 0.32) * waterMask * (0.02 + (1.0 - uRoughness) * 0.12 + fresnel * 0.18);
+        float landSpec = (pow(ndoth, shininess) * 0.72 + pow(ndothFill, shininess * 0.56) * 0.18) * (1.0 - waterMask) * (0.008 + uMetalness * 0.1);
 
-        float reliefContrast = slope * (0.3 + uplandMask * 0.35) + peakMask * 0.18;
-        float lightTerm = 0.22 + keyDiffuse * 0.7 + fillDiffuse * 0.2;
-        lightTerm *= 1.0 + reliefContrast * (0.15 + (1.0 - keyDiffuse) * 0.18);
-        lightTerm += hemi * 0.08 + fresnel * 0.04;
+        float reliefContrast = slope * (0.52 + uplandMask * 0.44) + peakMask * 0.26;
+        float lightTerm = 0.18 + keyDiffuse * 0.68 + fillDiffuse * 0.16;
+        lightTerm *= 1.0 + reliefContrast * (0.24 + (1.0 - keyDiffuse) * 0.2);
+        lightTerm += hemi * 0.06 + fresnel * 0.035;
 
         vec3 color = base * lightTerm;
         color += vec3(waterSpec + landSpec);
