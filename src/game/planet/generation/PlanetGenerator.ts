@@ -49,6 +49,8 @@ export class PlanetGenerator {
       config.blendDepth,
       config.material.roughness,
       config.material.metalness,
+      config.material.vegetationDensity,
+      config.material.wetness,
     );
 
     const merged = BufferGeometryUtils.mergeGeometries(faceGeometries, false);

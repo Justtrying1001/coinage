@@ -40,6 +40,8 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       blendDepth: 0.01,
       roughness: 0.42,
       metalness: 0.08,
+      vegetationDensity: 0.45,
+      wetness: 0.88,
     },
     postfx: { bloom: { strength: 0.014, radius: 0.08, threshold: 0.82 }, exposure: 1.14 },
   },
@@ -57,6 +59,8 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       blendDepth: 0.01,
       roughness: 0.5,
       metalness: 0.05,
+      vegetationDensity: 0.52,
+      wetness: 0.62,
     },
     postfx: { bloom: { strength: 0.012, radius: 0.08, threshold: 0.82 }, exposure: 1.12 },
   },
@@ -69,11 +73,13 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       ],
     },
     surface: {
-      elevationGradient: [s(0, [0.58, 0.42, 0.2]), s(0.5, [0.74, 0.58, 0.28]), s(0.85, [0.64, 0.48, 0.3]), s(1, [0.94, 0.87, 0.7])],
-      depthGradient: [s(0, [0.12, 0.1, 0.2]), s(1, [0.28, 0.2, 0.25])],
+      elevationGradient: [s(0, [0.5, 0.38, 0.22]), s(0.45, [0.67, 0.54, 0.32]), s(0.82, [0.61, 0.49, 0.34]), s(1, [0.84, 0.78, 0.64])],
+      depthGradient: [s(0, [0.1, 0.09, 0.11]), s(1, [0.22, 0.17, 0.13])],
       blendDepth: 0.008,
       roughness: 0.72,
       metalness: 0.04,
+      vegetationDensity: 0.08,
+      wetness: 0.12,
     },
     postfx: { bloom: { strength: 0.008, radius: 0.06, threshold: 0.84 }, exposure: 1.08 },
   },
@@ -86,11 +92,13 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       ],
     },
     surface: {
-      elevationGradient: [s(0, [0.68, 0.82, 0.9]), s(0.65, [0.8, 0.88, 0.94]), s(1, [1, 1, 1])],
-      depthGradient: [s(0, [0.03, 0.2, 0.45]), s(1, [0.22, 0.55, 0.8])],
+      elevationGradient: [s(0, [0.56, 0.66, 0.74]), s(0.52, [0.72, 0.8, 0.86]), s(0.88, [0.84, 0.89, 0.93]), s(1, [0.95, 0.97, 0.99])],
+      depthGradient: [s(0, [0.02, 0.14, 0.29]), s(1, [0.16, 0.35, 0.54])],
       blendDepth: 0.01,
       roughness: 0.38,
       metalness: 0.12,
+      vegetationDensity: 0.06,
+      wetness: 0.36,
     },
     postfx: { bloom: { strength: 0.012, radius: 0.08, threshold: 0.8 }, exposure: 1.18 },
   },
@@ -103,11 +111,13 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       ],
     },
     surface: {
-      elevationGradient: [s(0, [0.22, 0.14, 0.13]), s(0.4, [0.4, 0.24, 0.18]), s(0.8, [0.62, 0.28, 0.18]), s(1, [0.96, 0.44, 0.18])],
-      depthGradient: [s(0, [0.04, 0.03, 0.06]), s(1, [0.2, 0.08, 0.08])],
+      elevationGradient: [s(0, [0.15, 0.13, 0.14]), s(0.44, [0.26, 0.22, 0.2]), s(0.82, [0.44, 0.27, 0.2]), s(0.93, [0.62, 0.3, 0.18]), s(1, [0.86, 0.44, 0.18])],
+      depthGradient: [s(0, [0.03, 0.03, 0.04]), s(1, [0.1, 0.06, 0.06])],
       blendDepth: 0.006,
-      roughness: 0.65,
+      roughness: 0.7,
       metalness: 0.14,
+      vegetationDensity: 0.04,
+      wetness: 0.08,
     },
     postfx: { bloom: { strength: 0.014, radius: 0.08, threshold: 0.8 }, exposure: 1.14 },
   },
@@ -120,11 +130,13 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       ],
     },
     surface: {
-      elevationGradient: [s(0, [0.45, 0.48, 0.42]), s(0.6, [0.58, 0.56, 0.48]), s(1, [0.9, 0.9, 0.84])],
-      depthGradient: [s(0, [0.1, 0.14, 0.24]), s(1, [0.26, 0.32, 0.45])],
+      elevationGradient: [s(0, [0.44, 0.4, 0.31]), s(0.48, [0.54, 0.48, 0.35]), s(0.82, [0.66, 0.56, 0.42]), s(1, [0.82, 0.76, 0.65])],
+      depthGradient: [s(0, [0.08, 0.1, 0.15]), s(1, [0.2, 0.24, 0.3])],
       blendDepth: 0.01,
       roughness: 0.46,
       metalness: 0.28,
+      vegetationDensity: 0.1,
+      wetness: 0.18,
     },
     postfx: { bloom: { strength: 0.01, radius: 0.06, threshold: 0.84 }, exposure: 1.1 },
   },
@@ -142,13 +154,34 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       blendDepth: 0.006,
       roughness: 0.68,
       metalness: 0.08,
+      vegetationDensity: 0.02,
+      wetness: 0.05,
     },
     postfx: { bloom: { strength: 0.006, radius: 0.05, threshold: 0.86 }, exposure: 1.06 },
+  },
+  jungle: {
+    generation: {
+      resolution: BASE_PLANET_RESOLUTION,
+      filters: [
+        simple({ strength: 0.18, roughness: 2.2, baseRoughness: 1.0, persistence: 0.5, minValue: 1.03 }),
+        ridgid({ strength: 0.08, roughness: 2.45, baseRoughness: 1.02, persistence: 0.52, minValue: 1.8, layerCount: 4, center: [7, 15, 12] }),
+      ],
+    },
+    surface: {
+      elevationGradient: [s(0, [0.1, 0.34, 0.14]), s(0.34, [0.12, 0.46, 0.17]), s(0.68, [0.22, 0.52, 0.2]), s(0.88, [0.42, 0.45, 0.25]), s(1, [0.74, 0.74, 0.67])],
+      depthGradient: [s(0, [0.02, 0.11, 0.2]), s(1, [0.11, 0.3, 0.46])],
+      blendDepth: 0.012,
+      roughness: 0.62,
+      metalness: 0.04,
+      vegetationDensity: 0.92,
+      wetness: 0.84,
+    },
+    postfx: { bloom: { strength: 0.01, radius: 0.08, threshold: 0.84 }, exposure: 1.1 },
   },
 };
 
 function resolvePlanetResolution(profile: PlanetVisualProfile) {
-  if (profile.reliefSharpness > 0.72 || profile.reliefStrength > 0.74) {
+  if (profile.reliefSharpness > 1.45 || profile.reliefStrength > 0.16) {
     return HIGH_DETAIL_PLANET_RESOLUTION;
   }
   return BASE_PLANET_RESOLUTION;
@@ -161,11 +194,13 @@ function clamp(value: number, min: number, max: number) {
 export function createPlanetGenerationConfig(seed: number, profile: PlanetVisualProfile): PlanetGenerationConfig {
   const preset = BASE_PRESETS[profile.archetype];
   const rng = new SeededRng(seed ^ 0x7f4a7c15);
+  const wetness = clamp(profile.humidityStrength * 0.7 + profile.oceanLevel * 0.3, 0, 1);
+  const dryness = 1 - wetness;
 
   const filters = preset.generation.filters.map((filter, index) => ({
     ...filter,
     strength: clamp(filter.strength + rng.range(-0.02, 0.02) + profile.reliefStrength * 0.08, 0.04, 0.35),
-    roughness: clamp(filter.roughness + rng.range(-0.2, 0.2), 1.6, 3.2),
+    roughness: clamp(filter.roughness + rng.range(-0.2, 0.2) + dryness * 0.06 - wetness * 0.04, 1.6, 3.2),
     minValue: clamp(filter.minValue + rng.range(-0.12, 0.12), 0.8, 2.1),
     center: [
       filter.center[0] + Math.floor(rng.range(-8, 8)),
@@ -185,8 +220,10 @@ export function createPlanetGenerationConfig(seed: number, profile: PlanetVisual
     depthGradient: preset.surface.depthGradient,
     blendDepth: preset.surface.blendDepth,
     material: {
-      roughness: clamp(preset.surface.roughness + profile.roughness * 0.2, 0.1, 0.95),
+      roughness: clamp(preset.surface.roughness + profile.roughness * 0.2 + wetness * 0.06 - dryness * 0.04, 0.1, 0.95),
       metalness: clamp(preset.surface.metalness + profile.metalness * 0.7, 0.02, 0.55),
+      vegetationDensity: clamp(preset.surface.vegetationDensity + profile.humidityStrength * 0.28 - profile.craterWeight * 0.12, 0, 1),
+      wetness: clamp(preset.surface.wetness + profile.oceanLevel * 0.22 + profile.humidityStrength * 0.18, 0, 1),
     },
     postfx: {
       bloom: preset.postfx.bloom,
