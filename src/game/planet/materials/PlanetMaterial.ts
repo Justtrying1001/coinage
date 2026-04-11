@@ -78,34 +78,96 @@ export function createPlanetMaterial(
         return colors[size - 1];
       }
 
+      float hash31(vec3 p) {
+        return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
+      }
+
+      float noise3(vec3 p) {
+        vec3 i = floor(p);
+        vec3 f = fract(p);
+        vec3 u = f * f * (3.0 - 2.0 * f);
+
+        return mix(
+          mix(
+            mix(hash31(i + vec3(0.0, 0.0, 0.0)), hash31(i + vec3(1.0, 0.0, 0.0)), u.x),
+            mix(hash31(i + vec3(0.0, 1.0, 0.0)), hash31(i + vec3(1.0, 1.0, 0.0)), u.x),
+            u.y
+          ),
+          mix(
+            mix(hash31(i + vec3(0.0, 0.0, 1.0)), hash31(i + vec3(1.0, 0.0, 1.0)), u.x),
+            mix(hash31(i + vec3(0.0, 1.0, 1.0)), hash31(i + vec3(1.0, 1.0, 1.0)), u.x),
+            u.y
+          ),
+          u.z
+        );
+      }
+
+      float fbm(vec3 p) {
+        float sum = 0.0;
+        float amp = 0.5;
+        float freq = 1.0;
+        for (int i = 0; i < 3; i++) {
+          sum += noise3(p * freq) * amp;
+          freq *= 2.1;
+          amp *= 0.5;
+        }
+        return sum;
+      }
+
       void main() {
         float seaLevel = 1.0;
-        vec3 base;
-        if (vElevation < seaLevel - uBlendDepth) {
-          float d = invLerp(uMinMax.x, seaLevel, vElevation);
-          base = gradientColor(d, uDepthSize, uDepthAnchors, uDepthColors);
-        } else if (vElevation > seaLevel + uBlendDepth) {
-          float e = invLerp(seaLevel, uMinMax.y, vElevation);
-          base = gradientColor(e, uElevationSize, uElevationAnchors, uElevationColors);
-        } else {
-          float d = invLerp(uMinMax.x, seaLevel, vElevation);
-          float e = invLerp(seaLevel, uMinMax.y, vElevation);
-          float t = smoothstep(seaLevel - uBlendDepth, seaLevel + uBlendDepth, vElevation);
-          base = mix(
-            gradientColor(d, uDepthSize, uDepthAnchors, uDepthColors),
-            gradientColor(e, uElevationSize, uElevationAnchors, uElevationColors),
-            t
-          );
-        }
-
         vec3 N = normalize(vNormalW);
+        vec3 up = normalize(vPositionW);
+        float slope = clamp(1.0 - dot(N, up), 0.0, 1.0);
+
+        float depthN = invLerp(uMinMax.x, seaLevel, vElevation);
+        float elevN = invLerp(seaLevel, uMinMax.y, vElevation);
+
+        float macro = fbm(vPositionW * 2.8 + vec3(5.2, 1.4, 3.7));
+        float micro = fbm(vPositionW * 10.0 + vec3(vElevation * 3.0));
+        float breakup = mix(macro, micro, 0.5);
+
+        float coastMask = smoothstep(seaLevel - uBlendDepth * 0.6, seaLevel + uBlendDepth * 1.2, vElevation);
+        float waterMask = 1.0 - smoothstep(seaLevel - uBlendDepth * 0.35, seaLevel + uBlendDepth * 0.9, vElevation);
+
+        float landDetail = (breakup - 0.5) * (0.08 + slope * 0.1);
+        float depthDetail = (macro - 0.5) * 0.07;
+
+        vec3 depthBase = gradientColor(clamp(depthN + depthDetail, 0.0, 1.0), uDepthSize, uDepthAnchors, uDepthColors);
+        vec3 landBase = gradientColor(clamp(elevN + landDetail, 0.0, 1.0), uElevationSize, uElevationAnchors, uElevationColors);
+
+        float beachBand = 1.0 - smoothstep(0.02, 0.09, elevN);
+        float uplandMask = smoothstep(0.32, 0.74, elevN);
+        float peakMask = smoothstep(0.72, 0.96, elevN);
+
+        vec3 coastTint = mix(landBase * 1.06, depthBase * 1.05, 0.35);
+        vec3 terrain = landBase;
+        terrain = mix(terrain, terrain * 0.92, slope * 0.35);
+        terrain = mix(terrain, terrain * 1.08, uplandMask * 0.35);
+        terrain = mix(terrain, terrain * 1.14, peakMask * (0.45 + slope * 0.3));
+        terrain = mix(terrain, coastTint, beachBand * 0.5);
+
+        vec3 water = depthBase * (0.78 + depthN * 0.35);
+        vec3 base = mix(water, terrain, coastMask);
+
         vec3 L = normalize(-uLightDirection);
         vec3 V = normalize(cameraPosition - vPositionW);
-        vec3 H = normalize(V - L);
+        vec3 H = normalize(L + V);
 
-        float diffuse = max(dot(N, -L), 0.0);
-        float spec = pow(max(dot(N, H), 0.0), mix(10.0, 80.0, 1.0 - uRoughness));
-        vec3 color = base * (0.2 + diffuse * 0.9) + vec3(spec * (0.08 + uMetalness * 0.6));
+        float diffuse = max(dot(N, L), 0.0);
+        float hemi = dot(N, up) * 0.5 + 0.5;
+        float ndoth = max(dot(N, H), 0.0);
+        float shininess = mix(16.0, 96.0, 1.0 - clamp(uRoughness, 0.0, 1.0));
+
+        float waterSpec = pow(ndoth, 72.0) * waterMask * (0.06 + (1.0 - uRoughness) * 0.16);
+        float landSpec = pow(ndoth, shininess) * (1.0 - waterMask) * (0.01 + uMetalness * 0.18);
+
+        float lightTerm = 0.2 + diffuse * 0.95;
+        lightTerm *= mix(0.95, 1.1, slope * 0.5 + peakMask * 0.4);
+        lightTerm += hemi * 0.08;
+
+        vec3 color = base * lightTerm;
+        color += vec3(waterSpec + landSpec);
 
         gl_FragColor = vec4(color, 1.0);
       }

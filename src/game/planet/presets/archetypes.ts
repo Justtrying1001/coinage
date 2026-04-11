@@ -22,10 +22,13 @@ const ridgid = (config: Partial<NoiseFilterConfig>): NoiseFilterConfig => ({
   useFirstLayerAsMask: true,
 });
 
+const BASE_PLANET_RESOLUTION = 128;
+const HIGH_DETAIL_PLANET_RESOLUTION = 144;
+
 const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
   oceanic: {
     generation: {
-      resolution: 96,
+      resolution: BASE_PLANET_RESOLUTION,
       filters: [
         simple({ strength: 0.23, roughness: 2.2, baseRoughness: 1.1, persistence: 0.48, minValue: 1.05 }),
         ridgid({ strength: 0.08, roughness: 2.4, minValue: 1.7, layerCount: 4, center: [12, 3, 27] }),
@@ -38,11 +41,11 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       roughness: 0.42,
       metalness: 0.08,
     },
-    postfx: { bloom: { strength: 0.05, radius: 0.22, threshold: 0.62 }, exposure: 1.14 },
+    postfx: { bloom: { strength: 0.014, radius: 0.08, threshold: 0.82 }, exposure: 1.14 },
   },
   terrestrial: {
     generation: {
-      resolution: 96,
+      resolution: BASE_PLANET_RESOLUTION,
       filters: [
         simple({ strength: 0.21, roughness: 2.3, baseRoughness: 1.05, minValue: 1.08 }),
         ridgid({ strength: 0.09, roughness: 2.5, baseRoughness: 0.95, minValue: 1.85, layerCount: 4, center: [8, 11, 3] }),
@@ -55,11 +58,11 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       roughness: 0.5,
       metalness: 0.05,
     },
-    postfx: { bloom: { strength: 0.045, radius: 0.2, threshold: 0.6 }, exposure: 1.12 },
+    postfx: { bloom: { strength: 0.012, radius: 0.08, threshold: 0.82 }, exposure: 1.12 },
   },
   arid: {
     generation: {
-      resolution: 96,
+      resolution: BASE_PLANET_RESOLUTION,
       filters: [
         simple({ strength: 0.19, roughness: 2.5, baseRoughness: 1.15, persistence: 0.52, minValue: 1.1, layerCount: 9 }),
         ridgid({ strength: 0.14, roughness: 2.55, baseRoughness: 1.2, persistence: 0.56, minValue: 1.78, layerCount: 5, center: [5, 18, 6] }),
@@ -72,11 +75,11 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       roughness: 0.72,
       metalness: 0.04,
     },
-    postfx: { bloom: { strength: 0.03, radius: 0.16, threshold: 0.64 }, exposure: 1.08 },
+    postfx: { bloom: { strength: 0.008, radius: 0.06, threshold: 0.84 }, exposure: 1.08 },
   },
   frozen: {
     generation: {
-      resolution: 96,
+      resolution: BASE_PLANET_RESOLUTION,
       filters: [
         simple({ strength: 0.15, roughness: 2.0, baseRoughness: 0.9, persistence: 0.48, minValue: 1.0 }),
         ridgid({ strength: 0.06, roughness: 2.2, baseRoughness: 1.0, minValue: 1.82, layerCount: 4, center: [17, 2, 9] }),
@@ -89,11 +92,11 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       roughness: 0.38,
       metalness: 0.12,
     },
-    postfx: { bloom: { strength: 0.04, radius: 0.2, threshold: 0.58 }, exposure: 1.18 },
+    postfx: { bloom: { strength: 0.012, radius: 0.08, threshold: 0.8 }, exposure: 1.18 },
   },
   volcanic: {
     generation: {
-      resolution: 96,
+      resolution: BASE_PLANET_RESOLUTION,
       filters: [
         simple({ strength: 0.2, roughness: 2.35, baseRoughness: 1.05, persistence: 0.52, minValue: 1.08 }),
         ridgid({ strength: 0.18, roughness: 2.8, baseRoughness: 1.4, persistence: 0.55, minValue: 1.55, layerCount: 5, center: [14, 14, 1] }),
@@ -106,11 +109,11 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       roughness: 0.65,
       metalness: 0.14,
     },
-    postfx: { bloom: { strength: 0.055, radius: 0.24, threshold: 0.56 }, exposure: 1.14 },
+    postfx: { bloom: { strength: 0.014, radius: 0.08, threshold: 0.8 }, exposure: 1.14 },
   },
   mineral: {
     generation: {
-      resolution: 96,
+      resolution: BASE_PLANET_RESOLUTION,
       filters: [
         simple({ strength: 0.2, roughness: 2.4, baseRoughness: 1.0, persistence: 0.5, minValue: 1.07 }),
         ridgid({ strength: 0.1, roughness: 2.45, baseRoughness: 1.1, persistence: 0.54, minValue: 1.75, layerCount: 4, center: [9, 20, 5] }),
@@ -123,11 +126,11 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       roughness: 0.46,
       metalness: 0.28,
     },
-    postfx: { bloom: { strength: 0.035, radius: 0.16, threshold: 0.62 }, exposure: 1.1 },
+    postfx: { bloom: { strength: 0.01, radius: 0.06, threshold: 0.84 }, exposure: 1.1 },
   },
   barren: {
     generation: {
-      resolution: 96,
+      resolution: BASE_PLANET_RESOLUTION,
       filters: [
         simple({ strength: 0.2, roughness: 2.45, baseRoughness: 1.12, persistence: 0.52, minValue: 1.1, layerCount: 9 }),
         ridgid({ strength: 0.12, roughness: 2.6, baseRoughness: 1.3, persistence: 0.56, minValue: 1.72, layerCount: 5, center: [4, 3, 18] }),
@@ -140,9 +143,16 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       roughness: 0.68,
       metalness: 0.08,
     },
-    postfx: { bloom: { strength: 0.02, radius: 0.14, threshold: 0.66 }, exposure: 1.06 },
+    postfx: { bloom: { strength: 0.006, radius: 0.05, threshold: 0.86 }, exposure: 1.06 },
   },
 };
+
+function resolvePlanetResolution(profile: PlanetVisualProfile) {
+  if (profile.reliefSharpness > 0.72 || profile.reliefStrength > 0.74) {
+    return HIGH_DETAIL_PLANET_RESOLUTION;
+  }
+  return BASE_PLANET_RESOLUTION;
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -168,7 +178,7 @@ export function createPlanetGenerationConfig(seed: number, profile: PlanetVisual
   return {
     seed,
     archetype: profile.archetype,
-    resolution: preset.generation.resolution,
+    resolution: resolvePlanetResolution(profile),
     radius: 1,
     filters,
     elevationGradient: preset.surface.elevationGradient,

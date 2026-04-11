@@ -4,13 +4,15 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
+const BLOOM_CLARITY_SCALE = 0.35;
+
 export class PlanetPostFx {
   private readonly composer: EffectComposer;
   private readonly bloom: UnrealBloomPass;
 
   constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera) {
     this.composer = new EffectComposer(renderer);
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.2, 0.5, 0);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.01, 0.08, 0.85);
 
     this.composer.addPass(new RenderPass(scene, camera));
     this.composer.addPass(this.bloom);
@@ -28,9 +30,10 @@ export class PlanetPostFx {
   }
 
   setBloom(settings: { strength: number; radius: number; threshold: number }) {
-    this.bloom.strength = settings.strength;
-    this.bloom.radius = settings.radius;
-    this.bloom.threshold = settings.threshold;
+    this.bloom.strength = settings.strength * BLOOM_CLARITY_SCALE;
+    this.bloom.radius = Math.min(settings.radius, 0.12);
+    this.bloom.threshold = Math.max(settings.threshold, 0.8);
+    this.bloom.enabled = this.bloom.strength > 0.001;
   }
 
   dispose() {
