@@ -33,12 +33,6 @@ export interface PlanetArchetypePreset {
     roughness: number;
     metalness: number;
   };
-  atmosphere: {
-    enabled: boolean;
-    color: Vector3Tuple;
-    shellScale: number;
-    intensity: number;
-  };
   postfx: {
     bloom: { strength: number; radius: number; threshold: number };
     exposure: number;
@@ -58,6 +52,5 @@ export interface PlanetGenerationConfig {
     roughness: number;
     metalness: number;
   };
-  atmosphere: PlanetArchetypePreset['atmosphere'];
   postfx: PlanetArchetypePreset['postfx'];
 }
