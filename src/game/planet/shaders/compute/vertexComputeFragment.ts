@@ -70,8 +70,9 @@ void main(){
   float resolution = uResolution;
   vec3 axisA = uLocalUp.yzx;
   vec3 axisB = cross(uLocalUp, axisA);
-  vec2 uv = gl_FragCoord.xy / resolution;
-  vec3 pointOnCube = uLocalUp * (1.0 - 1.0 / resolution) + axisA * (uv.x - 0.5) * 2.0 + axisB * (uv.y - 0.5) * 2.0;
+  vec2 grid = gl_FragCoord.xy - vec2(0.5);
+  vec2 percent = grid / (resolution - 1.0);
+  vec3 pointOnCube = uLocalUp + axisA * (percent.x - 0.5) * 2.0 + axisB * (percent.y - 0.5) * 2.0;
   vec3 pointOnUnitSphere = normalize(pointOnCube);
 
   float mask = max(0.0, evaluateNoise(pointOnUnitSphere, 0));

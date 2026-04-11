@@ -38,8 +38,7 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       roughness: 0.42,
       metalness: 0.08,
     },
-    atmosphere: { enabled: true, color: [0.35, 0.62, 1], shellScale: 1.5, intensity: 1 },
-    postfx: { bloom: { strength: 0.2, radius: 0.52, threshold: 0 }, exposure: 1.14 },
+    postfx: { bloom: { strength: 0.05, radius: 0.22, threshold: 0.62 }, exposure: 1.14 },
   },
   terrestrial: {
     generation: {
@@ -56,8 +55,7 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       roughness: 0.5,
       metalness: 0.05,
     },
-    atmosphere: { enabled: true, color: [0.4, 0.66, 1], shellScale: 1.48, intensity: 0.95 },
-    postfx: { bloom: { strength: 0.18, radius: 0.5, threshold: 0 }, exposure: 1.12 },
+    postfx: { bloom: { strength: 0.045, radius: 0.2, threshold: 0.6 }, exposure: 1.12 },
   },
   arid: {
     generation: {
@@ -74,8 +72,7 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       roughness: 0.72,
       metalness: 0.04,
     },
-    atmosphere: { enabled: true, color: [0.92, 0.65, 0.4], shellScale: 1.42, intensity: 0.68 },
-    postfx: { bloom: { strength: 0.1, radius: 0.45, threshold: 0 }, exposure: 1.08 },
+    postfx: { bloom: { strength: 0.03, radius: 0.16, threshold: 0.64 }, exposure: 1.08 },
   },
   frozen: {
     generation: {
@@ -92,8 +89,7 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       roughness: 0.38,
       metalness: 0.12,
     },
-    atmosphere: { enabled: true, color: [0.72, 0.86, 1], shellScale: 1.48, intensity: 0.88 },
-    postfx: { bloom: { strength: 0.2, radius: 0.5, threshold: 0 }, exposure: 1.18 },
+    postfx: { bloom: { strength: 0.04, radius: 0.2, threshold: 0.58 }, exposure: 1.18 },
   },
   volcanic: {
     generation: {
@@ -110,8 +106,7 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       roughness: 0.65,
       metalness: 0.14,
     },
-    atmosphere: { enabled: true, color: [1, 0.56, 0.34], shellScale: 1.4, intensity: 0.6 },
-    postfx: { bloom: { strength: 0.24, radius: 0.58, threshold: 0 }, exposure: 1.14 },
+    postfx: { bloom: { strength: 0.055, radius: 0.24, threshold: 0.56 }, exposure: 1.14 },
   },
   mineral: {
     generation: {
@@ -128,8 +123,7 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       roughness: 0.46,
       metalness: 0.28,
     },
-    atmosphere: { enabled: true, color: [0.72, 0.8, 0.86], shellScale: 1.38, intensity: 0.5 },
-    postfx: { bloom: { strength: 0.14, radius: 0.45, threshold: 0 }, exposure: 1.1 },
+    postfx: { bloom: { strength: 0.035, radius: 0.16, threshold: 0.62 }, exposure: 1.1 },
   },
   barren: {
     generation: {
@@ -146,8 +140,7 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       roughness: 0.68,
       metalness: 0.08,
     },
-    atmosphere: { enabled: false, color: [0.6, 0.6, 0.6], shellScale: 1.35, intensity: 0.2 },
-    postfx: { bloom: { strength: 0.08, radius: 0.42, threshold: 0 }, exposure: 1.06 },
+    postfx: { bloom: { strength: 0.02, radius: 0.14, threshold: 0.66 }, exposure: 1.06 },
   },
 };
 
@@ -185,7 +178,6 @@ export function createPlanetGenerationConfig(seed: number, profile: PlanetVisual
       roughness: clamp(preset.surface.roughness + profile.roughness * 0.2, 0.1, 0.95),
       metalness: clamp(preset.surface.metalness + profile.metalness * 0.7, 0.02, 0.55),
     },
-    atmosphere: preset.atmosphere,
     postfx: {
       bloom: preset.postfx.bloom,
       exposure: clamp(preset.postfx.exposure + (profile.lightIntensity - 1) * 0.18, 0.92, 1.26),
