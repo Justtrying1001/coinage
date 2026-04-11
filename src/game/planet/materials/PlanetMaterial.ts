@@ -11,6 +11,8 @@ export function createPlanetMaterial(
   blendDepth: number,
   roughness: number,
   metalness: number,
+  vegetationDensity: number,
+  wetness: number,
 ) {
   const normalizedElevation = normalizeStops(elevationGradient, [1, 1, 1]);
   const normalizedDepth = normalizeStops(depthGradient, [0, 0, 0.5]);
@@ -26,7 +28,9 @@ export function createPlanetMaterial(
       uDepthColors: { value: normalizedDepth.map((s) => new THREE.Vector3(...s.color)) },
       uRoughness: { value: roughness },
       uMetalness: { value: metalness },
-      uLightDirection: { value: new THREE.Vector3(1, 1, 1).normalize() },
+      uVegetationDensity: { value: vegetationDensity },
+      uWetness: { value: wetness },
+      uLightDirection: { value: new THREE.Vector3(0.85, 0.35, 0.55).normalize() },
       uBlendDepth: { value: Math.max(0.001, blendDepth) },
     },
     vertexShader: `
@@ -54,6 +58,8 @@ export function createPlanetMaterial(
       uniform vec3 uDepthColors[MAX_STOPS];
       uniform float uRoughness;
       uniform float uMetalness;
+      uniform float uVegetationDensity;
+      uniform float uWetness;
       uniform vec3 uLightDirection;
       uniform float uBlendDepth;
       varying float vElevation;
@@ -142,29 +148,42 @@ export function createPlanetMaterial(
 
         vec3 coastTint = mix(landBase * 1.06, depthBase * 1.05, 0.35);
         vec3 terrain = landBase;
+        float vegetationMask = uVegetationDensity
+          * smoothstep(0.02, 0.6, elevN)
+          * (1.0 - smoothstep(0.24, 0.72, slope))
+          * (1.0 - peakMask);
+        vec3 canopyTint = vec3(0.15, 0.37, 0.14);
         terrain = mix(terrain, terrain * 0.92, slope * 0.35);
+        terrain = mix(terrain, mix(terrain, canopyTint, 0.6), vegetationMask);
         terrain = mix(terrain, terrain * 1.08, uplandMask * 0.35);
         terrain = mix(terrain, terrain * 1.14, peakMask * (0.45 + slope * 0.3));
         terrain = mix(terrain, coastTint, beachBand * 0.5);
 
-        vec3 water = depthBase * (0.78 + depthN * 0.35);
+        vec3 water = depthBase * (0.76 + depthN * 0.3 + uWetness * 0.08);
         vec3 base = mix(water, terrain, coastMask);
 
         vec3 L = normalize(-uLightDirection);
+        vec3 LFill = normalize(vec3(-L.x * 0.45, 0.82, -L.z * 0.45));
         vec3 V = normalize(cameraPosition - vPositionW);
         vec3 H = normalize(L + V);
+        vec3 HFill = normalize(LFill + V);
 
-        float diffuse = max(dot(N, L), 0.0);
+        float ndotl = dot(N, L);
+        float keyDiffuse = clamp((ndotl + 0.3) / 1.3, 0.0, 1.0);
+        float fillDiffuse = clamp(dot(N, LFill) * 0.5 + 0.5, 0.0, 1.0);
         float hemi = dot(N, up) * 0.5 + 0.5;
         float ndoth = max(dot(N, H), 0.0);
+        float ndothFill = max(dot(N, HFill), 0.0);
+        float fresnel = pow(clamp(1.0 - max(dot(N, V), 0.0), 0.0, 1.0), 2.1);
         float shininess = mix(16.0, 96.0, 1.0 - clamp(uRoughness, 0.0, 1.0));
 
-        float waterSpec = pow(ndoth, 72.0) * waterMask * (0.06 + (1.0 - uRoughness) * 0.16);
-        float landSpec = pow(ndoth, shininess) * (1.0 - waterMask) * (0.01 + uMetalness * 0.18);
+        float waterSpec = (pow(ndoth, 72.0) * 0.85 + pow(ndothFill, 42.0) * 0.35) * waterMask * (0.03 + (1.0 - uRoughness) * 0.14 + fresnel * 0.22);
+        float landSpec = (pow(ndoth, shininess) * 0.8 + pow(ndothFill, shininess * 0.6) * 0.2) * (1.0 - waterMask) * (0.01 + uMetalness * 0.14);
 
-        float lightTerm = 0.2 + diffuse * 0.95;
-        lightTerm *= mix(0.95, 1.1, slope * 0.5 + peakMask * 0.4);
-        lightTerm += hemi * 0.08;
+        float reliefContrast = slope * (0.3 + uplandMask * 0.35) + peakMask * 0.18;
+        float lightTerm = 0.22 + keyDiffuse * 0.7 + fillDiffuse * 0.2;
+        lightTerm *= 1.0 + reliefContrast * (0.15 + (1.0 - keyDiffuse) * 0.18);
+        lightTerm += hemi * 0.08 + fresnel * 0.04;
 
         vec3 color = base * lightTerm;
         color += vec3(waterSpec + landSpec);

@@ -32,6 +32,8 @@ export interface PlanetArchetypePreset {
     blendDepth: number;
     roughness: number;
     metalness: number;
+    vegetationDensity: number;
+    wetness: number;
   };
   postfx: {
     bloom: { strength: number; radius: number; threshold: number };
@@ -51,6 +53,8 @@ export interface PlanetGenerationConfig {
   material: {
     roughness: number;
     metalness: number;
+    vegetationDensity: number;
+    wetness: number;
   };
   postfx: PlanetArchetypePreset['postfx'];
 }
