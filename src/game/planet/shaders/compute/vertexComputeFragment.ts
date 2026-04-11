@@ -3,16 +3,16 @@ precision highp float;
 const int MAX_FILTER_COUNT = 3;
 uniform float uResolution;
 uniform vec3 uLocalUp;
-uniform float uSeed;
 uniform int uFilterLength;
 uniform vec4 uFilterParamsA[MAX_FILTER_COUNT]; // strength, roughness, baseRoughness, persistence
 uniform vec4 uFilterParamsB[MAX_FILTER_COUNT]; // minValue, layerCount, useMask, kind(0 simple 1 ridgid)
 uniform vec3 uFilterCenter[MAX_FILTER_COUNT];
+uniform vec3 uSeedOffset[MAX_FILTER_COUNT];
 
-vec4 permute(vec4 x, float seed) { return mod(((x*34.0)+1.0 + seed)*x, 289.0); }
+vec4 permute(vec4 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
 vec4 taylorInvSqrt(vec4 r){ return 1.79284291400159 - 0.85373472095314 * r; }
 vec3 fade(vec3 t) { return t*t*t*(t*(t*6.0-15.0)+10.0); }
-float cnoise(vec3 P, float seed) {
+float cnoise(vec3 P) {
   vec3 Pi0 = floor(P);
   vec3 Pi1 = Pi0 + vec3(1.0);
   Pi0 = mod(Pi0, 289.0); Pi1 = mod(Pi1, 289.0);
@@ -20,8 +20,8 @@ float cnoise(vec3 P, float seed) {
   vec4 ix = vec4(Pi0.x, Pi1.x, Pi0.x, Pi1.x);
   vec4 iy = vec4(Pi0.yy, Pi1.yy);
   vec4 iz0 = Pi0.zzzz; vec4 iz1 = Pi1.zzzz;
-  vec4 ixy = permute(permute(ix, seed) + iy, seed);
-  vec4 ixy0 = permute(ixy + iz0, seed); vec4 ixy1 = permute(ixy + iz1, seed);
+  vec4 ixy = permute(permute(ix) + iy);
+  vec4 ixy0 = permute(ixy + iz0); vec4 ixy1 = permute(ixy + iz1);
   vec4 gx0 = ixy0 / 7.0; vec4 gy0 = fract(floor(gx0) / 7.0) - 0.5; gx0 = fract(gx0);
   vec4 gz0 = vec4(0.5) - abs(gx0) - abs(gy0); vec4 sz0 = step(gz0, vec4(0.0));
   gx0 -= sz0 * (step(0.0, gx0) - 0.5); gy0 -= sz0 * (step(0.0, gy0) - 0.5);
@@ -53,13 +53,13 @@ float evaluateNoise(vec3 point, int i){
   float noiseValue=0.0; float frequency=baseRoughness; float amplitude=1.0; float weight=1.0;
   for(int l=0;l<10;l++){
     if(float(l)>=layers) break;
-    vec3 pp = point * frequency + uFilterCenter[i];
+    vec3 pp = point * frequency + uFilterCenter[i] + uSeedOffset[i];
     if(kind > 0.5){
-      float v = abs(cnoise(pp, uSeed + float(i)*13.0));
+      float v = abs(cnoise(pp));
       v = 1.0 - v; v = v*v; v *= weight; weight = v;
       noiseValue += v * amplitude;
     } else {
-      noiseValue += (cnoise(pp, uSeed + float(i)*13.0) + 1.0) * 0.5 * amplitude;
+      noiseValue += (cnoise(pp) + 1.0) * 0.5 * amplitude;
     }
     frequency *= roughness; amplitude *= persistence;
   }

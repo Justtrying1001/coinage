@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { NoiseFilterConfig } from '@/game/planet/types';
 import { bufferVertexShader } from '@/game/planet/shaders/compute/bufferVertex';
 import { vertexComputeFragmentShader } from '@/game/planet/shaders/compute/vertexComputeFragment';
+import { buildGpuNoiseOffsets, isLegacyGpuSeedDegenerate } from '@/game/planet/generation/gpu/noiseSeed';
 
 interface GpuFaceResult {
   positions: Float32Array;
@@ -29,17 +30,18 @@ export class GpuTerrainGenerator {
     });
 
     const uniformFilters = normalizeFilters(filters);
+    const noiseOffsets = buildGpuNoiseOffsets(seed, MAX_FILTER_COUNT);
     const scene = new THREE.Scene();
     const camera = new THREE.Camera();
     const material = new THREE.ShaderMaterial({
       uniforms: {
         uResolution: { value: resolution },
         uLocalUp: { value: localUp },
-        uSeed: { value: seed % 100000 },
         uFilterLength: { value: Math.min(uniformFilters.length, MAX_FILTER_COUNT) },
         uFilterParamsA: { value: uniformFilters.map((f) => new THREE.Vector4(f.strength, f.roughness, f.baseRoughness, f.persistence)) },
         uFilterParamsB: { value: uniformFilters.map((f) => new THREE.Vector4(f.minValue, f.layerCount, f.useFirstLayerAsMask ? 1 : 0, f.kind === 'ridgid' ? 1 : 0)) },
         uFilterCenter: { value: uniformFilters.map((f) => new THREE.Vector3(...f.center)) },
+        uSeedOffset: { value: noiseOffsets.map((offset) => new THREE.Vector3(...offset)) },
       },
       vertexShader: bufferVertexShader,
       fragmentShader: vertexComputeFragmentShader,
@@ -69,6 +71,10 @@ export class GpuTerrainGenerator {
     renderTarget.dispose();
     material.dispose();
     quad.geometry.dispose();
+
+    if (isLegacyGpuSeedDegenerate(seed) && typeof console !== 'undefined') {
+      console.info('[planet-audit] avoided legacy GPU noise seed degeneracy', { seed });
+    }
 
     return { positions, elevations, indices };
   }
