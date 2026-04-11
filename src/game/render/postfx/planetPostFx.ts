@@ -8,6 +8,7 @@ export interface PlanetPostFxController {
   render: () => void;
   resize: (width: number, height: number) => void;
   dispose: () => void;
+  setBloom: (settings: { strength: number; radius: number; threshold: number }) => void;
 }
 
 export function createPlanetPostFx(
@@ -17,7 +18,7 @@ export function createPlanetPostFx(
 ): PlanetPostFxController {
   const composer = new EffectComposer(renderer);
   const renderPass = new RenderPass(scene, camera);
-  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.12, 0.52, 1.05);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.2, 0.5, 0.0);
   const outputPass = new OutputPass();
 
   composer.addPass(renderPass);
@@ -34,6 +35,11 @@ export function createPlanetPostFx(
     dispose: () => {
       composer.dispose();
       bloom.dispose();
+    },
+    setBloom: ({ strength, radius, threshold }) => {
+      bloom.strength = strength;
+      bloom.radius = radius;
+      bloom.threshold = threshold;
     },
   };
 }

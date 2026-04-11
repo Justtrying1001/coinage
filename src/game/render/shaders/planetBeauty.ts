@@ -1,401 +1,406 @@
 import * as THREE from 'three';
 import type { PlanetArchetype, PlanetVisualProfile } from '@/game/render/types';
+import { SeededRng } from '@/game/world/rng';
 
 export interface PlanetBeautyUniformBundle {
   uniforms: Record<string, THREE.IUniform>;
-  atmosphereInnerColor: THREE.Color;
-  atmosphereOuterColor: THREE.Color;
-  atmosphereScale: number;
-  atmosphereOpacity: number;
-  atmospherePower: number;
+  atmosphere: {
+    color: THREE.Color;
+    opacity: number;
+    particleCount: number;
+    minPointSize: number;
+    maxPointSize: number;
+    thickness: number;
+    density: number;
+    scale: number;
+    speed: number;
+  };
+  bloom: {
+    strength: number;
+    radius: number;
+    threshold: number;
+  };
 }
 
 interface ArchetypePreset {
-  elevationShift: number;
-  ocean: THREE.Color;
-  lowland: THREE.Color;
-  upland: THREE.Color;
-  mountain: THREE.Color;
-  peak: THREE.Color;
-  lava: THREE.Color;
-  specularity: number;
-  fresnelTint: THREE.Color;
-  terrainShape: [number, number, number, number];
-  reliefMix: [number, number, number, number];
-  bands0: [number, number, number, number];
-  bands1: [number, number, number, number];
-  atmosphereScale: number;
-  atmosphereOpacity: number;
-  atmospherePower: number;
+  type: 1 | 2 | 3;
+  amplitude: number;
+  sharpness: number;
+  offset: number;
+  period: number;
+  persistence: number;
+  lacunarity: number;
+  octaves: number;
+  bumpStrength: number;
+  bumpOffset: number;
+  ambientIntensity: number;
+  diffuseIntensity: number;
+  specularIntensity: number;
+  shininess: number;
+  colors: [string, string, string, string, string];
+  transitions: [number, number, number, number];
+  blends: [number, number, number, number];
+  atmosphere: PlanetBeautyUniformBundle['atmosphere'];
+  bloom: PlanetBeautyUniformBundle['bloom'];
 }
 
 const PRESETS: Record<PlanetArchetype, ArchetypePreset> = {
-  oceanic: {
-    elevationShift: -0.06,
-    ocean: new THREE.Color('#06304e'),
-    lowland: new THREE.Color('#2e7b67'),
-    upland: new THREE.Color('#4e9e84'),
-    mountain: new THREE.Color('#8eb8a5'),
-    peak: new THREE.Color('#d8ebe4'),
-    lava: new THREE.Color('#8e3928'),
-    specularity: 0.76,
-    fresnelTint: new THREE.Color('#8fd9ff'),
-    terrainShape: [0.26, 0.18, 0.22, 0.14],
-    reliefMix: [1.08, 0.32, 0.08, 0.18],
-    bands0: [0.6, 0.66, 0.75, 0.86],
-    bands1: [0.94, 0.12, 0.18, 0.02],
-    atmosphereScale: 1.04,
-    atmosphereOpacity: 0.2,
-    atmospherePower: 3.0,
-  },
   terrestrial: {
-    elevationShift: 0,
-    ocean: new THREE.Color('#0d3b7d'),
-    lowland: new THREE.Color('#3d8b4d'),
-    upland: new THREE.Color('#809f59'),
-    mountain: new THREE.Color('#8d7f6d'),
-    peak: new THREE.Color('#d8d5ce'),
-    lava: new THREE.Color('#a14224'),
-    specularity: 0.34,
-    fresnelTint: new THREE.Color('#93c9ff'),
-    terrainShape: [0.54, 0.42, 0.46, 0.24],
-    reliefMix: [1.25, 0.62, 0.14, 0.34],
-    bands0: [0.43, 0.5, 0.66, 0.8],
-    bands1: [0.91, 0.2, 0.26, 0.03],
-    atmosphereScale: 1.033,
-    atmosphereOpacity: 0.17,
-    atmospherePower: 3.2,
+    type: 2, amplitude: 0.08, sharpness: 2.4, offset: -0.008, period: 0.58, persistence: 0.5, lacunarity: 1.84, octaves: 9,
+    bumpStrength: 0.85, bumpOffset: 0.004,
+    ambientIntensity: 0.06, diffuseIntensity: 1.0, specularIntensity: 1.2, shininess: 18,
+    colors: ['#0f3570', '#1f6b58', '#7a8e49', '#4f5e38', '#d9d8ce'],
+    transitions: [0.06, 0.19, 0.33, 1.1],
+    blends: [0.11, 0.12, 0.12, 0.16],
+    atmosphere: { color: new THREE.Color('#a8cfff'), opacity: 0.24, particleCount: 3000, minPointSize: 40, maxPointSize: 88, thickness: 0.12, density: 0.15, scale: 0.42, speed: 0.04 },
+    bloom: { strength: 0.18, radius: 0.5, threshold: 0.0 },
+  },
+  oceanic: {
+    type: 2, amplitude: 0.05, sharpness: 2.0, offset: -0.011, period: 0.76, persistence: 0.48, lacunarity: 1.8, octaves: 8,
+    bumpStrength: 0.62, bumpOffset: 0.003,
+    ambientIntensity: 0.07, diffuseIntensity: 1.04, specularIntensity: 2.0, shininess: 28,
+    colors: ['#0a2f6f', '#0f567e', '#3d8c78', '#9db9b0', '#edf7ff'],
+    transitions: [0.05, 0.16, 0.29, 0.8],
+    blends: [0.14, 0.12, 0.1, 0.12],
+    atmosphere: { color: new THREE.Color('#9ad6ff'), opacity: 0.28, particleCount: 3400, minPointSize: 42, maxPointSize: 94, thickness: 0.13, density: 0.2, scale: 0.45, speed: 0.05 },
+    bloom: { strength: 0.22, radius: 0.55, threshold: 0.0 },
   },
   arid: {
-    elevationShift: 0.08,
-    ocean: new THREE.Color('#1b2d41'),
-    lowland: new THREE.Color('#9a7948'),
-    upland: new THREE.Color('#b99156'),
-    mountain: new THREE.Color('#8f643f'),
-    peak: new THREE.Color('#d8c29d'),
-    lava: new THREE.Color('#9f4c1f'),
-    specularity: 0.1,
-    fresnelTint: new THREE.Color('#e6bc8a'),
-    terrainShape: [0.66, 0.68, 0.42, 0.62],
-    reliefMix: [1.18, 0.82, 0.1, 0.28],
-    bands0: [0.22, 0.28, 0.57, 0.79],
-    bands1: [0.9, 0.82, 0.08, 0.02],
-    atmosphereScale: 1.024,
-    atmosphereOpacity: 0.12,
-    atmospherePower: 3.4,
+    type: 2, amplitude: 0.1, sharpness: 2.9, offset: -0.01, period: 0.52, persistence: 0.5, lacunarity: 1.95, octaves: 10,
+    bumpStrength: 1.0, bumpOffset: 0.004,
+    ambientIntensity: 0.05, diffuseIntensity: 1.0, specularIntensity: 0.55, shininess: 10,
+    colors: ['#4a2d1a', '#9a6e3f', '#c6985a', '#7c5d3f', '#ead5b0'],
+    transitions: [0.08, 0.21, 0.36, 1.18],
+    blends: [0.12, 0.14, 0.13, 0.2],
+    atmosphere: { color: new THREE.Color('#f0bf88'), opacity: 0.15, particleCount: 2400, minPointSize: 34, maxPointSize: 72, thickness: 0.09, density: 0.06, scale: 0.38, speed: 0.03 },
+    bloom: { strength: 0.12, radius: 0.45, threshold: 0.0 },
   },
   frozen: {
-    elevationShift: -0.03,
-    ocean: new THREE.Color('#123d65'),
-    lowland: new THREE.Color('#6ba4bf'),
-    upland: new THREE.Color('#b7d7e6'),
-    mountain: new THREE.Color('#e3edf3'),
-    peak: new THREE.Color('#fcffff'),
-    lava: new THREE.Color('#7b9cb7'),
-    specularity: 0.44,
-    fresnelTint: new THREE.Color('#b9edff'),
-    terrainShape: [0.4, 0.28, 0.34, 0.2],
-    reliefMix: [1.06, 0.45, 0.09, 0.2],
-    bands0: [0.48, 0.55, 0.7, 0.82],
-    bands1: [0.9, 0.16, 0.84, 0.02],
-    atmosphereScale: 1.038,
-    atmosphereOpacity: 0.18,
-    atmospherePower: 3.3,
+    type: 2, amplitude: 0.07, sharpness: 2.1, offset: -0.005, period: 0.65, persistence: 0.45, lacunarity: 1.72, octaves: 9,
+    bumpStrength: 0.74, bumpOffset: 0.003,
+    ambientIntensity: 0.07, diffuseIntensity: 1.08, specularIntensity: 1.45, shininess: 22,
+    colors: ['#17406e', '#4f87ad', '#b6d5ea', '#eaf4fb', '#ffffff'],
+    transitions: [0.07, 0.19, 0.31, 0.95],
+    blends: [0.12, 0.1, 0.1, 0.12],
+    atmosphere: { color: new THREE.Color('#d6f1ff'), opacity: 0.22, particleCount: 3200, minPointSize: 40, maxPointSize: 86, thickness: 0.12, density: 0.16, scale: 0.44, speed: 0.045 },
+    bloom: { strength: 0.2, radius: 0.5, threshold: 0.0 },
   },
   volcanic: {
-    elevationShift: 0.1,
-    ocean: new THREE.Color('#311d1f'),
-    lowland: new THREE.Color('#523033'),
-    upland: new THREE.Color('#6a3f37'),
-    mountain: new THREE.Color('#3a2d31'),
-    peak: new THREE.Color('#b59688'),
-    lava: new THREE.Color('#ff6f2d'),
-    specularity: 0.24,
-    fresnelTint: new THREE.Color('#ff9a55'),
-    terrainShape: [0.74, 0.6, 0.82, 0.56],
-    reliefMix: [1.32, 0.96, 0.16, 0.52],
-    bands0: [0.12, 0.19, 0.43, 0.73],
-    bands1: [0.88, 0.44, 0.04, 0.64],
-    atmosphereScale: 1.02,
-    atmosphereOpacity: 0.13,
-    atmospherePower: 3.6,
+    type: 3, amplitude: 0.12, sharpness: 2.8, offset: -0.014, period: 0.5, persistence: 0.53, lacunarity: 2.0, octaves: 10,
+    bumpStrength: 1.05, bumpOffset: 0.004,
+    ambientIntensity: 0.04, diffuseIntensity: 1.0, specularIntensity: 0.82, shininess: 14,
+    colors: ['#1e1418', '#4b2d2f', '#6f3e34', '#2b2224', '#f1772e'],
+    transitions: [0.07, 0.2, 0.37, 0.72],
+    blends: [0.1, 0.12, 0.1, 0.08],
+    atmosphere: { color: new THREE.Color('#ff9a60'), opacity: 0.14, particleCount: 2200, minPointSize: 34, maxPointSize: 70, thickness: 0.08, density: 0.08, scale: 0.35, speed: 0.035 },
+    bloom: { strength: 0.26, radius: 0.6, threshold: 0.0 },
   },
   mineral: {
-    elevationShift: 0.05,
-    ocean: new THREE.Color('#173548'),
-    lowland: new THREE.Color('#58706f'),
-    upland: new THREE.Color('#8f8f7f'),
-    mountain: new THREE.Color('#70706f'),
-    peak: new THREE.Color('#cbc6b9'),
-    lava: new THREE.Color('#da7f4e'),
-    specularity: 0.58,
-    fresnelTint: new THREE.Color('#bce0e3'),
-    terrainShape: [0.58, 0.46, 0.56, 0.32],
-    reliefMix: [1.22, 0.72, 0.13, 0.38],
-    bands0: [0.26, 0.32, 0.58, 0.8],
-    bands1: [0.91, 0.46, 0.08, 0.05],
-    atmosphereScale: 1.026,
-    atmosphereOpacity: 0.11,
-    atmospherePower: 3.5,
+    type: 2, amplitude: 0.09, sharpness: 2.5, offset: -0.009, period: 0.55, persistence: 0.5, lacunarity: 1.86, octaves: 9,
+    bumpStrength: 0.88, bumpOffset: 0.004,
+    ambientIntensity: 0.055, diffuseIntensity: 1.0, specularIntensity: 1.62, shininess: 24,
+    colors: ['#2a4056', '#637c82', '#9a9480', '#77746a', '#d8d1bf'],
+    transitions: [0.08, 0.21, 0.35, 1.03],
+    blends: [0.11, 0.13, 0.11, 0.15],
+    atmosphere: { color: new THREE.Color('#c9dfe8'), opacity: 0.13, particleCount: 2200, minPointSize: 32, maxPointSize: 68, thickness: 0.08, density: 0.06, scale: 0.36, speed: 0.03 },
+    bloom: { strength: 0.15, radius: 0.45, threshold: 0.0 },
   },
   barren: {
-    elevationShift: 0.07,
-    ocean: new THREE.Color('#21252a'),
-    lowland: new THREE.Color('#746455'),
-    upland: new THREE.Color('#8f7a66'),
-    mountain: new THREE.Color('#67574c'),
-    peak: new THREE.Color('#c7b8aa'),
-    lava: new THREE.Color('#8b5f4d'),
-    specularity: 0.14,
-    fresnelTint: new THREE.Color('#dfc8b2'),
-    terrainShape: [0.62, 0.52, 0.44, 0.5],
-    reliefMix: [1.16, 0.76, 0.11, 0.3],
-    bands0: [0.18, 0.24, 0.52, 0.78],
-    bands1: [0.89, 0.62, 0.05, 0.02],
-    atmosphereScale: 1.018,
-    atmosphereOpacity: 0.09,
-    atmospherePower: 3.8,
+    type: 2, amplitude: 0.085, sharpness: 2.6, offset: -0.012, period: 0.5, persistence: 0.5, lacunarity: 1.92, octaves: 10,
+    bumpStrength: 0.92, bumpOffset: 0.004,
+    ambientIntensity: 0.05, diffuseIntensity: 0.96, specularIntensity: 0.35, shininess: 8,
+    colors: ['#322820', '#695444', '#8d745f', '#5f5047', '#c7b7a3'],
+    transitions: [0.08, 0.22, 0.38, 1.15],
+    blends: [0.12, 0.13, 0.14, 0.2],
+    atmosphere: { color: new THREE.Color('#d7bda0'), opacity: 0.1, particleCount: 1800, minPointSize: 28, maxPointSize: 62, thickness: 0.07, density: 0.03, scale: 0.34, speed: 0.028 },
+    bloom: { strength: 0.1, radius: 0.42, threshold: 0.0 },
   },
 };
 
+const noiseFunctions = `
+vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x,289.0);} 
+vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314*r;}
+float simplex3(vec3 v){
+  const vec2 C=vec2(1.0/6.0,1.0/3.0);
+  const vec4 D=vec4(0.0,0.5,1.0,2.0);
+  vec3 i=floor(v+dot(v,C.yyy));
+  vec3 x0=v-i+dot(i,C.xxx);
+  vec3 g=step(x0.yzx,x0.xyz);
+  vec3 l=1.0-g;
+  vec3 i1=min(g.xyz,l.zxy);
+  vec3 i2=max(g.xyz,l.zxy);
+  vec3 x1=x0-i1+C.xxx;
+  vec3 x2=x0-i2+C.yyy;
+  vec3 x3=x0-D.yyy;
+  i=mod(i,289.0);
+  vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));
+  float n_=1.0/7.0;
+  vec3 ns=n_*D.wyz-D.xzx;
+  vec4 j=p-49.0*floor(p*ns.z*ns.z);
+  vec4 x_=floor(j*ns.z);
+  vec4 y_=floor(j-7.0*x_);
+  vec4 x=x_*ns.x+ns.yyyy;
+  vec4 y=y_*ns.x+ns.yyyy;
+  vec4 h=1.0-abs(x)-abs(y);
+  vec4 b0=vec4(x.xy,y.xy);
+  vec4 b1=vec4(x.zw,y.zw);
+  vec4 s0=floor(b0)*2.0+1.0;
+  vec4 s1=floor(b1)*2.0+1.0;
+  vec4 sh=-step(h,vec4(0.0));
+  vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy;
+  vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
+  vec3 p0=vec3(a0.xy,h.x);
+  vec3 p1=vec3(a0.zw,h.y);
+  vec3 p2=vec3(a1.xy,h.z);
+  vec3 p3=vec3(a1.zw,h.w);
+  vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));
+  p0*=norm.x; p1*=norm.y; p2*=norm.z; p3*=norm.w;
+  vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0);
+  m=m*m;
+  return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
+}
+float fractal3(vec3 v,float period,float persistence,float lacunarity,int octaves){
+  float n=0.0;
+  float a=1.0;
+  float maxAmp=0.0;
+  float p=period;
+  for(int i=0;i<12;i++){
+    if(i>=octaves) break;
+    n+=a*simplex3(v/p);
+    maxAmp+=a;
+    a*=persistence;
+    p/=lacunarity;
+  }
+  return n/max(maxAmp,0.0001);
+}
+float terrainHeight(int type,vec3 v,float amplitude,float sharpness,float offset,float period,float persistence,float lacunarity,int octaves,float seedOffset){
+  float h=0.0;
+  vec3 seeded=v+vec3(seedOffset,seedOffset*0.51,-seedOffset*0.33);
+  if(type==1){
+    h=amplitude*simplex3(seeded/period);
+  } else if(type==2){
+    h=fractal3(seeded,period,persistence,lacunarity,octaves);
+    h=amplitude*pow(max(0.0,(h+1.0)/2.0),sharpness);
+  } else {
+    h=fractal3(seeded,period,persistence,lacunarity,octaves);
+    h=amplitude*pow(max(0.0,1.0-abs(h)),sharpness);
+  }
+  return max(0.0,h+offset);
+}`;
+
 export const planetBeautyVertexShader = `
 precision highp float;
-uniform float uSeed; uniform float uRadius; uniform float uDisplacementScale; uniform float uReliefSharpness; uniform float uOceanLevel; uniform float uMacroBias; uniform float uContinentScale; uniform float uRidgeScale; uniform float uCraterScale; uniform float uRidgeWeight; uniform float uCraterWeight; uniform float uPolarWeight; uniform float uElevationShift;
-uniform vec4 uTerrainShape; uniform vec4 uReliefMix;
-varying vec3 vWorldPos; varying vec3 vBaseNormal; varying vec3 vUnitPos; varying float vHeight01; varying float vMacro; varying float vMicro;
-float hash(float n){return fract(sin(n)*43758.5453123);} 
-float noise(vec3 x){vec3 p=floor(x);vec3 f=fract(x);f=f*f*(3.0-2.0*f);float n=p.x+p.y*57.0+p.z*113.0+uSeed*0.173;return mix(mix(mix(hash(n),hash(n+1.0),f.x),mix(hash(n+57.0),hash(n+58.0),f.x),f.y),mix(mix(hash(n+113.0),hash(n+114.0),f.x),mix(hash(n+170.0),hash(n+171.0),f.x),f.y),f.z);} 
-float fbm(vec3 p,int oct){float v=0.0;float a=0.5;float f=1.0;for(int i=0;i<7;i++){if(i>=oct)break;v+=noise(p*f)*a;f*=2.03;a*=0.5;}return v;}
-float ridge(float n){n=abs(n*2.0-1.0);return 1.0-n;} 
-float signedHeight(vec3 unitPos,out float macroMask,out float microDetail){
-  vec3 seedOffset=vec3(uSeed*0.13,-uSeed*0.07,uSeed*0.11);
-  float macroA=fbm(unitPos*(uContinentScale*0.95+0.35)+seedOffset,5);
-  float macroB=fbm(unitPos*(uContinentScale*1.9+1.1)-seedOffset,4);
-  float continental=(macroA-0.5)*1.25+(macroB-0.5)*0.75+uMacroBias*0.9;
-
-  float basinNoise=fbm(unitPos*(uContinentScale*0.55+0.2)-seedOffset*0.35,3)-0.5;
-  float basin=continental-basinNoise*0.32;
-
-  float plateau=fbm(unitPos*(uRidgeScale*0.52+1.2)+seedOffset*1.3)-0.5;
-  float ridges=ridge(fbm(unitPos*(uRidgeScale*1.18+2.1)-seedOffset*1.7,4))-0.5;
-  float crack=ridge(fbm(unitPos*(uRidgeScale*2.3+4.5)+vec3(0.0,uSeed*0.061,0.0),3))-0.5;
-  float craters=smoothstep(0.56,0.9,fbm(unitPos*(uCraterScale*1.2+1.3)+seedOffset*2.0,4));
-
-  float erosion=(fbm(unitPos*(uCraterScale*1.9+4.3)-seedOffset*1.5,3)-0.5)*uTerrainShape.w;
-  float meso=mix(plateau,ridges,uTerrainShape.z) + crack*uTerrainShape.y*0.45 - craters*uCraterWeight*0.42;
-
-  float polar=smoothstep(0.5,0.98,abs(unitPos.y));
-
-  float s=basin*uReliefMix.x + meso*uReliefMix.y + erosion*0.32 + polar*uPolarWeight*0.24 + uElevationShift;
-  s += (uRidgeWeight-0.35)*0.16;
-  s = mix(s*1.15,s,pow(clamp(uReliefSharpness*0.45,0.0,1.0),1.2));
-
-  macroMask=clamp(0.5+s*0.7,0.0,1.0);
-  microDetail=fbm(unitPos*(uRidgeScale*3.2+8.0)+seedOffset*2.3,3)-0.5;
-  return clamp(s,-1.0,1.0);
-}
+attribute vec3 tangent;
+uniform int type;
+uniform float radius;
+uniform float amplitude;
+uniform float sharpness;
+uniform float offset;
+uniform float period;
+uniform float persistence;
+uniform float lacunarity;
+uniform int octaves;
+uniform float seedOffset;
+varying vec3 fragPosition;
+varying vec3 fragNormal;
+varying vec3 fragTangent;
+varying vec3 fragBitangent;
+varying float vHeight;
+${noiseFunctions}
 void main(){
-  vec3 unitPos=normalize(position);
-  float macroMask=0.0;
-  float microDetail=0.0;
-  float signedH=signedHeight(unitPos,macroMask,microDetail);
-  float h=clamp(signedH*0.5+0.5,0.0,1.0);
-  float displacement=(h-uOceanLevel)*uDisplacementScale*1.8;
-  vec3 displacedPos=unitPos*(uRadius+displacement);
-  vec4 world=modelMatrix*vec4(displacedPos,1.0);
-  vWorldPos=world.xyz;
-  vUnitPos=unitPos;
-  vBaseNormal=normalize(mat3(modelMatrix)*unitPos);
-  vHeight01=h;
-  vMacro=macroMask;
-  vMicro=microDetail;
-  gl_Position=projectionMatrix*viewMatrix*world;
-}
-`;
+  float h=terrainHeight(type,position,amplitude,sharpness,offset,period,persistence,lacunarity,octaves,seedOffset);
+  vec3 pos=position*(radius+h);
+  gl_Position=projectionMatrix*modelViewMatrix*vec4(pos,1.0);
+  fragPosition=position;
+  fragNormal=normal;
+  fragTangent=tangent;
+  fragBitangent=cross(normal,tangent);
+  vHeight=h;
+}`;
 
 export const planetBeautyFragmentShader = `
 precision highp float;
-uniform float uSeed; uniform float uTime; uniform float uOceanLevel; uniform float uSpecularity; uniform float uDebugView; uniform vec3 uLightDir; uniform vec3 uAmbientColor; uniform vec3 uLightColor; uniform vec3 uOceanColor; uniform vec3 uLowColor; uniform vec3 uUplandColor; uniform vec3 uMountainColor; uniform vec3 uPeakColor; uniform vec3 uLavaColor; uniform vec3 uFresnelTint;
-uniform float uReliefSharpness; uniform float uMacroBias; uniform float uContinentScale; uniform float uRidgeScale; uniform float uCraterScale; uniform float uRidgeWeight; uniform float uCraterWeight; uniform float uPolarWeight; uniform float uElevationShift;
-uniform vec4 uTerrainShape; uniform vec4 uReliefMix; uniform vec4 uBands0; uniform vec4 uBands1;
-varying vec3 vWorldPos; varying vec3 vBaseNormal; varying vec3 vUnitPos; varying float vHeight01; varying float vMacro; varying float vMicro;
-float hash(float n){return fract(sin(n)*43758.5453123);} 
-float noise(vec3 x){vec3 p=floor(x);vec3 f=fract(x);f=f*f*(3.0-2.0*f);float n=p.x+p.y*57.0+p.z*113.0+uSeed*0.173;return mix(mix(mix(hash(n),hash(n+1.0),f.x),mix(hash(n+57.0),hash(n+58.0),f.x),f.y),mix(mix(hash(n+113.0),hash(n+114.0),f.x),mix(hash(n+170.0),hash(n+171.0),f.x),f.y),f.z);} 
-float fbm(vec3 p,int oct){float v=0.0;float a=0.5;float f=1.0;for(int i=0;i<7;i++){if(i>=oct)break;v+=noise(p*f)*a;f*=2.03;a*=0.5;}return v;}
-float ridge(float n){n=abs(n*2.0-1.0);return 1.0-n;}
-float signedHeight(vec3 unitPos,out float microDetail){
-  vec3 seedOffset=vec3(uSeed*0.13,-uSeed*0.07,uSeed*0.11);
-  float macroA=fbm(unitPos*(uContinentScale*0.95+0.35)+seedOffset,5);
-  float macroB=fbm(unitPos*(uContinentScale*1.9+1.1)-seedOffset,4);
-  float continental=(macroA-0.5)*1.25+(macroB-0.5)*0.75+uMacroBias*0.9;
-  float basinNoise=fbm(unitPos*(uContinentScale*0.55+0.2)-seedOffset*0.35,3)-0.5;
-  float basin=continental-basinNoise*0.32;
-
-  float plateau=fbm(unitPos*(uRidgeScale*0.52+1.2)+seedOffset*1.3)-0.5;
-  float ridges=ridge(fbm(unitPos*(uRidgeScale*1.18+2.1)-seedOffset*1.7,4))-0.5;
-  float crack=ridge(fbm(unitPos*(uRidgeScale*2.3+4.5)+vec3(0.0,uSeed*0.061,0.0),3))-0.5;
-  float craters=smoothstep(0.56,0.9,fbm(unitPos*(uCraterScale*1.2+1.3)+seedOffset*2.0,4));
-  float erosion=(fbm(unitPos*(uCraterScale*1.9+4.3)-seedOffset*1.5,3)-0.5)*uTerrainShape.w;
-
-  float meso=mix(plateau,ridges,uTerrainShape.z)+crack*uTerrainShape.y*0.45-craters*uCraterWeight*0.42;
-  float polar=smoothstep(0.5,0.98,abs(unitPos.y));
-
-  float s=basin*uReliefMix.x + meso*uReliefMix.y + erosion*0.32 + polar*uPolarWeight*0.24 + uElevationShift;
-  s += (uRidgeWeight-0.35)*0.16;
-  s = mix(s*1.15,s,pow(clamp(uReliefSharpness*0.45,0.0,1.0),1.2));
-  microDetail=fbm(unitPos*(uRidgeScale*3.2+8.0)+seedOffset*2.3,3)-0.5;
-  return clamp(s,-1.0,1.0);
-}
-vec3 sampleNormal(vec3 unitPos){
-  float micro=0.0;
-  float center=signedHeight(unitPos,micro);
-  vec3 axis=abs(unitPos.y)>0.92?vec3(1.0,0.0,0.0):vec3(0.0,1.0,0.0);
-  vec3 tangent=normalize(cross(axis,unitPos));
-  vec3 bitangent=normalize(cross(unitPos,tangent));
-  float eps=0.008;
-
-  float microT=0.0;
-  float microB=0.0;
-  float ht=signedHeight(normalize(unitPos+tangent*eps),microT);
-  float hb=signedHeight(normalize(unitPos+bitangent*eps),microB);
-  vec3 grad=tangent*(ht-center)+bitangent*(hb-center);
-
-  float c=noise(unitPos*72.0+uSeed*0.01);
-  float nx=noise((unitPos+tangent*0.01)*72.0+uSeed*0.01)-c;
-  float ny=noise((unitPos+bitangent*0.01)*72.0+uSeed*0.01)-c;
-  vec3 microN=normalize(vBaseNormal - tangent*nx*1.8 - bitangent*ny*1.8);
-
-  vec3 macroN=normalize(vBaseNormal-grad*(2.6+uReliefMix.y*1.5));
-  return normalize(mix(macroN,microN,0.16+uReliefMix.z*0.16));
-}
+uniform int type;
+uniform float radius;
+uniform float amplitude;
+uniform float sharpness;
+uniform float offset;
+uniform float period;
+uniform float persistence;
+uniform float lacunarity;
+uniform int octaves;
+uniform float seedOffset;
+uniform vec3 color1;
+uniform vec3 color2;
+uniform vec3 color3;
+uniform vec3 color4;
+uniform vec3 color5;
+uniform float transition2;
+uniform float transition3;
+uniform float transition4;
+uniform float transition5;
+uniform float blend12;
+uniform float blend23;
+uniform float blend34;
+uniform float blend45;
+uniform float bumpStrength;
+uniform float bumpOffset;
+uniform float ambientIntensity;
+uniform float diffuseIntensity;
+uniform float specularIntensity;
+uniform float shininess;
+uniform vec3 lightDirection;
+uniform vec3 lightColor;
+uniform float uDebugView;
+varying vec3 fragPosition;
+varying vec3 fragNormal;
+varying vec3 fragTangent;
+varying vec3 fragBitangent;
+varying float vHeight;
+${noiseFunctions}
 void main(){
-  vec3 N=sampleNormal(vUnitPos);
-  vec3 V=normalize(cameraPosition-vWorldPos);
-  vec3 L=normalize(uLightDir);
-  vec3 H=normalize(L+V);
+  float h=terrainHeight(type,fragPosition,amplitude,sharpness,offset,period,persistence,lacunarity,octaves,seedOffset);
+  vec3 dx=bumpOffset*fragTangent;
+  vec3 dy=bumpOffset*fragBitangent;
+  float hdx=terrainHeight(type,fragPosition+dx,amplitude,sharpness,offset,period,persistence,lacunarity,octaves,seedOffset);
+  float hdy=terrainHeight(type,fragPosition+dy,amplitude,sharpness,offset,period,persistence,lacunarity,octaves,seedOffset);
+  vec3 pos=fragPosition*(radius+h);
+  vec3 posDx=(fragPosition+dx)*(radius+hdx);
+  vec3 posDy=(fragPosition+dy)*(radius+hdy);
+  vec3 bumpNormal=normalize(cross(posDx-pos,posDy-pos));
+  vec3 N=normalize(mix(fragNormal,bumpNormal,bumpStrength));
+  vec3 L=normalize(-lightDirection);
+  vec3 V=normalize(cameraPosition-pos);
+  vec3 R=normalize(reflect(L,N));
+  float diffuse=diffuseIntensity*max(0.0,dot(N,-L));
+  float specFalloff=clamp((transition3-h)/max(transition3,0.0001),0.0,1.0);
+  float specular=max(0.0,specFalloff*specularIntensity*pow(max(dot(V,R),0.0),shininess));
+  float light=ambientIntensity+diffuse+specular;
+  vec3 c12=mix(color1,color2,smoothstep(transition2-blend12,transition2+blend12,h));
+  vec3 c123=mix(c12,color3,smoothstep(transition3-blend23,transition3+blend23,h));
+  vec3 c1234=mix(c123,color4,smoothstep(transition4-blend34,transition4+blend34,h));
+  vec3 finalColor=mix(c1234,color5,smoothstep(transition5-blend45,transition5+blend45,h));
+  if (uDebugView > 0.5 && uDebugView < 1.5) { gl_FragColor = vec4(vec3(clamp(h / max(amplitude,0.001), 0.0, 1.0)), 1.0); return; }
+  if (uDebugView > 1.5) { float slope = 1.0 - max(dot(N, normalize(fragNormal)), 0.0); gl_FragColor = vec4(vec3(slope * 2.0), 1.0); return; }
+  gl_FragColor=vec4(light*finalColor*lightColor,1.0);
+}`;
 
-  float h=clamp(vHeight01,0.0,1.0);
-  float oceanBand=smoothstep(uBands0.x-0.05,uBands0.x+0.02,h);
-  float shore=smoothstep(uBands0.x,uBands0.y,h);
-  float mid=smoothstep(uBands0.y,uBands0.z,h);
-  float high=smoothstep(uBands0.z,uBands0.w,h);
-  float peak=smoothstep(uBands1.x-0.05,uBands1.x+0.03,h+vMicro*0.07);
+export const atmosphereVertexShader = `
+precision highp float;
+attribute float size;
+varying vec3 fragPosition;
+void main(){
+  gl_PointSize=size;
+  gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);
+  fragPosition=(modelMatrix*vec4(position,1.0)).xyz;
+}`;
 
-  vec3 base=uOceanColor;
-  base=mix(base,uLowColor,shore);
-  base=mix(base,mix(uUplandColor,uLowColor,0.25),mid);
-  base=mix(base,uMountainColor,high);
-  base=mix(base,uPeakColor,peak);
-
-  float wetness=(1.0-shore)*(1.0-high);
-  float coastNoise=fbm(vUnitPos*13.0+vec3(0.0,uSeed*0.12,0.0),3);
-  base=mix(base,uOceanColor*1.18,wetness*0.46*coastNoise);
-
-  float dryness=uBands1.y;
-  float dustMask=(mid*(1.0-shore)+high*0.3)*(0.35+dryness*0.65);
-  base=mix(base,mix(uLowColor,uMountainColor,0.65),dustMask*0.22);
-
-  float iceBias=uBands1.z;
-  float polar=smoothstep(0.52,0.96,abs(vUnitPos.y));
-  float iceMask=clamp((high*0.45+polar*0.75)*iceBias,0.0,1.0);
-  base=mix(base,uPeakColor,iceMask*0.38);
-
-  float lavaIntensity=uBands1.w;
-  float lavaNoise=ridge(fbm(vUnitPos*24.0+vec3(0.0,uTime*0.03,0.0),4));
-  float lavaMask=smoothstep(0.66,0.9,h)*smoothstep(0.52,0.9,lavaNoise)*lavaIntensity;
-  base=mix(base,uLavaColor,lavaMask*0.48);
-
-  float diffuse=max(dot(N,L),0.0);
-  float wrapDiffuse=clamp(dot(N,L)*0.56+0.44,0.0,1.0);
-  float terminator=pow(clamp(1.0-max(dot(N,L),0.0),0.0,1.0),1.8);
-  float spec=pow(max(dot(N,H),0.0),mix(16.0,72.0,uSpecularity))*(0.08+uSpecularity*0.45);
-  float fresnel=pow(1.0-max(dot(N,V),0.0),3.2);
-
-  vec3 lit=base*(uAmbientColor+uLightColor*(diffuse*0.92+wrapDiffuse*0.24));
-  lit*=1.0-terminator*0.18;
-  lit+=spec*mix(vec3(1.0),base,0.3);
-  lit+=uFresnelTint*fresnel*0.16;
-
-  if(uDebugView>0.5&&uDebugView<1.5){gl_FragColor=vec4(vec3(h),1.0);return;}
-  if(uDebugView>1.5){float slope=1.0-max(dot(N,normalize(vBaseNormal)),0.0);gl_FragColor=vec4(vec3(slope*2.4),1.0);return;}
-  gl_FragColor=vec4(lit,1.0);
-}
-`;
-
-function applyHueShift(color: THREE.Color, hueDegrees: number, saturationBoost: number, lightnessBias: number) {
-  const hsl = { h: 0, s: 0, l: 0 };
-  color.getHSL(hsl);
-  hsl.h = ((hsl.h * 360 + hueDegrees) % 360 + 360) % 360 / 360;
-  hsl.s = clamp(hsl.s * saturationBoost, 0, 1);
-  hsl.l = clamp(hsl.l + lightnessBias, 0, 1);
-  return new THREE.Color().setHSL(hsl.h, hsl.s, hsl.l);
-}
+export const atmosphereFragmentShader = `
+precision highp float;
+uniform float time;
+uniform float speed;
+uniform float opacity;
+uniform float density;
+uniform float scale;
+uniform vec3 lightDirection;
+uniform vec3 color;
+uniform sampler2D pointTexture;
+varying vec3 fragPosition;
+${noiseFunctions}
+void main(){
+  vec3 r=normalize(fragPosition);
+  vec3 l=normalize(lightDirection);
+  float light=max(0.05,dot(r,l));
+  float n=simplex3(vec3(time*speed)+fragPosition/scale);
+  float alpha=opacity*clamp(n+density,0.0,1.0);
+  gl_FragColor=vec4(light*color,alpha)*texture2D(pointTexture,gl_PointCoord);
+}`;
 
 export function createPlanetBeautyUniforms(profile: PlanetVisualProfile, seed: number): PlanetBeautyUniformBundle {
   const preset = PRESETS[profile.archetype];
-  const hueInfluence = (profile.baseHue - 180) * 0.15;
-  const accentInfluence = (profile.accentHue - profile.baseHue) * 0.1;
-  const saturationBoost = 0.84 + profile.landSaturation / 220;
-  const lightnessBias = (profile.landLightness - 48) / 320;
+  const rng = new SeededRng(seed ^ 0x51ed270b);
+  const hueShift = (profile.baseHue - 180) / 360;
+  const seedJitter = () => rng.range(-0.06, 0.06);
 
-  const oceanColor = applyHueShift(preset.ocean, hueInfluence * 0.7, 0.8 + profile.oceanSaturation / 220, (profile.oceanLightness - 40) / 380);
-  const lowColor = applyHueShift(preset.lowland, hueInfluence, saturationBoost, lightnessBias);
-  const uplandColor = applyHueShift(preset.upland, hueInfluence + accentInfluence * 0.5, saturationBoost * 0.95, lightnessBias * 0.75);
-  const mountainColor = applyHueShift(preset.mountain, accentInfluence * 0.45, 0.9 + profile.landSaturation / 260, lightnessBias * 0.5);
-  const peakColor = applyHueShift(preset.peak, accentInfluence * 0.25, 0.72 + profile.landSaturation / 350, lightnessBias * 0.3);
-  const lavaColor = applyHueShift(preset.lava, profile.hueDrift * 0.9, 1.05, profile.emissiveIntensity * 0.24);
+  const shifted = preset.colors.map((hex) => {
+    const color = new THREE.Color(hex);
+    const hsl = { h: 0, s: 0, l: 0 };
+    color.getHSL(hsl);
+    hsl.h = (hsl.h + hueShift + profile.hueDrift / 720 + seedJitter()) % 1;
+    hsl.s = clamp(hsl.s * (0.82 + profile.landSaturation / 210), 0, 1);
+    hsl.l = clamp(hsl.l + (profile.landLightness - 50) / 300 + seedJitter() * 0.12, 0, 1);
+    return new THREE.Color().setHSL(hsl.h < 0 ? hsl.h + 1 : hsl.h, hsl.s, hsl.l);
+  }) as [THREE.Color, THREE.Color, THREE.Color, THREE.Color, THREE.Color];
 
-  const atmosphereOuterColor = applyHueShift(preset.fresnelTint, hueInfluence * 0.4, 0.8 + profile.oceanSaturation / 300, (profile.atmosphereLightness - 72) / 250);
-  const atmosphereInnerColor = atmosphereOuterColor.clone().lerp(new THREE.Color('#ffffff'), 0.28);
-
-  const oceanLevel = clamp(profile.oceanLevel * 0.75 + 0.18, 0.08, 0.86);
+  const atmosphereColor = preset.atmosphere.color.clone().offsetHSL(
+    (profile.accentHue - profile.baseHue) / 720,
+    (profile.oceanSaturation - 50) / 500,
+    (profile.atmosphereLightness - 70) / 300,
+  );
 
   return {
     uniforms: {
-      uTime: { value: 0 },
-      uSeed: { value: seed / 97.0 },
-      uRadius: { value: 1.0 },
-      uDisplacementScale: { value: clamp(profile.reliefStrength * 0.32 + 0.04, 0.03, 0.14) },
-      uReliefSharpness: { value: profile.reliefSharpness },
-      uOceanLevel: { value: oceanLevel },
-      uMacroBias: { value: profile.macroBias * 0.34 },
-      uContinentScale: { value: clamp(profile.continentScale * 0.68, 0.45, 2.9) },
-      uRidgeScale: { value: clamp(profile.ridgeScale * 0.24, 1.2, 4.4) },
-      uCraterScale: { value: clamp(profile.craterScale * 0.21, 0.75, 3.0) },
-      uRidgeWeight: { value: clamp(profile.ridgeWeight, 0.08, 0.8) },
-      uCraterWeight: { value: clamp(profile.craterWeight, 0.04, 0.62) },
-      uPolarWeight: { value: clamp(profile.polarWeight, 0.01, 0.64) },
-      uElevationShift: { value: preset.elevationShift },
-      uSpecularity: { value: clamp(preset.specularity + profile.metalness * 0.54 - profile.roughness * 0.3, 0.04, 0.92) },
-      uLightDir: { value: new THREE.Vector3(1.8, 0.9, 1.5).normalize() },
-      uAmbientColor: { value: new THREE.Color('#26344d') },
-      uLightColor: { value: new THREE.Color('#fff1db').multiplyScalar(clamp(profile.lightIntensity, 0.8, 1.8)) },
-      uOceanColor: { value: oceanColor },
-      uLowColor: { value: lowColor },
-      uUplandColor: { value: uplandColor },
-      uMountainColor: { value: mountainColor },
-      uPeakColor: { value: peakColor },
-      uLavaColor: { value: lavaColor },
-      uFresnelTint: { value: atmosphereOuterColor.clone().lerp(preset.fresnelTint, 0.3) },
-      uTerrainShape: { value: new THREE.Vector4(...preset.terrainShape) },
-      uReliefMix: { value: new THREE.Vector4(...preset.reliefMix) },
-      uBands0: { value: new THREE.Vector4(...preset.bands0) },
-      uBands1: {
-        value: new THREE.Vector4(
-          preset.bands1[0],
-          clamp(preset.bands1[1] + profile.humidityStrength * 0.2 - profile.oceanLevel * 0.12, 0, 1),
-          clamp(preset.bands1[2] + profile.polarWeight * 0.36, 0, 1),
-          clamp(preset.bands1[3] + profile.emissiveIntensity * 2.4, 0, 1),
-        ),
-      },
+      type: { value: preset.type },
+      radius: { value: 1.0 },
+      amplitude: { value: clamp(preset.amplitude + profile.reliefStrength * 0.18 + seedJitter() * 0.02, 0.03, 0.16) },
+      sharpness: { value: clamp(preset.sharpness + (profile.reliefSharpness - 1.4) * 0.55, 1.2, 3.3) },
+      offset: { value: preset.offset + profile.macroBias * 0.06 + seedJitter() * 0.01 },
+      period: { value: clamp(preset.period + (profile.continentScale - 2.2) * 0.09, 0.35, 0.95) },
+      persistence: { value: clamp(preset.persistence + seedJitter() * 0.03, 0.38, 0.62) },
+      lacunarity: { value: clamp(preset.lacunarity + (profile.ridgeScale - 8) * 0.01 + seedJitter() * 0.08, 1.55, 2.2) },
+      octaves: { value: preset.octaves },
+      bumpStrength: { value: clamp(preset.bumpStrength + profile.ridgeWeight * 0.4 - profile.roughness * 0.2, 0.45, 1.3) },
+      bumpOffset: { value: clamp(preset.bumpOffset + profile.craterWeight * 0.004, 0.002, 0.008) },
+      ambientIntensity: { value: preset.ambientIntensity },
+      diffuseIntensity: { value: preset.diffuseIntensity },
+      specularIntensity: { value: clamp(preset.specularIntensity + profile.metalness * 1.8 - profile.roughness * 0.6, 0.2, 2.6) },
+      shininess: { value: clamp(preset.shininess + profile.metalness * 30, 6, 40) },
+      lightDirection: { value: new THREE.Vector3(1, 1, 1).normalize() },
+      lightColor: { value: new THREE.Color('#fff8ef').multiplyScalar(clamp(profile.lightIntensity, 0.8, 2.0)) },
+      color1: { value: shifted[0] },
+      color2: { value: shifted[1] },
+      color3: { value: shifted[2] },
+      color4: { value: shifted[3] },
+      color5: { value: shifted[4] },
+      transition2: { value: preset.transitions[0] + profile.oceanLevel * 0.08 },
+      transition3: { value: preset.transitions[1] + profile.humidityStrength * 0.05 },
+      transition4: { value: preset.transitions[2] + profile.polarWeight * 0.08 },
+      transition5: { value: preset.transitions[3] },
+      blend12: { value: preset.blends[0] },
+      blend23: { value: preset.blends[1] },
+      blend34: { value: preset.blends[2] },
+      blend45: { value: preset.blends[3] },
+      seedOffset: { value: (seed % 100000) / 1000 },
       uDebugView: { value: 0 },
     },
-    atmosphereInnerColor,
-    atmosphereOuterColor,
-    atmosphereScale: preset.atmosphereScale,
-    atmosphereOpacity: preset.atmosphereOpacity,
-    atmospherePower: preset.atmospherePower,
+    atmosphere: {
+      ...preset.atmosphere,
+      color: atmosphereColor,
+      opacity: clamp(preset.atmosphere.opacity + profile.humidityStrength * 0.12, 0.06, 0.3),
+      density: clamp(preset.atmosphere.density + profile.polarWeight * 0.08, 0.0, 0.35),
+    },
+    bloom: preset.bloom,
   };
+}
+
+export function createAtmosphereSpriteTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return new THREE.Texture();
+
+  const gradient = ctx.createRadialGradient(64, 64, 6, 64, 64, 64);
+  gradient.addColorStop(0, 'rgba(255,255,255,1.0)');
+  gradient.addColorStop(0.3, 'rgba(255,255,255,0.58)');
+  gradient.addColorStop(1, 'rgba(255,255,255,0.0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 128, 128);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
 }
 
 function clamp(value: number, min: number, max: number) {
