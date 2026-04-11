@@ -21,6 +21,14 @@ export interface NoiseFilterConfig {
   center: Vector3Tuple;
 }
 
+export interface PlanetSurfaceMaterialConfig {
+  roughness: number;
+  metalness: number;
+  specularStrength: number;
+  roughnessVariance: number;
+  metalnessVariance: number;
+}
+
 export interface PlanetArchetypePreset {
   generation: {
     resolution: number;
@@ -30,8 +38,12 @@ export interface PlanetArchetypePreset {
     elevationGradient: GradientStop[];
     depthGradient: GradientStop[];
     blendDepth: number;
-    roughness: number;
-    metalness: number;
+    climate: {
+      temperatureBias: number;
+      moistureBias: number;
+      transitionSharpness: number;
+    };
+    material: PlanetSurfaceMaterialConfig;
   };
   postfx: {
     bloom: { strength: number; radius: number; threshold: number };
@@ -48,9 +60,7 @@ export interface PlanetGenerationConfig {
   elevationGradient: GradientStop[];
   depthGradient: GradientStop[];
   blendDepth: number;
-  material: {
-    roughness: number;
-    metalness: number;
-  };
+  climate: PlanetArchetypePreset['surface']['climate'];
+  material: PlanetSurfaceMaterialConfig;
   postfx: PlanetArchetypePreset['postfx'];
 }

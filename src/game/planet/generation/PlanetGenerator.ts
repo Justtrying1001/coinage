@@ -47,8 +47,8 @@ export class PlanetGenerator {
       minMax.min,
       minMax.max,
       config.blendDepth,
-      config.material.roughness,
-      config.material.metalness,
+      config.climate,
+      config.material,
     );
 
     const merged = BufferGeometryUtils.mergeGeometries(faceGeometries, false);
