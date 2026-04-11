@@ -17,7 +17,7 @@ export function createPlanetPostFx(
 ): PlanetPostFxController {
   const composer = new EffectComposer(renderer);
   const renderPass = new RenderPass(scene, camera);
-  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.24, 0.75, 0.92);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.12, 0.52, 1.05);
   const outputPass = new OutputPass();
 
   composer.addPass(renderPass);
