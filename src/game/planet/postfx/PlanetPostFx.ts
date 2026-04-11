@@ -10,7 +10,8 @@ export class PlanetPostFx {
 
   constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera) {
     this.composer = new EffectComposer(renderer);
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.2, 0.5, 0);
+    this.composer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.015, 0.08, 0.78);
 
     this.composer.addPass(new RenderPass(scene, camera));
     this.composer.addPass(this.bloom);
@@ -28,9 +29,9 @@ export class PlanetPostFx {
   }
 
   setBloom(settings: { strength: number; radius: number; threshold: number }) {
-    this.bloom.strength = settings.strength;
-    this.bloom.radius = settings.radius;
-    this.bloom.threshold = settings.threshold;
+    this.bloom.strength = Math.max(0, settings.strength);
+    this.bloom.radius = THREE.MathUtils.clamp(settings.radius, 0, 0.22);
+    this.bloom.threshold = THREE.MathUtils.clamp(settings.threshold, 0, 1);
   }
 
   dispose() {
