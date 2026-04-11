@@ -17,7 +17,7 @@ export class PlanetRuntime {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.12;
+    this.renderer.toneMappingExposure = 1.06;
     this.renderer.domElement.className = 'render-surface render-surface--planet';
 
     this.host.appendChild(this.renderer.domElement);
@@ -40,6 +40,7 @@ export class PlanetRuntime {
     this.sceneKit.root.add(generated.root);
 
     this.postFx.setBloom(config.postfx.bloom);
+    this.postFx.setColorGrade({ contrast: config.postfx.contrast, saturation: config.postfx.saturation });
     this.renderer.toneMappingExposure = config.postfx.exposure;
   }
 

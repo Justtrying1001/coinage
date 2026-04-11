@@ -41,15 +41,7 @@ export class PlanetGenerator {
       faceGeometries.push(geometry);
     }
 
-    const material = createPlanetMaterial(
-      config.elevationGradient,
-      config.depthGradient,
-      minMax.min,
-      minMax.max,
-      config.blendDepth,
-      config.material.roughness,
-      config.material.metalness,
-    );
+    const material = createPlanetMaterial(config, minMax.min, minMax.max);
 
     const merged = BufferGeometryUtils.mergeGeometries(faceGeometries, false);
     if (!merged) {
