@@ -13,6 +13,7 @@ export function createPlanetMaterial(
   metalness: number,
   vegetationDensity: number,
   wetness: number,
+  debugMode = 0,
 ) {
   const normalizedElevation = normalizeStops(elevationGradient, [1, 1, 1]);
   const normalizedDepth = normalizeStops(depthGradient, [0, 0, 0.5]);
@@ -32,6 +33,7 @@ export function createPlanetMaterial(
       uWetness: { value: wetness },
       uLightDirection: { value: new THREE.Vector3(0.85, 0.35, 0.55).normalize() },
       uBlendDepth: { value: Math.max(0.001, blendDepth) },
+      uDebugMode: { value: debugMode },
     },
     vertexShader: `
       attribute float aElevation;
@@ -62,6 +64,7 @@ export function createPlanetMaterial(
       uniform float uWetness;
       uniform vec3 uLightDirection;
       uniform float uBlendDepth;
+      uniform int uDebugMode;
       varying float vElevation;
       varying vec3 vNormalW;
       varying vec3 vPositionW;
@@ -165,6 +168,21 @@ export function createPlanetMaterial(
 
         vec3 water = depthBase * (0.8 + depthN * 0.28 + uWetness * 0.06);
         vec3 base = mix(water, terrain, coastMask);
+
+        if (uDebugMode == 1) {
+          gl_FragColor = vec4(normalize(vNormalW) * 0.5 + 0.5, 1.0);
+          return;
+        }
+        if (uDebugMode == 2) {
+          float mono = clamp(elevN, 0.0, 1.0);
+          gl_FragColor = vec4(vec3(mono), 1.0);
+          return;
+        }
+        if (uDebugMode == 3) {
+          float mono = clamp(invLerp(0.0, 1.0, vElevation - 1.0), 0.0, 1.0);
+          gl_FragColor = vec4(vec3(mono), 1.0);
+          return;
+        }
 
         vec3 L = normalize(-uLightDirection);
         vec3 LFill = normalize(vec3(-L.x * 0.45, 0.82, -L.z * 0.45));
