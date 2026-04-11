@@ -1,34 +1,13 @@
-import * as THREE from 'three';
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
-import { createPlanetPostFx, type PlanetPostFxController } from '@/game/render/postfx/planetPostFx';
-import {
-  atmosphereFragmentShader,
-  atmosphereVertexShader,
-  createAtmosphereSpriteTexture,
-  createPlanetBeautyUniforms,
-  planetBeautyFragmentShader,
-  planetBeautyVertexShader,
-} from '@/game/render/shaders/planetBeauty';
 import type { PlanetVisualProfile, SelectedPlanetRef } from '@/game/render/types';
 import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
 import { SeededRng } from '@/game/world/rng';
+import { PlanetRuntime } from '@/game/planet/runtime/PlanetRuntime';
 
 export class Planet3DMode implements RenderModeController {
   readonly id = 'planet3d' as const;
 
-  private renderer: THREE.WebGLRenderer | null = null;
-  private postFx: PlanetPostFxController | null = null;
-
-  private scene = new THREE.Scene();
-  private camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
-  private root = new THREE.Group();
-
-  private planet: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
-  private atmosphere: THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial> | null = null;
-  private stars: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial> | null = null;
-
-  private debugViewIndex = 0;
-  private readonly debugViewModes: Array<'beauty' | 'height' | 'slope'> = ['beauty', 'height', 'slope'];
+  private runtime: PlanetRuntime | null = null;
 
   private inspectPanel: HTMLDivElement | null = null;
   private inspectTitle: HTMLHeadingElement | null = null;
@@ -43,39 +22,18 @@ export class Planet3DMode implements RenderModeController {
   private lastX = 0;
   private lastY = 0;
 
-  private readonly dragYaw = new THREE.Quaternion();
-  private readonly dragPitch = new THREE.Quaternion();
-  private readonly dragPitchAxis = new THREE.Vector3(1, 0, 0);
-
   constructor(
     private selectedPlanet: SelectedPlanetRef,
     private readonly context: ModeContext,
   ) {}
 
   mount() {
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.12;
-    renderer.domElement.className = 'render-surface render-surface--planet';
-    this.renderer = renderer;
-
-    this.context.host.appendChild(renderer.domElement);
-
-    this.scene.background = new THREE.Color(0x02050d);
-    this.scene.add(this.root);
-
-    this.camera.position.set(0, 0, 2.65);
-    this.scene.add(this.camera);
-
-    this.postFx = createPlanetPostFx(renderer, this.scene, this.camera);
-
-    this.createStarfield();
-    this.rebuildPlanet(this.selectedPlanet);
+    this.runtime = new PlanetRuntime(this.context.host);
+    this.runtime.rebuildFromSeed(this.selectedPlanet.seed);
     this.mountInspectPanel();
 
-    renderer.domElement.addEventListener('pointerdown', this.onPointerDown);
+    const canvas = this.runtime.renderer.domElement;
+    canvas.addEventListener('pointerdown', this.onPointerDown);
     window.addEventListener('pointermove', this.onPointerMove);
     window.addEventListener('pointerup', this.onPointerUp);
     window.addEventListener('pointercancel', this.onPointerUp);
@@ -85,154 +43,37 @@ export class Planet3DMode implements RenderModeController {
   resize(width: number, height: number) {
     this.width = Math.max(width, 1);
     this.height = Math.max(height, 1);
-
-    this.camera.aspect = this.width / this.height;
-    this.camera.updateProjectionMatrix();
-
-    this.renderer?.setSize(this.width, this.height, false);
-    this.postFx?.resize(this.width, this.height);
+    this.runtime?.resize(this.width, this.height);
   }
 
   update(deltaMs: number) {
-    const t = performance.now() * 0.001;
-    if (this.planet) {
-      // reserved for animated beauty variants
-    }
-    if (this.atmosphere) {
-      this.atmosphere.material.uniforms.time.value = t;
-      this.atmosphere.rotation.y += deltaMs * 0.00002;
-    }
-    if (this.stars) {
-      this.stars.rotation.y += deltaMs * 0.00001;
-    }
-
-    this.postFx?.render();
+    this.runtime?.update(deltaMs);
   }
 
   setSelectedPlanet(nextPlanet: SelectedPlanetRef) {
     if (nextPlanet.id === this.selectedPlanet.id && nextPlanet.seed === this.selectedPlanet.seed) return;
     this.selectedPlanet = nextPlanet;
-    this.rebuildPlanet(nextPlanet);
+    this.runtime?.rebuildFromSeed(nextPlanet.seed);
+    const profile = planetProfileFromSeed(nextPlanet.seed);
+    this.updateInspectIdentity(nextPlanet, profile);
   }
 
   destroy() {
-    this.renderer?.domElement.removeEventListener('pointerdown', this.onPointerDown);
+    const canvas = this.runtime?.renderer.domElement;
+    canvas?.removeEventListener('pointerdown', this.onPointerDown);
     window.removeEventListener('pointermove', this.onPointerMove);
     window.removeEventListener('pointerup', this.onPointerUp);
     window.removeEventListener('pointercancel', this.onPointerUp);
     window.removeEventListener('keydown', this.onKeyDown);
 
-    this.disposeMesh(this.planet, 'planet');
-    this.disposeAtmosphere();
-
-    if (this.stars) {
-      this.stars.geometry.dispose();
-      this.stars.material.dispose();
-      this.scene.remove(this.stars);
-      this.stars = null;
-    }
-
-    this.postFx?.dispose();
-    this.postFx = null;
-
-    this.renderer?.dispose();
-    this.renderer?.domElement.remove();
-    this.renderer = null;
+    this.runtime?.destroy();
+    this.runtime = null;
 
     this.inspectPanel?.remove();
     this.inspectPanel = null;
     this.inspectTitle = null;
     this.inspectSubtitle = null;
     this.inspectTags = null;
-
-    this.scene.clear();
-  }
-
-  private rebuildPlanet(planetRef: SelectedPlanetRef) {
-    this.disposeMesh(this.planet, 'planet');
-    this.disposeAtmosphere();
-
-    const profile = planetProfileFromSeed(planetRef.seed);
-    const geometry = new THREE.SphereGeometry(1, 128, 128);
-    geometry.computeTangents();
-
-    const beauty = createPlanetBeautyUniforms(profile, planetRef.seed);
-    const material = new THREE.ShaderMaterial({
-      uniforms: beauty.uniforms,
-      vertexShader: planetBeautyVertexShader,
-      fragmentShader: planetBeautyFragmentShader,
-      transparent: false,
-      depthWrite: true,
-      depthTest: true,
-    });
-
-    this.planet = new THREE.Mesh(geometry, material);
-    this.root.add(this.planet);
-
-    this.postFx?.setBloom(beauty.bloom);
-
-    this.atmosphere = createAtmosphere(beauty, planetRef.seed);
-    this.root.add(this.atmosphere);
-
-    this.applyDebugView();
-    this.updateInspectIdentity(planetRef, profile);
-  }
-
-  private createStarfield() {
-    if (this.stars) {
-      this.scene.remove(this.stars);
-      this.stars.geometry.dispose();
-      this.stars.material.dispose();
-    }
-
-    const rng = new SeededRng(0xdecafbad);
-    const starCount = 1800;
-    const positions = new Float32Array(starCount * 3);
-
-    for (let i = 0; i < starCount; i += 1) {
-      const theta = rng.range(0, Math.PI * 2);
-      const phi = Math.acos(rng.range(-1, 1));
-      const radius = rng.range(8, 18);
-      positions[i * 3] = Math.sin(phi) * Math.cos(theta) * radius;
-      positions[i * 3 + 1] = Math.cos(phi) * radius;
-      positions[i * 3 + 2] = Math.sin(phi) * Math.sin(theta) * radius;
-    }
-
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const material = new THREE.PointsMaterial({
-      color: 0xbfd8ff,
-      size: 0.03,
-      sizeAttenuation: true,
-      transparent: true,
-      opacity: 0.8,
-      depthWrite: false,
-    });
-
-    this.stars = new THREE.Points(geometry, material);
-    this.scene.add(this.stars);
-  }
-
-  private disposeMesh<TGeometry extends THREE.BufferGeometry, TMaterial extends THREE.Material>(
-    mesh: THREE.Mesh<TGeometry, TMaterial> | null,
-    target: 'planet',
-  ) {
-    if (!mesh) return;
-    mesh.geometry.dispose();
-    mesh.material.dispose();
-    this.root.remove(mesh);
-    if (target === 'planet') this.planet = null;
-  }
-
-
-  private disposeAtmosphere() {
-    if (!this.atmosphere) return;
-    this.atmosphere.geometry.dispose();
-    const texture = this.atmosphere.material.uniforms.pointTexture.value as THREE.Texture;
-    texture?.dispose();
-    this.atmosphere.material.dispose();
-    this.root.remove(this.atmosphere);
-    this.atmosphere = null;
   }
 
   private readonly onPointerDown = (event: PointerEvent) => {
@@ -244,22 +85,14 @@ export class Planet3DMode implements RenderModeController {
   };
 
   private readonly onPointerMove = (event: PointerEvent) => {
-    if (!this.isDragging || this.pointerId !== event.pointerId || !this.planet) return;
+    if (!this.isDragging || this.pointerId !== event.pointerId || !this.runtime) return;
 
     const dx = event.clientX - this.lastX;
     const dy = event.clientY - this.lastY;
     this.lastX = event.clientX;
     this.lastY = event.clientY;
 
-    const yaw = dx * 0.0088;
-    const pitch = dy * 0.0088;
-
-    this.dragYaw.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, yaw);
-    this.dragPitchAxis.set(1, 0, 0).applyQuaternion(this.camera.quaternion);
-    this.dragPitch.setFromAxisAngle(this.dragPitchAxis, pitch);
-
-    this.root.quaternion.premultiply(this.dragYaw);
-    this.root.quaternion.premultiply(this.dragPitch);
+    this.runtime.rotate(dx * 0.0088, dy * 0.0088, this.runtime.camera);
   };
 
   private readonly onPointerUp = (event: PointerEvent) => {
@@ -271,19 +104,8 @@ export class Planet3DMode implements RenderModeController {
   private readonly onKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
       this.context.onRequestMode('galaxy2d');
-      return;
-    }
-    if (event.key.toLowerCase() === 'h') {
-      this.debugViewIndex = (this.debugViewIndex + 1) % this.debugViewModes.length;
-      this.applyDebugView();
     }
   };
-
-  private applyDebugView() {
-    if (!this.planet) return;
-    const mode = this.debugViewModes[this.debugViewIndex];
-    this.planet.material.uniforms.uDebugView.value = mode === 'height' ? 1 : mode === 'slope' ? 2 : 0;
-  }
 
   private mountInspectPanel() {
     const panel = document.createElement('div');
@@ -337,44 +159,6 @@ export class Planet3DMode implements RenderModeController {
       this.inspectTags.appendChild(chip);
     }
   }
-}
-
-function createAtmosphere(beauty: ReturnType<typeof createPlanetBeautyUniforms>, seed: number) {
-  const rng = new SeededRng(seed ^ 0x7f4a7c15);
-  const verts: number[] = [];
-  const sizes: number[] = [];
-
-  const radius = 1.0 + beauty.atmosphere.thickness;
-  for (let i = 0; i < beauty.atmosphere.particleCount; i += 1) {
-    const r = radius + rng.range(0, beauty.atmosphere.thickness);
-    const p = new THREE.Vector3(rng.range(-1, 1), rng.range(-1, 1), rng.range(-1, 1)).normalize().multiplyScalar(r);
-    verts.push(p.x, p.y, p.z);
-    sizes.push(rng.range(beauty.atmosphere.minPointSize, beauty.atmosphere.maxPointSize));
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-  geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
-
-  const material = new THREE.ShaderMaterial({
-    uniforms: {
-      time: { value: 0 },
-      pointTexture: { value: createAtmosphereSpriteTexture() },
-      speed: { value: beauty.atmosphere.speed },
-      opacity: { value: beauty.atmosphere.opacity },
-      density: { value: beauty.atmosphere.density },
-      scale: { value: beauty.atmosphere.scale },
-      color: { value: beauty.atmosphere.color },
-      lightDirection: { value: new THREE.Vector3(1, 1, 1).normalize() },
-    },
-    vertexShader: atmosphereVertexShader,
-    fragmentShader: atmosphereFragmentShader,
-    blending: THREE.NormalBlending,
-    depthWrite: false,
-    transparent: true,
-  });
-
-  return new THREE.Points(geometry, material);
 }
 
 function derivePlanetTags(seed: number, profile: PlanetVisualProfile): string[] {
