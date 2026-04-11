@@ -4,17 +4,6 @@ import { SeededRng } from '@/game/world/rng';
 
 export interface PlanetBeautyUniformBundle {
   uniforms: Record<string, THREE.IUniform>;
-  atmosphere: {
-    color: THREE.Color;
-    opacity: number;
-    particleCount: number;
-    minPointSize: number;
-    maxPointSize: number;
-    thickness: number;
-    density: number;
-    scale: number;
-    speed: number;
-  };
   bloom: {
     strength: number;
     radius: number;
@@ -22,7 +11,7 @@ export interface PlanetBeautyUniformBundle {
   };
 }
 
-interface ArchetypePreset {
+interface PlanetSurfacePreset {
   type: 1 | 2 | 3;
   amplitude: number;
   sharpness: number;
@@ -31,89 +20,82 @@ interface ArchetypePreset {
   persistence: number;
   lacunarity: number;
   octaves: number;
-  bumpStrength: number;
-  bumpOffset: number;
+  undulation: number;
   ambientIntensity: number;
   diffuseIntensity: number;
   specularIntensity: number;
   shininess: number;
+  bumpStrength: number;
+  bumpOffset: number;
   colors: [string, string, string, string, string];
   transitions: [number, number, number, number];
   blends: [number, number, number, number];
-  atmosphere: PlanetBeautyUniformBundle['atmosphere'];
   bloom: PlanetBeautyUniformBundle['bloom'];
 }
 
-const PRESETS: Record<PlanetArchetype, ArchetypePreset> = {
-  terrestrial: {
-    type: 2, amplitude: 0.08, sharpness: 2.4, offset: -0.008, period: 0.58, persistence: 0.5, lacunarity: 1.84, octaves: 9,
-    bumpStrength: 0.85, bumpOffset: 0.004,
-    ambientIntensity: 0.06, diffuseIntensity: 1.0, specularIntensity: 1.2, shininess: 18,
-    colors: ['#0f3570', '#1f6b58', '#7a8e49', '#4f5e38', '#d9d8ce'],
-    transitions: [0.06, 0.19, 0.33, 1.1],
-    blends: [0.11, 0.12, 0.12, 0.16],
-    atmosphere: { color: new THREE.Color('#a8cfff'), opacity: 0.24, particleCount: 3000, minPointSize: 40, maxPointSize: 88, thickness: 0.12, density: 0.15, scale: 0.42, speed: 0.04 },
-    bloom: { strength: 0.18, radius: 0.5, threshold: 0.0 },
-  },
+const PRESETS: Record<PlanetArchetype, PlanetSurfacePreset> = {
   oceanic: {
-    type: 2, amplitude: 0.05, sharpness: 2.0, offset: -0.011, period: 0.76, persistence: 0.48, lacunarity: 1.8, octaves: 8,
-    bumpStrength: 0.62, bumpOffset: 0.003,
-    ambientIntensity: 0.07, diffuseIntensity: 1.04, specularIntensity: 2.0, shininess: 28,
-    colors: ['#0a2f6f', '#0f567e', '#3d8c78', '#9db9b0', '#edf7ff'],
-    transitions: [0.05, 0.16, 0.29, 0.8],
-    blends: [0.14, 0.12, 0.1, 0.12],
-    atmosphere: { color: new THREE.Color('#9ad6ff'), opacity: 0.28, particleCount: 3400, minPointSize: 42, maxPointSize: 94, thickness: 0.13, density: 0.2, scale: 0.45, speed: 0.05 },
-    bloom: { strength: 0.22, radius: 0.55, threshold: 0.0 },
+    type: 2, amplitude: 0.055, sharpness: 2.0, offset: -0.01, period: 0.73, persistence: 0.49, lacunarity: 1.8, octaves: 9, undulation: 0.02,
+    ambientIntensity: 0.03, diffuseIntensity: 1.0, specularIntensity: 2.1, shininess: 22,
+    bumpStrength: 0.75, bumpOffset: 0.003,
+    colors: ['#092a66', '#0d4d80', '#2d7f7a', '#7ca8a4', '#d8eef9'],
+    transitions: [0.07, 0.2, 0.34, 1.02],
+    blends: [0.14, 0.13, 0.1, 0.14],
+    bloom: { strength: 0.14, radius: 0.45, threshold: 0.0 },
+  },
+  terrestrial: {
+    type: 2, amplitude: 0.085, sharpness: 2.55, offset: -0.01, period: 0.58, persistence: 0.484, lacunarity: 1.8, octaves: 10, undulation: 0.03,
+    ambientIntensity: 0.02, diffuseIntensity: 1.0, specularIntensity: 1.95, shininess: 10,
+    bumpStrength: 1.0, bumpOffset: 0.003,
+    colors: ['#04356d', '#148759', '#9e845f', '#2e4e1e', '#2f2f2f'],
+    transitions: [0.071, 0.215, 0.372, 1.2],
+    blends: [0.152, 0.152, 0.104, 0.168],
+    bloom: { strength: 0.16, radius: 0.5, threshold: 0.0 },
   },
   arid: {
-    type: 2, amplitude: 0.1, sharpness: 2.9, offset: -0.01, period: 0.52, persistence: 0.5, lacunarity: 1.95, octaves: 10,
-    bumpStrength: 1.0, bumpOffset: 0.004,
-    ambientIntensity: 0.05, diffuseIntensity: 1.0, specularIntensity: 0.55, shininess: 10,
-    colors: ['#4a2d1a', '#9a6e3f', '#c6985a', '#7c5d3f', '#ead5b0'],
-    transitions: [0.08, 0.21, 0.36, 1.18],
-    blends: [0.12, 0.14, 0.13, 0.2],
-    atmosphere: { color: new THREE.Color('#f0bf88'), opacity: 0.15, particleCount: 2400, minPointSize: 34, maxPointSize: 72, thickness: 0.09, density: 0.06, scale: 0.38, speed: 0.03 },
-    bloom: { strength: 0.12, radius: 0.45, threshold: 0.0 },
+    type: 2, amplitude: 0.1, sharpness: 2.8, offset: -0.01, period: 0.52, persistence: 0.5, lacunarity: 1.95, octaves: 10, undulation: 0.02,
+    ambientIntensity: 0.025, diffuseIntensity: 1.0, specularIntensity: 0.6, shininess: 8,
+    bumpStrength: 1.05, bumpOffset: 0.0035,
+    colors: ['#4a2a16', '#8e5f31', '#c19458', '#6a5138', '#d6bd97'],
+    transitions: [0.08, 0.21, 0.35, 1.15],
+    blends: [0.12, 0.14, 0.14, 0.2],
+    bloom: { strength: 0.08, radius: 0.4, threshold: 0.0 },
   },
   frozen: {
-    type: 2, amplitude: 0.07, sharpness: 2.1, offset: -0.005, period: 0.65, persistence: 0.45, lacunarity: 1.72, octaves: 9,
-    bumpStrength: 0.74, bumpOffset: 0.003,
-    ambientIntensity: 0.07, diffuseIntensity: 1.08, specularIntensity: 1.45, shininess: 22,
-    colors: ['#17406e', '#4f87ad', '#b6d5ea', '#eaf4fb', '#ffffff'],
-    transitions: [0.07, 0.19, 0.31, 0.95],
-    blends: [0.12, 0.1, 0.1, 0.12],
-    atmosphere: { color: new THREE.Color('#d6f1ff'), opacity: 0.22, particleCount: 3200, minPointSize: 40, maxPointSize: 86, thickness: 0.12, density: 0.16, scale: 0.44, speed: 0.045 },
-    bloom: { strength: 0.2, radius: 0.5, threshold: 0.0 },
+    type: 2, amplitude: 0.07, sharpness: 2.1, offset: -0.008, period: 0.66, persistence: 0.46, lacunarity: 1.72, octaves: 9, undulation: 0.02,
+    ambientIntensity: 0.03, diffuseIntensity: 1.04, specularIntensity: 1.5, shininess: 18,
+    bumpStrength: 0.76, bumpOffset: 0.003,
+    colors: ['#123b67', '#4b7fa9', '#a8cbe3', '#e7f1f9', '#ffffff'],
+    transitions: [0.07, 0.2, 0.32, 1.0],
+    blends: [0.11, 0.1, 0.1, 0.12],
+    bloom: { strength: 0.12, radius: 0.45, threshold: 0.0 },
   },
   volcanic: {
-    type: 3, amplitude: 0.12, sharpness: 2.8, offset: -0.014, period: 0.5, persistence: 0.53, lacunarity: 2.0, octaves: 10,
-    bumpStrength: 1.05, bumpOffset: 0.004,
-    ambientIntensity: 0.04, diffuseIntensity: 1.0, specularIntensity: 0.82, shininess: 14,
-    colors: ['#1e1418', '#4b2d2f', '#6f3e34', '#2b2224', '#f1772e'],
-    transitions: [0.07, 0.2, 0.37, 0.72],
+    type: 3, amplitude: 0.12, sharpness: 2.75, offset: -0.014, period: 0.5, persistence: 0.53, lacunarity: 2.0, octaves: 10, undulation: 0.025,
+    ambientIntensity: 0.02, diffuseIntensity: 1.0, specularIntensity: 0.75, shininess: 10,
+    bumpStrength: 1.05, bumpOffset: 0.0038,
+    colors: ['#181015', '#42282b', '#6a3b33', '#262022', '#f07b2d'],
+    transitions: [0.08, 0.21, 0.36, 0.72],
     blends: [0.1, 0.12, 0.1, 0.08],
-    atmosphere: { color: new THREE.Color('#ff9a60'), opacity: 0.14, particleCount: 2200, minPointSize: 34, maxPointSize: 70, thickness: 0.08, density: 0.08, scale: 0.35, speed: 0.035 },
-    bloom: { strength: 0.26, radius: 0.6, threshold: 0.0 },
+    bloom: { strength: 0.12, radius: 0.35, threshold: 0.0 },
   },
   mineral: {
-    type: 2, amplitude: 0.09, sharpness: 2.5, offset: -0.009, period: 0.55, persistence: 0.5, lacunarity: 1.86, octaves: 9,
-    bumpStrength: 0.88, bumpOffset: 0.004,
-    ambientIntensity: 0.055, diffuseIntensity: 1.0, specularIntensity: 1.62, shininess: 24,
-    colors: ['#2a4056', '#637c82', '#9a9480', '#77746a', '#d8d1bf'],
-    transitions: [0.08, 0.21, 0.35, 1.03],
-    blends: [0.11, 0.13, 0.11, 0.15],
-    atmosphere: { color: new THREE.Color('#c9dfe8'), opacity: 0.13, particleCount: 2200, minPointSize: 32, maxPointSize: 68, thickness: 0.08, density: 0.06, scale: 0.36, speed: 0.03 },
-    bloom: { strength: 0.15, radius: 0.45, threshold: 0.0 },
+    type: 2, amplitude: 0.092, sharpness: 2.45, offset: -0.01, period: 0.57, persistence: 0.5, lacunarity: 1.86, octaves: 9, undulation: 0.02,
+    ambientIntensity: 0.025, diffuseIntensity: 1.0, specularIntensity: 1.35, shininess: 16,
+    bumpStrength: 0.9, bumpOffset: 0.0033,
+    colors: ['#273f55', '#637b82', '#948c76', '#6f6b63', '#d4cdbb'],
+    transitions: [0.08, 0.21, 0.35, 1.02],
+    blends: [0.11, 0.12, 0.11, 0.15],
+    bloom: { strength: 0.09, radius: 0.38, threshold: 0.0 },
   },
   barren: {
-    type: 2, amplitude: 0.085, sharpness: 2.6, offset: -0.012, period: 0.5, persistence: 0.5, lacunarity: 1.92, octaves: 10,
-    bumpStrength: 0.92, bumpOffset: 0.004,
-    ambientIntensity: 0.05, diffuseIntensity: 0.96, specularIntensity: 0.35, shininess: 8,
-    colors: ['#322820', '#695444', '#8d745f', '#5f5047', '#c7b7a3'],
-    transitions: [0.08, 0.22, 0.38, 1.15],
-    blends: [0.12, 0.13, 0.14, 0.2],
-    atmosphere: { color: new THREE.Color('#d7bda0'), opacity: 0.1, particleCount: 1800, minPointSize: 28, maxPointSize: 62, thickness: 0.07, density: 0.03, scale: 0.34, speed: 0.028 },
-    bloom: { strength: 0.1, radius: 0.42, threshold: 0.0 },
+    type: 2, amplitude: 0.088, sharpness: 2.6, offset: -0.012, period: 0.51, persistence: 0.5, lacunarity: 1.92, octaves: 10, undulation: 0.02,
+    ambientIntensity: 0.022, diffuseIntensity: 0.98, specularIntensity: 0.35, shininess: 7,
+    bumpStrength: 0.95, bumpOffset: 0.0035,
+    colors: ['#30241c', '#665240', '#8c735e', '#5c4f47', '#beaf9d'],
+    transitions: [0.08, 0.22, 0.38, 1.14],
+    blends: [0.12, 0.13, 0.13, 0.2],
+    bloom: { strength: 0.06, radius: 0.35, threshold: 0.0 },
   },
 };
 
@@ -167,23 +149,25 @@ float fractal3(vec3 v,float period,float persistence,float lacunarity,int octave
   for(int i=0;i<12;i++){
     if(i>=octaves) break;
     n+=a*simplex3(v/p);
-    maxAmp+=a;
     a*=persistence;
+    maxAmp+=a;
     p/=lacunarity;
   }
   return n/max(maxAmp,0.0001);
 }
-float terrainHeight(int type,vec3 v,float amplitude,float sharpness,float offset,float period,float persistence,float lacunarity,int octaves,float seedOffset){
+float terrainHeight(int type,vec3 v,float amplitude,float sharpness,float offset,float period,float persistence,float lacunarity,int octaves,float undulation){
   float h=0.0;
-  vec3 seeded=v+vec3(seedOffset,seedOffset*0.51,-seedOffset*0.33);
   if(type==1){
-    h=amplitude*simplex3(seeded/period);
+    h=amplitude*simplex3(v/period);
   } else if(type==2){
-    h=fractal3(seeded,period,persistence,lacunarity,octaves);
+    h=amplitude*fractal3(v,period,persistence,lacunarity,octaves);
     h=amplitude*pow(max(0.0,(h+1.0)/2.0),sharpness);
   } else {
-    h=fractal3(seeded,period,persistence,lacunarity,octaves);
+    h=fractal3(v,period,persistence,lacunarity,octaves);
     h=amplitude*pow(max(0.0,1.0-abs(h)),sharpness);
+  }
+  if(undulation>0.0){
+    h += simplex3(v * (1.2 / max(period, 0.0001))) * undulation;
   }
   return max(0.0,h+offset);
 }`;
@@ -200,22 +184,20 @@ uniform float period;
 uniform float persistence;
 uniform float lacunarity;
 uniform int octaves;
-uniform float seedOffset;
+uniform float undulation;
 varying vec3 fragPosition;
 varying vec3 fragNormal;
 varying vec3 fragTangent;
 varying vec3 fragBitangent;
-varying float vHeight;
 ${noiseFunctions}
 void main(){
-  float h=terrainHeight(type,position,amplitude,sharpness,offset,period,persistence,lacunarity,octaves,seedOffset);
+  float h=terrainHeight(type,position,amplitude,sharpness,offset,period,persistence,lacunarity,octaves,undulation);
   vec3 pos=position*(radius+h);
   gl_Position=projectionMatrix*modelViewMatrix*vec4(pos,1.0);
   fragPosition=position;
   fragNormal=normal;
   fragTangent=tangent;
   fragBitangent=cross(normal,tangent);
-  vHeight=h;
 }`;
 
 export const planetBeautyFragmentShader = `
@@ -229,7 +211,7 @@ uniform float period;
 uniform float persistence;
 uniform float lacunarity;
 uniform int octaves;
-uniform float seedOffset;
+uniform float undulation;
 uniform vec3 color1;
 uniform vec3 color2;
 uniform vec3 color3;
@@ -256,14 +238,13 @@ varying vec3 fragPosition;
 varying vec3 fragNormal;
 varying vec3 fragTangent;
 varying vec3 fragBitangent;
-varying float vHeight;
 ${noiseFunctions}
 void main(){
-  float h=terrainHeight(type,fragPosition,amplitude,sharpness,offset,period,persistence,lacunarity,octaves,seedOffset);
+  float h=terrainHeight(type,fragPosition,amplitude,sharpness,offset,period,persistence,lacunarity,octaves,undulation);
   vec3 dx=bumpOffset*fragTangent;
   vec3 dy=bumpOffset*fragBitangent;
-  float hdx=terrainHeight(type,fragPosition+dx,amplitude,sharpness,offset,period,persistence,lacunarity,octaves,seedOffset);
-  float hdy=terrainHeight(type,fragPosition+dy,amplitude,sharpness,offset,period,persistence,lacunarity,octaves,seedOffset);
+  float hdx=terrainHeight(type,fragPosition+dx,amplitude,sharpness,offset,period,persistence,lacunarity,octaves,undulation);
+  float hdy=terrainHeight(type,fragPosition+dy,amplitude,sharpness,offset,period,persistence,lacunarity,octaves,undulation);
   vec3 pos=fragPosition*(radius+h);
   vec3 posDx=(fragPosition+dx)*(radius+hdx);
   vec3 posDy=(fragPosition+dy)*(radius+hdy);
@@ -285,122 +266,65 @@ void main(){
   gl_FragColor=vec4(light*finalColor*lightColor,1.0);
 }`;
 
-export const atmosphereVertexShader = `
-precision highp float;
-attribute float size;
-varying vec3 fragPosition;
-void main(){
-  gl_PointSize=size;
-  gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);
-  fragPosition=(modelMatrix*vec4(position,1.0)).xyz;
-}`;
-
-export const atmosphereFragmentShader = `
-precision highp float;
-uniform float time;
-uniform float speed;
-uniform float opacity;
-uniform float density;
-uniform float scale;
-uniform vec3 lightDirection;
-uniform vec3 color;
-uniform sampler2D pointTexture;
-varying vec3 fragPosition;
-${noiseFunctions}
-void main(){
-  vec3 r=normalize(fragPosition);
-  vec3 l=normalize(lightDirection);
-  float light=max(0.05,dot(r,l));
-  float n=simplex3(vec3(time*speed)+fragPosition/scale);
-  float alpha=opacity*clamp(n+density,0.0,1.0);
-  gl_FragColor=vec4(light*color,alpha)*texture2D(pointTexture,gl_PointCoord);
-}`;
-
 export function createPlanetBeautyUniforms(profile: PlanetVisualProfile, seed: number): PlanetBeautyUniformBundle {
   const preset = PRESETS[profile.archetype];
   const rng = new SeededRng(seed ^ 0x51ed270b);
-  const hueShift = (profile.baseHue - 180) / 360;
-  const seedJitter = () => rng.range(-0.06, 0.06);
+
+  const hueNudge = rng.range(-0.025, 0.025) + (profile.hueDrift / 360) * 0.12;
+  const satNudge = rng.range(-0.05, 0.05);
+  const lightNudge = rng.range(-0.04, 0.04);
 
   const shifted = preset.colors.map((hex) => {
     const color = new THREE.Color(hex);
     const hsl = { h: 0, s: 0, l: 0 };
     color.getHSL(hsl);
-    hsl.h = (hsl.h + hueShift + profile.hueDrift / 720 + seedJitter()) % 1;
-    hsl.s = clamp(hsl.s * (0.82 + profile.landSaturation / 210), 0, 1);
-    hsl.l = clamp(hsl.l + (profile.landLightness - 50) / 300 + seedJitter() * 0.12, 0, 1);
-    return new THREE.Color().setHSL(hsl.h < 0 ? hsl.h + 1 : hsl.h, hsl.s, hsl.l);
+    const shiftedHue = (hsl.h + hueNudge + (profile.baseHue - 180) / 720 + 1) % 1;
+    const shiftedSat = clamp(hsl.s + satNudge + (profile.landSaturation - 50) / 320, 0, 1);
+    const shiftedLight = clamp(hsl.l + lightNudge + (profile.landLightness - 50) / 360, 0, 1);
+    return new THREE.Color().setHSL(shiftedHue, shiftedSat, shiftedLight);
   }) as [THREE.Color, THREE.Color, THREE.Color, THREE.Color, THREE.Color];
 
-  const atmosphereColor = preset.atmosphere.color.clone().offsetHSL(
-    (profile.accentHue - profile.baseHue) / 720,
-    (profile.oceanSaturation - 50) / 500,
-    (profile.atmosphereLightness - 70) / 300,
-  );
+  const amplitudeJitter = rng.range(-0.008, 0.008);
+  const periodJitter = rng.range(-0.04, 0.04);
+  const transitionJitter = rng.range(-0.018, 0.018);
 
   return {
     uniforms: {
       type: { value: preset.type },
       radius: { value: 1.0 },
-      amplitude: { value: clamp(preset.amplitude + profile.reliefStrength * 0.18 + seedJitter() * 0.02, 0.03, 0.16) },
-      sharpness: { value: clamp(preset.sharpness + (profile.reliefSharpness - 1.4) * 0.55, 1.2, 3.3) },
-      offset: { value: preset.offset + profile.macroBias * 0.06 + seedJitter() * 0.01 },
-      period: { value: clamp(preset.period + (profile.continentScale - 2.2) * 0.09, 0.35, 0.95) },
-      persistence: { value: clamp(preset.persistence + seedJitter() * 0.03, 0.38, 0.62) },
-      lacunarity: { value: clamp(preset.lacunarity + (profile.ridgeScale - 8) * 0.01 + seedJitter() * 0.08, 1.55, 2.2) },
+      amplitude: { value: clamp(preset.amplitude + amplitudeJitter + (profile.reliefStrength - 0.12) * 0.04, 0.03, 0.16) },
+      sharpness: { value: clamp(preset.sharpness + (profile.reliefSharpness - 1.4) * 0.2, 1.15, 3.3) },
+      offset: { value: preset.offset + rng.range(-0.004, 0.004) },
+      period: { value: clamp(preset.period + periodJitter + (profile.continentScale - 2.2) * 0.025, 0.35, 0.95) },
+      persistence: { value: clamp(preset.persistence + rng.range(-0.02, 0.02), 0.38, 0.62) },
+      lacunarity: { value: clamp(preset.lacunarity + rng.range(-0.07, 0.07), 1.55, 2.2) },
       octaves: { value: preset.octaves },
-      bumpStrength: { value: clamp(preset.bumpStrength + profile.ridgeWeight * 0.4 - profile.roughness * 0.2, 0.45, 1.3) },
-      bumpOffset: { value: clamp(preset.bumpOffset + profile.craterWeight * 0.004, 0.002, 0.008) },
+      undulation: { value: clamp(preset.undulation + rng.range(-0.01, 0.01), 0.0, 0.06) },
+      bumpStrength: { value: clamp(preset.bumpStrength + (profile.ridgeWeight - 0.28) * 0.12, 0.5, 1.25) },
+      bumpOffset: { value: preset.bumpOffset },
       ambientIntensity: { value: preset.ambientIntensity },
       diffuseIntensity: { value: preset.diffuseIntensity },
-      specularIntensity: { value: clamp(preset.specularIntensity + profile.metalness * 1.8 - profile.roughness * 0.6, 0.2, 2.6) },
-      shininess: { value: clamp(preset.shininess + profile.metalness * 30, 6, 40) },
+      specularIntensity: { value: clamp(preset.specularIntensity + (profile.metalness - 0.08) * 0.9, 0.2, 2.5) },
+      shininess: { value: clamp(preset.shininess + (profile.metalness - 0.08) * 14, 6, 32) },
       lightDirection: { value: new THREE.Vector3(1, 1, 1).normalize() },
-      lightColor: { value: new THREE.Color('#fff8ef').multiplyScalar(clamp(profile.lightIntensity, 0.8, 2.0)) },
+      lightColor: { value: new THREE.Color(0xffffff).multiplyScalar(clamp(profile.lightIntensity, 0.9, 1.8)) },
       color1: { value: shifted[0] },
       color2: { value: shifted[1] },
       color3: { value: shifted[2] },
       color4: { value: shifted[3] },
       color5: { value: shifted[4] },
-      transition2: { value: preset.transitions[0] + profile.oceanLevel * 0.08 },
-      transition3: { value: preset.transitions[1] + profile.humidityStrength * 0.05 },
-      transition4: { value: preset.transitions[2] + profile.polarWeight * 0.08 },
-      transition5: { value: preset.transitions[3] },
+      transition2: { value: clamp(preset.transitions[0] + transitionJitter + (profile.oceanLevel - 0.4) * 0.03, 0.02, 0.25) },
+      transition3: { value: clamp(preset.transitions[1] + transitionJitter, 0.08, 0.34) },
+      transition4: { value: clamp(preset.transitions[2] + transitionJitter, 0.2, 0.5) },
+      transition5: { value: clamp(preset.transitions[3] + transitionJitter * 2, 0.65, 1.3) },
       blend12: { value: preset.blends[0] },
       blend23: { value: preset.blends[1] },
       blend34: { value: preset.blends[2] },
       blend45: { value: preset.blends[3] },
-      seedOffset: { value: (seed % 100000) / 1000 },
       uDebugView: { value: 0 },
-    },
-    atmosphere: {
-      ...preset.atmosphere,
-      color: atmosphereColor,
-      opacity: clamp(preset.atmosphere.opacity + profile.humidityStrength * 0.12, 0.06, 0.3),
-      density: clamp(preset.atmosphere.density + profile.polarWeight * 0.08, 0.0, 0.35),
     },
     bloom: preset.bloom,
   };
-}
-
-export function createAtmosphereSpriteTexture() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 128;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return new THREE.Texture();
-
-  const gradient = ctx.createRadialGradient(64, 64, 6, 64, 64, 64);
-  gradient.addColorStop(0, 'rgba(255,255,255,1.0)');
-  gradient.addColorStop(0.3, 'rgba(255,255,255,0.58)');
-  gradient.addColorStop(1, 'rgba(255,255,255,0.0)');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 128, 128);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.needsUpdate = true;
-  return texture;
 }
 
 function clamp(value: number, min: number, max: number) {

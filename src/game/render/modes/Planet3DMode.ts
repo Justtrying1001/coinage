@@ -2,9 +2,6 @@ import * as THREE from 'three';
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
 import { createPlanetPostFx, type PlanetPostFxController } from '@/game/render/postfx/planetPostFx';
 import {
-  atmosphereFragmentShader,
-  atmosphereVertexShader,
-  createAtmosphereSpriteTexture,
   createPlanetBeautyUniforms,
   planetBeautyFragmentShader,
   planetBeautyVertexShader,
@@ -24,7 +21,6 @@ export class Planet3DMode implements RenderModeController {
   private root = new THREE.Group();
 
   private planet: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
-  private atmosphere: THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial> | null = null;
   private stars: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial> | null = null;
 
   private debugViewIndex = 0;
@@ -94,14 +90,6 @@ export class Planet3DMode implements RenderModeController {
   }
 
   update(deltaMs: number) {
-    const t = performance.now() * 0.001;
-    if (this.planet) {
-      // reserved for animated beauty variants
-    }
-    if (this.atmosphere) {
-      this.atmosphere.material.uniforms.time.value = t;
-      this.atmosphere.rotation.y += deltaMs * 0.00002;
-    }
     if (this.stars) {
       this.stars.rotation.y += deltaMs * 0.00001;
     }
@@ -123,7 +111,6 @@ export class Planet3DMode implements RenderModeController {
     window.removeEventListener('keydown', this.onKeyDown);
 
     this.disposeMesh(this.planet, 'planet');
-    this.disposeAtmosphere();
 
     if (this.stars) {
       this.stars.geometry.dispose();
@@ -150,7 +137,6 @@ export class Planet3DMode implements RenderModeController {
 
   private rebuildPlanet(planetRef: SelectedPlanetRef) {
     this.disposeMesh(this.planet, 'planet');
-    this.disposeAtmosphere();
 
     const profile = planetProfileFromSeed(planetRef.seed);
     const geometry = new THREE.SphereGeometry(1, 128, 128);
@@ -170,9 +156,6 @@ export class Planet3DMode implements RenderModeController {
     this.root.add(this.planet);
 
     this.postFx?.setBloom(beauty.bloom);
-
-    this.atmosphere = createAtmosphere(beauty, planetRef.seed);
-    this.root.add(this.atmosphere);
 
     this.applyDebugView();
     this.updateInspectIdentity(planetRef, profile);
@@ -222,17 +205,6 @@ export class Planet3DMode implements RenderModeController {
     mesh.material.dispose();
     this.root.remove(mesh);
     if (target === 'planet') this.planet = null;
-  }
-
-
-  private disposeAtmosphere() {
-    if (!this.atmosphere) return;
-    this.atmosphere.geometry.dispose();
-    const texture = this.atmosphere.material.uniforms.pointTexture.value as THREE.Texture;
-    texture?.dispose();
-    this.atmosphere.material.dispose();
-    this.root.remove(this.atmosphere);
-    this.atmosphere = null;
   }
 
   private readonly onPointerDown = (event: PointerEvent) => {
@@ -337,44 +309,6 @@ export class Planet3DMode implements RenderModeController {
       this.inspectTags.appendChild(chip);
     }
   }
-}
-
-function createAtmosphere(beauty: ReturnType<typeof createPlanetBeautyUniforms>, seed: number) {
-  const rng = new SeededRng(seed ^ 0x7f4a7c15);
-  const verts: number[] = [];
-  const sizes: number[] = [];
-
-  const radius = 1.0 + beauty.atmosphere.thickness;
-  for (let i = 0; i < beauty.atmosphere.particleCount; i += 1) {
-    const r = radius + rng.range(0, beauty.atmosphere.thickness);
-    const p = new THREE.Vector3(rng.range(-1, 1), rng.range(-1, 1), rng.range(-1, 1)).normalize().multiplyScalar(r);
-    verts.push(p.x, p.y, p.z);
-    sizes.push(rng.range(beauty.atmosphere.minPointSize, beauty.atmosphere.maxPointSize));
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-  geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
-
-  const material = new THREE.ShaderMaterial({
-    uniforms: {
-      time: { value: 0 },
-      pointTexture: { value: createAtmosphereSpriteTexture() },
-      speed: { value: beauty.atmosphere.speed },
-      opacity: { value: beauty.atmosphere.opacity },
-      density: { value: beauty.atmosphere.density },
-      scale: { value: beauty.atmosphere.scale },
-      color: { value: beauty.atmosphere.color },
-      lightDirection: { value: new THREE.Vector3(1, 1, 1).normalize() },
-    },
-    vertexShader: atmosphereVertexShader,
-    fragmentShader: atmosphereFragmentShader,
-    blending: THREE.NormalBlending,
-    depthWrite: false,
-    transparent: true,
-  });
-
-  return new THREE.Points(geometry, material);
 }
 
 function derivePlanetTags(seed: number, profile: PlanetVisualProfile): string[] {
