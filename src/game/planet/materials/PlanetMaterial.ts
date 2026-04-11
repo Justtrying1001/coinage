@@ -38,11 +38,13 @@ export function createPlanetMaterial(
       varying float vElevation;
       varying vec3 vNormalW;
       varying vec3 vPositionW;
+      varying vec3 vPositionOS;
       void main() {
         vElevation = aElevation;
+        vPositionOS = position;
         vec4 world = modelMatrix * vec4(position, 1.0);
         vPositionW = world.xyz;
-        vNormalW = normalize(mat3(modelMatrix) * normal);
+        vNormalW = normalize(normalMatrix * normal);
         gl_Position = projectionMatrix * viewMatrix * world;
       }
     `,
@@ -65,6 +67,7 @@ export function createPlanetMaterial(
       varying float vElevation;
       varying vec3 vNormalW;
       varying vec3 vPositionW;
+      varying vec3 vPositionOS;
 
       float invLerp(float a, float b, float v){
         if(abs(b-a)<0.000001) return 0.0;
@@ -123,14 +126,15 @@ export function createPlanetMaterial(
       void main() {
         float seaLevel = 1.0;
         vec3 N = normalize(vNormalW);
-        vec3 up = normalize(vPositionW);
+        vec3 localUp = normalize(vPositionOS);
+        vec3 up = localUp;
         float slope = clamp(1.0 - dot(N, up), 0.0, 1.0);
 
         float depthN = invLerp(uMinMax.x, seaLevel, vElevation);
         float elevN = invLerp(seaLevel, uMinMax.y, vElevation);
 
-        float macro = fbm(vPositionW * 2.6 + vec3(5.2, 1.4, 3.7));
-        float micro = fbm(vPositionW * 7.5 + vec3(vElevation * 1.2));
+        float macro = fbm(localUp * 2.6 + vec3(5.2, 1.4, 3.7));
+        float micro = fbm(localUp * 7.5 + vec3(vElevation * 1.2));
         float breakup = mix(macro, micro, 0.32);
 
         float coastMask = smoothstep(seaLevel - uBlendDepth * 0.6, seaLevel + uBlendDepth * 1.2, vElevation);
