@@ -4,6 +4,10 @@ import { createPlanetGenerationConfig } from '@/game/planet/presets/archetypes';
 import { PlanetGenerator } from '@/game/planet/generation/PlanetGenerator';
 import { PlanetPostFx } from '@/game/planet/postfx/PlanetPostFx';
 import { PlanetScene } from '@/game/planet/runtime/PlanetScene';
+import type { PlanetDebugMode } from '@/game/planet/materials/PlanetMaterial';
+import { setPlanetMaterialDebugMode } from '@/game/planet/materials/PlanetMaterial';
+
+const DEBUG_MODES: PlanetDebugMode[] = ['final', 'normals', 'elevation', 'slope', 'breakup', 'vegetation', 'upland', 'peak', 'coast'];
 
 export class PlanetRuntime {
   readonly renderer: THREE.WebGLRenderer;
@@ -11,6 +15,10 @@ export class PlanetRuntime {
   private readonly generator: PlanetGenerator;
   private postFx: PlanetPostFx;
   private planetRoot: THREE.Group | null = null;
+  private planetMesh: THREE.Mesh | null = null;
+  private planetSurfaceMaterial: THREE.Material | null = null;
+  private readonly normalDebugMaterial = new THREE.MeshNormalMaterial();
+  private debugMode: PlanetDebugMode = 'final';
 
   constructor(private readonly host: HTMLDivElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -37,7 +45,12 @@ export class PlanetRuntime {
     const generated = this.generator.generate(config);
 
     this.planetRoot = generated.root;
+    this.planetMesh = generated.root.children.find((child): child is THREE.Mesh => (child as THREE.Mesh).isMesh) ?? null;
+    this.planetSurfaceMaterial = this.planetMesh
+      ? (Array.isArray(this.planetMesh.material) ? this.planetMesh.material[0] ?? null : this.planetMesh.material)
+      : null;
     this.sceneKit.root.add(generated.root);
+    this.applyDebugMode();
 
     this.postFx.setBloom(config.postfx.bloom);
     this.renderer.toneMappingExposure = config.postfx.exposure;
@@ -52,6 +65,21 @@ export class PlanetRuntime {
   update(deltaMs: number) {
     this.sceneKit.update(deltaMs);
     this.postFx.render();
+  }
+
+  cycleDebugMode() {
+    const index = DEBUG_MODES.indexOf(this.debugMode);
+    const next = DEBUG_MODES[(index + 1) % DEBUG_MODES.length];
+    this.setDebugMode(next);
+  }
+
+  setDebugMode(mode: PlanetDebugMode) {
+    this.debugMode = mode;
+    this.applyDebugMode();
+  }
+
+  getDebugMode() {
+    return this.debugMode;
   }
 
   rotate(deltaYaw: number, deltaPitch: number, camera: THREE.Camera) {
@@ -69,10 +97,21 @@ export class PlanetRuntime {
 
   destroy() {
     if (this.planetRoot) disposeHierarchy(this.planetRoot);
+    this.normalDebugMaterial.dispose();
     this.postFx.dispose();
     this.sceneKit.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
+  }
+
+  private applyDebugMode() {
+    if (!this.planetMesh || !this.planetSurfaceMaterial) return;
+    if (this.debugMode === 'normals') {
+      this.planetMesh.material = this.normalDebugMaterial;
+      return;
+    }
+    this.planetMesh.material = this.planetSurfaceMaterial;
+    setPlanetMaterialDebugMode(this.planetSurfaceMaterial, this.debugMode);
   }
 }
 

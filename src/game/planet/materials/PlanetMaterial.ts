@@ -2,6 +2,28 @@ import * as THREE from 'three';
 import type { GradientStop } from '@/game/planet/types';
 
 const MAX_STOPS = 6;
+export type PlanetDebugMode =
+  | 'final'
+  | 'normals'
+  | 'elevation'
+  | 'slope'
+  | 'breakup'
+  | 'vegetation'
+  | 'upland'
+  | 'peak'
+  | 'coast';
+
+const DEBUG_MODE_INDEX: Record<PlanetDebugMode, number> = {
+  final: 0,
+  normals: 1,
+  elevation: 2,
+  slope: 3,
+  breakup: 4,
+  vegetation: 5,
+  upland: 6,
+  peak: 7,
+  coast: 8,
+};
 
 export function createPlanetMaterial(
   elevationGradient: GradientStop[],
@@ -32,6 +54,7 @@ export function createPlanetMaterial(
       uWetness: { value: wetness },
       uLightDirection: { value: new THREE.Vector3(0.85, 0.35, 0.55).normalize() },
       uBlendDepth: { value: Math.max(0.001, blendDepth) },
+      uDebugMode: { value: 0 },
     },
     vertexShader: `
       attribute float aElevation;
@@ -62,6 +85,7 @@ export function createPlanetMaterial(
       uniform float uWetness;
       uniform vec3 uLightDirection;
       uniform float uBlendDepth;
+      uniform int uDebugMode;
       varying float vElevation;
       varying vec3 vNormalW;
       varying vec3 vPositionW;
@@ -192,10 +216,49 @@ export function createPlanetMaterial(
         vec3 color = base * lightTerm;
         color += vec3(waterSpec + landSpec);
 
+        if (uDebugMode == 1) {
+          gl_FragColor = vec4(N * 0.5 + 0.5, 1.0);
+          return;
+        }
+        if (uDebugMode == 2) {
+          gl_FragColor = vec4(vec3(clamp(elevN, 0.0, 1.0)), 1.0);
+          return;
+        }
+        if (uDebugMode == 3) {
+          gl_FragColor = vec4(vec3(slope), 1.0);
+          return;
+        }
+        if (uDebugMode == 4) {
+          gl_FragColor = vec4(vec3(clamp(breakup, 0.0, 1.0)), 1.0);
+          return;
+        }
+        if (uDebugMode == 5) {
+          gl_FragColor = vec4(vec3(clamp(vegetationMask, 0.0, 1.0)), 1.0);
+          return;
+        }
+        if (uDebugMode == 6) {
+          gl_FragColor = vec4(vec3(clamp(uplandMask, 0.0, 1.0)), 1.0);
+          return;
+        }
+        if (uDebugMode == 7) {
+          gl_FragColor = vec4(vec3(clamp(peakMask, 0.0, 1.0)), 1.0);
+          return;
+        }
+        if (uDebugMode == 8) {
+          gl_FragColor = vec4(vec3(clamp(coastMask, 0.0, 1.0)), 1.0);
+          return;
+        }
+
         gl_FragColor = vec4(color, 1.0);
       }
     `,
   });
+}
+
+export function setPlanetMaterialDebugMode(material: THREE.Material, mode: PlanetDebugMode) {
+  if (!(material instanceof THREE.ShaderMaterial)) return;
+  if (!material.uniforms.uDebugMode) return;
+  material.uniforms.uDebugMode.value = DEBUG_MODE_INDEX[mode];
 }
 
 function normalizeStops(stops: GradientStop[], fallbackColor: [number, number, number]) {

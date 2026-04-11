@@ -44,12 +44,12 @@ export class CpuTerrainGenerator {
     for (let y = 0; y < resolution - 1; y += 1) {
       for (let x = 0; x < resolution - 1; x += 1) {
         const i = x + y * resolution;
-        indices[t++] = i + resolution + 1;
+        indices[t++] = i;
         indices[t++] = i + 1;
-        indices[t++] = i;
-        indices[t++] = i + resolution;
         indices[t++] = i + resolution + 1;
         indices[t++] = i;
+        indices[t++] = i + resolution + 1;
+        indices[t++] = i + resolution;
       }
     }
 

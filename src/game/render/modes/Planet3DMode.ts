@@ -104,6 +104,12 @@ export class Planet3DMode implements RenderModeController {
   private readonly onKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
       this.context.onRequestMode('galaxy2d');
+      return;
+    }
+    if (event.key.toLowerCase() === 'd') {
+      this.runtime?.cycleDebugMode();
+      const profile = planetProfileFromSeed(this.selectedPlanet.seed);
+      this.updateInspectIdentity(this.selectedPlanet, profile);
     }
   };
 
@@ -148,6 +154,9 @@ export class Planet3DMode implements RenderModeController {
 
     this.inspectTitle.textContent = `Planet ${planetRef.id.toUpperCase()}`;
     this.inspectSubtitle.textContent = `${toDisplayArchetype(profile.archetype)} world · Seed ${planetRef.seed.toString(16).toUpperCase().padStart(8, '0')}`;
+    if (this.runtime && this.runtime.getDebugMode() !== 'final') {
+      this.inspectSubtitle.textContent += ` · Debug ${this.runtime.getDebugMode()}`;
+    }
 
     const tags = derivePlanetTags(planetRef.seed, profile);
     this.inspectTags.innerHTML = '';
