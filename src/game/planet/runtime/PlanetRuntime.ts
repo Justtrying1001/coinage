@@ -77,12 +77,22 @@ export class PlanetRuntime {
 }
 
 function disposeHierarchy(root: THREE.Object3D) {
+  const disposedMaterials = new Set<THREE.Material>();
   root.traverse((obj) => {
     if ((obj as THREE.Mesh).isMesh) {
       const mesh = obj as THREE.Mesh;
       mesh.geometry?.dispose();
-      if (Array.isArray(mesh.material)) mesh.material.forEach((m) => m.dispose());
-      else mesh.material?.dispose();
+      if (Array.isArray(mesh.material)) {
+        mesh.material.forEach((material) => {
+          if (disposedMaterials.has(material)) return;
+          disposedMaterials.add(material);
+          material.dispose();
+        });
+      } else if (mesh.material) {
+        if (disposedMaterials.has(mesh.material)) return;
+        disposedMaterials.add(mesh.material);
+        mesh.material.dispose();
+      }
     }
   });
 }

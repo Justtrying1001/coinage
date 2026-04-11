@@ -1,5 +1,4 @@
-import * as THREE from 'three';
-import type { PlanetArchetype, PlanetVisualProfile } from '@/game/render/types';
+import type { PlanetArchetype } from '@/game/render/types';
 import type { Vector3Tuple } from '@/game/planet/utils/vector';
 
 export interface GradientStop {
@@ -61,14 +60,4 @@ export interface PlanetGenerationConfig {
   };
   atmosphere: PlanetArchetypePreset['atmosphere'];
   postfx: PlanetArchetypePreset['postfx'];
-}
-
-export interface PlanetBuildResult {
-  planetMesh: THREE.Mesh;
-  atmosphereMesh: THREE.Mesh | null;
-}
-
-export interface PlanetConfigFactoryInput {
-  seed: number;
-  profile: PlanetVisualProfile;
 }

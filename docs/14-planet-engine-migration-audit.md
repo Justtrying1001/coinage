@@ -2,6 +2,7 @@
 
 Date: 2026-04-11
 Scope: analysis + migration design only (no implementation)
+Implementation status: ✅ Migrated in follow-up commits (`src/game/planet/*` now active; legacy `planetBeauty` and `planetPostFx` removed).
 
 ## 1) Executive summary
 Coinage currently ships a compact, deterministic, shader-driven `Planet3DMode` rendered directly with Three.js and composed into a mode controller architecture (`galaxy2d` <-> `planet3d`). The donor project (`XenoverseUp/procedural-planets`) has a richer procedural engine centered on cube-face terrain generation, GPGPU vertex generation, and reusable planet/atmosphere shader stages.

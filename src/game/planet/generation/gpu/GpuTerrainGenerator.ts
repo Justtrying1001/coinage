@@ -15,6 +15,10 @@ export class GpuTerrainGenerator {
   constructor(private readonly renderer: THREE.WebGLRenderer) {}
 
   generateFace(localUp: THREE.Vector3, resolution: number, filters: NoiseFilterConfig[], seed: number): GpuFaceResult {
+    if (!this.supportsFloatReadback()) {
+      throw new Error('Float render target readback not supported');
+    }
+
     const renderTarget = new THREE.WebGLRenderTarget(resolution, resolution, {
       type: THREE.FloatType,
       format: THREE.RGBAFormat,
@@ -67,6 +71,11 @@ export class GpuTerrainGenerator {
     quad.geometry.dispose();
 
     return { positions, elevations, indices };
+  }
+
+  private supportsFloatReadback() {
+    const gl = this.renderer.getContext();
+    return Boolean(gl.getExtension('EXT_color_buffer_float') || gl.getExtension('WEBGL_color_buffer_float'));
   }
 }
 

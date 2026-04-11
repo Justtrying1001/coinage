@@ -50,6 +50,7 @@ export class PlanetGenerator {
       config.depthGradient,
       minMax.min,
       minMax.max,
+      config.blendDepth,
       config.material.roughness,
       config.material.metalness,
     );
@@ -59,15 +60,14 @@ export class PlanetGenerator {
       root.add(mesh);
     }
 
-    let atmosphere: THREE.Mesh | null = null;
     if (config.atmosphere.enabled) {
-      atmosphere = new THREE.Mesh(
+      const atmosphere = new THREE.Mesh(
         new THREE.SphereGeometry(config.radius * config.atmosphere.shellScale, 64, 64),
         createAtmosphereMaterial(config.atmosphere.color, config.atmosphere.intensity),
       );
       root.add(atmosphere);
     }
 
-    return { root, material, atmosphere };
+    return { root };
   }
 }

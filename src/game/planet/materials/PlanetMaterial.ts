@@ -8,6 +8,7 @@ export function createPlanetMaterial(
   depthGradient: GradientStop[],
   minElevation: number,
   maxElevation: number,
+  blendDepth: number,
   roughness: number,
   metalness: number,
 ) {
@@ -26,6 +27,7 @@ export function createPlanetMaterial(
       uRoughness: { value: roughness },
       uMetalness: { value: metalness },
       uLightDirection: { value: new THREE.Vector3(1, 1, 1).normalize() },
+      uBlendDepth: { value: Math.max(0.001, blendDepth) },
     },
     vertexShader: `
       attribute float aElevation;
@@ -53,6 +55,7 @@ export function createPlanetMaterial(
       uniform float uRoughness;
       uniform float uMetalness;
       uniform vec3 uLightDirection;
+      uniform float uBlendDepth;
       varying float vElevation;
       varying vec3 vNormalW;
       varying vec3 vPositionW;
@@ -78,12 +81,21 @@ export function createPlanetMaterial(
       void main() {
         float seaLevel = 1.0;
         vec3 base;
-        if (vElevation <= seaLevel) {
+        if (vElevation < seaLevel - uBlendDepth) {
           float d = invLerp(uMinMax.x, seaLevel, vElevation);
           base = gradientColor(d, uDepthSize, uDepthAnchors, uDepthColors);
-        } else {
+        } else if (vElevation > seaLevel + uBlendDepth) {
           float e = invLerp(seaLevel, uMinMax.y, vElevation);
           base = gradientColor(e, uElevationSize, uElevationAnchors, uElevationColors);
+        } else {
+          float d = invLerp(uMinMax.x, seaLevel, vElevation);
+          float e = invLerp(seaLevel, uMinMax.y, vElevation);
+          float t = smoothstep(seaLevel - uBlendDepth, seaLevel + uBlendDepth, vElevation);
+          base = mix(
+            gradientColor(d, uDepthSize, uDepthAnchors, uDepthColors),
+            gradientColor(e, uElevationSize, uElevationAnchors, uElevationColors),
+            t
+          );
         }
 
         vec3 N = normalize(vNormalW);

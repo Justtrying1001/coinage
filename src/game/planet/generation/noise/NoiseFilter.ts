@@ -2,9 +2,12 @@ import * as THREE from 'three';
 import type { NoiseFilterConfig } from '@/game/planet/types';
 import { createSeededNoise3D } from '@/game/planet/generation/noise/seededNoise';
 
+const noiseCache = new Map<number, ReturnType<typeof createSeededNoise3D>>();
+
 export function evaluateFilter(point: THREE.Vector3, filter: NoiseFilterConfig, seed: number, unscaled = false) {
   if (!filter.enabled) return 0;
-  const noise = createSeededNoise3D(seed);
+  const noise = getNoise(seed);
+  const center = new THREE.Vector3(...filter.center);
 
   let noiseValue = 0;
   let frequency = filter.baseRoughness;
@@ -12,7 +15,7 @@ export function evaluateFilter(point: THREE.Vector3, filter: NoiseFilterConfig, 
   let weight = 1;
 
   for (let i = 0; i < filter.layerCount; i += 1) {
-    const p = point.clone().multiplyScalar(frequency).add(new THREE.Vector3(...filter.center));
+    const p = point.clone().multiplyScalar(frequency).add(center);
 
     if (filter.kind === 'ridgid') {
       let v = Math.abs(noise(p.x, p.y, p.z));
@@ -49,4 +52,12 @@ export function calculateUnscaledElevation(point: THREE.Vector3, filters: NoiseF
   }
 
   return elevation;
+}
+
+function getNoise(seed: number) {
+  const cached = noiseCache.get(seed);
+  if (cached) return cached;
+  const noise = createSeededNoise3D(seed);
+  noiseCache.set(seed, noise);
+  return noise;
 }
