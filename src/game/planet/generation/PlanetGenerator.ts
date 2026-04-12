@@ -6,17 +6,20 @@ import { GpuTerrainGenerator } from '@/game/planet/generation/gpu/GpuTerrainGene
 import { CpuTerrainGenerator } from '@/game/planet/generation/cpu/CpuTerrainGenerator';
 import { MinMax } from '@/game/planet/utils/minMax';
 import { createPlanetMaterial } from '@/game/planet/materials/PlanetMaterial';
+import { PlanetSlotGenerator } from '@/game/planet/slots/PlanetSlotGenerator';
+import type { GeneratedPlanet } from '@/game/planet/slots/types';
 
 export class PlanetGenerator {
   private readonly gpu: GpuTerrainGenerator;
   private readonly cpu: CpuTerrainGenerator;
+  private readonly slotGenerator = new PlanetSlotGenerator();
 
   constructor(private readonly renderer: THREE.WebGLRenderer) {
     this.gpu = new GpuTerrainGenerator(renderer);
     this.cpu = new CpuTerrainGenerator();
   }
 
-  generate(config: PlanetGenerationConfig) {
+  generate(config: PlanetGenerationConfig): GeneratedPlanet {
     const root = new THREE.Group();
     const minMax = new MinMax();
     const faceGeometries: THREE.BufferGeometry[] = [];
@@ -83,8 +86,16 @@ export class PlanetGenerator {
 
     const mesh = new THREE.Mesh(deduped, material);
     root.add(mesh);
+    const settlementSlots = this.slotGenerator.generate(deduped, {
+      seed: config.seed,
+      archetype: config.archetype,
+      profile: config.profile,
+      seaLevel: config.seaLevel,
+      surfaceMode: config.surfaceMode,
+      radius: config.radius,
+    });
 
-    return { root };
+    return { root, surfaceMesh: mesh, surfaceGeometry: deduped, settlementSlots };
   }
 
   private readDebugMode() {

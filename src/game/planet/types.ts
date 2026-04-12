@@ -1,4 +1,5 @@
 import type { PlanetArchetype } from '@/game/render/types';
+import type { PlanetVisualProfile } from '@/game/render/types';
 import type { Vector3Tuple } from '@/game/planet/utils/vector';
 
 export interface GradientStop {
@@ -46,6 +47,7 @@ export interface PlanetArchetypePreset {
 export interface PlanetGenerationConfig {
   seed: number;
   archetype: PlanetArchetype;
+  profile: PlanetVisualProfile;
   resolution: number;
   radius: number;
   filters: NoiseFilterConfig[];

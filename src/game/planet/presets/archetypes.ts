@@ -242,6 +242,7 @@ export function createPlanetGenerationConfig(seed: number, profile: PlanetVisual
   return {
     seed,
     archetype: profile.archetype,
+    profile,
     resolution: resolvePlanetResolution(profile),
     radius: 1,
     filters,

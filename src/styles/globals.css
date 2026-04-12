@@ -227,6 +227,29 @@ a {
   padding: 0.28rem 0.5rem;
 }
 
+.planet-inspect-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  padding: 0.35rem 0 0.1rem;
+}
+
+.planet-slot-summary,
+.planet-slot-detail {
+  margin: 0;
+  font-size: 0.63rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.planet-slot-summary {
+  color: rgba(166, 208, 232, 0.92);
+}
+
+.planet-slot-detail {
+  color: rgba(218, 239, 255, 0.95);
+}
+
 .planet-back-button {
   align-self: flex-start;
   border: 1px solid rgba(147, 217, 255, 0.55);

@@ -3,6 +3,7 @@ import type { PlanetVisualProfile, SelectedPlanetRef } from '@/game/render/types
 import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
 import { SeededRng } from '@/game/world/rng';
 import { PlanetRuntime } from '@/game/planet/runtime/PlanetRuntime';
+import type { PlanetSettlementSlot } from '@/game/planet/slots/types';
 
 export class Planet3DMode implements RenderModeController {
   readonly id = 'planet3d' as const;
@@ -13,6 +14,7 @@ export class Planet3DMode implements RenderModeController {
   private inspectTitle: HTMLHeadingElement | null = null;
   private inspectSubtitle: HTMLParagraphElement | null = null;
   private inspectTags: HTMLDivElement | null = null;
+  private inspectSlots: HTMLDivElement | null = null;
 
   private width = 1;
   private height = 1;
@@ -21,6 +23,8 @@ export class Planet3DMode implements RenderModeController {
   private pointerId: number | null = null;
   private lastX = 0;
   private lastY = 0;
+  private downX = 0;
+  private downY = 0;
 
   constructor(
     private selectedPlanet: SelectedPlanetRef,
@@ -74,6 +78,7 @@ export class Planet3DMode implements RenderModeController {
     this.inspectTitle = null;
     this.inspectSubtitle = null;
     this.inspectTags = null;
+    this.inspectSlots = null;
   }
 
   private readonly onPointerDown = (event: PointerEvent) => {
@@ -82,6 +87,8 @@ export class Planet3DMode implements RenderModeController {
     this.isDragging = true;
     this.lastX = event.clientX;
     this.lastY = event.clientY;
+    this.downX = event.clientX;
+    this.downY = event.clientY;
   };
 
   private readonly onPointerMove = (event: PointerEvent) => {
@@ -96,7 +103,12 @@ export class Planet3DMode implements RenderModeController {
   };
 
   private readonly onPointerUp = (event: PointerEvent) => {
-    if (event.pointerId !== this.pointerId) return;
+    if (event.pointerId !== this.pointerId || !this.runtime) return;
+    const movedDistance = Math.hypot(event.clientX - this.downX, event.clientY - this.downY);
+    if (movedDistance <= 5) {
+      this.runtime.pickSlot(event.clientX, event.clientY, this.width, this.height);
+      this.updateSlotInspectData(this.runtime.getSelectedSlot());
+    }
     this.pointerId = null;
     this.isDragging = false;
   };
@@ -119,6 +131,8 @@ export class Planet3DMode implements RenderModeController {
 
     const tags = document.createElement('div');
     tags.className = 'planet-inspect-tags';
+    const slots = document.createElement('div');
+    slots.className = 'planet-inspect-slots';
 
     const button = document.createElement('button');
     button.type = 'button';
@@ -131,6 +145,7 @@ export class Planet3DMode implements RenderModeController {
     panel.appendChild(title);
     panel.appendChild(subtitle);
     panel.appendChild(tags);
+    panel.appendChild(slots);
     panel.appendChild(button);
 
     this.context.host.appendChild(panel);
@@ -138,9 +153,11 @@ export class Planet3DMode implements RenderModeController {
     this.inspectTitle = title;
     this.inspectSubtitle = subtitle;
     this.inspectTags = tags;
+    this.inspectSlots = slots;
 
     const profile = planetProfileFromSeed(this.selectedPlanet.seed);
     this.updateInspectIdentity(this.selectedPlanet, profile);
+    this.updateSlotInspectData(this.runtime?.getSelectedSlot() ?? null);
   }
 
   private updateInspectIdentity(planetRef: SelectedPlanetRef, profile: PlanetVisualProfile) {
@@ -157,6 +174,34 @@ export class Planet3DMode implements RenderModeController {
       chip.className = 'planet-inspect-tag';
       chip.textContent = tag;
       this.inspectTags.appendChild(chip);
+    }
+
+    this.updateSlotInspectData(this.runtime?.getSelectedSlot() ?? null);
+  }
+
+  private updateSlotInspectData(selectedSlot: PlanetSettlementSlot | null) {
+    if (!this.inspectSlots || !this.runtime) return;
+    const summary = this.runtime.getSlotSummary();
+    this.inspectSlots.innerHTML = '';
+
+    const summaryRow = document.createElement('p');
+    summaryRow.className = 'planet-slot-summary';
+    summaryRow.textContent = `Settlement slots ${summary.total} · Occupied ${summary.occupied} · Available ${summary.available}`;
+    this.inspectSlots.appendChild(summaryRow);
+
+    if (!selectedSlot) return;
+
+    const details = [
+      `Selected ${selectedSlot.id.toUpperCase()}`,
+      `State ${selectedSlot.state}`,
+      `Habitability ${Math.round(selectedSlot.habitability * 100)}%`,
+    ];
+
+    for (const line of details) {
+      const row = document.createElement('p');
+      row.className = 'planet-slot-detail';
+      row.textContent = line;
+      this.inspectSlots.appendChild(row);
     }
   }
 }

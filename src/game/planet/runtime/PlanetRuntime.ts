@@ -4,11 +4,16 @@ import { createPlanetGenerationConfig } from '@/game/planet/presets/archetypes';
 import { PlanetGenerator } from '@/game/planet/generation/PlanetGenerator';
 import { PlanetPostFx } from '@/game/planet/postfx/PlanetPostFx';
 import { PlanetScene } from '@/game/planet/runtime/PlanetScene';
+import { PlanetSlotRenderer } from '@/game/planet/slots/PlanetSlotRenderer';
+import type { PlanetSettlementSlot, PlanetSlotSummary } from '@/game/planet/slots/types';
 
 export class PlanetRuntime {
   readonly renderer: THREE.WebGLRenderer;
   private readonly sceneKit = new PlanetScene();
   private readonly generator: PlanetGenerator;
+  private readonly raycaster = new THREE.Raycaster();
+  private readonly pointer = new THREE.Vector2();
+  private readonly slotRenderer = new PlanetSlotRenderer();
   private postFx: PlanetPostFx;
   private planetRoot: THREE.Group | null = null;
 
@@ -24,12 +29,14 @@ export class PlanetRuntime {
 
     this.generator = new PlanetGenerator(this.renderer);
     this.postFx = new PlanetPostFx(this.renderer, this.sceneKit.scene, this.sceneKit.camera);
+    this.sceneKit.root.add(this.slotRenderer.root);
   }
 
   rebuildFromSeed(seed: number) {
     if (this.planetRoot) {
       this.sceneKit.root.remove(this.planetRoot);
       disposeHierarchy(this.planetRoot);
+      this.slotRenderer.clearSelection();
     }
 
     const profile = planetProfileFromSeed(seed);
@@ -38,6 +45,7 @@ export class PlanetRuntime {
 
     this.planetRoot = generated.root;
     this.sceneKit.root.add(generated.root);
+    this.slotRenderer.setSlots(generated.settlementSlots);
 
     this.postFx.setBloom(config.postfx.bloom);
     this.renderer.toneMappingExposure = config.postfx.exposure;
@@ -67,8 +75,32 @@ export class PlanetRuntime {
     return this.sceneKit.camera;
   }
 
+  pickSlot(clientX: number, clientY: number, viewportWidth: number, viewportHeight: number) {
+    if (!this.planetRoot) return null;
+    const width = Math.max(1, viewportWidth);
+    const height = Math.max(1, viewportHeight);
+    this.pointer.set((clientX / width) * 2 - 1, -(clientY / height) * 2 + 1);
+    this.raycaster.setFromCamera(this.pointer, this.sceneKit.camera);
+    const intersects = this.raycaster.intersectObject(this.slotRenderer.root, true);
+    if (intersects.length === 0) {
+      this.slotRenderer.clearSelection();
+      return null;
+    }
+    return this.slotRenderer.pick(intersects[0]);
+  }
+
+  getSlotSummary(): PlanetSlotSummary {
+    const total = this.slotRenderer.getSlots().length;
+    return { total, occupied: 0, available: total };
+  }
+
+  getSelectedSlot(): PlanetSettlementSlot | null {
+    return this.slotRenderer.getSelectedSlot();
+  }
+
   destroy() {
     if (this.planetRoot) disposeHierarchy(this.planetRoot);
+    this.slotRenderer.dispose();
     this.postFx.dispose();
     this.sceneKit.dispose();
     this.renderer.dispose();
