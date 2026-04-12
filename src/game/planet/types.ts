@@ -45,6 +45,18 @@ export interface PlanetArchetypePreset {
     shadowTintStrength: number;
     coastTintStrength: number;
     shallowSurfaceBrightness: number;
+    lowSurfaceCoverage: number;
+    microReliefStrength: number;
+    microReliefScale: number;
+    microNormalStrength: number;
+    microAlbedoBreakup: number;
+    hotspotCoverage: number;
+    hotspotIntensity: number;
+    fissureScale: number;
+    fissureSharpness: number;
+    lavaAccentStrength: number;
+    emissiveStrength: number;
+    basaltContrast: number;
   };
   postfx: {
     bloom: { strength: number; radius: number; threshold: number };
@@ -62,6 +74,7 @@ export interface PlanetGenerationConfig {
   depthGradient: GradientStop[];
   blendDepth: number;
   seaLevel: number;
+  surfaceLevel01: number;
   surfaceMode: PlanetSurfaceMode;
   material: {
     roughness: number;
@@ -78,6 +91,17 @@ export interface PlanetGenerationConfig {
     shadowTintStrength: number;
     coastTintStrength: number;
     shallowSurfaceBrightness: number;
+    microReliefStrength: number;
+    microReliefScale: number;
+    microNormalStrength: number;
+    microAlbedoBreakup: number;
+    hotspotCoverage: number;
+    hotspotIntensity: number;
+    fissureScale: number;
+    fissureSharpness: number;
+    lavaAccentStrength: number;
+    emissiveStrength: number;
+    basaltContrast: number;
   };
   postfx: PlanetArchetypePreset['postfx'];
 }

@@ -54,7 +54,9 @@ export class PlanetGenerator {
       minMax.max,
       config.blendDepth,
       config.seaLevel,
+      config.surfaceLevel01,
       config.surfaceMode,
+      config.archetype,
       config.material.roughness,
       config.material.metalness,
       config.material.vegetationDensity,
@@ -68,6 +70,17 @@ export class PlanetGenerator {
       config.material.shadowTintStrength,
       config.material.coastTintStrength,
       config.material.shallowSurfaceBrightness,
+      config.material.microReliefStrength,
+      config.material.microReliefScale,
+      config.material.microNormalStrength,
+      config.material.microAlbedoBreakup,
+      config.material.hotspotCoverage,
+      config.material.hotspotIntensity,
+      config.material.fissureScale,
+      config.material.fissureSharpness,
+      config.material.lavaAccentStrength,
+      config.material.emissiveStrength,
+      config.material.basaltContrast,
       debugMode,
     );
 
@@ -77,7 +90,7 @@ export class PlanetGenerator {
     }
 
     const deduped = BufferGeometryUtils.mergeVertices(merged, 1e-6);
-    this.applySubmergedReliefCompression(deduped, config);
+    this.applySubmergedReliefCompression(deduped, config, minMax.min, minMax.max);
     deduped.computeVertexNormals();
     if (debugMode > 0) {
       this.logMergedGeometryStats(config, deduped);
@@ -96,7 +109,7 @@ export class PlanetGenerator {
     return { root };
   }
 
-  private applySubmergedReliefCompression(geometry: THREE.BufferGeometry, config: PlanetGenerationConfig) {
+  private applySubmergedReliefCompression(geometry: THREE.BufferGeometry, config: PlanetGenerationConfig, minElevation: number, maxElevation: number) {
     const positions = geometry.getAttribute('position');
     const elevations = geometry.getAttribute('aElevation');
     if (!positions || !elevations) return;
@@ -106,12 +119,13 @@ export class PlanetGenerator {
 
     const modeScale = config.surfaceMode === 'water' ? 1 : 0.72;
     const flattening = baseStrength * modeScale;
-    const flattenRadius = config.seaLevel;
-    const depthRange = Math.max(0.08, Math.abs(config.seaLevel - 1) * 2 + 0.08);
+    const lowSurfaceElevation = THREE.MathUtils.lerp(minElevation, maxElevation, config.surfaceLevel01);
+    const flattenRadius = lowSurfaceElevation;
+    const depthRange = Math.max(0.04, (maxElevation - minElevation) * 0.42);
 
     for (let i = 0; i < positions.count; i += 1) {
       const elevation = elevations.getX(i);
-      if (elevation >= config.seaLevel) continue;
+      if (elevation >= lowSurfaceElevation) continue;
 
       const x = positions.getX(i);
       const y = positions.getY(i);
@@ -119,7 +133,7 @@ export class PlanetGenerator {
       const len = Math.hypot(x, y, z);
       if (len <= 1e-6) continue;
 
-      const below = config.seaLevel - elevation;
+      const below = lowSurfaceElevation - elevation;
       const depthT = THREE.MathUtils.clamp(below / depthRange, 0, 1);
       const compression = flattening * depthT;
       const targetRadius = THREE.MathUtils.lerp(len, flattenRadius, compression);

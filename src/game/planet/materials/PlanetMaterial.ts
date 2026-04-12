@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { GradientStop, PlanetSurfaceMode } from '@/game/planet/types';
+import type { PlanetArchetype } from '@/game/render/types';
 
 const MAX_STOPS = 6;
 
@@ -10,7 +11,9 @@ export function createPlanetMaterial(
   maxElevation: number,
   blendDepth: number,
   seaLevel: number,
+  surfaceLevel01: number,
   surfaceMode: PlanetSurfaceMode,
+  archetype: PlanetArchetype,
   roughness: number,
   metalness: number,
   vegetationDensity: number,
@@ -24,6 +27,17 @@ export function createPlanetMaterial(
   shadowTintStrength: number,
   coastTintStrength: number,
   shallowSurfaceBrightness: number,
+  microReliefStrength: number,
+  microReliefScale: number,
+  microNormalStrength: number,
+  microAlbedoBreakup: number,
+  hotspotCoverage: number,
+  hotspotIntensity: number,
+  fissureScale: number,
+  fissureSharpness: number,
+  lavaAccentStrength: number,
+  emissiveStrength: number,
+  basaltContrast: number,
   debugMode = 0,
 ) {
   const normalizedElevation = normalizeStops(elevationGradient, [1, 1, 1]);
@@ -54,7 +68,20 @@ export function createPlanetMaterial(
       uLightDirection: { value: new THREE.Vector3(0.85, 0.35, 0.55).normalize() },
       uBlendDepth: { value: Math.max(0.001, blendDepth) },
       uSeaLevel: { value: seaLevel },
+      uSurfaceLevel01: { value: surfaceLevel01 },
       uSurfaceMode: { value: surfaceMode === 'ice' ? 1 : surfaceMode === 'lava' ? 2 : 0 },
+      uDryArchetype: { value: archetype === 'arid' || archetype === 'barren' ? 1 : 0 },
+      uMicroReliefStrength: { value: microReliefStrength },
+      uMicroReliefScale: { value: microReliefScale },
+      uMicroNormalStrength: { value: microNormalStrength },
+      uMicroAlbedoBreakup: { value: microAlbedoBreakup },
+      uHotspotCoverage: { value: hotspotCoverage },
+      uHotspotIntensity: { value: hotspotIntensity },
+      uFissureScale: { value: fissureScale },
+      uFissureSharpness: { value: fissureSharpness },
+      uLavaAccentStrength: { value: lavaAccentStrength },
+      uEmissiveStrength: { value: emissiveStrength },
+      uBasaltContrast: { value: basaltContrast },
       uDebugMode: { value: debugMode },
     },
     vertexShader: `
@@ -96,7 +123,20 @@ export function createPlanetMaterial(
       uniform vec3 uLightDirection;
       uniform float uBlendDepth;
       uniform float uSeaLevel;
+      uniform float uSurfaceLevel01;
       uniform int uSurfaceMode;
+      uniform int uDryArchetype;
+      uniform float uMicroReliefStrength;
+      uniform float uMicroReliefScale;
+      uniform float uMicroNormalStrength;
+      uniform float uMicroAlbedoBreakup;
+      uniform float uHotspotCoverage;
+      uniform float uHotspotIntensity;
+      uniform float uFissureScale;
+      uniform float uFissureSharpness;
+      uniform float uLavaAccentStrength;
+      uniform float uEmissiveStrength;
+      uniform float uBasaltContrast;
       uniform int uDebugMode;
       varying float vElevation;
       varying vec3 vNormalW;
@@ -159,19 +199,30 @@ export function createPlanetMaterial(
       void main() {
         vec3 N = normalize(vNormalW);
         vec3 up = normalize(vPositionW);
+        float eps = 0.045;
+        vec3 microP = vPositionW * uMicroReliefScale + vec3(vElevation * 1.73);
+        float microA = noise3(microP);
+        float microX = noise3(microP + vec3(eps, 0.0, 0.0));
+        float microY = noise3(microP + vec3(0.0, eps, 0.0));
+        float microZ = noise3(microP + vec3(0.0, 0.0, eps));
+        vec3 microGrad = vec3(microX - microA, microY - microA, microZ - microA) / eps;
+        float dryMask = float(uDryArchetype);
+        N = normalize(N + microGrad * uMicroNormalStrength * (0.35 + dryMask * 0.65));
         float slope = clamp(1.0 - dot(N, up), 0.0, 1.0);
 
-        float depthN = invLerp(uMinMax.x, uSeaLevel, vElevation);
-        float elevN = invLerp(uSeaLevel, uMinMax.y, vElevation);
+        float elev01 = invLerp(uMinMax.x, uMinMax.y, vElevation);
+        float depthN = invLerp(0.0, max(0.001, uSurfaceLevel01), elev01);
+        float elevN = invLerp(uSurfaceLevel01, 1.0, elev01);
 
         float macro = fbm(vPositionW * 2.6 + vec3(5.2, 1.4, 3.7));
         float micro = fbm(vPositionW * 7.5 + vec3(vElevation * 1.2));
         float breakup = mix(macro, micro, 0.32);
 
-        float submergedMask = 1.0 - smoothstep(uSeaLevel - uBlendDepth * 0.35, uSeaLevel + uBlendDepth * 0.12, vElevation);
-        float coastMask = smoothstep(uSeaLevel - uBlendDepth * 0.08, uSeaLevel + uBlendDepth * 0.5, vElevation)
-          * (1.0 - smoothstep(uSeaLevel + uBlendDepth * 0.5, uSeaLevel + uBlendDepth * 1.8, vElevation));
-        float landMask = smoothstep(uSeaLevel + uBlendDepth * 0.05, uSeaLevel + uBlendDepth * 0.9, vElevation);
+        float edge = uBlendDepth * 6.0;
+        float submergedMask = 1.0 - smoothstep(uSurfaceLevel01 - edge * 0.35, uSurfaceLevel01 + edge * 0.12, elev01);
+        float coastMask = smoothstep(uSurfaceLevel01 - edge * 0.08, uSurfaceLevel01 + edge * 0.5, elev01)
+          * (1.0 - smoothstep(uSurfaceLevel01 + edge * 0.5, uSurfaceLevel01 + edge * 1.8, elev01));
+        float landMask = smoothstep(uSurfaceLevel01 + edge * 0.05, uSurfaceLevel01 + edge * 0.9, elev01);
 
         float landDetail = (breakup - 0.5) * (0.065 + slope * 0.12);
         float depthDetail = (macro - 0.5) * 0.06;
@@ -185,6 +236,8 @@ export function createPlanetMaterial(
         float peakMask = smoothstep(0.68, 0.96, elevN);
 
         vec3 terrain = landBase;
+        float microBreakup = (microA - 0.5) * uMicroAlbedoBreakup * (0.3 + dryMask * 0.7);
+        terrain *= 1.0 + microBreakup;
         float vegetationNoise = smoothstep(0.34, 0.72, breakup);
         float vegetationMask = uVegetationDensity
           * smoothstep(0.02, 0.6, elevN)
@@ -196,6 +249,10 @@ export function createPlanetMaterial(
         terrain = mix(terrain, terrain * (1.0 - uBasinDarkening), lowlandMask * (0.26 + uWetness * 0.24));
         terrain = mix(terrain, terrain * (1.0 + uUplandLift), uplandMask * 0.6);
         terrain = mix(terrain, terrain * (1.0 + uPeakLift), peakMask * (0.5 + slope * 0.28));
+        if (uSurfaceMode == 1) {
+          terrain = mix(terrain, terrain * 0.84, lowlandMask * 0.28);
+          terrain = mix(terrain, terrain * 0.92, peakMask * 0.55);
+        }
 
         vec3 coastTint = mix(terrain * 1.02, terrain * 1.12, 0.55) + vec3(0.012, 0.012, 0.01);
         terrain = mix(terrain, coastTint, coastMask * uCoastTintStrength * (0.8 + uWetness * 0.2));
@@ -203,14 +260,19 @@ export function createPlanetMaterial(
         vec3 water = depthBase * (0.75 + depthN * (0.22 + uShallowSurfaceBrightness) + uWetness * 0.05);
         water = mix(water, water * (1.0 - uBasinDarkening), basinMask * (0.32 + slope * 0.2));
 
-        vec3 ice = mix(vec3(0.48, 0.62, 0.72), vec3(0.86, 0.93, 0.98), clamp(depthN + macro * 0.1, 0.0, 1.0));
-        ice = mix(ice, vec3(0.34, 0.46, 0.58), smoothstep(0.06, 0.34, depthN) * 0.38);
-        ice = mix(ice, ice * 1.1, (1.0 - basinMask) * 0.18);
+        vec3 ice = mix(vec3(0.24, 0.34, 0.43), vec3(0.84, 0.92, 0.97), clamp(depthN + macro * 0.08, 0.0, 1.0));
+        ice = mix(ice, vec3(0.4, 0.53, 0.66), smoothstep(0.05, 0.44, depthN) * 0.55);
+        ice = mix(ice, ice * 1.06, (1.0 - basinMask) * 0.08);
 
-        vec3 basalt = mix(vec3(0.04, 0.04, 0.05), vec3(0.16, 0.13, 0.11), clamp(depthN + macro * 0.16, 0.0, 1.0));
-        basalt = mix(basalt, basalt * 0.78, basinMask * 0.52);
-        vec3 lavaGlow = mix(vec3(0.26, 0.1, 0.03), vec3(0.82, 0.31, 0.08), smoothstep(0.76, 1.0, breakup) * smoothstep(0.42, 1.0, depthN));
-        vec3 lava = mix(basalt, lavaGlow, 0.08 + smoothstep(0.84, 1.0, breakup) * 0.16);
+        vec3 basalt = mix(vec3(0.03, 0.03, 0.04), vec3(0.18, 0.14, 0.11), clamp(depthN + macro * 0.12, 0.0, 1.0));
+        basalt = mix(basalt, basalt * (0.72 - uBasaltContrast * 0.25), basinMask * (0.42 + uBasaltContrast * 0.25));
+        float fissureNoise = pow(clamp(1.0 - abs(fbm(vPositionW * uFissureScale) * 2.0 - 1.0), 0.0, 1.0), max(1.2, uFissureSharpness));
+        float hotspotNoise = smoothstep(1.0 - uHotspotCoverage, 1.0, fbm(vPositionW * (uFissureScale * 0.6) + vec3(11.3, 5.6, 2.1)));
+        float volcanicMask = clamp((1.0 - smoothstep(uSurfaceLevel01 + edge * 0.2, uSurfaceLevel01 + edge * 1.8, elev01)) * 0.55 + fissureNoise * 0.65 + hotspotNoise * 0.8, 0.0, 1.0);
+        float lavaMask = volcanicMask * (0.18 + uLavaAccentStrength * 0.42) + hotspotNoise * uHotspotIntensity * 0.55;
+        lavaMask = clamp(lavaMask, 0.0, 0.95);
+        vec3 lavaGlow = mix(vec3(0.4, 0.12, 0.03), vec3(0.96, 0.36, 0.08), clamp(fissureNoise * 0.45 + hotspotNoise, 0.0, 1.0));
+        vec3 lava = mix(basalt, lavaGlow, lavaMask);
 
         vec3 lowSurface = water;
         if (uSurfaceMode == 1) {
@@ -267,6 +329,9 @@ export function createPlanetMaterial(
         float shadowMask = clamp((1.0 - keyDiffuse) * (0.7 + slope * 0.8), 0.0, 1.0);
         color = mix(color, color * uShadowTint, shadowMask * uShadowTintStrength);
         color += vec3(waterSpec + landSpec);
+        if (uSurfaceMode == 2) {
+          color += lavaGlow * lavaMask * uEmissiveStrength * 0.36;
+        }
 
         gl_FragColor = vec4(color, 1.0);
       }
