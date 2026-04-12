@@ -1,5 +1,6 @@
 import type { PlanetArchetype } from '@/game/render/types';
 import type { Vector3Tuple } from '@/game/planet/utils/vector';
+import type * as THREE from 'three';
 
 export interface GradientStop {
   anchor: number;
@@ -104,4 +105,10 @@ export interface PlanetGenerationConfig {
     basaltContrast: number;
   };
   postfx: PlanetArchetypePreset['postfx'];
+}
+
+export interface GeneratedPlanet {
+  root: THREE.Group;
+  surfaceMesh: THREE.Mesh;
+  surfaceGeometry: THREE.BufferGeometry;
 }
