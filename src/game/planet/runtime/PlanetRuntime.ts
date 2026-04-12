@@ -4,6 +4,16 @@ import { createPlanetGenerationConfig } from '@/game/planet/presets/archetypes';
 import { PlanetGenerator } from '@/game/planet/generation/PlanetGenerator';
 import { PlanetPostFx } from '@/game/planet/postfx/PlanetPostFx';
 import { PlanetScene } from '@/game/planet/runtime/PlanetScene';
+import type { SettlementSlot } from '@/game/planet/runtime/SettlementSlots';
+import { generateSettlementSlots } from '@/game/planet/runtime/SettlementSlots';
+import { SettlementSlotLayer } from '@/game/planet/runtime/SettlementSlotLayer';
+
+interface SettlementSnapshot {
+  total: number;
+  occupied: number;
+  available: number;
+  selected: SettlementSlot | null;
+}
 
 export class PlanetRuntime {
   readonly renderer: THREE.WebGLRenderer;
@@ -11,6 +21,13 @@ export class PlanetRuntime {
   private readonly generator: PlanetGenerator;
   private postFx: PlanetPostFx;
   private planetRoot: THREE.Group | null = null;
+  private settlementSlots: SettlementSlot[] = [];
+  private settlementLayer: SettlementSlotLayer | null = null;
+  private selectedSlotIndex: number | null = null;
+  private readonly raycaster = new THREE.Raycaster();
+  private readonly ndc = new THREE.Vector2();
+  private readonly pointerPixel = new THREE.Vector2();
+  private onSettlementSelectionChanged: ((snapshot: SettlementSnapshot) => void) | null = null;
 
   constructor(private readonly host: HTMLDivElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -32,12 +49,27 @@ export class PlanetRuntime {
       disposeHierarchy(this.planetRoot);
     }
 
+    this.disposeSettlementLayer();
+
     const profile = planetProfileFromSeed(seed);
     const config = createPlanetGenerationConfig(seed, profile);
     const generated = this.generator.generate(config);
 
     this.planetRoot = generated.root;
     this.sceneKit.root.add(generated.root);
+
+    try {
+      this.settlementSlots = generateSettlementSlots(generated.surfaceGeometry, config);
+      this.settlementLayer = new SettlementSlotLayer(this.settlementSlots);
+      generated.root.add(this.settlementLayer.group);
+    } catch (error) {
+      console.error('[planet-settlements] failed to generate settlement slots', error);
+      this.settlementSlots = [];
+      this.settlementLayer = null;
+    }
+
+    this.selectedSlotIndex = null;
+    this.emitSettlementSelection();
 
     this.postFx.setBloom(config.postfx.bloom);
     this.renderer.toneMappingExposure = config.postfx.exposure;
@@ -63,16 +95,73 @@ export class PlanetRuntime {
     this.planetRoot.quaternion.premultiply(qPitch);
   }
 
+  pickSettlementSlot(clientX: number, clientY: number) {
+    if (!this.settlementLayer) return null;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+
+    this.pointerPixel.set(clientX - rect.left, clientY - rect.top);
+    if (this.pointerPixel.x < 0 || this.pointerPixel.y < 0 || this.pointerPixel.x > rect.width || this.pointerPixel.y > rect.height) {
+      return null;
+    }
+
+    this.ndc.set((this.pointerPixel.x / rect.width) * 2 - 1, -(this.pointerPixel.y / rect.height) * 2 + 1);
+    this.raycaster.setFromCamera(this.ndc, this.sceneKit.camera);
+    const hits = this.raycaster.intersectObject(this.settlementLayer.mesh, false);
+    const instanceId = hits[0]?.instanceId;
+    if (instanceId == null) return null;
+    return this.settlementSlots[instanceId] ?? null;
+  }
+
+  setSelectedSettlement(slotId: string | null) {
+    const nextIndex = slotId == null ? null : this.settlementSlots.findIndex((slot) => slot.id === slotId);
+    const normalized = nextIndex != null && nextIndex >= 0 ? nextIndex : null;
+    this.selectedSlotIndex = normalized;
+    this.settlementLayer?.setSelectedIndex(normalized);
+    this.emitSettlementSelection();
+  }
+
+  getSettlementSnapshot(): SettlementSnapshot {
+    const total = this.settlementSlots.length;
+    const occupied = 0;
+    const available = total;
+    const selected = this.selectedSlotIndex == null ? null : (this.settlementSlots[this.selectedSlotIndex] ?? null);
+
+    return {
+      total,
+      occupied,
+      available,
+      selected,
+    };
+  }
+
+  setSettlementSelectionListener(listener: ((snapshot: SettlementSnapshot) => void) | null) {
+    this.onSettlementSelectionChanged = listener;
+  }
+
   get camera() {
     return this.sceneKit.camera;
   }
 
   destroy() {
     if (this.planetRoot) disposeHierarchy(this.planetRoot);
+    this.disposeSettlementLayer();
     this.postFx.dispose();
     this.sceneKit.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
+  }
+
+  private emitSettlementSelection() {
+    this.onSettlementSelectionChanged?.(this.getSettlementSnapshot());
+  }
+
+  private disposeSettlementLayer() {
+    this.settlementLayer?.group.removeFromParent();
+    this.settlementLayer?.dispose();
+    this.settlementLayer = null;
+    this.settlementSlots = [];
+    this.selectedSlotIndex = null;
   }
 }
 

@@ -13,6 +13,8 @@ export class Planet3DMode implements RenderModeController {
   private inspectTitle: HTMLHeadingElement | null = null;
   private inspectSubtitle: HTMLParagraphElement | null = null;
   private inspectTags: HTMLDivElement | null = null;
+  private inspectSettlements: HTMLDivElement | null = null;
+  private inspectSelection: HTMLDivElement | null = null;
 
   private width = 1;
   private height = 1;
@@ -21,6 +23,8 @@ export class Planet3DMode implements RenderModeController {
   private pointerId: number | null = null;
   private lastX = 0;
   private lastY = 0;
+  private downX = 0;
+  private downY = 0;
 
   constructor(
     private selectedPlanet: SelectedPlanetRef,
@@ -29,6 +33,10 @@ export class Planet3DMode implements RenderModeController {
 
   mount() {
     this.runtime = new PlanetRuntime(this.context.host);
+    this.runtime.setSettlementSelectionListener((snapshot) => {
+      this.updateInspectSettlement(snapshot.total, snapshot.occupied, snapshot.available);
+      this.updateInspectSelection(snapshot.selected?.id ?? null, snapshot.selected?.habitability ?? null);
+    });
     this.runtime.rebuildFromSeed(this.selectedPlanet.seed);
     this.mountInspectPanel();
 
@@ -74,6 +82,8 @@ export class Planet3DMode implements RenderModeController {
     this.inspectTitle = null;
     this.inspectSubtitle = null;
     this.inspectTags = null;
+    this.inspectSettlements = null;
+    this.inspectSelection = null;
   }
 
   private readonly onPointerDown = (event: PointerEvent) => {
@@ -82,6 +92,8 @@ export class Planet3DMode implements RenderModeController {
     this.isDragging = true;
     this.lastX = event.clientX;
     this.lastY = event.clientY;
+    this.downX = event.clientX;
+    this.downY = event.clientY;
   };
 
   private readonly onPointerMove = (event: PointerEvent) => {
@@ -97,6 +109,12 @@ export class Planet3DMode implements RenderModeController {
 
   private readonly onPointerUp = (event: PointerEvent) => {
     if (event.pointerId !== this.pointerId) return;
+    const clickDistance = Math.hypot(event.clientX - this.downX, event.clientY - this.downY);
+    if (clickDistance < 4 && this.runtime) {
+      const picked = this.runtime.pickSettlementSlot(event.clientX, event.clientY);
+      this.runtime.setSelectedSettlement(picked?.id ?? null);
+    }
+
     this.pointerId = null;
     this.isDragging = false;
   };
@@ -120,6 +138,12 @@ export class Planet3DMode implements RenderModeController {
     const tags = document.createElement('div');
     tags.className = 'planet-inspect-tags';
 
+    const settlements = document.createElement('div');
+    settlements.className = 'planet-inspect-settlements';
+
+    const selection = document.createElement('div');
+    selection.className = 'planet-inspect-selection';
+
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'planet-back-button';
@@ -131,6 +155,8 @@ export class Planet3DMode implements RenderModeController {
     panel.appendChild(title);
     panel.appendChild(subtitle);
     panel.appendChild(tags);
+    panel.appendChild(settlements);
+    panel.appendChild(selection);
     panel.appendChild(button);
 
     this.context.host.appendChild(panel);
@@ -138,9 +164,15 @@ export class Planet3DMode implements RenderModeController {
     this.inspectTitle = title;
     this.inspectSubtitle = subtitle;
     this.inspectTags = tags;
+    this.inspectSettlements = settlements;
+    this.inspectSelection = selection;
 
     const profile = planetProfileFromSeed(this.selectedPlanet.seed);
     this.updateInspectIdentity(this.selectedPlanet, profile);
+
+    const snapshot = this.runtime?.getSettlementSnapshot();
+    this.updateInspectSettlement(snapshot?.total ?? 0, snapshot?.occupied ?? 0, snapshot?.available ?? 0);
+    this.updateInspectSelection(snapshot?.selected?.id ?? null, snapshot?.selected?.habitability ?? null);
   }
 
   private updateInspectIdentity(planetRef: SelectedPlanetRef, profile: PlanetVisualProfile) {
@@ -157,6 +189,50 @@ export class Planet3DMode implements RenderModeController {
       chip.className = 'planet-inspect-tag';
       chip.textContent = tag;
       this.inspectTags.appendChild(chip);
+    }
+  }
+
+  private updateInspectSettlement(total: number, occupied: number, available: number) {
+    if (!this.inspectSettlements) return;
+    this.inspectSettlements.innerHTML = '';
+
+    const entries = [
+      `Settlement slots: ${total}`,
+      `Occupied: ${occupied}`,
+      `Available: ${available}`,
+    ];
+
+    for (const entry of entries) {
+      const line = document.createElement('p');
+      line.className = 'planet-inspect-line';
+      line.textContent = entry;
+      this.inspectSettlements.appendChild(line);
+    }
+  }
+
+  private updateInspectSelection(slotId: string | null, habitability: number | null) {
+    if (!this.inspectSelection) return;
+    this.inspectSelection.innerHTML = '';
+
+    if (!slotId || habitability == null) {
+      const line = document.createElement('p');
+      line.className = 'planet-inspect-line';
+      line.textContent = 'Selected slot: none';
+      this.inspectSelection.appendChild(line);
+      return;
+    }
+
+    const entries = [
+      `Selected slot: ${slotId.toUpperCase()}`,
+      'State: empty',
+      `Habitability: ${Math.round(habitability * 100)}%`,
+    ];
+
+    for (const entry of entries) {
+      const line = document.createElement('p');
+      line.className = 'planet-inspect-line';
+      line.textContent = entry;
+      this.inspectSelection.appendChild(line);
     }
   }
 }
