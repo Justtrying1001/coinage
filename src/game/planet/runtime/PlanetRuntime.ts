@@ -18,7 +18,7 @@ interface SettlementSnapshot {
 export class PlanetRuntime {
   readonly renderer: THREE.WebGLRenderer;
   private readonly sceneKit = new PlanetScene();
-  private readonly generator: PlanetGenerator;
+  private readonly generator = new PlanetGenerator();
   private postFx: PlanetPostFx;
   private planetRoot: THREE.Group | null = null;
   private settlementSlots: SettlementSlot[] = [];
@@ -28,6 +28,7 @@ export class PlanetRuntime {
   private readonly ndc = new THREE.Vector2();
   private readonly pointerPixel = new THREE.Vector2();
   private onSettlementSelectionChanged: ((snapshot: SettlementSnapshot) => void) | null = null;
+  private rebuildRequestId = 0;
 
   constructor(private readonly host: HTMLDivElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -39,40 +40,64 @@ export class PlanetRuntime {
 
     this.host.appendChild(this.renderer.domElement);
 
-    this.generator = new PlanetGenerator(this.renderer);
     this.postFx = new PlanetPostFx(this.renderer, this.sceneKit.scene, this.sceneKit.camera);
   }
 
   rebuildFromSeed(seed: number) {
-    if (this.planetRoot) {
-      this.sceneKit.root.remove(this.planetRoot);
-      disposeHierarchy(this.planetRoot);
-    }
-
-    this.disposeSettlementLayer();
-
+    const requestId = ++this.rebuildRequestId;
+    const mountStart = performance.now();
     const profile = planetProfileFromSeed(seed);
     const config = createPlanetGenerationConfig(seed, profile);
-    const generated = this.generator.generate(config);
 
-    this.planetRoot = generated.root;
-    this.sceneKit.root.add(generated.root);
+    void this.generator.generate(config).then((generated) => {
+      if (requestId !== this.rebuildRequestId) {
+        disposeHierarchy(generated.root);
+        return;
+      }
 
-    try {
-      this.settlementSlots = generateSettlementSlots(generated.surfaceGeometry, config);
-      this.settlementLayer = new SettlementSlotLayer(this.settlementSlots);
-      generated.root.add(this.settlementLayer.group);
-    } catch (error) {
-      console.error('[planet-settlements] failed to generate settlement slots', error);
-      this.settlementSlots = [];
-      this.settlementLayer = null;
-    }
+      if (this.planetRoot) {
+        this.sceneKit.root.remove(this.planetRoot);
+        disposeHierarchy(this.planetRoot);
+      }
+      this.disposeSettlementLayer();
 
-    this.selectedSlotIndex = null;
-    this.emitSettlementSelection();
+      this.planetRoot = generated.root;
+      this.sceneKit.root.add(generated.root);
 
-    this.postFx.setBloom(config.postfx.bloom);
-    this.renderer.toneMappingExposure = config.postfx.exposure;
+      const settlementStart = performance.now();
+      try {
+        this.settlementSlots = generateSettlementSlots(generated.surfaceGeometry, config);
+        this.settlementLayer = new SettlementSlotLayer(this.settlementSlots);
+        generated.root.add(this.settlementLayer.group);
+      } catch (error) {
+        console.error('[planet-settlements] failed to generate settlement slots', error);
+        this.settlementSlots = [];
+        this.settlementLayer = null;
+      }
+
+      this.selectedSlotIndex = null;
+      this.emitSettlementSelection();
+
+      this.postFx.setBloom(config.postfx.bloom);
+      this.renderer.toneMappingExposure = config.postfx.exposure;
+
+      const mountEnd = performance.now();
+      console.info('[planet-perf] runtime-ready', {
+        seed,
+        requestId,
+        generationPath: generated.timings.generationPath,
+        workerTotalMs: generated.timings.workerTotalMs,
+        workerPerFaceMs: generated.timings.workerPerFaceMs,
+        faceGenerationMs: generated.timings.faceGenerationMs,
+        assemblyMs: generated.timings.assemblyMs,
+        settlementMs: mountEnd - settlementStart,
+        planetMountMs: mountEnd - mountStart,
+        totalMs: generated.timings.totalMs,
+      });
+    }).catch((error) => {
+      if (requestId !== this.rebuildRequestId) return;
+      console.error('[planet-runtime] failed to build planet', error);
+    });
   }
 
   resize(width: number, height: number) {
@@ -147,6 +172,7 @@ export class PlanetRuntime {
   }
 
   destroy() {
+    this.rebuildRequestId += 1;
     if (this.planetRoot) disposeHierarchy(this.planetRoot);
     this.disposeSettlementLayer();
     this.postFx.dispose();

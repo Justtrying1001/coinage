@@ -32,12 +32,19 @@ export class Planet3DMode implements RenderModeController {
   ) {}
 
   mount() {
+    const mountStartedAt = performance.now();
     this.runtime = new PlanetRuntime(this.context.host);
     this.runtime.setSettlementSelectionListener((snapshot) => {
       this.updateInspectSettlement(snapshot.total, snapshot.occupied, snapshot.available);
       this.updateInspectSelection(snapshot.selected?.id ?? null, snapshot.selected?.habitability ?? null);
     });
     this.runtime.rebuildFromSeed(this.selectedPlanet.seed);
+    requestAnimationFrame(() => {
+      console.info('[planet-perf] planet-mode-mounted', {
+        seed: this.selectedPlanet.seed,
+        mountToFirstFrameMs: performance.now() - mountStartedAt,
+      });
+    });
     this.mountInspectPanel();
 
     const canvas = this.runtime.renderer.domElement;

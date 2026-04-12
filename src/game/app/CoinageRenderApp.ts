@@ -42,6 +42,7 @@ export class CoinageRenderApp {
   private galaxyData;
 
   private galaxyViewSnapshot: Galaxy2DViewSnapshot | null = null;
+  private pendingModeSwitchStart: number | null = null;
 
   private readonly modeFactory: RenderModeFactory;
 
@@ -124,6 +125,14 @@ export class CoinageRenderApp {
   };
 
   private switchMode(nextMode: RenderMode) {
+    const switchStartedAt = performance.now();
+    if (this.mode === 'galaxy2d' && nextMode === 'planet3d') {
+      this.pendingModeSwitchStart = switchStartedAt;
+      console.info('[planet-perf] galaxy-to-planet-switch-start', {
+        selectedPlanet: this.selectedPlanet?.id ?? null,
+        seed: this.selectedPlanet?.seed ?? null,
+      });
+    }
     if (this.mode === nextMode && this.activeController) {
       if (
         nextMode === 'planet3d' &&
@@ -171,6 +180,13 @@ export class CoinageRenderApp {
 
     this.activeController.mount();
     this.resize();
+
+    if (nextMode === 'planet3d' && this.pendingModeSwitchStart != null) {
+      console.info('[planet-perf] galaxy-to-planet-switch-end', {
+        durationMs: performance.now() - this.pendingModeSwitchStart,
+      });
+      this.pendingModeSwitchStart = null;
+    }
   }
 
   private resize() {
