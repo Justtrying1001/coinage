@@ -5,6 +5,7 @@ import type { Galaxy2DViewSnapshot } from '@/game/render/modes/Galaxy2DMode';
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
 import { Planet3DMode } from '@/game/render/modes/Planet3DMode';
 import { City3DMode } from '@/game/city/City3DMode';
+import { canEnterCity, DEFAULT_CITY_ACCESS_POLICY, type CityAccessPolicy } from '@/game/city/access/cityAccessPolicy';
 
 interface RenderModeFactory {
   createGalaxyMode: (
@@ -12,7 +13,7 @@ interface RenderModeFactory {
     options?: { selectedPlanet?: SelectedPlanetRef | null; viewSnapshot?: Galaxy2DViewSnapshot | null },
   ) => RenderModeController;
   createPlanetMode: (planet: SelectedPlanetRef, context: ModeContext) => RenderModeController;
-  createCityMode: (planet: SelectedPlanetRef, context: ModeContext) => RenderModeController;
+  createCityMode: (planet: SelectedPlanetRef, context: ModeContext, options?: { settlementId?: string | null }) => RenderModeController;
 }
 
 interface CoinageRenderConfig {
@@ -24,28 +25,24 @@ interface CoinageRenderConfig {
   initialSelectedPlanet?: SelectedPlanetRef;
   onSelectedPlanetChange?: (planet: SelectedPlanetRef) => void;
   modeFactory?: RenderModeFactory;
+  cityAccessPolicy?: Partial<CityAccessPolicy>;
+  ownedSettlementIds?: string[];
 }
 
 export class CoinageRenderApp {
   private mode: RenderMode = 'galaxy2d';
-
   private activeController: RenderModeController | null = null;
-
   private rafId: number | null = null;
-
   private lastTime = 0;
-
   private mounted = false;
-
   private resizeObserver: ResizeObserver | null = null;
-
   private selectedPlanet: SelectedPlanetRef | null = null;
-
+  private selectedSettlementId: string | null = null;
   private galaxyData;
-
   private galaxyViewSnapshot: Galaxy2DViewSnapshot | null = null;
-
   private readonly modeFactory: RenderModeFactory;
+  private readonly cityAccessPolicy: CityAccessPolicy;
+  private readonly ownedSettlementIds: string[];
 
   constructor(
     private readonly host: HTMLDivElement,
@@ -59,6 +56,9 @@ export class CoinageRenderApp {
       nodeCount: this.config.planetCount,
     });
     this.selectedPlanet = config.initialSelectedPlanet ?? selectPrimaryPlanet(this.galaxyData);
+    this.cityAccessPolicy = { ...DEFAULT_CITY_ACCESS_POLICY, ...config.cityAccessPolicy };
+    this.ownedSettlementIds = config.ownedSettlementIds ?? [];
+
     this.modeFactory = config.modeFactory ?? {
       createGalaxyMode: (context, options) =>
         new Galaxy2DMode(this.galaxyData, context, {
@@ -66,21 +66,17 @@ export class CoinageRenderApp {
           initialViewSnapshot: options?.viewSnapshot ?? this.galaxyViewSnapshot,
         }),
       createPlanetMode: (planet, context) => new Planet3DMode(planet, context),
-      createCityMode: (planet, context) => new City3DMode(planet, context),
+      createCityMode: (planet, context, options) => new City3DMode(planet, context, options?.settlementId ?? null),
     };
   }
 
   mount() {
     if (this.mounted) return;
-
     this.mounted = true;
     this.host.innerHTML = '';
-
     this.switchMode(this.mode);
 
-    this.resizeObserver = new ResizeObserver(() => {
-      this.resize();
-    });
+    this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(this.host);
 
     this.lastTime = performance.now();
@@ -100,7 +96,6 @@ export class CoinageRenderApp {
 
   destroy() {
     if (!this.mounted) return;
-
     if (this.rafId !== null) {
       cancelAnimationFrame(this.rafId);
       this.rafId = null;
@@ -118,10 +113,8 @@ export class CoinageRenderApp {
 
   private readonly tick = (time: number) => {
     if (!this.mounted) return;
-
     const deltaMs = time - this.lastTime;
     this.lastTime = time;
-
     this.activeController?.update(deltaMs);
     this.rafId = requestAnimationFrame(this.tick);
   };
@@ -151,9 +144,10 @@ export class CoinageRenderApp {
     ) {
       this.galaxyViewSnapshot = this.activeController.getViewSnapshot();
     }
+
     this.activeController?.destroy();
 
-    const context = {
+    const context: ModeContext = {
       host: this.host,
       onSelectPlanet: (planet: SelectedPlanetRef) => {
         this.setSelectedPlanet(planet);
@@ -161,6 +155,16 @@ export class CoinageRenderApp {
       },
       onRequestMode: (mode: RenderMode) => {
         this.switchMode(mode);
+      },
+      onEnterCity: (settlementId: string) => {
+        const canEnter = canEnterCity({
+          settlementId,
+          ownedSettlementIds: this.ownedSettlementIds,
+          policy: this.cityAccessPolicy,
+        });
+        if (!canEnter) return;
+        this.selectedSettlementId = settlementId;
+        this.switchMode('city3d');
       },
     };
 
@@ -173,7 +177,9 @@ export class CoinageRenderApp {
     } else if (nextMode === 'planet3d') {
       this.activeController = this.modeFactory.createPlanetMode(activePlanet, context);
     } else {
-      this.activeController = this.modeFactory.createCityMode(activePlanet, context);
+      this.activeController = this.modeFactory.createCityMode(activePlanet, context, {
+        settlementId: this.selectedSettlementId,
+      });
     }
 
     this.activeController.mount();

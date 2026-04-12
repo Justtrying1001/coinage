@@ -78,6 +78,10 @@ class FakePlanetMode implements RenderModeController {
     this.setSelectedPlanetCalls += 1;
   }
 
+  triggerEnterCity(slotId: string) {
+    this.context.onEnterCity(slotId);
+  }
+
   private readonly onPointerUp = () => {};
 }
 
@@ -152,6 +156,50 @@ describe('CoinageRenderApp integration flow', () => {
     expect(selectedChanges.at(-1)).toEqual(chosen);
     expect(planetMode).not.toBeNull();
     expect(planetMode!.selected).toEqual(chosen);
+
+    app.destroy();
+    host.remove();
+  });
+
+
+  it('honors city access policy before entering city mode', () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+
+    let planetMode: FakePlanetMode | null = null;
+    let cityMode: FakeCityMode | null = null;
+
+    const app = new CoinageRenderApp(host, {
+      seed: 78231,
+      galaxyWidth: 18000,
+      galaxyHeight: 12000,
+      cityAccessPolicy: {
+        buildMode: false,
+        canEnterAnyCityInBuildMode: false,
+        enforceOwnershipInLiveMode: true,
+      },
+      ownedSettlementIds: ['slot-02'],
+      modeFactory: {
+        createGalaxyMode: (context) => new FakeGalaxyMode(context),
+        createPlanetMode: (planet, context) => {
+          planetMode = new FakePlanetMode(planet, context);
+          return planetMode;
+        },
+        createCityMode: (planet, context) => {
+          cityMode = new FakeCityMode(planet, context);
+          return cityMode;
+        },
+      },
+    });
+
+    app.mount();
+    app.setMode('planet3d');
+
+    planetMode!.triggerEnterCity('slot-99');
+    expect(cityMode).toBeNull();
+
+    planetMode!.triggerEnterCity('slot-02');
+    expect(cityMode).not.toBeNull();
 
     app.destroy();
     host.remove();

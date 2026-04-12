@@ -27,6 +27,7 @@ export class City3DMode implements RenderModeController {
   constructor(
     private selectedPlanet: SelectedPlanetRef,
     private readonly context: ModeContext,
+    private readonly settlementId: string | null,
   ) {
     const profile = planetProfileFromSeed(selectedPlanet.seed);
     const cityTheme = resolveCityTheme(profile.archetype);
@@ -39,7 +40,7 @@ export class City3DMode implements RenderModeController {
   }
 
   mount() {
-    this.scene = new CitySceneController(this.context.host, this.viewModel);
+    this.scene = new CitySceneController(this.context.host, this.viewModel, this.selectedPlanet.seed);
     this.scene.mount();
     this.mountOverlayPanel();
 
@@ -72,7 +73,7 @@ export class City3DMode implements RenderModeController {
     });
 
     this.scene?.destroy();
-    this.scene = new CitySceneController(this.context.host, this.viewModel);
+    this.scene = new CitySceneController(this.context.host, this.viewModel, this.selectedPlanet.seed);
     this.scene.mount();
     this.refreshPanel();
   }
@@ -176,7 +177,7 @@ export class City3DMode implements RenderModeController {
     if (!this.headerTitle || !this.headerSubtitle || !this.sectionMeta || !this.sectionActions) return;
 
     this.headerTitle.textContent = `${this.viewModel.cityTheme.displayName} // City View`;
-    this.headerSubtitle.textContent = `Planet ${this.selectedPlanet.id.toUpperCase()} · City ${this.viewModel.cityId.toUpperCase()}`;
+    this.headerSubtitle.textContent = `Planet ${this.selectedPlanet.id.toUpperCase()} · ${this.settlementId ? `Settlement ${this.settlementId.toUpperCase()}` : "City Core"}`;
 
     this.sectionMeta.innerHTML = '';
     this.sectionActions.innerHTML = '';

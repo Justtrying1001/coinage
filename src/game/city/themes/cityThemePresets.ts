@@ -8,12 +8,17 @@ export interface CityTheme {
   fogNear: number;
   fogFar: number;
   groundColor: number;
+  groundShadowColor: number;
   padColor: number;
-  padEdgeColor: number;
+  padTrimColor: number;
+  metalColor: number;
+  emissiveAccent: number;
   ambientLightColor: number;
   ambientLightIntensity: number;
   directionalLightColor: number;
   directionalLightIntensity: number;
+  rimLightColor: number;
+  rimLightIntensity: number;
   accentColor: number;
 }
 
@@ -21,33 +26,43 @@ export const CITY_THEME_PRESETS: Record<CityThemeId, CityTheme> = {
   frozen: {
     id: 'frozen',
     displayName: 'Frozen Colony',
-    clearColor: 0x060d16,
-    fogColor: 0x112237,
-    fogNear: 20,
-    fogFar: 88,
-    groundColor: 0x7f95ad,
-    padColor: 0xa2bbcf,
-    padEdgeColor: 0xd2e8ff,
-    ambientLightColor: 0x8fc6ff,
-    ambientLightIntensity: 0.92,
-    directionalLightColor: 0xd8eeff,
-    directionalLightIntensity: 1.35,
-    accentColor: 0x79d5ff,
+    clearColor: 0x030910,
+    fogColor: 0x112233,
+    fogNear: 24,
+    fogFar: 94,
+    groundColor: 0x8ea5b8,
+    groundShadowColor: 0x4e6175,
+    padColor: 0xb9cfde,
+    padTrimColor: 0xe6f4ff,
+    metalColor: 0x8a9bad,
+    emissiveAccent: 0x8de3ff,
+    ambientLightColor: 0x88b8df,
+    ambientLightIntensity: 0.76,
+    directionalLightColor: 0xe0f0ff,
+    directionalLightIntensity: 1.52,
+    rimLightColor: 0x5eb4e8,
+    rimLightIntensity: 0.46,
+    accentColor: 0x76d7ff,
   },
   neutral: {
     id: 'neutral',
     displayName: 'Standard Colony',
-    clearColor: 0x0a1018,
-    fogColor: 0x17263a,
-    fogNear: 26,
-    fogFar: 96,
-    groundColor: 0x68778a,
-    padColor: 0x8fa0b5,
-    padEdgeColor: 0xbfd1e8,
-    ambientLightColor: 0xc1d0df,
-    ambientLightIntensity: 0.78,
-    directionalLightColor: 0xe6f1ff,
-    directionalLightIntensity: 1.12,
+    clearColor: 0x090f17,
+    fogColor: 0x1a2a3d,
+    fogNear: 28,
+    fogFar: 105,
+    groundColor: 0x7f8e9d,
+    groundShadowColor: 0x5b6979,
+    padColor: 0x9fb0c0,
+    padTrimColor: 0xdce9f5,
+    metalColor: 0x8593a3,
+    emissiveAccent: 0x8fd1ff,
+    ambientLightColor: 0xb8cad8,
+    ambientLightIntensity: 0.7,
+    directionalLightColor: 0xecf5ff,
+    directionalLightIntensity: 1.3,
+    rimLightColor: 0x69b2e2,
+    rimLightIntensity: 0.34,
     accentColor: 0x78b8df,
   },
 };
