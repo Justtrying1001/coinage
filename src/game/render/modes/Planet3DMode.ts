@@ -37,7 +37,7 @@ export class Planet3DMode implements RenderModeController {
       this.updateInspectSettlement(snapshot.total, snapshot.occupied, snapshot.available);
       this.updateInspectSelection(snapshot.selected?.id ?? null, snapshot.selected?.habitability ?? null);
     });
-    this.runtime.rebuildFromSeed(this.selectedPlanet.seed);
+    void this.runtime.rebuildFromSeed(this.selectedPlanet.seed);
     this.mountInspectPanel();
 
     const canvas = this.runtime.renderer.domElement;
@@ -61,7 +61,7 @@ export class Planet3DMode implements RenderModeController {
   setSelectedPlanet(nextPlanet: SelectedPlanetRef) {
     if (nextPlanet.id === this.selectedPlanet.id && nextPlanet.seed === this.selectedPlanet.seed) return;
     this.selectedPlanet = nextPlanet;
-    this.runtime?.rebuildFromSeed(nextPlanet.seed);
+    void this.runtime?.rebuildFromSeed(nextPlanet.seed);
     const profile = planetProfileFromSeed(nextPlanet.seed);
     this.updateInspectIdentity(nextPlanet, profile);
   }

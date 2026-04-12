@@ -109,6 +109,93 @@ export class PlanetGenerator {
     return { root, surfaceMesh: mesh, surfaceGeometry: deduped };
   }
 
+  async generateAsync(config: PlanetGenerationConfig, options?: { preview?: boolean }) {
+    const root = new THREE.Group();
+    const minMax = new MinMax();
+    const faceGeometries: THREE.BufferGeometry[] = [];
+    const debugMode = this.readDebugMode();
+    const preview = Boolean(options?.preview);
+
+    for (let i = 0; i < FACE_DIRECTIONS.length; i += 1) {
+      const dir = FACE_DIRECTIONS[i].clone();
+      const generated = await this.cpu.generateFaceAsync(dir, config.resolution, config.filters, config.seed);
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(generated.positions, 3));
+      geometry.setAttribute('aElevation', new THREE.BufferAttribute(generated.elevations, 1));
+      geometry.setIndex(new THREE.BufferAttribute(generated.indices, 1));
+      for (let e = 0; e < generated.elevations.length; e += 1) {
+        minMax.add(generated.elevations[e]);
+      }
+      if (debugMode > 0) {
+        this.logFaceStats(config, i, 'cpu', generated, geometry);
+      }
+      faceGeometries.push(geometry);
+    }
+
+    const material = createPlanetMaterial(
+      config.elevationGradient,
+      config.depthGradient,
+      minMax.min,
+      minMax.max,
+      config.blendDepth,
+      config.seaLevel,
+      config.surfaceLevel01,
+      config.surfaceMode,
+      config.archetype,
+      config.material.roughness,
+      config.material.metalness,
+      config.material.vegetationDensity,
+      config.material.wetness,
+      config.material.canopyTint,
+      config.material.slopeDarkening,
+      config.material.basinDarkening,
+      config.material.uplandLift,
+      config.material.peakLift,
+      config.material.shadowTint,
+      config.material.shadowTintStrength,
+      config.material.coastTintStrength,
+      config.material.shallowSurfaceBrightness,
+      config.material.microReliefStrength,
+      config.material.microReliefScale,
+      config.material.microNormalStrength,
+      config.material.microAlbedoBreakup,
+      config.material.hotspotCoverage,
+      config.material.hotspotIntensity,
+      config.material.fissureScale,
+      config.material.fissureSharpness,
+      config.material.lavaAccentStrength,
+      config.material.emissiveStrength,
+      config.material.basaltContrast,
+      debugMode,
+    );
+
+    const merged = BufferGeometryUtils.mergeGeometries(faceGeometries, false);
+    if (!merged) {
+      throw new Error('Failed to merge generated planet face geometries');
+    }
+
+    const geometry = preview ? merged : BufferGeometryUtils.mergeVertices(merged, 1e-6);
+    this.applySubmergedReliefCompression(geometry, config, minMax.min, minMax.max);
+    geometry.computeVertexNormals();
+    if (debugMode > 0) {
+      this.logMergedGeometryStats(config, geometry);
+    }
+
+    faceGeometries.forEach((faceGeometry) => faceGeometry.dispose());
+    if (!preview) {
+      merged.dispose();
+    }
+
+    if (config.radius !== 1) {
+      geometry.scale(config.radius, config.radius, config.radius);
+    }
+
+    const mesh = new THREE.Mesh(geometry, material);
+    root.add(mesh);
+    return { root, surfaceMesh: mesh, surfaceGeometry: geometry };
+  }
+
   private applySubmergedReliefCompression(geometry: THREE.BufferGeometry, config: PlanetGenerationConfig, minElevation: number, maxElevation: number) {
     const positions = geometry.getAttribute('position');
     const elevations = geometry.getAttribute('aElevation');

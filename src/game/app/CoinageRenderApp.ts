@@ -3,7 +3,8 @@ import { generateGalaxyData, selectPrimaryPlanet } from '@/game/world/galaxyGene
 import { Galaxy2DMode } from '@/game/render/modes/Galaxy2DMode';
 import type { Galaxy2DViewSnapshot } from '@/game/render/modes/Galaxy2DMode';
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
-import { Planet3DMode } from '@/game/render/modes/Planet3DMode';
+import { LazyPlanet3DMode } from '@/game/render/modes/LazyPlanet3DMode';
+import { perfLog, perfMark, perfMeasure } from '@/game/perf/perfMarks';
 
 interface RenderModeFactory {
   createGalaxyMode: (
@@ -63,7 +64,7 @@ export class CoinageRenderApp {
           initialSelectedPlanet: options?.selectedPlanet ?? this.selectedPlanet,
           initialViewSnapshot: options?.viewSnapshot ?? this.galaxyViewSnapshot,
         }),
-      createPlanetMode: (planet, context) => new Planet3DMode(planet, context),
+      createPlanetMode: (planet, context) => new LazyPlanet3DMode(planet, context),
     };
   }
 
@@ -124,6 +125,7 @@ export class CoinageRenderApp {
   };
 
   private switchMode(nextMode: RenderMode) {
+    perfMark(`mode.switch.start.${nextMode}`);
     if (this.mode === nextMode && this.activeController) {
       if (
         nextMode === 'planet3d' &&
@@ -134,6 +136,8 @@ export class CoinageRenderApp {
         this.activeController.setSelectedPlanet(this.selectedPlanet);
       }
       this.resize();
+      perfMark(`mode.switch.end.${nextMode}`);
+      perfMeasure(`mode.switch.${nextMode}`, `mode.switch.start.${nextMode}`, `mode.switch.end.${nextMode}`);
       return;
     }
 
@@ -171,6 +175,9 @@ export class CoinageRenderApp {
 
     this.activeController.mount();
     this.resize();
+    perfMark(`mode.switch.end.${nextMode}`);
+    perfMeasure(`mode.switch.${nextMode}`, `mode.switch.start.${nextMode}`, `mode.switch.end.${nextMode}`);
+    perfLog('mode.switch.complete', { mode: nextMode });
   }
 
   private resize() {
