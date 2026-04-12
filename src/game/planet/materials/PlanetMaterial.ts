@@ -197,8 +197,10 @@ export function createPlanetMaterial(
       }
 
       void main() {
-        vec3 N = normalize(vNormalW);
+        vec3 NGeo = normalize(vNormalW);
+        vec3 N = NGeo;
         vec3 up = normalize(vPositionW);
+        float geoSlope = clamp(1.0 - dot(NGeo, up), 0.0, 1.0);
         float eps = 0.045;
         vec3 microP = vPositionW * uMicroReliefScale + vec3(vElevation * 1.73);
         float microA = noise3(microP);
@@ -207,8 +209,11 @@ export function createPlanetMaterial(
         float microZ = noise3(microP + vec3(0.0, 0.0, eps));
         vec3 microGrad = vec3(microX - microA, microY - microA, microZ - microA) / eps;
         float dryMask = float(uDryArchetype);
-        N = normalize(N + microGrad * uMicroNormalStrength * (0.35 + dryMask * 0.65));
+        float microReliefWeight = clamp(uMicroReliefStrength, 0.0, 1.0);
+        float microNormalWeight = (0.18 + dryMask * 0.28) * (0.35 + microReliefWeight * 0.9);
+        N = normalize(N + microGrad * uMicroNormalStrength * microNormalWeight);
         float slope = clamp(1.0 - dot(N, up), 0.0, 1.0);
+        float reliefSupport = smoothstep(0.1, 0.48, max(geoSlope, slope * 0.82));
 
         float elev01 = invLerp(uMinMax.x, uMinMax.y, vElevation);
         float depthN = invLerp(0.0, max(0.001, uSurfaceLevel01), elev01);
@@ -224,31 +229,34 @@ export function createPlanetMaterial(
           * (1.0 - smoothstep(uSurfaceLevel01 + edge * 0.5, uSurfaceLevel01 + edge * 1.8, elev01));
         float landMask = smoothstep(uSurfaceLevel01 + edge * 0.05, uSurfaceLevel01 + edge * 0.9, elev01);
 
-        float landDetail = (breakup - 0.5) * (0.065 + slope * 0.12);
-        float depthDetail = (macro - 0.5) * 0.06;
+        float landDetail = (breakup - 0.5) * (0.016 + reliefSupport * 0.046) * (0.45 + microReliefWeight * 0.9);
+        float depthDetail = (macro - 0.5) * 0.03;
 
         vec3 depthBase = gradientColor(clamp(depthN + depthDetail, 0.0, 1.0), uDepthSize, uDepthAnchors, uDepthColors);
         vec3 landBase = gradientColor(clamp(elevN + landDetail, 0.0, 1.0), uElevationSize, uElevationAnchors, uElevationColors);
 
         float basinMask = smoothstep(0.0, 0.24, depthN) * submergedMask;
-        float lowlandMask = smoothstep(0.04, 0.3, elevN) * (1.0 - smoothstep(0.46, 0.7, elevN));
-        float uplandMask = smoothstep(0.32, 0.74, elevN);
-        float peakMask = smoothstep(0.68, 0.96, elevN);
+        float lowlandMask = smoothstep(0.04, 0.3, elevN) * (1.0 - smoothstep(0.46, 0.7, elevN)) * (0.5 + reliefSupport * 0.5);
+        float uplandMask = smoothstep(0.36, 0.76, elevN) * smoothstep(0.2, 0.68, reliefSupport);
+        float peakMask = smoothstep(0.72, 0.97, elevN) * smoothstep(0.34, 0.76, reliefSupport);
 
         vec3 terrain = landBase;
-        float microBreakup = (microA - 0.5) * uMicroAlbedoBreakup * (0.3 + dryMask * 0.7);
-        terrain *= 1.0 + microBreakup;
+        float microBreakup = (microA - 0.5) * uMicroAlbedoBreakup * (0.28 + dryMask * 0.52) * (0.35 + microReliefWeight * 0.8);
+        terrain *= 1.0 + microBreakup * 0.32;
+        float hueNoise = noise3(microP * 0.7 + vec3(13.1, 4.9, 9.7)) - 0.5;
+        vec3 dryHueShift = vec3(1.04, 0.99, 0.95);
+        terrain = mix(terrain, terrain * dryHueShift, dryMask * abs(hueNoise) * 0.08);
         float vegetationNoise = smoothstep(0.34, 0.72, breakup);
         float vegetationMask = uVegetationDensity
           * smoothstep(0.02, 0.6, elevN)
           * (1.0 - smoothstep(0.24, 0.72, slope))
           * vegetationNoise
           * (1.0 - peakMask);
-        terrain = mix(terrain, terrain * (1.0 - (0.12 + breakup * 0.12)), slope * uSlopeDarkening);
+        terrain = mix(terrain, terrain * (1.0 - (0.08 + breakup * 0.08)), reliefSupport * uSlopeDarkening);
         terrain = mix(terrain, mix(terrain, uCanopyTint, 0.66), vegetationMask);
-        terrain = mix(terrain, terrain * (1.0 - uBasinDarkening), lowlandMask * (0.26 + uWetness * 0.24));
-        terrain = mix(terrain, terrain * (1.0 + uUplandLift), uplandMask * 0.6);
-        terrain = mix(terrain, terrain * (1.0 + uPeakLift), peakMask * (0.5 + slope * 0.28));
+        terrain = mix(terrain, terrain * (1.0 - uBasinDarkening), lowlandMask * (0.22 + uWetness * 0.16));
+        terrain = mix(terrain, terrain * (1.0 + uUplandLift * 0.45), uplandMask * (0.2 + reliefSupport * 0.24));
+        terrain = mix(terrain, terrain * (1.0 + uPeakLift * 0.32), peakMask * (0.14 + reliefSupport * 0.18));
         if (uSurfaceMode == 1) {
           terrain = mix(terrain, terrain * 0.84, lowlandMask * 0.28);
           terrain = mix(terrain, terrain * 0.92, peakMask * 0.55);
@@ -268,11 +276,21 @@ export function createPlanetMaterial(
         basalt = mix(basalt, basalt * (0.72 - uBasaltContrast * 0.25), basinMask * (0.42 + uBasaltContrast * 0.25));
         float fissureNoise = pow(clamp(1.0 - abs(fbm(vPositionW * uFissureScale) * 2.0 - 1.0), 0.0, 1.0), max(1.2, uFissureSharpness));
         float hotspotNoise = smoothstep(1.0 - uHotspotCoverage, 1.0, fbm(vPositionW * (uFissureScale * 0.6) + vec3(11.3, 5.6, 2.1)));
-        float volcanicMask = clamp((1.0 - smoothstep(uSurfaceLevel01 + edge * 0.2, uSurfaceLevel01 + edge * 1.8, elev01)) * 0.55 + fissureNoise * 0.65 + hotspotNoise * 0.8, 0.0, 1.0);
-        float lavaMask = volcanicMask * (0.18 + uLavaAccentStrength * 0.42) + hotspotNoise * uHotspotIntensity * 0.55;
+        float volcanicMask = clamp((1.0 - smoothstep(uSurfaceLevel01 + edge * 0.2, uSurfaceLevel01 + edge * 1.4, elev01)) * 0.2 + fissureNoise * 0.9 + hotspotNoise * 0.9, 0.0, 1.0);
+        float lavaMask = volcanicMask * (0.1 + uLavaAccentStrength * 0.24) + hotspotNoise * uHotspotIntensity * 0.35;
         lavaMask = clamp(lavaMask, 0.0, 0.95);
         vec3 lavaGlow = mix(vec3(0.4, 0.12, 0.03), vec3(0.96, 0.36, 0.08), clamp(fissureNoise * 0.45 + hotspotNoise, 0.0, 1.0));
         vec3 lava = mix(basalt, lavaGlow, lavaMask);
+        if (uSurfaceMode == 2) {
+          float volcanicLandMask = landMask * (0.34 + reliefSupport * 0.66);
+          float cooledField = smoothstep(0.35, 0.78, breakup) * volcanicLandMask;
+          vec3 cooledBasalt = mix(terrain * 0.62, vec3(0.08, 0.07, 0.07), 0.45 + uBasaltContrast * 0.2);
+          terrain = mix(terrain, cooledBasalt, cooledField * 0.35);
+          float burntMask = (fissureNoise * 0.42 + hotspotNoise * 0.22) * volcanicLandMask;
+          terrain = mix(terrain, terrain * 0.58, burntMask * 0.42);
+          float emberMask = hotspotNoise * fissureNoise * volcanicLandMask * (0.06 + uLavaAccentStrength * 0.08);
+          terrain = mix(terrain, mix(terrain, vec3(0.82, 0.27, 0.08), 0.32), emberMask);
+        }
 
         vec3 lowSurface = water;
         if (uSurfaceMode == 1) {
@@ -320,13 +338,13 @@ export function createPlanetMaterial(
         }
         float landSpec = (pow(ndoth, shininess) * 0.72 + pow(ndothFill, shininess * 0.56) * 0.18) * (1.0 - submergedMask) * (0.008 + uMetalness * 0.1);
 
-        float reliefContrast = slope * (0.4 + uSlopeDarkening * 0.7 + uplandMask * (0.24 + uUplandLift * 0.5)) + peakMask * (0.08 + uPeakLift * 0.44);
+        float reliefContrast = reliefSupport * (slope * (0.18 + uSlopeDarkening * 0.32 + uplandMask * (0.08 + uUplandLift * 0.22)) + peakMask * (0.03 + uPeakLift * 0.18));
         float lightTerm = 0.18 + keyDiffuse * 0.68 + fillDiffuse * 0.16;
-        lightTerm *= 1.0 + reliefContrast * (0.24 + (1.0 - keyDiffuse) * 0.2);
+        lightTerm *= 1.0 + reliefContrast * (0.1 + (1.0 - keyDiffuse) * 0.08);
         lightTerm += hemi * 0.06 + fresnel * 0.035;
 
         vec3 color = base * lightTerm;
-        float shadowMask = clamp((1.0 - keyDiffuse) * (0.7 + slope * 0.8), 0.0, 1.0);
+        float shadowMask = clamp((1.0 - keyDiffuse) * (0.55 + reliefSupport * 0.45 + slope * 0.35), 0.0, 1.0);
         color = mix(color, color * uShadowTint, shadowMask * uShadowTintStrength);
         color += vec3(waterSpec + landSpec);
         if (uSurfaceMode == 2) {
