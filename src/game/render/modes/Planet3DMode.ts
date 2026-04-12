@@ -3,6 +3,7 @@ import type { PlanetVisualProfile, SelectedPlanetRef } from '@/game/render/types
 import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
 import { SeededRng } from '@/game/world/rng';
 import { PlanetRuntime } from '@/game/planet/runtime/PlanetRuntime';
+import { mark, measure } from '@/game/planet/runtime/planetPerf';
 
 export class Planet3DMode implements RenderModeController {
   readonly id = 'planet3d' as const;
@@ -32,12 +33,18 @@ export class Planet3DMode implements RenderModeController {
   ) {}
 
   mount() {
-    this.runtime = new PlanetRuntime(this.context.host);
-    this.runtime.setSettlementSelectionListener((snapshot) => {
-      this.updateInspectSettlement(snapshot.total, snapshot.occupied, snapshot.available);
-      this.updateInspectSelection(snapshot.selected?.id ?? null, snapshot.selected?.habitability ?? null);
-    });
-    this.runtime.rebuildFromSeed(this.selectedPlanet.seed);
+    mark('perf:planet3d-mount:start');
+    if (!this.runtime) {
+      this.runtime = new PlanetRuntime(this.context.host);
+      this.runtime.setSettlementSelectionListener((snapshot) => {
+        this.updateInspectSettlement(snapshot.total, snapshot.occupied, snapshot.available);
+        this.updateInspectSelection(snapshot.selected?.id ?? null, snapshot.selected?.habitability ?? null);
+      });
+      this.runtime.rebuildFromSeed(this.selectedPlanet.seed);
+    } else {
+      this.runtime.attachToHost(this.context.host);
+      this.runtime.rebuildFromSeed(this.selectedPlanet.seed);
+    }
     this.mountInspectPanel();
 
     const canvas = this.runtime.renderer.domElement;
@@ -46,6 +53,8 @@ export class Planet3DMode implements RenderModeController {
     window.addEventListener('pointerup', this.onPointerUp);
     window.addEventListener('pointercancel', this.onPointerUp);
     window.addEventListener('keydown', this.onKeyDown);
+    mark('perf:planet3d-mount:end');
+    measure('perf:planet3d-mount', 'perf:planet3d-mount:start', 'perf:planet3d-mount:end');
   }
 
   resize(width: number, height: number) {
@@ -74,8 +83,7 @@ export class Planet3DMode implements RenderModeController {
     window.removeEventListener('pointercancel', this.onPointerUp);
     window.removeEventListener('keydown', this.onKeyDown);
 
-    this.runtime?.destroy();
-    this.runtime = null;
+    this.runtime?.detachFromHost();
 
     this.inspectPanel?.remove();
     this.inspectPanel = null;
@@ -84,6 +92,11 @@ export class Planet3DMode implements RenderModeController {
     this.inspectTags = null;
     this.inspectSettlements = null;
     this.inspectSelection = null;
+  }
+
+  dispose() {
+    this.runtime?.destroy();
+    this.runtime = null;
   }
 
   private readonly onPointerDown = (event: PointerEvent) => {

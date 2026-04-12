@@ -9,6 +9,7 @@ const BLOOM_CLARITY_SCALE = 0.14;
 export class PlanetPostFx {
   private readonly composer: EffectComposer;
   private readonly bloom: UnrealBloomPass;
+  private enabled = true;
 
   constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera) {
     this.composer = new EffectComposer(renderer);
@@ -20,6 +21,7 @@ export class PlanetPostFx {
   }
 
   render() {
+    if (!this.enabled) return;
     this.composer.render();
   }
 
@@ -34,6 +36,10 @@ export class PlanetPostFx {
     this.bloom.radius = Math.min(settings.radius, 0.06);
     this.bloom.threshold = Math.max(settings.threshold, 0.9);
     this.bloom.enabled = this.bloom.strength > 0.001;
+  }
+
+  setEnabled(enabled: boolean) {
+    this.enabled = enabled;
   }
 
   dispose() {

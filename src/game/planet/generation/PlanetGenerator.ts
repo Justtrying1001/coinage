@@ -6,10 +6,18 @@ import { GpuTerrainGenerator } from '@/game/planet/generation/gpu/GpuTerrainGene
 import { CpuTerrainGenerator } from '@/game/planet/generation/cpu/CpuTerrainGenerator';
 import { MinMax } from '@/game/planet/utils/minMax';
 import { createPlanetMaterial } from '@/game/planet/materials/PlanetMaterial';
+import { mark, measure, timed } from '@/game/planet/runtime/planetPerf';
+
+interface CachedPlanetMesh {
+  geometry: THREE.BufferGeometry;
+  material: THREE.Material;
+}
 
 export class PlanetGenerator {
   private readonly gpu: GpuTerrainGenerator;
   private readonly cpu: CpuTerrainGenerator;
+  private readonly seedCache = new Map<string, CachedPlanetMesh>();
+  private readonly maxCacheEntries = 6;
 
   constructor(private readonly renderer: THREE.WebGLRenderer) {
     this.gpu = new GpuTerrainGenerator(renderer);
@@ -17,19 +25,39 @@ export class PlanetGenerator {
   }
 
   generate(config: PlanetGenerationConfig) {
+    const cacheKey = `${config.seed}:${config.resolution}:${config.archetype}:${config.surfaceMode}`;
+    const cached = this.seedCache.get(cacheKey);
+    if (cached) {
+      this.seedCache.delete(cacheKey);
+      this.seedCache.set(cacheKey, cached);
+      const root = new THREE.Group();
+      const geometry = cached.geometry.clone();
+      const material = cached.material.clone();
+      const mesh = new THREE.Mesh(geometry, material);
+      root.add(mesh);
+      return { root, surfaceMesh: mesh, surfaceGeometry: geometry };
+    }
+
     const root = new THREE.Group();
     const minMax = new MinMax();
     const faceGeometries: THREE.BufferGeometry[] = [];
     const debugMode = this.readDebugMode();
 
     for (let i = 0; i < FACE_DIRECTIONS.length; i += 1) {
+      mark(`perf:face-generation:${i}:start`);
       const dir = FACE_DIRECTIONS[i].clone();
       let generated;
       let generationPath: 'gpu' | 'cpu' = 'gpu';
       try {
+        mark(`perf:face-generation:${i}:gpu:start`);
         generated = this.gpu.generateFace(dir, config.resolution, config.filters, config.seed);
+        mark(`perf:face-generation:${i}:gpu:end`);
+        measure(`perf:face-generation:${i}:gpu`, `perf:face-generation:${i}:gpu:start`, `perf:face-generation:${i}:gpu:end`);
       } catch {
+        mark(`perf:face-generation:${i}:cpu-fallback:start`);
         generated = this.cpu.generateFace(dir, config.resolution, config.filters, config.seed);
+        mark(`perf:face-generation:${i}:cpu-fallback:end`);
+        measure(`perf:face-generation:${i}:cpu-fallback`, `perf:face-generation:${i}:cpu-fallback:start`, `perf:face-generation:${i}:cpu-fallback:end`);
         generationPath = 'cpu';
       }
 
@@ -45,6 +73,8 @@ export class PlanetGenerator {
       }
 
       faceGeometries.push(geometry);
+      mark(`perf:face-generation:${i}:end`);
+      measure(`perf:face-generation:${i}`, `perf:face-generation:${i}:start`, `perf:face-generation:${i}:end`);
     }
 
     const material = createPlanetMaterial(
@@ -84,14 +114,14 @@ export class PlanetGenerator {
       debugMode,
     );
 
-    const merged = BufferGeometryUtils.mergeGeometries(faceGeometries, false);
+    const merged = timed('perf:geometry-merge', () => BufferGeometryUtils.mergeGeometries(faceGeometries, false));
     if (!merged) {
       throw new Error('Failed to merge generated planet face geometries');
     }
 
-    const deduped = BufferGeometryUtils.mergeVertices(merged, 1e-6);
+    const deduped = timed('perf:mergeVertices', () => BufferGeometryUtils.mergeVertices(merged, 1e-6));
     this.applySubmergedReliefCompression(deduped, config, minMax.min, minMax.max);
-    deduped.computeVertexNormals();
+    timed('perf:computeVertexNormals', () => deduped.computeVertexNormals());
     if (debugMode > 0) {
       this.logMergedGeometryStats(config, deduped);
     }
@@ -105,8 +135,26 @@ export class PlanetGenerator {
 
     const mesh = new THREE.Mesh(deduped, material);
     root.add(mesh);
+    this.putCacheEntry(cacheKey, { geometry: deduped.clone(), material: material.clone() });
 
     return { root, surfaceMesh: mesh, surfaceGeometry: deduped };
+  }
+
+  private putCacheEntry(key: string, entry: CachedPlanetMesh) {
+    const existing = this.seedCache.get(key);
+    if (existing) {
+      existing.geometry.dispose();
+      existing.material.dispose();
+      this.seedCache.delete(key);
+    }
+    this.seedCache.set(key, entry);
+    if (this.seedCache.size <= this.maxCacheEntries) return;
+    const oldestKey = this.seedCache.keys().next().value;
+    if (!oldestKey) return;
+    const oldest = this.seedCache.get(oldestKey);
+    oldest?.geometry.dispose();
+    oldest?.material.dispose();
+    this.seedCache.delete(oldestKey);
   }
 
   private applySubmergedReliefCompression(geometry: THREE.BufferGeometry, config: PlanetGenerationConfig, minElevation: number, maxElevation: number) {

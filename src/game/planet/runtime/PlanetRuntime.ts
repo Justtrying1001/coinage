@@ -7,6 +7,7 @@ import { PlanetScene } from '@/game/planet/runtime/PlanetScene';
 import type { SettlementSlot } from '@/game/planet/runtime/SettlementSlots';
 import { generateSettlementSlots } from '@/game/planet/runtime/SettlementSlots';
 import { SettlementSlotLayer } from '@/game/planet/runtime/SettlementSlotLayer';
+import { mark, measure, timed } from '@/game/planet/runtime/planetPerf';
 
 interface SettlementSnapshot {
   total: number;
@@ -28,14 +29,21 @@ export class PlanetRuntime {
   private readonly ndc = new THREE.Vector2();
   private readonly pointerPixel = new THREE.Vector2();
   private onSettlementSelectionChanged: ((snapshot: SettlementSnapshot) => void) | null = null;
+  private currentSeed: number | null = null;
+  private refineTimeoutId: number | null = null;
+  private hasRenderedOnce = false;
+  private firstRenderPending = false;
 
   constructor(private readonly host: HTMLDivElement) {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.12;
-    this.renderer.domElement.className = 'render-surface render-surface--planet';
+    this.renderer = timed('perf:renderer-creation', () => {
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.12;
+      renderer.domElement.className = 'render-surface render-surface--planet';
+      return renderer;
+    });
 
     this.host.appendChild(this.renderer.domElement);
 
@@ -44,6 +52,14 @@ export class PlanetRuntime {
   }
 
   rebuildFromSeed(seed: number) {
+    mark('perf:rebuildFromSeed:start');
+    this.currentSeed = seed;
+    this.firstRenderPending = true;
+    this.hasRenderedOnce = false;
+    if (this.refineTimeoutId != null) {
+      window.clearTimeout(this.refineTimeoutId);
+      this.refineTimeoutId = null;
+    }
     if (this.planetRoot) {
       this.sceneKit.root.remove(this.planetRoot);
       disposeHierarchy(this.planetRoot);
@@ -53,7 +69,11 @@ export class PlanetRuntime {
 
     const profile = planetProfileFromSeed(seed);
     const config = createPlanetGenerationConfig(seed, profile);
-    const generated = this.generator.generate(config);
+    const previewConfig = {
+      ...config,
+      resolution: Math.max(48, Math.floor(config.resolution * 0.5)),
+    };
+    const generated = this.generator.generate(previewConfig);
 
     this.planetRoot = generated.root;
     this.sceneKit.root.add(generated.root);
@@ -71,8 +91,24 @@ export class PlanetRuntime {
     this.selectedSlotIndex = null;
     this.emitSettlementSelection();
 
+    this.postFx.setEnabled(false);
     this.postFx.setBloom(config.postfx.bloom);
     this.renderer.toneMappingExposure = config.postfx.exposure;
+    this.prewarmShaders(generated.root);
+
+    this.refineTimeoutId = window.setTimeout(() => {
+      if (this.currentSeed !== seed) return;
+      const highResGenerated = this.generator.generate(config);
+      if (this.planetRoot) {
+        this.sceneKit.root.remove(this.planetRoot);
+        disposeHierarchy(this.planetRoot);
+      }
+      this.planetRoot = highResGenerated.root;
+      this.sceneKit.root.add(highResGenerated.root);
+      this.refineTimeoutId = null;
+    }, 0);
+    mark('perf:rebuildFromSeed:end');
+    measure('perf:rebuildFromSeed', 'perf:rebuildFromSeed:start', 'perf:rebuildFromSeed:end');
   }
 
   resize(width: number, height: number) {
@@ -83,6 +119,17 @@ export class PlanetRuntime {
 
   update(deltaMs: number) {
     this.sceneKit.update(deltaMs);
+    if (!this.hasRenderedOnce) {
+      this.renderer.render(this.sceneKit.scene, this.sceneKit.camera);
+      this.hasRenderedOnce = true;
+      if (this.firstRenderPending) {
+        mark('perf:first-render');
+        measure('perf:first-render-latency', 'perf:planet3d-mount:start', 'perf:first-render');
+        this.firstRenderPending = false;
+      }
+      this.postFx.setEnabled(true);
+      return;
+    }
     this.postFx.render();
   }
 
@@ -152,6 +199,15 @@ export class PlanetRuntime {
     this.renderer.domElement.remove();
   }
 
+  attachToHost(host: HTMLDivElement) {
+    if (this.renderer.domElement.parentElement === host) return;
+    host.appendChild(this.renderer.domElement);
+  }
+
+  detachFromHost() {
+    this.renderer.domElement.remove();
+  }
+
   private emitSettlementSelection() {
     this.onSettlementSelectionChanged?.(this.getSettlementSnapshot());
   }
@@ -162,6 +218,14 @@ export class PlanetRuntime {
     this.settlementLayer = null;
     this.settlementSlots = [];
     this.selectedSlotIndex = null;
+  }
+
+  private prewarmShaders(root: THREE.Group) {
+    const hasMesh = root.children.some((child) => (child as THREE.Mesh).isMesh);
+    if (!hasMesh || typeof this.renderer.compileAsync !== 'function') return;
+    this.renderer.compileAsync(this.sceneKit.scene, this.sceneKit.camera).catch(() => {
+      // best effort
+    });
   }
 }
 

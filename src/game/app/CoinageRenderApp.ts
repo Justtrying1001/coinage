@@ -4,6 +4,7 @@ import { Galaxy2DMode } from '@/game/render/modes/Galaxy2DMode';
 import type { Galaxy2DViewSnapshot } from '@/game/render/modes/Galaxy2DMode';
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
 import { Planet3DMode } from '@/game/render/modes/Planet3DMode';
+import { mark, measure } from '@/game/planet/runtime/planetPerf';
 
 interface RenderModeFactory {
   createGalaxyMode: (
@@ -44,6 +45,8 @@ export class CoinageRenderApp {
   private galaxyViewSnapshot: Galaxy2DViewSnapshot | null = null;
 
   private readonly modeFactory: RenderModeFactory;
+  private readonly hasCustomModeFactory: boolean;
+  private persistentPlanetMode: Planet3DMode | null = null;
 
   constructor(
     private readonly host: HTMLDivElement,
@@ -57,6 +60,7 @@ export class CoinageRenderApp {
       nodeCount: this.config.planetCount,
     });
     this.selectedPlanet = config.initialSelectedPlanet ?? selectPrimaryPlanet(this.galaxyData);
+    this.hasCustomModeFactory = Boolean(config.modeFactory);
     this.modeFactory = config.modeFactory ?? {
       createGalaxyMode: (context, options) =>
         new Galaxy2DMode(this.galaxyData, context, {
@@ -108,6 +112,8 @@ export class CoinageRenderApp {
 
     this.activeController?.destroy();
     this.activeController = null;
+    this.persistentPlanetMode?.dispose();
+    this.persistentPlanetMode = null;
 
     this.host.innerHTML = '';
     this.mounted = false;
@@ -124,6 +130,8 @@ export class CoinageRenderApp {
   };
 
   private switchMode(nextMode: RenderMode) {
+    const switchMeasurePrefix = `perf:mode-switch:${this.mode}->${nextMode}`;
+    mark(`${switchMeasurePrefix}:start`);
     if (this.mode === nextMode && this.activeController) {
       if (
         nextMode === 'planet3d' &&
@@ -134,6 +142,8 @@ export class CoinageRenderApp {
         this.activeController.setSelectedPlanet(this.selectedPlanet);
       }
       this.resize();
+      mark(`${switchMeasurePrefix}:end`);
+      measure(switchMeasurePrefix, `${switchMeasurePrefix}:start`, `${switchMeasurePrefix}:end`);
       return;
     }
 
@@ -161,16 +171,26 @@ export class CoinageRenderApp {
       },
     };
 
-    this.activeController =
-      nextMode === 'galaxy2d'
-        ? this.modeFactory.createGalaxyMode(context, {
-            selectedPlanet: this.selectedPlanet,
-            viewSnapshot: this.galaxyViewSnapshot,
-          })
-        : this.modeFactory.createPlanetMode(this.selectedPlanet ?? selectPrimaryPlanet(this.galaxyData), context);
+    if (nextMode === 'galaxy2d') {
+      this.activeController = this.modeFactory.createGalaxyMode(context, {
+        selectedPlanet: this.selectedPlanet,
+        viewSnapshot: this.galaxyViewSnapshot,
+      });
+    } else if (!this.hasCustomModeFactory) {
+      if (!this.persistentPlanetMode) {
+        this.persistentPlanetMode = new Planet3DMode(this.selectedPlanet ?? selectPrimaryPlanet(this.galaxyData), context);
+      } else if (this.selectedPlanet) {
+        this.persistentPlanetMode.setSelectedPlanet(this.selectedPlanet);
+      }
+      this.activeController = this.persistentPlanetMode;
+    } else {
+      this.activeController = this.modeFactory.createPlanetMode(this.selectedPlanet ?? selectPrimaryPlanet(this.galaxyData), context);
+    }
 
     this.activeController.mount();
     this.resize();
+    mark(`${switchMeasurePrefix}:end`);
+    measure(switchMeasurePrefix, `${switchMeasurePrefix}:start`, `${switchMeasurePrefix}:end`);
   }
 
   private resize() {
