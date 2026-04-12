@@ -227,6 +227,18 @@ a {
   padding: 0.28rem 0.5rem;
 }
 
+.planet-inspect-metric {
+  margin: 0;
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(182, 221, 245, 0.92);
+}
+
+.planet-inspect-metric--detail {
+  color: rgba(151, 205, 236, 0.9);
+}
+
 .planet-back-button {
   align-self: flex-start;
   border: 1px solid rgba(147, 217, 255, 0.55);

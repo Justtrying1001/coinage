@@ -3,6 +3,7 @@ import type { PlanetVisualProfile, SelectedPlanetRef } from '@/game/render/types
 import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
 import { SeededRng } from '@/game/world/rng';
 import { PlanetRuntime } from '@/game/planet/runtime/PlanetRuntime';
+import type { PlanetSettlementSlot } from '@/game/planet/slots/types';
 
 export class Planet3DMode implements RenderModeController {
   readonly id = 'planet3d' as const;
@@ -13,6 +14,8 @@ export class Planet3DMode implements RenderModeController {
   private inspectTitle: HTMLHeadingElement | null = null;
   private inspectSubtitle: HTMLParagraphElement | null = null;
   private inspectTags: HTMLDivElement | null = null;
+  private inspectSlotsSummary: HTMLParagraphElement | null = null;
+  private inspectSlotDetail: HTMLParagraphElement | null = null;
 
   private width = 1;
   private height = 1;
@@ -21,6 +24,9 @@ export class Planet3DMode implements RenderModeController {
   private pointerId: number | null = null;
   private lastX = 0;
   private lastY = 0;
+  private pointerDownX = 0;
+  private pointerDownY = 0;
+  private pointerMoved = false;
 
   constructor(
     private selectedPlanet: SelectedPlanetRef,
@@ -31,6 +37,7 @@ export class Planet3DMode implements RenderModeController {
     this.runtime = new PlanetRuntime(this.context.host);
     this.runtime.rebuildFromSeed(this.selectedPlanet.seed);
     this.mountInspectPanel();
+    this.refreshSlotInspectPanel();
 
     const canvas = this.runtime.renderer.domElement;
     canvas.addEventListener('pointerdown', this.onPointerDown);
@@ -56,6 +63,7 @@ export class Planet3DMode implements RenderModeController {
     this.runtime?.rebuildFromSeed(nextPlanet.seed);
     const profile = planetProfileFromSeed(nextPlanet.seed);
     this.updateInspectIdentity(nextPlanet, profile);
+    this.refreshSlotInspectPanel();
   }
 
   destroy() {
@@ -74,6 +82,8 @@ export class Planet3DMode implements RenderModeController {
     this.inspectTitle = null;
     this.inspectSubtitle = null;
     this.inspectTags = null;
+    this.inspectSlotsSummary = null;
+    this.inspectSlotDetail = null;
   }
 
   private readonly onPointerDown = (event: PointerEvent) => {
@@ -82,6 +92,9 @@ export class Planet3DMode implements RenderModeController {
     this.isDragging = true;
     this.lastX = event.clientX;
     this.lastY = event.clientY;
+    this.pointerDownX = event.clientX;
+    this.pointerDownY = event.clientY;
+    this.pointerMoved = false;
   };
 
   private readonly onPointerMove = (event: PointerEvent) => {
@@ -91,14 +104,22 @@ export class Planet3DMode implements RenderModeController {
     const dy = event.clientY - this.lastY;
     this.lastX = event.clientX;
     this.lastY = event.clientY;
+    if ((dx * dx + dy * dy) > 4) {
+      this.pointerMoved = true;
+    }
 
     this.runtime.rotate(dx * 0.0088, dy * 0.0088, this.runtime.camera);
   };
 
   private readonly onPointerUp = (event: PointerEvent) => {
     if (event.pointerId !== this.pointerId) return;
+    const dragDistance = Math.hypot(event.clientX - this.pointerDownX, event.clientY - this.pointerDownY);
+    if (dragDistance <= 6 && !this.pointerMoved) {
+      this.handleSlotPick(event.clientX, event.clientY);
+    }
     this.pointerId = null;
     this.isDragging = false;
+    this.pointerMoved = false;
   };
 
   private readonly onKeyDown = (event: KeyboardEvent) => {
@@ -120,6 +141,12 @@ export class Planet3DMode implements RenderModeController {
     const tags = document.createElement('div');
     tags.className = 'planet-inspect-tags';
 
+    const slotsSummary = document.createElement('p');
+    slotsSummary.className = 'planet-inspect-metric';
+
+    const slotDetail = document.createElement('p');
+    slotDetail.className = 'planet-inspect-metric planet-inspect-metric--detail';
+
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'planet-back-button';
@@ -131,6 +158,8 @@ export class Planet3DMode implements RenderModeController {
     panel.appendChild(title);
     panel.appendChild(subtitle);
     panel.appendChild(tags);
+    panel.appendChild(slotsSummary);
+    panel.appendChild(slotDetail);
     panel.appendChild(button);
 
     this.context.host.appendChild(panel);
@@ -138,6 +167,8 @@ export class Planet3DMode implements RenderModeController {
     this.inspectTitle = title;
     this.inspectSubtitle = subtitle;
     this.inspectTags = tags;
+    this.inspectSlotsSummary = slotsSummary;
+    this.inspectSlotDetail = slotDetail;
 
     const profile = planetProfileFromSeed(this.selectedPlanet.seed);
     this.updateInspectIdentity(this.selectedPlanet, profile);
@@ -158,6 +189,35 @@ export class Planet3DMode implements RenderModeController {
       chip.textContent = tag;
       this.inspectTags.appendChild(chip);
     }
+  }
+
+  private handleSlotPick(clientX: number, clientY: number) {
+    if (!this.runtime) return;
+    const pickedIndex = this.runtime.pickSlotFromScreen(clientX, clientY);
+    if (pickedIndex == null) {
+      this.runtime.clearSelectedSlot();
+      this.refreshSlotInspectPanel();
+      return;
+    }
+    this.runtime.setSelectedSlotByIndex(pickedIndex);
+    this.refreshSlotInspectPanel();
+  }
+
+  private refreshSlotInspectPanel() {
+    if (!this.runtime || !this.inspectSlotsSummary || !this.inspectSlotDetail) return;
+    const slots = this.runtime.getSlots();
+    const selected = this.runtime.getSelectedSlot();
+    this.inspectSlotsSummary.textContent = `Settlement slots: ${slots.length} · occupied: 0 · available: ${slots.length}`;
+    if (!selected) {
+      this.inspectSlotDetail.textContent = 'Selected slot: none';
+      return;
+    }
+
+    this.inspectSlotDetail.textContent = this.describeSlot(selected);
+  }
+
+  private describeSlot(slot: PlanetSettlementSlot) {
+    return `${slot.id.toUpperCase()} · state: ${slot.state} · habitability: ${Math.round(slot.habitability * 100)}%`;
   }
 }
 
