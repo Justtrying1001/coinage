@@ -26,18 +26,21 @@ export class CityAssetRegistry {
   createBuildingVisual(type: BuildingType, level: number, theme: CityTheme): Object3D {
     const group = new Group();
     const definition = BUILDING_DEFINITIONS[type];
-    const baseColor = new Color(definition.baseColor).lerp(new Color(theme.metalColor), 0.28);
+    const baseColor = new Color(definition.baseColor).lerp(new Color(theme.metalColor), 0.46);
 
-    const hull = this.makeMaterial(baseColor, theme, 0.58, 0.42, 0.05);
-    const dark = this.makeMaterial(baseColor.clone().offsetHSL(0, -0.03, -0.14), theme, 0.66, 0.28, 0.02);
-    const accent = this.makeMaterial(baseColor.clone().offsetHSL(0, 0.05, 0.22), theme, 0.34, 0.62, 0.22);
+    const hull = this.makeMaterial(baseColor, theme, 0.52, 0.5, 0.06);
+    const dark = this.makeMaterial(baseColor.clone().offsetHSL(0, -0.03, -0.16), theme, 0.7, 0.26, 0.02);
+    const accent = this.makeMaterial(baseColor.clone().offsetHSL(0, 0.06, 0.22), theme, 0.3, 0.7, 0.24);
 
     if (type === 'hq') {
-      group.add(this.scaledBox(3.8, 2.2, 3.6, hull, 1.2));
-      group.add(this.scaledBox(2.2, 2.1, 2.1, dark, 3.05));
-      group.add(this.scaledBox(1.1, 1.8, 1.1, accent, 4.8));
-      group.add(this.scaledCylinder(0.2, 0.2, 2.6, accent, 5.4, -0.95, 0.95));
-      group.add(this.scaledCylinder(0.2, 0.2, 2.6, accent, 5.4, 0.95, -0.95));
+      group.add(this.scaledCylinder(1.7, 2.15, 1.4, dark, 0.8));
+      group.add(this.scaledBox(3.6, 1.8, 3.2, hull, 1.95));
+      group.add(this.scaledBox(2.45, 1.7, 2.2, dark, 3.45));
+      group.add(this.scaledCylinder(0.56, 0.7, 2.2, accent, 4.55));
+      group.add(this.scaledCylinder(0.22, 0.22, 3.2, accent, 5.8, -1.05, 1.05));
+      group.add(this.scaledCylinder(0.22, 0.22, 3.2, accent, 5.8, 1.05, -1.05));
+      group.add(this.scaledBox(0.7, 0.7, 2.4, accent, 2.75, 1.55, 0));
+      group.add(this.scaledBox(0.7, 0.7, 2.4, accent, 2.75, -1.55, 0));
     }
 
     if (type === 'mine') {

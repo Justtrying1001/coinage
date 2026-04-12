@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canEnterCity } from '@/game/city/access/cityAccessPolicy';
+import { canEnterCity, evaluateCityAccess } from '@/game/city/access/cityAccessPolicy';
 
 describe('city access policy', () => {
   it('allows entering any city in explicit build mode override', () => {
@@ -28,5 +28,22 @@ describe('city access policy', () => {
         },
       }),
     ).toBe(false);
+  });
+
+  it('returns a reasoned decision to keep policy checks out of UI branching', () => {
+    expect(
+      evaluateCityAccess({
+        settlementId: 'slot-9',
+        ownedSettlementIds: ['slot-1'],
+        policy: {
+          buildMode: false,
+          canEnterAnyCityInBuildMode: false,
+          enforceOwnershipInLiveMode: true,
+        },
+      }),
+    ).toEqual({
+      allowed: false,
+      reason: 'not-owner',
+    });
   });
 });

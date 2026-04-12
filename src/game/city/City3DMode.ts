@@ -30,7 +30,7 @@ export class City3DMode implements RenderModeController {
     private readonly settlementId: string | null,
   ) {
     const profile = planetProfileFromSeed(selectedPlanet.seed);
-    const cityTheme = resolveCityTheme(profile.archetype);
+    const cityTheme = resolveCityTheme(selectedPlanet.seed, profile);
     this.viewModel = createCityViewModel({
       cityId: `city-${selectedPlanet.id}`,
       planetId: selectedPlanet.id,
@@ -64,7 +64,7 @@ export class City3DMode implements RenderModeController {
     this.selectedPlanet = nextPlanet;
 
     const profile = planetProfileFromSeed(nextPlanet.seed);
-    const cityTheme = resolveCityTheme(profile.archetype);
+    const cityTheme = resolveCityTheme(nextPlanet.seed, profile);
     this.viewModel = createCityViewModel({
       cityId: `city-${nextPlanet.id}`,
       planetId: nextPlanet.id,

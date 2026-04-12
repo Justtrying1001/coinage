@@ -5,7 +5,7 @@ import type { Galaxy2DViewSnapshot } from '@/game/render/modes/Galaxy2DMode';
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
 import { Planet3DMode } from '@/game/render/modes/Planet3DMode';
 import { City3DMode } from '@/game/city/City3DMode';
-import { canEnterCity, DEFAULT_CITY_ACCESS_POLICY, type CityAccessPolicy } from '@/game/city/access/cityAccessPolicy';
+import { evaluateCityAccess, DEFAULT_CITY_ACCESS_POLICY, type CityAccessPolicy } from '@/game/city/access/cityAccessPolicy';
 
 interface RenderModeFactory {
   createGalaxyMode: (
@@ -157,12 +157,12 @@ export class CoinageRenderApp {
         this.switchMode(mode);
       },
       onEnterCity: (settlementId: string) => {
-        const canEnter = canEnterCity({
+        const access = evaluateCityAccess({
           settlementId,
           ownedSettlementIds: this.ownedSettlementIds,
           policy: this.cityAccessPolicy,
         });
-        if (!canEnter) return;
+        if (!access.allowed) return;
         this.selectedSettlementId = settlementId;
         this.switchMode('city3d');
       },

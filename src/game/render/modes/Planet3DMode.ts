@@ -186,7 +186,7 @@ export class Planet3DMode implements RenderModeController {
 
     const helpText = document.createElement('p');
     helpText.className = 'planet-inspect-line';
-    helpText.textContent = 'Double-click a settlement to enter City View';
+    helpText.textContent = 'Single-click to inspect. Double-click a settlement to enter City View.';
 
     const button = document.createElement('button');
     button.type = 'button';
