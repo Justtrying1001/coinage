@@ -7,6 +7,14 @@ import { CpuTerrainGenerator } from '@/game/planet/generation/cpu/CpuTerrainGene
 import { MinMax } from '@/game/planet/utils/minMax';
 import { createPlanetMaterial } from '@/game/planet/materials/PlanetMaterial';
 
+export interface PlanetGenerationResult {
+  root: THREE.Group;
+  surfaceMesh: THREE.Mesh;
+  config: PlanetGenerationConfig;
+  minElevation: number;
+  maxElevation: number;
+}
+
 export class PlanetGenerator {
   private readonly gpu: GpuTerrainGenerator;
   private readonly cpu: CpuTerrainGenerator;
@@ -16,7 +24,7 @@ export class PlanetGenerator {
     this.cpu = new CpuTerrainGenerator();
   }
 
-  generate(config: PlanetGenerationConfig) {
+  generate(config: PlanetGenerationConfig): PlanetGenerationResult {
     const root = new THREE.Group();
     const minMax = new MinMax();
     const faceGeometries: THREE.BufferGeometry[] = [];
@@ -106,7 +114,13 @@ export class PlanetGenerator {
     const mesh = new THREE.Mesh(deduped, material);
     root.add(mesh);
 
-    return { root };
+    return {
+      root,
+      surfaceMesh: mesh,
+      config,
+      minElevation: minMax.min,
+      maxElevation: minMax.max,
+    };
   }
 
   private applySubmergedReliefCompression(geometry: THREE.BufferGeometry, config: PlanetGenerationConfig, minElevation: number, maxElevation: number) {

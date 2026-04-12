@@ -4,12 +4,15 @@ import { createPlanetGenerationConfig } from '@/game/planet/presets/archetypes';
 import { PlanetGenerator } from '@/game/planet/generation/PlanetGenerator';
 import { PlanetPostFx } from '@/game/planet/postfx/PlanetPostFx';
 import { PlanetScene } from '@/game/planet/runtime/PlanetScene';
+import { PlanetSlotGenerator } from '@/game/planet/slots/PlanetSlotGenerator';
+import { createPlanetSlotMeshes } from '@/game/planet/slots/PlanetSlotMesh';
 
 export class PlanetRuntime {
   readonly renderer: THREE.WebGLRenderer;
   private readonly sceneKit = new PlanetScene();
   private readonly generator: PlanetGenerator;
   private postFx: PlanetPostFx;
+  private readonly slotGenerator = new PlanetSlotGenerator();
   private planetRoot: THREE.Group | null = null;
 
   constructor(private readonly host: HTMLDivElement) {
@@ -35,6 +38,16 @@ export class PlanetRuntime {
     const profile = planetProfileFromSeed(seed);
     const config = createPlanetGenerationConfig(seed, profile);
     const generated = this.generator.generate(config);
+
+    const slotResult = this.slotGenerator.generate({
+      seed,
+      surfaceMesh: generated.surfaceMesh,
+      config: generated.config,
+      minElevation: generated.minElevation,
+      maxElevation: generated.maxElevation,
+    });
+    const slotMeshes = createPlanetSlotMeshes(slotResult.slots);
+    generated.root.add(slotMeshes);
 
     this.planetRoot = generated.root;
     this.sceneKit.root.add(generated.root);
