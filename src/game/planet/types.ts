@@ -7,6 +7,7 @@ export interface GradientStop {
 }
 
 export type NoiseFilterKind = 'simple' | 'ridgid';
+export type PlanetSurfaceMode = 'water' | 'ice' | 'lava';
 
 export interface NoiseFilterConfig {
   kind: NoiseFilterKind;
@@ -30,6 +31,7 @@ export interface PlanetArchetypePreset {
     elevationGradient: GradientStop[];
     depthGradient: GradientStop[];
     blendDepth: number;
+    canopyTint: Vector3Tuple;
     roughness: number;
     metalness: number;
     vegetationDensity: number;
@@ -50,11 +52,14 @@ export interface PlanetGenerationConfig {
   elevationGradient: GradientStop[];
   depthGradient: GradientStop[];
   blendDepth: number;
+  seaLevel: number;
+  surfaceMode: PlanetSurfaceMode;
   material: {
     roughness: number;
     metalness: number;
     vegetationDensity: number;
     wetness: number;
+    canopyTint: Vector3Tuple;
   };
   postfx: PlanetArchetypePreset['postfx'];
 }

@@ -34,10 +34,13 @@ describe('planet archetype presets', () => {
       expect(configA.elevationGradient.length).toBeGreaterThanOrEqual(3);
       expect(configA.depthGradient.length).toBeGreaterThanOrEqual(2);
       expect(configA.blendDepth).toBeGreaterThan(0);
+      expect(configA.seaLevel).toBeGreaterThanOrEqual(0.8);
+      expect(configA.seaLevel).toBeLessThanOrEqual(1.1);
       expect(configA.material.vegetationDensity).toBeGreaterThanOrEqual(0);
       expect(configA.material.vegetationDensity).toBeLessThanOrEqual(1);
       expect(configA.material.wetness).toBeGreaterThanOrEqual(0);
       expect(configA.material.wetness).toBeLessThanOrEqual(1);
+      expect(configA.material.canopyTint).toHaveLength(3);
     }
   });
 
@@ -62,6 +65,21 @@ describe('planet archetype presets', () => {
     expect(jR).toBeLessThan(tR);
     expect(jB).toBeLessThan(oB);
     expect(jR).toBeLessThan(oR);
+    expect(oceanic.seaLevel).toBeGreaterThan(jungle.seaLevel);
+  });
+
+  it('maps low-surface mode per archetype', () => {
+    const frozenSeed = findSeedForArchetype('frozen');
+    const volcanicSeed = findSeedForArchetype('volcanic');
+    const terrestrialSeed = findSeedForArchetype('terrestrial');
+
+    const frozen = createPlanetGenerationConfig(frozenSeed, planetProfileFromSeed(frozenSeed));
+    const volcanic = createPlanetGenerationConfig(volcanicSeed, planetProfileFromSeed(volcanicSeed));
+    const terrestrial = createPlanetGenerationConfig(terrestrialSeed, planetProfileFromSeed(terrestrialSeed));
+
+    expect(frozen.surfaceMode).toBe('ice');
+    expect(volcanic.surfaceMode).toBe('lava');
+    expect(terrestrial.surfaceMode).toBe('water');
   });
 
   it('enforces volcanic and arid palette intent', () => {

@@ -158,22 +158,22 @@ interface ArchetypeConfig {
 
 const ARCHETYPE_CONFIGS: Record<PlanetArchetype, ArchetypeConfig> = {
   arid: {
-    oceanLevel: [0.02, 0.18], roughness: [0.7, 0.95], metalness: [0.03, 0.1],
+    oceanLevel: [0, 0.08], roughness: [0.7, 0.95], metalness: [0.03, 0.1],
     reliefStrength: [0.11, 0.21], reliefSharpness: [1.2, 2.2], continentScale: [1.4, 2.7], ridgeScale: [7, 13], ridgeScaleBonus: 3.2, craterScale: [4.5, 8.4],
     lightIntensity: [1.05, 1.35], atmosphereLightness: [64, 74],
-    ruggedness: [0.35, 1], macroBias: [0.2, 0.44], ridgeWeight: [0.34, 0.56], craterWeight: [0.15, 0.32], polarWeight: [0.05, 0.2], humidityStrength: [0.12, 0.34], emissiveIntensity: [0.01, 0.04],
+    ruggedness: [0.35, 1], macroBias: [0.2, 0.44], ridgeWeight: [0.34, 0.56], craterWeight: [0.15, 0.32], polarWeight: [0.05, 0.2], humidityStrength: [0.04, 0.18], emissiveIntensity: [0.01, 0.04],
   },
   frozen: {
-    oceanLevel: [0.22, 0.52], roughness: [0.5, 0.78], metalness: [0.02, 0.09],
+    oceanLevel: [0.02, 0.12], roughness: [0.5, 0.78], metalness: [0.02, 0.09],
     reliefStrength: [0.05, 0.13], reliefSharpness: [0.95, 1.5], continentScale: [1.8, 3.6], ridgeScale: [6.4, 10.2], ridgeScaleBonus: 2.1, craterScale: [3.8, 6.4],
     lightIntensity: [1.12, 1.55], atmosphereLightness: [76, 88],
     ruggedness: [0.1, 0.6], macroBias: [0.04, 0.2], ridgeWeight: [0.12, 0.26], craterWeight: [0.08, 0.16], polarWeight: [0.2, 0.44], humidityStrength: [0.05, 0.2], emissiveIntensity: [0.01, 0.03],
   },
   volcanic: {
-    oceanLevel: [0, 0.06], roughness: [0.58, 0.84], metalness: [0.04, 0.16],
+    oceanLevel: [0, 0.03], roughness: [0.58, 0.84], metalness: [0.04, 0.16],
     reliefStrength: [0.13, 0.24], reliefSharpness: [1.25, 2.1], continentScale: [1.1, 2.3], ridgeScale: [8.8, 15.6], ridgeScaleBonus: 4.5, craterScale: [5.8, 9.6],
     lightIntensity: [1.15, 1.55], atmosphereLightness: [56, 68],
-    ruggedness: [0.4, 1], macroBias: [0.22, 0.42], ridgeWeight: [0.34, 0.58], craterWeight: [0.2, 0.34], polarWeight: [0.01, 0.12], humidityStrength: [0.06, 0.22], emissiveIntensity: [0.06, 0.12],
+    ruggedness: [0.4, 1], macroBias: [0.22, 0.42], ridgeWeight: [0.34, 0.58], craterWeight: [0.2, 0.34], polarWeight: [0.01, 0.12], humidityStrength: [0.02, 0.1], emissiveIntensity: [0.06, 0.12],
   },
   mineral: {
     oceanLevel: [0.05, 0.22], roughness: [0.34, 0.68], metalness: [0.12, 0.28],
@@ -182,16 +182,16 @@ const ARCHETYPE_CONFIGS: Record<PlanetArchetype, ArchetypeConfig> = {
     ruggedness: [0.2, 0.75], macroBias: [0.15, 0.31], ridgeWeight: [0.2, 0.39], craterWeight: [0.14, 0.26], polarWeight: [0.05, 0.16], humidityStrength: [0.08, 0.28], emissiveIntensity: [0.02, 0.05],
   },
   terrestrial: {
-    oceanLevel: [0.34, 0.62], roughness: [0.62, 0.9], metalness: [0.01, 0.06],
+    oceanLevel: [0.28, 0.5], roughness: [0.62, 0.9], metalness: [0.01, 0.06],
     reliefStrength: [0.08, 0.16], reliefSharpness: [1.05, 1.78], continentScale: [1.5, 3.3], ridgeScale: [7.1, 12.4], ridgeScaleBonus: 2.8, craterScale: [3.8, 7.2],
     lightIntensity: [1.12, 1.5], atmosphereLightness: [70, 84],
     ruggedness: [0.2, 0.76], macroBias: [0.02, 0.24], ridgeWeight: [0.18, 0.4], craterWeight: [0.1, 0.24], polarWeight: [0.08, 0.24], humidityStrength: [0.24, 0.52], emissiveIntensity: [0, 0.03],
   },
   oceanic: {
-    oceanLevel: [0.56, 0.82], roughness: [0.35, 0.58], metalness: [0.01, 0.05],
+    oceanLevel: [0.72, 0.92], roughness: [0.35, 0.58], metalness: [0.01, 0.05],
     reliefStrength: [0.04, 0.12], reliefSharpness: [0.82, 1.24], continentScale: [1.6, 3.8], ridgeScale: [5.5, 9.2], ridgeScaleBonus: 1.8, craterScale: [3.1, 5.8],
     lightIntensity: [1.2, 1.6], atmosphereLightness: [72, 84],
-    ruggedness: [0.05, 0.45], macroBias: [-0.15, 0.08], ridgeWeight: [0.1, 0.22], craterWeight: [0.08, 0.14], polarWeight: [0.08, 0.24], humidityStrength: [0.24, 0.52], emissiveIntensity: [0.01, 0.03],
+    ruggedness: [0.05, 0.45], macroBias: [-0.15, 0.08], ridgeWeight: [0.1, 0.22], craterWeight: [0.08, 0.14], polarWeight: [0.08, 0.24], humidityStrength: [0.42, 0.72], emissiveIntensity: [0.01, 0.03],
   },
   barren: {
     oceanLevel: [0, 0.1], roughness: [0.56, 0.88], metalness: [0.02, 0.12],
@@ -200,7 +200,7 @@ const ARCHETYPE_CONFIGS: Record<PlanetArchetype, ArchetypeConfig> = {
     ruggedness: [0.3, 0.9], macroBias: [0.12, 0.29], ridgeWeight: [0.24, 0.43], craterWeight: [0.18, 0.32], polarWeight: [0.03, 0.14], humidityStrength: [0.02, 0.16], emissiveIntensity: [0.01, 0.04],
   },
   jungle: {
-    oceanLevel: [0.42, 0.68], roughness: [0.54, 0.8], metalness: [0.01, 0.05],
+    oceanLevel: [0.18, 0.38], roughness: [0.54, 0.8], metalness: [0.01, 0.05],
     reliefStrength: [0.07, 0.15], reliefSharpness: [1.0, 1.7], continentScale: [1.5, 3.1], ridgeScale: [6.6, 11.6], ridgeScaleBonus: 2.4, craterScale: [3.2, 6.2],
     lightIntensity: [1.08, 1.36], atmosphereLightness: [70, 82],
     ruggedness: [0.16, 0.64], macroBias: [-0.08, 0.14], ridgeWeight: [0.16, 0.34], craterWeight: [0.08, 0.18], polarWeight: [0.04, 0.14], humidityStrength: [0.62, 0.92], emissiveIntensity: [0.0, 0.02],
