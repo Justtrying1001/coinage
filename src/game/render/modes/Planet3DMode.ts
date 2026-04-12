@@ -3,6 +3,7 @@ import type { PlanetVisualProfile, SelectedPlanetRef } from '@/game/render/types
 import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
 import { SeededRng } from '@/game/world/rng';
 import { PlanetRuntime } from '@/game/planet/runtime/PlanetRuntime';
+import { perfMark } from '@/game/perf/perfMarks';
 
 export class Planet3DMode implements RenderModeController {
   readonly id = 'planet3d' as const;
@@ -32,12 +33,13 @@ export class Planet3DMode implements RenderModeController {
   ) {}
 
   mount() {
+    perfMark('planet.mount.start');
     this.runtime = new PlanetRuntime(this.context.host);
     this.runtime.setSettlementSelectionListener((snapshot) => {
       this.updateInspectSettlement(snapshot.total, snapshot.occupied, snapshot.available);
       this.updateInspectSelection(snapshot.selected?.id ?? null, snapshot.selected?.habitability ?? null);
     });
-    void this.runtime.rebuildFromSeed(this.selectedPlanet.seed);
+    this.runtime.rebuildFromSeed(this.selectedPlanet.seed);
     this.mountInspectPanel();
 
     const canvas = this.runtime.renderer.domElement;
@@ -61,7 +63,7 @@ export class Planet3DMode implements RenderModeController {
   setSelectedPlanet(nextPlanet: SelectedPlanetRef) {
     if (nextPlanet.id === this.selectedPlanet.id && nextPlanet.seed === this.selectedPlanet.seed) return;
     this.selectedPlanet = nextPlanet;
-    void this.runtime?.rebuildFromSeed(nextPlanet.seed);
+    this.runtime?.rebuildFromSeed(nextPlanet.seed);
     const profile = planetProfileFromSeed(nextPlanet.seed);
     this.updateInspectIdentity(nextPlanet, profile);
   }

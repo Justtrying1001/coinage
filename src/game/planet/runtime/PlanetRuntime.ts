@@ -31,9 +31,6 @@ export class PlanetRuntime {
   private readonly ndc = new THREE.Vector2();
   private readonly pointerPixel = new THREE.Vector2();
   private onSettlementSelectionChanged: ((snapshot: SettlementSnapshot) => void) | null = null;
-  private needsRender = true;
-  private interactionUntil = 0;
-  private idleElapsed = 0;
   private firstFramePending = false;
 
   constructor(private readonly host: HTMLDivElement) {
@@ -50,7 +47,7 @@ export class PlanetRuntime {
     this.postFx = new PlanetPostFx(this.renderer, this.sceneKit.scene, this.sceneKit.camera);
   }
 
-  async rebuildFromSeed(seed: number) {
+  rebuildFromSeed(seed: number) {
     perfMark('planet.rebuild.start');
     if (this.planetRoot) {
       this.sceneKit.root.remove(this.planetRoot);
@@ -58,44 +55,18 @@ export class PlanetRuntime {
     }
 
     this.disposeSettlementLayer();
-    this.needsRender = true;
     this.firstFramePending = true;
 
     const profile = planetProfileFromSeed(seed);
-    const fullConfig = createPlanetGenerationConfig(seed, profile);
-    const previewConfig = {
-      ...fullConfig,
-      resolution: Math.min(88, fullConfig.resolution),
-    };
+    const config = createPlanetGenerationConfig(seed, profile);
+    const generated = this.generator.generate(config);
 
-    perfMark('planet.preview.start');
-    const preview = await this.generator.generateAsync(previewConfig, { preview: true });
-    perfMark('planet.preview.end');
-    perfMeasure('planet.preview.total', 'planet.preview.start', 'planet.preview.end');
-
-    this.planetRoot = preview.root;
-    this.sceneKit.root.add(preview.root);
-    this.postFx.setBloom({ strength: 0, radius: 0, threshold: 1 });
-    this.renderer.toneMappingExposure = fullConfig.postfx.exposure;
-    this.markInteractive();
-
-    await new Promise<void>((resolve) => {
-      requestAnimationFrame(() => resolve());
-    });
-
-    perfMark('planet.full.start');
-    const generated = await this.generator.generateAsync(fullConfig);
-    perfMark('planet.full.end');
-    perfMeasure('planet.full.total', 'planet.full.start', 'planet.full.end');
-
-    this.sceneKit.root.remove(preview.root);
-    disposeHierarchy(preview.root);
     this.planetRoot = generated.root;
     this.sceneKit.root.add(generated.root);
 
     try {
       const cached = PlanetRuntime.settlementCache.get(seed);
-      this.settlementSlots = cached ?? generateSettlementSlots(generated.surfaceGeometry, fullConfig);
+      this.settlementSlots = cached ?? generateSettlementSlots(generated.surfaceGeometry, config);
       if (!cached) {
         PlanetRuntime.settlementCache.set(seed, this.settlementSlots);
       }
@@ -110,29 +81,21 @@ export class PlanetRuntime {
     this.selectedSlotIndex = null;
     this.emitSettlementSelection();
 
-    this.postFx.setBloom(fullConfig.postfx.bloom);
-    this.renderer.toneMappingExposure = fullConfig.postfx.exposure;
-    this.markInteractive();
+    this.postFx.setBloom(config.postfx.bloom);
+    this.renderer.toneMappingExposure = config.postfx.exposure;
     perfMark('planet.rebuild.end');
     perfMeasure('planet.rebuild.total', 'planet.rebuild.start', 'planet.rebuild.end');
-    perfLog('planet.rebuild.complete', { seed, resolution: fullConfig.resolution });
+    perfLog('planet.rebuild.complete', { seed, resolution: config.resolution });
   }
 
   resize(width: number, height: number) {
     this.sceneKit.setSize(width, height);
     this.renderer.setSize(Math.max(1, width), Math.max(1, height), false);
     this.postFx.resize(Math.max(1, width), Math.max(1, height));
-    this.markInteractive();
   }
 
   update(deltaMs: number) {
     this.sceneKit.update(deltaMs);
-    const now = performance.now();
-    this.idleElapsed += deltaMs;
-    const shouldRender = this.needsRender || now < this.interactionUntil || this.idleElapsed > 1000;
-    if (!shouldRender) return;
-    this.idleElapsed = 0;
-    this.needsRender = false;
     this.postFx.render();
     if (this.firstFramePending) {
       this.firstFramePending = false;
@@ -148,7 +111,6 @@ export class PlanetRuntime {
     const qPitch = new THREE.Quaternion().setFromAxisAngle(axis, deltaPitch);
     this.planetRoot.quaternion.premultiply(qYaw);
     this.planetRoot.quaternion.premultiply(qPitch);
-    this.markInteractive();
   }
 
   pickSettlementSlot(clientX: number, clientY: number) {
@@ -178,7 +140,6 @@ export class PlanetRuntime {
     this.selectedSlotIndex = normalized;
     this.settlementLayer?.setSelectedIndex(normalized);
     this.emitSettlementSelection();
-    this.markInteractive();
   }
 
   getSettlementSnapshot(): SettlementSnapshot {
@@ -224,10 +185,6 @@ export class PlanetRuntime {
     this.selectedSlotIndex = null;
   }
 
-  private markInteractive() {
-    this.needsRender = true;
-    this.interactionUntil = performance.now() + 350;
-  }
 }
 
 function disposeHierarchy(root: THREE.Object3D) {

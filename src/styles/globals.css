@@ -175,21 +175,6 @@ a {
   height: 100%;
 }
 
-.planet-loading-overlay {
-  position: absolute;
-  inset: auto auto 1rem 1rem;
-  z-index: 15;
-  padding: 0.55rem 0.8rem;
-  border: 1px solid rgba(148, 222, 255, 0.45);
-  border-radius: 999px;
-  background: rgba(7, 24, 39, 0.9);
-  color: #d8efff;
-  font-size: 0.68rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  pointer-events: none;
-}
-
 .planet-inspect-panel {
   position: absolute;
   right: 1rem;
