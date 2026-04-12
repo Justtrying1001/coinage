@@ -53,10 +53,13 @@ export class PlanetGenerator {
       minMax.min,
       minMax.max,
       config.blendDepth,
+      config.seaLevel,
+      config.surfaceMode,
       config.material.roughness,
       config.material.metalness,
       config.material.vegetationDensity,
       config.material.wetness,
+      config.material.canopyTint,
       debugMode,
     );
 

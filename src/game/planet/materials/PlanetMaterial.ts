@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { GradientStop } from '@/game/planet/types';
+import type { GradientStop, PlanetSurfaceMode } from '@/game/planet/types';
 
 const MAX_STOPS = 6;
 
@@ -9,10 +9,13 @@ export function createPlanetMaterial(
   minElevation: number,
   maxElevation: number,
   blendDepth: number,
+  seaLevel: number,
+  surfaceMode: PlanetSurfaceMode,
   roughness: number,
   metalness: number,
   vegetationDensity: number,
   wetness: number,
+  canopyTint: [number, number, number],
   debugMode = 0,
 ) {
   const normalizedElevation = normalizeStops(elevationGradient, [1, 1, 1]);
@@ -31,8 +34,11 @@ export function createPlanetMaterial(
       uMetalness: { value: metalness },
       uVegetationDensity: { value: vegetationDensity },
       uWetness: { value: wetness },
+      uCanopyTint: { value: new THREE.Vector3(...canopyTint) },
       uLightDirection: { value: new THREE.Vector3(0.85, 0.35, 0.55).normalize() },
       uBlendDepth: { value: Math.max(0.001, blendDepth) },
+      uSeaLevel: { value: seaLevel },
+      uSurfaceMode: { value: surfaceMode === 'ice' ? 1 : surfaceMode === 'lava' ? 2 : 0 },
       uDebugMode: { value: debugMode },
     },
     vertexShader: `
@@ -62,8 +68,11 @@ export function createPlanetMaterial(
       uniform float uMetalness;
       uniform float uVegetationDensity;
       uniform float uWetness;
+      uniform vec3 uCanopyTint;
       uniform vec3 uLightDirection;
       uniform float uBlendDepth;
+      uniform float uSeaLevel;
+      uniform int uSurfaceMode;
       uniform int uDebugMode;
       varying float vElevation;
       varying vec3 vNormalW;
@@ -124,20 +133,19 @@ export function createPlanetMaterial(
       }
 
       void main() {
-        float seaLevel = 1.0;
         vec3 N = normalize(vNormalW);
         vec3 up = normalize(vPositionW);
         float slope = clamp(1.0 - dot(N, up), 0.0, 1.0);
 
-        float depthN = invLerp(uMinMax.x, seaLevel, vElevation);
-        float elevN = invLerp(seaLevel, uMinMax.y, vElevation);
+        float depthN = invLerp(uMinMax.x, uSeaLevel, vElevation);
+        float elevN = invLerp(uSeaLevel, uMinMax.y, vElevation);
 
         float macro = fbm(vPositionW * 2.6 + vec3(5.2, 1.4, 3.7));
         float micro = fbm(vPositionW * 7.5 + vec3(vElevation * 1.2));
         float breakup = mix(macro, micro, 0.32);
 
-        float coastMask = smoothstep(seaLevel - uBlendDepth * 0.6, seaLevel + uBlendDepth * 1.2, vElevation);
-        float waterMask = 1.0 - smoothstep(seaLevel - uBlendDepth * 0.35, seaLevel + uBlendDepth * 0.9, vElevation);
+        float coastMask = smoothstep(uSeaLevel - uBlendDepth * 0.6, uSeaLevel + uBlendDepth * 1.2, vElevation);
+        float lowSurfaceMask = 1.0 - smoothstep(uSeaLevel - uBlendDepth * 0.35, uSeaLevel + uBlendDepth * 0.9, vElevation);
 
         float landDetail = (breakup - 0.5) * (0.05 + slope * 0.08);
         float depthDetail = (macro - 0.5) * 0.045;
@@ -158,16 +166,26 @@ export function createPlanetMaterial(
           * (1.0 - smoothstep(0.24, 0.72, slope))
           * vegetationNoise
           * (1.0 - peakMask);
-        vec3 canopyTint = vec3(0.1, 0.32, 0.12);
         terrain = mix(terrain, terrain * 0.9, slope * 0.45);
-        terrain = mix(terrain, mix(terrain, canopyTint, 0.66), vegetationMask);
+        terrain = mix(terrain, mix(terrain, uCanopyTint, 0.66), vegetationMask);
         terrain = mix(terrain, terrain * 0.96, lowlandMask * uWetness * 0.36);
         terrain = mix(terrain, terrain * 1.1, uplandMask * 0.32);
         terrain = mix(terrain, terrain * 1.18, peakMask * (0.42 + slope * 0.34));
         terrain = mix(terrain, coastTint, beachBand * 0.5);
 
         vec3 water = depthBase * (0.8 + depthN * 0.28 + uWetness * 0.06);
-        vec3 base = mix(water, terrain, coastMask);
+        vec3 ice = mix(vec3(0.66, 0.78, 0.84), vec3(0.92, 0.98, 1.0), clamp(depthN + macro * 0.08, 0.0, 1.0));
+        ice = mix(ice, depthBase * 0.8 + vec3(0.34, 0.42, 0.5) * 0.25, smoothstep(0.08, 0.42, depthN) * 0.42);
+        vec3 basalt = mix(vec3(0.04, 0.04, 0.05), vec3(0.12, 0.1, 0.09), clamp(depthN + macro * 0.15, 0.0, 1.0));
+        vec3 lavaGlow = mix(vec3(0.26, 0.09, 0.03), vec3(0.92, 0.33, 0.07), smoothstep(0.72, 1.0, breakup) * smoothstep(0.35, 1.0, depthN));
+        vec3 lava = mix(basalt, lavaGlow, 0.16 + uWetness * 0.06);
+        vec3 lowSurface = water;
+        if (uSurfaceMode == 1) {
+          lowSurface = ice;
+        } else if (uSurfaceMode == 2) {
+          lowSurface = lava;
+        }
+        vec3 base = mix(lowSurface, terrain, coastMask);
 
         if (uDebugMode == 1) {
           gl_FragColor = vec4(normalize(vNormalW) * 0.5 + 0.5, 1.0);
@@ -199,8 +217,13 @@ export function createPlanetMaterial(
         float fresnel = pow(clamp(1.0 - max(dot(N, V), 0.0), 0.0, 1.0), 2.1);
         float shininess = mix(16.0, 96.0, 1.0 - clamp(uRoughness, 0.0, 1.0));
 
-        float waterSpec = (pow(ndoth, 72.0) * 0.82 + pow(ndothFill, 42.0) * 0.32) * waterMask * (0.02 + (1.0 - uRoughness) * 0.12 + fresnel * 0.18);
-        float landSpec = (pow(ndoth, shininess) * 0.72 + pow(ndothFill, shininess * 0.56) * 0.18) * (1.0 - waterMask) * (0.008 + uMetalness * 0.1);
+        float waterSpec = (pow(ndoth, 72.0) * 0.82 + pow(ndothFill, 42.0) * 0.32) * lowSurfaceMask * (0.02 + (1.0 - uRoughness) * 0.12 + fresnel * 0.18);
+        if (uSurfaceMode == 1) {
+          waterSpec *= 0.45;
+        } else if (uSurfaceMode == 2) {
+          waterSpec *= 0.22;
+        }
+        float landSpec = (pow(ndoth, shininess) * 0.72 + pow(ndothFill, shininess * 0.56) * 0.18) * (1.0 - lowSurfaceMask) * (0.008 + uMetalness * 0.1);
 
         float reliefContrast = slope * (0.52 + uplandMask * 0.44) + peakMask * 0.26;
         float lightTerm = 0.18 + keyDiffuse * 0.68 + fillDiffuse * 0.16;
