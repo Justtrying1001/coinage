@@ -106,7 +106,7 @@ export class PlanetGenerator {
     const mesh = new THREE.Mesh(deduped, material);
     root.add(mesh);
 
-    return { root };
+    return { root, surfaceMesh: mesh, surfaceGeometry: deduped };
   }
 
   private applySubmergedReliefCompression(geometry: THREE.BufferGeometry, config: PlanetGenerationConfig, minElevation: number, maxElevation: number) {

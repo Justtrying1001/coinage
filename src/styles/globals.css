@@ -227,6 +227,22 @@ a {
   padding: 0.28rem 0.5rem;
 }
 
+
+.planet-inspect-settlements,
+.planet-inspect-selection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+}
+
+.planet-inspect-line {
+  margin: 0;
+  font-size: 0.67rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(198, 228, 250, 0.9);
+}
+
 .planet-back-button {
   align-self: flex-start;
   border: 1px solid rgba(147, 217, 255, 0.55);
