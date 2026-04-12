@@ -90,8 +90,10 @@ export function createPlanetMaterial(
       varying float vElevation;
       varying vec3 vNormalW;
       varying vec3 vPositionW;
+      varying vec3 vSurfaceDirL;
       void main() {
         vElevation = aElevation;
+        vSurfaceDirL = normalize(position);
         vec4 world = modelMatrix * vec4(position, 1.0);
         vPositionW = world.xyz;
         vNormalW = normalize(mat3(modelMatrix) * normal);
@@ -143,6 +145,7 @@ export function createPlanetMaterial(
       varying float vElevation;
       varying vec3 vNormalW;
       varying vec3 vPositionW;
+      varying vec3 vSurfaceDirL;
 
       float invLerp(float a, float b, float v){
         if(abs(b-a)<0.000001) return 0.0;
@@ -204,7 +207,8 @@ export function createPlanetMaterial(
         vec3 up = normalize(vPositionW);
         float geoSlope = clamp(1.0 - dot(NGeo, up), 0.0, 1.0);
         float eps = 0.045;
-        vec3 microP = vPositionW * uMicroReliefScale + vec3(vElevation * 1.73);
+        vec3 surfaceP = vSurfaceDirL;
+        vec3 microP = surfaceP * uMicroReliefScale + vec3(vElevation * 1.73);
         float microA = noise3(microP);
         float microX = noise3(microP + vec3(eps, 0.0, 0.0));
         float microY = noise3(microP + vec3(0.0, eps, 0.0));
@@ -221,8 +225,8 @@ export function createPlanetMaterial(
         float depthN = invLerp(0.0, max(0.001, uSurfaceLevel01), elev01);
         float elevN = invLerp(uSurfaceLevel01, 1.0, elev01);
 
-        float macro = fbm(vPositionW * 2.6 + vec3(5.2, 1.4, 3.7));
-        float micro = fbm(vPositionW * 7.5 + vec3(vElevation * 1.2));
+        float macro = fbm(surfaceP * 2.6 + vec3(5.2, 1.4, 3.7));
+        float micro = fbm(surfaceP * 7.5 + vec3(vElevation * 1.2));
         float breakup = mix(macro, micro, 0.32);
 
         float edge = uBlendDepth * 6.0;
@@ -286,10 +290,10 @@ export function createPlanetMaterial(
 
         vec3 basalt = mix(vec3(0.03, 0.03, 0.04), vec3(0.18, 0.14, 0.11), clamp(depthN + macro * 0.12, 0.0, 1.0));
         basalt = mix(basalt, basalt * (0.72 - uBasaltContrast * 0.25), basinMask * (0.42 + uBasaltContrast * 0.25));
-        float fissureNoise = pow(clamp(1.0 - abs(fbm(vPositionW * uFissureScale) * 2.0 - 1.0), 0.0, 1.0), max(1.2, uFissureSharpness));
-        float hotspotNoise = smoothstep(1.0 - uHotspotCoverage, 1.0, fbm(vPositionW * (uFissureScale * 0.6) + vec3(11.3, 5.6, 2.1)));
+        float fissureNoise = pow(clamp(1.0 - abs(fbm(surfaceP * uFissureScale) * 2.0 - 1.0), 0.0, 1.0), max(1.2, uFissureSharpness));
+        float hotspotNoise = smoothstep(1.0 - uHotspotCoverage, 1.0, fbm(surfaceP * (uFissureScale * 0.6) + vec3(11.3, 5.6, 2.1)));
         float basinFloorMask = submergedMask * smoothstep(0.02, 0.5, depthN);
-        float calderaField = fbm(vPositionW * 3.2 + vec3(19.4, 7.1, 3.3));
+        float calderaField = fbm(surfaceP * 3.2 + vec3(19.4, 7.1, 3.3));
         float calderaMask = landMask
           * (1.0 - smoothstep(0.16, 0.62, elevN))
           * (1.0 - smoothstep(0.52, 0.86, reliefSupport))
