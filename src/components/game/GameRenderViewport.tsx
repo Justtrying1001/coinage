@@ -29,9 +29,7 @@ export function GameRenderViewport({ mode, selectedPlanet, onSelectedPlanetChang
       initialSelectedPlanet: initialSelectedRef.current,
       onSelectedPlanetChange: (planet) => onSelectedChangeRef.current(planet),
       cityAccessPolicy: {
-        buildMode: true,
-        canEnterAnyCityInBuildMode: true,
-        enforceOwnershipInLiveMode: true,
+        mode: 'build',
       },
     });
 

@@ -22,6 +22,7 @@ export class CityAssetRegistry {
   private readonly baseBox = this.trackGeometry(new BoxGeometry(1, 1, 1));
   private readonly baseCylinder = this.trackGeometry(new CylinderGeometry(0.5, 0.5, 1, 16));
   private readonly baseSphere = this.trackGeometry(new SphereGeometry(0.34, 14, 10));
+  private readonly baseFooting = this.trackGeometry(new CylinderGeometry(0.58, 0.62, 0.2, 20));
 
   createBuildingVisual(type: BuildingType, level: number, theme: CityTheme): Object3D {
     const group = new Group();
@@ -33,6 +34,7 @@ export class CityAssetRegistry {
     const accent = this.makeMaterial(baseColor.clone().offsetHSL(0, 0.05, 0.22), theme, 0.34, 0.62, 0.22);
 
     if (type === 'hq') {
+      group.add(this.scaledFooting(2.6, theme.foundationColor, 0.2));
       group.add(this.scaledBox(3.8, 2.2, 3.6, hull, 1.2));
       group.add(this.scaledBox(2.2, 2.1, 2.1, dark, 3.05));
       group.add(this.scaledBox(1.1, 1.8, 1.1, accent, 4.8));
@@ -41,6 +43,7 @@ export class CityAssetRegistry {
     }
 
     if (type === 'mine') {
+      group.add(this.scaledFooting(2.2, theme.foundationColor, 0.18));
       group.add(this.scaledBox(2.6, 1.5, 2.2, hull, 0.9));
       group.add(this.scaledCylinder(0.55, 0.62, 2.2, dark, 2.4, -0.82, 0));
       group.add(this.scaledCylinder(0.45, 0.45, 1.7, accent, 2.1, 0.88, 0.6));
@@ -48,6 +51,7 @@ export class CityAssetRegistry {
     }
 
     if (type === 'quarry') {
+      group.add(this.scaledFooting(2.35, theme.foundationColor, 0.18));
       group.add(this.scaledBox(3.2, 1.2, 2.6, hull, 0.75));
       group.add(this.scaledBox(2.4, 0.95, 1.8, dark, 1.9));
       group.add(this.scaledBox(0.65, 1.6, 2.3, accent, 2.3, 1.1, 0));
@@ -55,6 +59,7 @@ export class CityAssetRegistry {
     }
 
     if (type === 'refinery') {
+      group.add(this.scaledFooting(2.2, theme.foundationColor, 0.18));
       group.add(this.scaledCylinder(1.25, 1.45, 2.4, hull, 1.2));
       group.add(this.scaledCylinder(0.78, 0.9, 1.8, dark, 2.85, -1.05, 0.75));
       group.add(this.scaledCylinder(0.64, 0.64, 2.6, accent, 3.1, 1.08, -0.58));
@@ -62,6 +67,7 @@ export class CityAssetRegistry {
     }
 
     if (type === 'warehouse') {
+      group.add(this.scaledFooting(2.8, theme.foundationColor, 0.2));
       group.add(this.scaledBox(4, 1.3, 2.9, hull, 0.8));
       group.add(this.scaledBox(3.5, 0.8, 2.4, dark, 1.95));
       group.add(this.scaledBox(0.95, 1.2, 0.95, accent, 2.55, 1.35, 0.95));
@@ -69,6 +75,7 @@ export class CityAssetRegistry {
     }
 
     if (type === 'housing') {
+      group.add(this.scaledFooting(2.0, theme.foundationColor, 0.16));
       group.add(this.scaledCylinder(1.2, 1.3, 1.6, hull, 0.88));
       group.add(this.scaledSphere(0.94, dark, 1.9));
       group.add(this.scaledBox(0.8, 0.8, 0.8, accent, 2.52, -0.95, 0.72));
@@ -108,6 +115,19 @@ export class CityAssetRegistry {
 
   private scaledSphere(scale: number, material: MeshStandardMaterial, y: number): Mesh {
     const mesh = new Mesh(this.baseSphere, material);
+    mesh.position.set(0, y, 0);
+    mesh.scale.setScalar(scale);
+    return mesh;
+  }
+
+  private scaledFooting(scale: number, color: number, y: number): Mesh {
+    const material = new MeshStandardMaterial({
+      color,
+      roughness: 0.82,
+      metalness: 0.18,
+    });
+    this.materials.push(material);
+    const mesh = new Mesh(this.baseFooting, material);
     mesh.position.set(0, y, 0);
     mesh.scale.setScalar(scale);
     return mesh;

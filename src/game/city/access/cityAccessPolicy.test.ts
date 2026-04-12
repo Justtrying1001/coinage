@@ -8,9 +8,7 @@ describe('city access policy', () => {
         settlementId: 'slot-7',
         ownedSettlementIds: [],
         policy: {
-          buildMode: true,
-          canEnterAnyCityInBuildMode: true,
-          enforceOwnershipInLiveMode: true,
+          mode: 'build',
         },
       }),
     ).toBe(true);
@@ -22,9 +20,7 @@ describe('city access policy', () => {
         settlementId: 'slot-2',
         ownedSettlementIds: ['slot-1'],
         policy: {
-          buildMode: false,
-          canEnterAnyCityInBuildMode: false,
-          enforceOwnershipInLiveMode: true,
+          mode: 'live',
         },
       }),
     ).toBe(false);

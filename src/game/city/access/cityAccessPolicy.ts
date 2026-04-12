@@ -1,7 +1,5 @@
 export interface CityAccessPolicy {
-  buildMode: boolean;
-  canEnterAnyCityInBuildMode: boolean;
-  enforceOwnershipInLiveMode: boolean;
+  mode: 'build' | 'live';
 }
 
 export interface CityAccessContext {
@@ -11,19 +9,13 @@ export interface CityAccessContext {
 }
 
 export const DEFAULT_CITY_ACCESS_POLICY: CityAccessPolicy = {
-  buildMode: false,
-  canEnterAnyCityInBuildMode: false,
-  enforceOwnershipInLiveMode: true,
+  mode: 'build',
 };
 
 export function canEnterCity(context: CityAccessContext): boolean {
   const { settlementId, ownedSettlementIds, policy } = context;
 
-  if (policy.buildMode && policy.canEnterAnyCityInBuildMode) {
-    return true;
-  }
-
-  if (!policy.enforceOwnershipInLiveMode) {
+  if (policy.mode === 'build') {
     return true;
   }
 

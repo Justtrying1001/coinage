@@ -174,9 +174,7 @@ describe('CoinageRenderApp integration flow', () => {
       galaxyWidth: 18000,
       galaxyHeight: 12000,
       cityAccessPolicy: {
-        buildMode: false,
-        canEnterAnyCityInBuildMode: false,
-        enforceOwnershipInLiveMode: true,
+        mode: 'live',
       },
       ownedSettlementIds: ['slot-02'],
       modeFactory: {
