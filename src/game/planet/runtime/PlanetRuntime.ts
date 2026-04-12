@@ -107,10 +107,13 @@ export class PlanetRuntime {
 
     this.ndc.set((this.pointerPixel.x / rect.width) * 2 - 1, -(this.pointerPixel.y / rect.height) * 2 + 1);
     this.raycaster.setFromCamera(this.ndc, this.sceneKit.camera);
-    const hits = this.raycaster.intersectObject(this.settlementLayer.mesh, false);
-    const instanceId = hits[0]?.instanceId;
-    if (instanceId == null) return null;
-    return this.settlementSlots[instanceId] ?? null;
+    const hits = this.raycaster.intersectObjects(this.settlementLayer.pickables, true);
+    const hitObject = hits[0]?.object;
+    if (!hitObject) return null;
+
+    const slotIndex = this.settlementLayer.getSlotIndexFromObject(hitObject);
+    if (slotIndex == null) return null;
+    return this.settlementSlots[slotIndex] ?? null;
   }
 
   setSelectedSettlement(slotId: string | null) {
