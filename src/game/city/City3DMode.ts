@@ -7,6 +7,7 @@ import type { CitySlotId } from '@/game/city/data/citySlots';
 import { CitySceneController } from '@/game/city/scene/CitySceneController';
 import { createCityViewModel, getSlotById, type CityViewModel } from '@/game/city/runtime/cityViewModel';
 import { resolveCityTheme } from '@/game/city/themes/cityThemeResolver';
+import { createCityBiomeContext, type CityBiomeContext, type CityEntryPayload } from '@/game/city/terrain/CityBiomeContext';
 
 export class City3DMode implements RenderModeController {
   readonly id = 'city3d' as const;
@@ -19,6 +20,7 @@ export class City3DMode implements RenderModeController {
   private sectionActions: HTMLDivElement | null = null;
 
   private viewModel: CityViewModel;
+  private biomeContext: CityBiomeContext;
 
   private pointerId: number | null = null;
   private downX = 0;
@@ -28,9 +30,16 @@ export class City3DMode implements RenderModeController {
     private selectedPlanet: SelectedPlanetRef,
     private readonly context: ModeContext,
     private readonly settlementId: string | null,
+    private readonly cityEntryPayload: CityEntryPayload | null,
   ) {
     const profile = planetProfileFromSeed(selectedPlanet.seed);
     const cityTheme = resolveCityTheme(profile.archetype);
+    this.biomeContext = createCityBiomeContext({
+      planetId: selectedPlanet.id,
+      planetSeed: selectedPlanet.seed,
+      settlementId: this.settlementId,
+      entry: this.cityEntryPayload,
+    });
     this.viewModel = createCityViewModel({
       cityId: `city-${selectedPlanet.id}`,
       planetId: selectedPlanet.id,
@@ -40,7 +49,7 @@ export class City3DMode implements RenderModeController {
   }
 
   mount() {
-    this.scene = new CitySceneController(this.context.host, this.viewModel, this.selectedPlanet.seed);
+    this.scene = new CitySceneController(this.context.host, this.viewModel, this.biomeContext);
     this.scene.mount();
     this.mountOverlayPanel();
 
@@ -65,6 +74,12 @@ export class City3DMode implements RenderModeController {
 
     const profile = planetProfileFromSeed(nextPlanet.seed);
     const cityTheme = resolveCityTheme(profile.archetype);
+    this.biomeContext = createCityBiomeContext({
+      planetId: nextPlanet.id,
+      planetSeed: nextPlanet.seed,
+      settlementId: this.settlementId,
+      entry: this.cityEntryPayload,
+    });
     this.viewModel = createCityViewModel({
       cityId: `city-${nextPlanet.id}`,
       planetId: nextPlanet.id,
@@ -73,7 +88,7 @@ export class City3DMode implements RenderModeController {
     });
 
     this.scene?.destroy();
-    this.scene = new CitySceneController(this.context.host, this.viewModel, this.selectedPlanet.seed);
+    this.scene = new CitySceneController(this.context.host, this.viewModel, this.biomeContext);
     this.scene.mount();
     this.refreshPanel();
   }

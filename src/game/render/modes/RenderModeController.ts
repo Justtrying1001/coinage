@@ -1,10 +1,11 @@
 import type { RenderMode, SelectedPlanetRef } from '@/game/render/types';
+import type { CityEntryPayload } from '@/game/city/terrain/CityBiomeContext';
 
 export interface ModeContext {
   host: HTMLDivElement;
   onSelectPlanet: (planet: SelectedPlanetRef) => void;
   onRequestMode: (mode: RenderMode) => void;
-  onEnterCity: (settlementId: string) => void;
+  onEnterCity: (payload: CityEntryPayload) => void;
 }
 
 export interface RenderModeController {

@@ -19,6 +19,7 @@ import { CityAssetRegistry } from '@/game/city/assets/CityAssetRegistry';
 import { createCityScene } from '@/game/city/scene/createCityScene';
 import type { CityInteractionTarget, CityViewModel } from '@/game/city/runtime/cityViewModel';
 import { CityRaycaster } from '@/game/city/interaction/CityRaycaster';
+import type { CityBiomeContext } from '@/game/city/terrain/CityBiomeContext';
 
 interface CitySlotVisual {
   slot: Mesh;
@@ -37,8 +38,9 @@ export class CitySceneController {
   private readonly raycaster = new CityRaycaster();
   private readonly assets = new CityAssetRegistry();
   private readonly slotVisuals = new Map<string, CitySlotVisual>();
+  private readonly sampleTerrainHeight: (x: number, z: number) => number;
 
-  constructor(private readonly host: HTMLDivElement, private viewModel: CityViewModel, seed: number) {
+  constructor(private readonly host: HTMLDivElement, private viewModel: CityViewModel, biomeContext: CityBiomeContext) {
     this.renderer = new WebGLRenderer({ antialias: true, alpha: false });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = SRGBColorSpace;
@@ -50,9 +52,10 @@ export class CitySceneController {
     this.camera.position.set(24, 19, 22);
     this.camera.lookAt(0, 2.4, 0);
 
-    const scaffold = createCityScene(viewModel.cityTheme, seed);
+    const scaffold = createCityScene(viewModel.cityTheme, biomeContext);
     this.scene = scaffold.scene;
     this.cityRoot = scaffold.cityRoot;
+    this.sampleTerrainHeight = scaffold.sampleTerrainHeight;
   }
 
   mount() {
@@ -97,6 +100,7 @@ export class CitySceneController {
     const supportGeometry = new BoxGeometry(0.24, 0.8, 0.24);
 
     for (const slot of this.viewModel.layout.slots) {
+      const terrainY = this.sampleTerrainHeight(slot.position.x, slot.position.z);
       const baseMaterial = new MeshStandardMaterial({
         color: slot.startsLocked ? 0x5b6673 : this.viewModel.cityTheme.padColor,
         roughness: 0.48,
@@ -116,19 +120,19 @@ export class CitySceneController {
       });
 
       const slotMesh = new Mesh(padGeometry, baseMaterial);
-      slotMesh.position.set(slot.position.x, slot.position.y + 0.14, slot.position.z);
+      slotMesh.position.set(slot.position.x, terrainY + 0.14, slot.position.z);
       slotMesh.rotation.y = slot.rotationY;
       slotMesh.scale.setScalar(slot.scale ?? 1);
       slotMesh.userData.cityTargetType = 'slot';
       slotMesh.userData.citySlotId = slot.id;
 
       const deckMesh = new Mesh(deckGeometry, deckMaterial);
-      deckMesh.position.set(slot.position.x, slot.position.y + 0.44, slot.position.z);
+      deckMesh.position.set(slot.position.x, terrainY + 0.44, slot.position.z);
       deckMesh.rotation.y = slot.rotationY;
       deckMesh.scale.setScalar(slot.scale ?? 1);
 
       const ringMesh = new Mesh(trimGeometry, trimMaterial);
-      ringMesh.position.set(slot.position.x, slot.position.y + 0.65, slot.position.z);
+      ringMesh.position.set(slot.position.x, terrainY + 0.65, slot.position.z);
       ringMesh.rotation.set(-Math.PI / 2, slot.rotationY, 0);
       ringMesh.scale.setScalar(slot.scale ?? 1);
 
@@ -142,13 +146,14 @@ export class CitySceneController {
 
       for (const offset of supportOffsets) {
         const support = new Mesh(supportGeometry, deckMaterial);
-        support.position.set(slot.position.x + offset.x, slot.position.y + offset.y, slot.position.z + offset.z);
+        const supportGroundY = this.sampleTerrainHeight(slot.position.x + offset.x, slot.position.z + offset.z);
+        support.position.set(slot.position.x + offset.x, supportGroundY + 0.36, slot.position.z + offset.z);
         supports.push(support);
         this.cityRoot.add(support);
       }
 
       const buildingRoot = new Group();
-      buildingRoot.position.set(slot.position.x, slot.position.y + 0.58, slot.position.z);
+      buildingRoot.position.set(slot.position.x, terrainY + 0.58, slot.position.z);
       buildingRoot.rotation.y = slot.rotationY;
 
       this.cityRoot.add(slotMesh);

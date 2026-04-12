@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { CoinageRenderApp } from '@/game/app/CoinageRenderApp';
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
 import type { SelectedPlanetRef } from '@/game/render/types';
+import type { CityEntryPayload } from '@/game/city/terrain/CityBiomeContext';
 
 class TestResizeObserver {
   observe() {}
@@ -79,10 +80,88 @@ class FakePlanetMode implements RenderModeController {
   }
 
   triggerEnterCity(slotId: string) {
-    this.context.onEnterCity(slotId);
+    this.context.onEnterCity(makeEntryPayload(slotId));
   }
 
   private readonly onPointerUp = () => {};
+}
+
+function makeEntryPayload(slotId: string): CityEntryPayload {
+  return {
+    settlementId: slotId,
+    settlementSurface: {
+      id: slotId,
+      position: [0.42, 0.93, 0.1],
+      normal: [0.41, 0.9, 0.12],
+      elevation: 1.04,
+      latitude: 22,
+      longitude: 13,
+      habitability: 0.7,
+    },
+    planetProfile: {
+      archetype: 'frozen',
+      oceanLevel: 0.08,
+      roughness: 0.62,
+      metalness: 0.05,
+      reliefStrength: 0.11,
+      reliefSharpness: 1.32,
+      continentScale: 2.2,
+      ridgeScale: 8.1,
+      craterScale: 4.8,
+      lightIntensity: 1.25,
+      atmosphereLightness: 82,
+      macroBias: 0.14,
+      ridgeWeight: 0.25,
+      craterWeight: 0.12,
+      polarWeight: 0.3,
+      humidityStrength: 0.16,
+      emissiveIntensity: 0.02,
+    },
+    planetGenerationConfig: {
+      seed: 123,
+      archetype: 'frozen',
+      resolution: 128,
+      radius: 1,
+      filters: [],
+      elevationGradient: [{ anchor: 0, color: [0.5, 0.6, 0.7] }, { anchor: 1, color: [0.9, 0.95, 0.98] }],
+      depthGradient: [{ anchor: 0, color: [0.2, 0.3, 0.4] }, { anchor: 1, color: [0.6, 0.7, 0.8] }],
+      blendDepth: 0.01,
+      seaLevel: 1,
+      surfaceLevel01: 0.44,
+      surfaceMode: 'ice',
+      material: {
+        roughness: 0.4,
+        metalness: 0.1,
+        vegetationDensity: 0.06,
+        wetness: 0.28,
+        canopyTint: [0.6, 0.7, 0.76],
+        submergedFlattening: 0.8,
+        slopeDarkening: 0.25,
+        basinDarkening: 0.34,
+        uplandLift: 0.08,
+        peakLift: 0.05,
+        shadowTint: [0.24, 0.35, 0.45],
+        shadowTintStrength: 0.3,
+        coastTintStrength: 0.1,
+        shallowSurfaceBrightness: 0.05,
+        microReliefStrength: 0.2,
+        microReliefScale: 15,
+        microNormalStrength: 0.08,
+        microAlbedoBreakup: 0.1,
+        hotspotCoverage: 0.03,
+        hotspotIntensity: 0.04,
+        fissureScale: 11,
+        fissureSharpness: 2.4,
+        lavaAccentStrength: 0.03,
+        emissiveStrength: 0.02,
+        basaltContrast: 0.06,
+      },
+      postfx: {
+        bloom: { strength: 0.01, radius: 0.08, threshold: 0.82 },
+        exposure: 1.12,
+      },
+    },
+  };
 }
 
 

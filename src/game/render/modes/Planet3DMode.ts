@@ -3,6 +3,8 @@ import type { PlanetVisualProfile, SelectedPlanetRef } from '@/game/render/types
 import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
 import { SeededRng } from '@/game/world/rng';
 import { PlanetRuntime } from '@/game/planet/runtime/PlanetRuntime';
+import { createPlanetGenerationConfig } from '@/game/planet/presets/archetypes';
+import { toCitySettlementSurfaceData } from '@/game/city/terrain/CityBiomeContext';
 
 interface LastSettlementClick {
   slotId: string;
@@ -130,7 +132,14 @@ export class Planet3DMode implements RenderModeController {
 
       if (picked?.id) {
         if (this.isDoubleClickSettlement(picked.id, event.clientX, event.clientY)) {
-          this.context.onEnterCity(picked.id);
+          const profile = planetProfileFromSeed(this.selectedPlanet.seed);
+          const planetGenerationConfig = createPlanetGenerationConfig(this.selectedPlanet.seed, profile);
+          this.context.onEnterCity({
+            settlementId: picked.id,
+            settlementSurface: toCitySettlementSurfaceData(picked),
+            planetProfile: profile,
+            planetGenerationConfig,
+          });
           this.lastSettlementClick = null;
         } else {
           this.lastSettlementClick = {

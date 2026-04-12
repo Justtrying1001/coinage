@@ -6,6 +6,7 @@ import type { ModeContext, RenderModeController } from '@/game/render/modes/Rend
 import { Planet3DMode } from '@/game/render/modes/Planet3DMode';
 import { City3DMode } from '@/game/city/City3DMode';
 import { canEnterCity, DEFAULT_CITY_ACCESS_POLICY, type CityAccessPolicy } from '@/game/city/access/cityAccessPolicy';
+import type { CityEntryPayload } from '@/game/city/terrain/CityBiomeContext';
 
 interface RenderModeFactory {
   createGalaxyMode: (
@@ -13,7 +14,11 @@ interface RenderModeFactory {
     options?: { selectedPlanet?: SelectedPlanetRef | null; viewSnapshot?: Galaxy2DViewSnapshot | null },
   ) => RenderModeController;
   createPlanetMode: (planet: SelectedPlanetRef, context: ModeContext) => RenderModeController;
-  createCityMode: (planet: SelectedPlanetRef, context: ModeContext, options?: { settlementId?: string | null }) => RenderModeController;
+  createCityMode: (
+    planet: SelectedPlanetRef,
+    context: ModeContext,
+    options?: { settlementId?: string | null; cityEntryPayload?: CityEntryPayload | null },
+  ) => RenderModeController;
 }
 
 interface CoinageRenderConfig {
@@ -38,6 +43,7 @@ export class CoinageRenderApp {
   private resizeObserver: ResizeObserver | null = null;
   private selectedPlanet: SelectedPlanetRef | null = null;
   private selectedSettlementId: string | null = null;
+  private cityEntryPayload: CityEntryPayload | null = null;
   private galaxyData;
   private galaxyViewSnapshot: Galaxy2DViewSnapshot | null = null;
   private readonly modeFactory: RenderModeFactory;
@@ -66,7 +72,7 @@ export class CoinageRenderApp {
           initialViewSnapshot: options?.viewSnapshot ?? this.galaxyViewSnapshot,
         }),
       createPlanetMode: (planet, context) => new Planet3DMode(planet, context),
-      createCityMode: (planet, context, options) => new City3DMode(planet, context, options?.settlementId ?? null),
+      createCityMode: (planet, context, options) => new City3DMode(planet, context, options?.settlementId ?? null, options?.cityEntryPayload ?? null),
     };
   }
 
@@ -156,14 +162,15 @@ export class CoinageRenderApp {
       onRequestMode: (mode: RenderMode) => {
         this.switchMode(mode);
       },
-      onEnterCity: (settlementId: string) => {
+      onEnterCity: (payload: CityEntryPayload) => {
         const canEnter = canEnterCity({
-          settlementId,
+          settlementId: payload.settlementId,
           ownedSettlementIds: this.ownedSettlementIds,
           policy: this.cityAccessPolicy,
         });
         if (!canEnter) return;
-        this.selectedSettlementId = settlementId;
+        this.selectedSettlementId = payload.settlementId;
+        this.cityEntryPayload = payload;
         this.switchMode('city3d');
       },
     };
@@ -179,6 +186,7 @@ export class CoinageRenderApp {
     } else {
       this.activeController = this.modeFactory.createCityMode(activePlanet, context, {
         settlementId: this.selectedSettlementId,
+        cityEntryPayload: this.cityEntryPayload,
       });
     }
 
