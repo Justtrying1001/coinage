@@ -81,6 +81,39 @@ class FakePlanetMode implements RenderModeController {
   private readonly onPointerUp = () => {};
 }
 
+
+class FakeCityMode implements RenderModeController {
+  readonly id = 'city3d' as const;
+
+  readonly el = document.createElement('canvas');
+
+  selected: SelectedPlanetRef;
+
+  constructor(
+    planet: SelectedPlanetRef,
+    private readonly context: ModeContext,
+  ) {
+    this.selected = planet;
+  }
+
+  mount() {
+    this.el.dataset.mode = 'city';
+    this.context.host.appendChild(this.el);
+  }
+
+  resize() {}
+
+  update() {}
+
+  destroy() {
+    this.el.remove();
+  }
+
+  setSelectedPlanet(planet: SelectedPlanetRef) {
+    this.selected = planet;
+  }
+}
+
 describe('CoinageRenderApp integration flow', () => {
   it('propagates selected planet from galaxy mode to planet mode and boundary callback', () => {
     const host = document.createElement('div');
@@ -106,6 +139,7 @@ describe('CoinageRenderApp integration flow', () => {
           planetMode = new FakePlanetMode(planet, context);
           return planetMode;
         },
+        createCityMode: (planet, context) => new FakeCityMode(planet, context),
       },
     });
 
@@ -139,6 +173,7 @@ describe('CoinageRenderApp integration flow', () => {
       modeFactory: {
         createGalaxyMode: (context) => new FakeGalaxyMode(context),
         createPlanetMode: (planet, context) => new FakePlanetMode(planet, context),
+        createCityMode: (planet, context) => new FakeCityMode(planet, context),
       },
     });
 

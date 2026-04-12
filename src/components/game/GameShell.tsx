@@ -28,6 +28,9 @@ export function GameShell() {
           <button type="button" className={mode === 'planet3d' ? 'is-active' : ''} onClick={() => setMode('planet3d')}>
             Planet 3D
           </button>
+          <button type="button" className={mode === 'city3d' ? 'is-active' : ''} onClick={() => setMode('city3d')}>
+            City 3D
+          </button>
         </div>
       </header>
       <section className="game-canvas-shell">

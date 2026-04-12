@@ -4,6 +4,7 @@ import { Galaxy2DMode } from '@/game/render/modes/Galaxy2DMode';
 import type { Galaxy2DViewSnapshot } from '@/game/render/modes/Galaxy2DMode';
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
 import { Planet3DMode } from '@/game/render/modes/Planet3DMode';
+import { City3DMode } from '@/game/city/City3DMode';
 
 interface RenderModeFactory {
   createGalaxyMode: (
@@ -11,6 +12,7 @@ interface RenderModeFactory {
     options?: { selectedPlanet?: SelectedPlanetRef | null; viewSnapshot?: Galaxy2DViewSnapshot | null },
   ) => RenderModeController;
   createPlanetMode: (planet: SelectedPlanetRef, context: ModeContext) => RenderModeController;
+  createCityMode: (planet: SelectedPlanetRef, context: ModeContext) => RenderModeController;
 }
 
 interface CoinageRenderConfig {
@@ -64,6 +66,7 @@ export class CoinageRenderApp {
           initialViewSnapshot: options?.viewSnapshot ?? this.galaxyViewSnapshot,
         }),
       createPlanetMode: (planet, context) => new Planet3DMode(planet, context),
+      createCityMode: (planet, context) => new City3DMode(planet, context),
     };
   }
 
@@ -126,7 +129,7 @@ export class CoinageRenderApp {
   private switchMode(nextMode: RenderMode) {
     if (this.mode === nextMode && this.activeController) {
       if (
-        nextMode === 'planet3d' &&
+        (nextMode === 'planet3d' || nextMode === 'city3d') &&
         this.selectedPlanet &&
         'setSelectedPlanet' in this.activeController &&
         typeof this.activeController.setSelectedPlanet === 'function'
@@ -161,13 +164,17 @@ export class CoinageRenderApp {
       },
     };
 
-    this.activeController =
-      nextMode === 'galaxy2d'
-        ? this.modeFactory.createGalaxyMode(context, {
-            selectedPlanet: this.selectedPlanet,
-            viewSnapshot: this.galaxyViewSnapshot,
-          })
-        : this.modeFactory.createPlanetMode(this.selectedPlanet ?? selectPrimaryPlanet(this.galaxyData), context);
+    const activePlanet = this.selectedPlanet ?? selectPrimaryPlanet(this.galaxyData);
+    if (nextMode === 'galaxy2d') {
+      this.activeController = this.modeFactory.createGalaxyMode(context, {
+        selectedPlanet: this.selectedPlanet,
+        viewSnapshot: this.galaxyViewSnapshot,
+      });
+    } else if (nextMode === 'planet3d') {
+      this.activeController = this.modeFactory.createPlanetMode(activePlanet, context);
+    } else {
+      this.activeController = this.modeFactory.createCityMode(activePlanet, context);
+    }
 
     this.activeController.mount();
     this.resize();
@@ -178,5 +185,4 @@ export class CoinageRenderApp {
     const height = this.host.clientHeight || 1;
     this.activeController?.resize(width, height);
   }
-
 }

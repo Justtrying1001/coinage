@@ -144,9 +144,17 @@ export class Planet3DMode implements RenderModeController {
     const selection = document.createElement('div');
     selection.className = 'planet-inspect-selection';
 
+    const cityButton = document.createElement('button');
+    cityButton.type = 'button';
+    cityButton.className = 'planet-back-button';
+    cityButton.textContent = 'Enter City';
+    cityButton.addEventListener('click', () => {
+      this.context.onRequestMode('city3d');
+    });
+
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'planet-back-button';
+    button.className = 'planet-back-button planet-back-button--secondary';
     button.textContent = 'Back to Galaxy';
     button.addEventListener('click', () => {
       this.context.onRequestMode('galaxy2d');
@@ -157,6 +165,7 @@ export class Planet3DMode implements RenderModeController {
     panel.appendChild(tags);
     panel.appendChild(settlements);
     panel.appendChild(selection);
+    panel.appendChild(cityButton);
     panel.appendChild(button);
 
     this.context.host.appendChild(panel);
