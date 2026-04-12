@@ -4,6 +4,8 @@ import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
 import { SeededRng } from '@/game/world/rng';
 import { PlanetRuntime } from '@/game/planet/runtime/PlanetRuntime';
 
+const CLICK_DRAG_THRESHOLD_PX = 6;
+
 export class Planet3DMode implements RenderModeController {
   readonly id = 'planet3d' as const;
 
@@ -13,6 +15,8 @@ export class Planet3DMode implements RenderModeController {
   private inspectTitle: HTMLHeadingElement | null = null;
   private inspectSubtitle: HTMLParagraphElement | null = null;
   private inspectTags: HTMLDivElement | null = null;
+  private slotSummary: HTMLParagraphElement | null = null;
+  private slotDetail: HTMLDivElement | null = null;
 
   private width = 1;
   private height = 1;
@@ -21,6 +25,9 @@ export class Planet3DMode implements RenderModeController {
   private pointerId: number | null = null;
   private lastX = 0;
   private lastY = 0;
+  private pointerDownX = 0;
+  private pointerDownY = 0;
+  private dragDistance = 0;
 
   constructor(
     private selectedPlanet: SelectedPlanetRef,
@@ -56,6 +63,7 @@ export class Planet3DMode implements RenderModeController {
     this.runtime?.rebuildFromSeed(nextPlanet.seed);
     const profile = planetProfileFromSeed(nextPlanet.seed);
     this.updateInspectIdentity(nextPlanet, profile);
+    this.updateSlotInspectSection();
   }
 
   destroy() {
@@ -74,6 +82,8 @@ export class Planet3DMode implements RenderModeController {
     this.inspectTitle = null;
     this.inspectSubtitle = null;
     this.inspectTags = null;
+    this.slotSummary = null;
+    this.slotDetail = null;
   }
 
   private readonly onPointerDown = (event: PointerEvent) => {
@@ -82,6 +92,9 @@ export class Planet3DMode implements RenderModeController {
     this.isDragging = true;
     this.lastX = event.clientX;
     this.lastY = event.clientY;
+    this.pointerDownX = event.clientX;
+    this.pointerDownY = event.clientY;
+    this.dragDistance = 0;
   };
 
   private readonly onPointerMove = (event: PointerEvent) => {
@@ -92,13 +105,32 @@ export class Planet3DMode implements RenderModeController {
     this.lastX = event.clientX;
     this.lastY = event.clientY;
 
+    const totalDx = event.clientX - this.pointerDownX;
+    const totalDy = event.clientY - this.pointerDownY;
+    this.dragDistance = Math.max(this.dragDistance, Math.hypot(totalDx, totalDy));
+
     this.runtime.rotate(dx * 0.0088, dy * 0.0088, this.runtime.camera);
   };
 
   private readonly onPointerUp = (event: PointerEvent) => {
     if (event.pointerId !== this.pointerId) return;
+
+    const runtime = this.runtime;
+    const dragDistance = this.dragDistance;
+
     this.pointerId = null;
     this.isDragging = false;
+    this.dragDistance = 0;
+
+    if (!runtime || dragDistance > CLICK_DRAG_THRESHOLD_PX) return;
+
+    const slotIndex = runtime.pickSlotFromScreen(event.clientX, event.clientY);
+    if (slotIndex === null) {
+      runtime.clearSelectedSlot();
+    } else {
+      runtime.setSelectedSlotByIndex(slotIndex);
+    }
+    this.updateSlotInspectSection();
   };
 
   private readonly onKeyDown = (event: KeyboardEvent) => {
@@ -120,6 +152,12 @@ export class Planet3DMode implements RenderModeController {
     const tags = document.createElement('div');
     tags.className = 'planet-inspect-tags';
 
+    const slotSummary = document.createElement('p');
+    slotSummary.className = 'planet-slot-summary';
+
+    const slotDetail = document.createElement('div');
+    slotDetail.className = 'planet-slot-detail';
+
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'planet-back-button';
@@ -131,6 +169,8 @@ export class Planet3DMode implements RenderModeController {
     panel.appendChild(title);
     panel.appendChild(subtitle);
     panel.appendChild(tags);
+    panel.appendChild(slotSummary);
+    panel.appendChild(slotDetail);
     panel.appendChild(button);
 
     this.context.host.appendChild(panel);
@@ -138,9 +178,12 @@ export class Planet3DMode implements RenderModeController {
     this.inspectTitle = title;
     this.inspectSubtitle = subtitle;
     this.inspectTags = tags;
+    this.slotSummary = slotSummary;
+    this.slotDetail = slotDetail;
 
     const profile = planetProfileFromSeed(this.selectedPlanet.seed);
     this.updateInspectIdentity(this.selectedPlanet, profile);
+    this.updateSlotInspectSection();
   }
 
   private updateInspectIdentity(planetRef: SelectedPlanetRef, profile: PlanetVisualProfile) {
@@ -159,6 +202,42 @@ export class Planet3DMode implements RenderModeController {
       this.inspectTags.appendChild(chip);
     }
   }
+
+  private updateSlotInspectSection() {
+    if (!this.slotSummary || !this.slotDetail || !this.runtime) return;
+
+    const slots = this.runtime.getSlots();
+    const selected = this.runtime.getSelectedSlot();
+    const occupiedCount = slots.filter((slot) => slot.state === 'occupied').length;
+    const availableCount = Math.max(0, slots.length - occupiedCount);
+    this.slotSummary.textContent = `${slots.length} settlement slots · ${occupiedCount} occupied · ${availableCount} available`;
+
+    if (!selected) {
+      this.slotDetail.textContent = 'Select a slot to inspect it.';
+      return;
+    }
+
+    this.slotDetail.innerHTML = '';
+    this.slotDetail.appendChild(makeSlotLine('Slot', selected.id));
+    this.slotDetail.appendChild(makeSlotLine('State', selected.state));
+    this.slotDetail.appendChild(makeSlotLine('Habitability', `${Math.round(selected.habitability * 100)}%`));
+    if (selected.occupant?.label) {
+      this.slotDetail.appendChild(makeSlotLine('Occupant', selected.occupant.label));
+    }
+  }
+}
+
+function makeSlotLine(label: string, value: string) {
+  const row = document.createElement('p');
+  row.className = 'planet-slot-line';
+  const key = document.createElement('span');
+  key.className = 'planet-slot-line-key';
+  key.textContent = `${label}:`;
+  const body = document.createElement('span');
+  body.className = 'planet-slot-line-value';
+  body.textContent = value;
+  row.append(key, body);
+  return row;
 }
 
 function derivePlanetTags(seed: number, profile: PlanetVisualProfile): string[] {

@@ -247,3 +247,41 @@ a {
 canvas {
   display: block;
 }
+
+.planet-slot-summary {
+  margin: 0.12rem 0 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: #d0e8f8;
+}
+
+.planet-slot-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.16rem;
+  margin: 0;
+  min-height: 2.2rem;
+  padding: 0.38rem 0.48rem;
+  border-radius: 8px;
+  border: 1px solid rgba(131, 199, 232, 0.25);
+  background: rgba(7, 26, 43, 0.62);
+  color: #a5c2d7;
+  font-size: 0.67rem;
+}
+
+.planet-slot-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.42rem;
+  margin: 0;
+}
+
+.planet-slot-line-key {
+  color: #9fc2da;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.planet-slot-line-value {
+  color: #e3f5ff;
+}

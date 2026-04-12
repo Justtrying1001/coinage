@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import type { PlanetGenerationConfig } from '@/game/planet/types';
+import type { GeneratedPlanet, PlanetGenerationConfig } from '@/game/planet/types';
 import { FACE_DIRECTIONS } from '@/game/planet/utils/vector';
 import { GpuTerrainGenerator } from '@/game/planet/generation/gpu/GpuTerrainGenerator';
 import { CpuTerrainGenerator } from '@/game/planet/generation/cpu/CpuTerrainGenerator';
@@ -16,7 +16,7 @@ export class PlanetGenerator {
     this.cpu = new CpuTerrainGenerator();
   }
 
-  generate(config: PlanetGenerationConfig) {
+  generate(config: PlanetGenerationConfig): GeneratedPlanet {
     const root = new THREE.Group();
     const minMax = new MinMax();
     const faceGeometries: THREE.BufferGeometry[] = [];
@@ -84,7 +84,7 @@ export class PlanetGenerator {
     const mesh = new THREE.Mesh(deduped, material);
     root.add(mesh);
 
-    return { root };
+    return { root, surfaceMesh: mesh, surfaceGeometry: deduped };
   }
 
   private readDebugMode() {
