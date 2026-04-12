@@ -60,6 +60,14 @@ export class PlanetGenerator {
       config.material.vegetationDensity,
       config.material.wetness,
       config.material.canopyTint,
+      config.material.slopeDarkening,
+      config.material.basinDarkening,
+      config.material.uplandLift,
+      config.material.peakLift,
+      config.material.shadowTint,
+      config.material.shadowTintStrength,
+      config.material.coastTintStrength,
+      config.material.shallowSurfaceBrightness,
       debugMode,
     );
 
@@ -69,6 +77,7 @@ export class PlanetGenerator {
     }
 
     const deduped = BufferGeometryUtils.mergeVertices(merged, 1e-6);
+    this.applySubmergedReliefCompression(deduped, config);
     deduped.computeVertexNormals();
     if (debugMode > 0) {
       this.logMergedGeometryStats(config, deduped);
@@ -85,6 +94,41 @@ export class PlanetGenerator {
     root.add(mesh);
 
     return { root };
+  }
+
+  private applySubmergedReliefCompression(geometry: THREE.BufferGeometry, config: PlanetGenerationConfig) {
+    const positions = geometry.getAttribute('position');
+    const elevations = geometry.getAttribute('aElevation');
+    if (!positions || !elevations) return;
+
+    const baseStrength = THREE.MathUtils.clamp(config.material.submergedFlattening, 0, 1);
+    if (baseStrength <= 0) return;
+
+    const modeScale = config.surfaceMode === 'water' ? 1 : 0.72;
+    const flattening = baseStrength * modeScale;
+    const flattenRadius = config.seaLevel;
+    const depthRange = Math.max(0.08, Math.abs(config.seaLevel - 1) * 2 + 0.08);
+
+    for (let i = 0; i < positions.count; i += 1) {
+      const elevation = elevations.getX(i);
+      if (elevation >= config.seaLevel) continue;
+
+      const x = positions.getX(i);
+      const y = positions.getY(i);
+      const z = positions.getZ(i);
+      const len = Math.hypot(x, y, z);
+      if (len <= 1e-6) continue;
+
+      const below = config.seaLevel - elevation;
+      const depthT = THREE.MathUtils.clamp(below / depthRange, 0, 1);
+      const compression = flattening * depthT;
+      const targetRadius = THREE.MathUtils.lerp(len, flattenRadius, compression);
+      const scale = targetRadius / len;
+
+      positions.setXYZ(i, x * scale, y * scale, z * scale);
+    }
+
+    positions.needsUpdate = true;
   }
 
   private readDebugMode() {
