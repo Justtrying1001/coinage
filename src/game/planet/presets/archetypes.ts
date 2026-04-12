@@ -322,8 +322,8 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       ],
     },
     surface: {
-      elevationGradient: [s(0, [0.05, 0.24, 0.1]), s(0.24, [0.07, 0.34, 0.12]), s(0.56, [0.1, 0.45, 0.14]), s(0.76, [0.17, 0.35, 0.14]), s(0.9, [0.31, 0.35, 0.19]), s(1, [0.61, 0.66, 0.5])],
-      depthGradient: [s(0, [0.02, 0.12, 0.2]), s(0.55, [0.03, 0.23, 0.33]), s(1, [0.09, 0.32, 0.44])],
+      elevationGradient: [s(0, [0.05, 0.21, 0.09]), s(0.18, [0.06, 0.28, 0.1]), s(0.46, [0.08, 0.36, 0.12]), s(0.7, [0.12, 0.32, 0.12]), s(0.88, [0.22, 0.31, 0.16]), s(1, [0.52, 0.59, 0.44])],
+      depthGradient: [s(0, [0.02, 0.1, 0.17]), s(0.55, [0.03, 0.19, 0.29]), s(1, [0.08, 0.29, 0.39])],
       blendDepth: 0.016,
       canopyTint: [0.08, 0.3, 0.1],
       roughness: 0.58,
@@ -339,7 +339,7 @@ const BASE_PRESETS: Record<PlanetArchetype, PlanetArchetypePreset> = {
       shadowTintStrength: 0.14,
       coastTintStrength: 0.24,
       shallowSurfaceBrightness: 0.09,
-      lowSurfaceCoverage: 0.52,
+      lowSurfaceCoverage: 0.41,
       microReliefStrength: 0.1,
       microReliefScale: 11,
       microNormalStrength: 0.04,
@@ -373,6 +373,11 @@ function surfaceModeForArchetype(archetype: PlanetArchetype): PlanetSurfaceMode 
   return 'water';
 }
 
+function lowSurfaceVarianceForArchetype(archetype: PlanetArchetype) {
+  if (archetype === 'jungle') return [-0.03, 0.02] as const;
+  return [-0.04, 0.04] as const;
+}
+
 function canopyTintForArchetype(archetype: PlanetArchetype, presetTint: [number, number, number]) {
   if (archetype === 'jungle') return [0.07, 0.28, 0.1] as [number, number, number];
   if (archetype === 'terrestrial') return [0.14, 0.32, 0.14] as [number, number, number];
@@ -386,11 +391,16 @@ export function createPlanetGenerationConfig(seed: number, profile: PlanetVisual
   const wetness = clamp(profile.humidityStrength * 0.7 + profile.oceanLevel * 0.3, 0, 1);
   const dryness = 1 - wetness;
   const surfaceMode = surfaceModeForArchetype(profile.archetype);
+  const [lowSurfaceJitterMin, lowSurfaceJitterMax] = lowSurfaceVarianceForArchetype(profile.archetype);
+  const waterOceanLevelScale = profile.archetype === 'jungle' ? 0.08 : 0.2;
+  const waterHumidityScale = profile.archetype === 'jungle' ? 0.02 : 0.05;
+  const archetypeLowSurfaceBias = profile.archetype === 'jungle' ? -0.06 : 0;
   const lowSurfaceCoverage = clamp(
     preset.surface.lowSurfaceCoverage
-      + (surfaceMode === 'water' ? profile.oceanLevel * 0.2 : 0)
-      + (surfaceMode === 'water' ? profile.humidityStrength * 0.05 : 0)
-      + rng.range(-0.04, 0.04),
+      + archetypeLowSurfaceBias
+      + (surfaceMode === 'water' ? profile.oceanLevel * waterOceanLevelScale : 0)
+      + (surfaceMode === 'water' ? profile.humidityStrength * waterHumidityScale : 0)
+      + rng.range(lowSurfaceJitterMin, lowSurfaceJitterMax),
     0.08,
     0.82,
   );

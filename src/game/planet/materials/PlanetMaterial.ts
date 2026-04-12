@@ -71,6 +71,7 @@ export function createPlanetMaterial(
       uSurfaceLevel01: { value: surfaceLevel01 },
       uSurfaceMode: { value: surfaceMode === 'ice' ? 1 : surfaceMode === 'lava' ? 2 : 0 },
       uDryArchetype: { value: archetype === 'arid' || archetype === 'barren' ? 1 : 0 },
+      uJungleArchetype: { value: archetype === 'jungle' ? 1 : 0 },
       uMicroReliefStrength: { value: microReliefStrength },
       uMicroReliefScale: { value: microReliefScale },
       uMicroNormalStrength: { value: microNormalStrength },
@@ -126,6 +127,7 @@ export function createPlanetMaterial(
       uniform float uSurfaceLevel01;
       uniform int uSurfaceMode;
       uniform int uDryArchetype;
+      uniform int uJungleArchetype;
       uniform float uMicroReliefStrength;
       uniform float uMicroReliefScale;
       uniform float uMicroNormalStrength;
@@ -254,6 +256,16 @@ export function createPlanetMaterial(
           * (1.0 - peakMask);
         terrain = mix(terrain, terrain * (1.0 - (0.08 + breakup * 0.08)), reliefSupport * uSlopeDarkening);
         terrain = mix(terrain, mix(terrain, uCanopyTint, 0.66), vegetationMask);
+        if (uJungleArchetype == 1) {
+          float jungleCanopyMask = uWetness
+            * smoothstep(0.02, 0.58, elevN)
+            * (1.0 - smoothstep(0.22, 0.62, slope))
+            * smoothstep(0.28, 0.82, breakup)
+            * (1.0 - peakMask);
+          vec3 deepCanopy = mix(uCanopyTint * vec3(0.62, 0.86, 0.66), vec3(0.05, 0.2, 0.09), 0.46);
+          terrain = mix(terrain, mix(terrain * vec3(0.72, 0.88, 0.74), deepCanopy, 0.72), jungleCanopyMask * 0.9);
+          terrain = mix(terrain, terrain * vec3(0.94, 1.03, 0.95), coastMask * uWetness * 0.22);
+        }
         terrain = mix(terrain, terrain * (1.0 - uBasinDarkening), lowlandMask * (0.22 + uWetness * 0.16));
         terrain = mix(terrain, terrain * (1.0 + uUplandLift * 0.45), uplandMask * (0.2 + reliefSupport * 0.24));
         terrain = mix(terrain, terrain * (1.0 + uPeakLift * 0.32), peakMask * (0.14 + reliefSupport * 0.18));
@@ -276,19 +288,30 @@ export function createPlanetMaterial(
         basalt = mix(basalt, basalt * (0.72 - uBasaltContrast * 0.25), basinMask * (0.42 + uBasaltContrast * 0.25));
         float fissureNoise = pow(clamp(1.0 - abs(fbm(vPositionW * uFissureScale) * 2.0 - 1.0), 0.0, 1.0), max(1.2, uFissureSharpness));
         float hotspotNoise = smoothstep(1.0 - uHotspotCoverage, 1.0, fbm(vPositionW * (uFissureScale * 0.6) + vec3(11.3, 5.6, 2.1)));
-        float volcanicMask = clamp((1.0 - smoothstep(uSurfaceLevel01 + edge * 0.2, uSurfaceLevel01 + edge * 1.4, elev01)) * 0.2 + fissureNoise * 0.9 + hotspotNoise * 0.9, 0.0, 1.0);
-        float lavaMask = volcanicMask * (0.1 + uLavaAccentStrength * 0.24) + hotspotNoise * uHotspotIntensity * 0.35;
-        lavaMask = clamp(lavaMask, 0.0, 0.95);
+        float basinFloorMask = submergedMask * smoothstep(0.02, 0.5, depthN);
+        float calderaField = fbm(vPositionW * 3.2 + vec3(19.4, 7.1, 3.3));
+        float calderaMask = landMask
+          * (1.0 - smoothstep(0.16, 0.62, elevN))
+          * (1.0 - smoothstep(0.52, 0.86, reliefSupport))
+          * smoothstep(0.62, 0.86, calderaField);
+        float fissureBandMask = landMask
+          * (0.2 + lowlandMask * 0.8)
+          * smoothstep(0.56, 0.86, hotspotNoise);
+        float lavaSeaMask = basinFloorMask * (0.24 + uLavaAccentStrength * 0.42);
+        float calderaLavaMask = calderaMask * (0.1 + uHotspotIntensity * 0.3);
+        float fissureLavaMask = fissureNoise * fissureBandMask * (0.05 + uLavaAccentStrength * 0.22);
+        float lavaMask = clamp(lavaSeaMask + calderaLavaMask + fissureLavaMask, 0.0, 0.9);
         vec3 lavaGlow = mix(vec3(0.4, 0.12, 0.03), vec3(0.96, 0.36, 0.08), clamp(fissureNoise * 0.45 + hotspotNoise, 0.0, 1.0));
         vec3 lava = mix(basalt, lavaGlow, lavaMask);
         if (uSurfaceMode == 2) {
           float volcanicLandMask = landMask * (0.34 + reliefSupport * 0.66);
-          float cooledField = smoothstep(0.35, 0.78, breakup) * volcanicLandMask;
-          vec3 cooledBasalt = mix(terrain * 0.62, vec3(0.08, 0.07, 0.07), 0.45 + uBasaltContrast * 0.2);
-          terrain = mix(terrain, cooledBasalt, cooledField * 0.35);
-          float burntMask = (fissureNoise * 0.42 + hotspotNoise * 0.22) * volcanicLandMask;
-          terrain = mix(terrain, terrain * 0.58, burntMask * 0.42);
-          float emberMask = hotspotNoise * fissureNoise * volcanicLandMask * (0.06 + uLavaAccentStrength * 0.08);
+          vec3 basaltLand = mix(vec3(0.03, 0.03, 0.04), vec3(0.16, 0.12, 0.1), clamp(elevN + macro * 0.1, 0.0, 1.0));
+          float ashField = smoothstep(0.26, 0.72, breakup) * volcanicLandMask;
+          terrain = mix(terrain, basaltLand, 0.62 + uBasaltContrast * 0.22);
+          terrain = mix(terrain, terrain * 0.78, ashField * 0.45);
+          float burntMask = fissureNoise * fissureBandMask * 0.5 + calderaMask * 0.3;
+          terrain = mix(terrain, terrain * 0.62, clamp(burntMask, 0.0, 0.55));
+          float emberMask = fissureNoise * hotspotNoise * fissureBandMask * (0.03 + uLavaAccentStrength * 0.05);
           terrain = mix(terrain, mix(terrain, vec3(0.82, 0.27, 0.08), 0.32), emberMask);
         }
 
@@ -347,6 +370,10 @@ export function createPlanetMaterial(
         float shadowMask = clamp((1.0 - keyDiffuse) * (0.55 + reliefSupport * 0.45 + slope * 0.35), 0.0, 1.0);
         color = mix(color, color * uShadowTint, shadowMask * uShadowTintStrength);
         color += vec3(waterSpec + landSpec);
+        if (uJungleArchetype == 1) {
+          float humidHaze = fresnel * (0.02 + uWetness * 0.05) * (0.4 + hemi * 0.6);
+          color += vec3(0.04, 0.08, 0.05) * humidHaze;
+        }
         if (uSurfaceMode == 2) {
           color += lavaGlow * lavaMask * uEmissiveStrength * 0.36;
         }
