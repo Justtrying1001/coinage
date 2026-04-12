@@ -28,6 +28,11 @@ export function GameRenderViewport({ mode, selectedPlanet, onSelectedPlanetChang
       initialMode: 'galaxy2d',
       initialSelectedPlanet: initialSelectedRef.current,
       onSelectedPlanetChange: (planet) => onSelectedChangeRef.current(planet),
+      cityAccessPolicy: {
+        buildMode: true,
+        canEnterAnyCityInBuildMode: true,
+        enforceOwnershipInLiveMode: true,
+      },
     });
 
     app.mount();

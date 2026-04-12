@@ -4,6 +4,16 @@ import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
 import { SeededRng } from '@/game/world/rng';
 import { PlanetRuntime } from '@/game/planet/runtime/PlanetRuntime';
 
+interface LastSettlementClick {
+  slotId: string;
+  timestampMs: number;
+  clientX: number;
+  clientY: number;
+}
+
+const DOUBLE_CLICK_WINDOW_MS = 300;
+const MAX_DOUBLE_CLICK_POINTER_DELTA = 10;
+
 export class Planet3DMode implements RenderModeController {
   readonly id = 'planet3d' as const;
 
@@ -25,6 +35,8 @@ export class Planet3DMode implements RenderModeController {
   private lastY = 0;
   private downX = 0;
   private downY = 0;
+
+  private lastSettlementClick: LastSettlementClick | null = null;
 
   constructor(
     private selectedPlanet: SelectedPlanetRef,
@@ -62,6 +74,7 @@ export class Planet3DMode implements RenderModeController {
     if (nextPlanet.id === this.selectedPlanet.id && nextPlanet.seed === this.selectedPlanet.seed) return;
     this.selectedPlanet = nextPlanet;
     this.runtime?.rebuildFromSeed(nextPlanet.seed);
+    this.lastSettlementClick = null;
     const profile = planetProfileFromSeed(nextPlanet.seed);
     this.updateInspectIdentity(nextPlanet, profile);
   }
@@ -109,10 +122,27 @@ export class Planet3DMode implements RenderModeController {
 
   private readonly onPointerUp = (event: PointerEvent) => {
     if (event.pointerId !== this.pointerId) return;
+
     const clickDistance = Math.hypot(event.clientX - this.downX, event.clientY - this.downY);
     if (clickDistance < 4 && this.runtime) {
       const picked = this.runtime.pickSettlementSlot(event.clientX, event.clientY);
       this.runtime.setSelectedSettlement(picked?.id ?? null);
+
+      if (picked?.id) {
+        if (this.isDoubleClickSettlement(picked.id, event.clientX, event.clientY)) {
+          this.context.onEnterCity(picked.id);
+          this.lastSettlementClick = null;
+        } else {
+          this.lastSettlementClick = {
+            slotId: picked.id,
+            timestampMs: performance.now(),
+            clientX: event.clientX,
+            clientY: event.clientY,
+          };
+        }
+      } else {
+        this.lastSettlementClick = null;
+      }
     }
 
     this.pointerId = null;
@@ -124,6 +154,16 @@ export class Planet3DMode implements RenderModeController {
       this.context.onRequestMode('galaxy2d');
     }
   };
+
+  private isDoubleClickSettlement(slotId: string, clientX: number, clientY: number): boolean {
+    if (!this.lastSettlementClick) return false;
+
+    const sameSlot = this.lastSettlementClick.slotId === slotId;
+    const deltaTimeMs = performance.now() - this.lastSettlementClick.timestampMs;
+    const pointerDelta = Math.hypot(clientX - this.lastSettlementClick.clientX, clientY - this.lastSettlementClick.clientY);
+
+    return sameSlot && deltaTimeMs <= DOUBLE_CLICK_WINDOW_MS && pointerDelta <= MAX_DOUBLE_CLICK_POINTER_DELTA;
+  }
 
   private mountInspectPanel() {
     const panel = document.createElement('div');
@@ -144,9 +184,13 @@ export class Planet3DMode implements RenderModeController {
     const selection = document.createElement('div');
     selection.className = 'planet-inspect-selection';
 
+    const helpText = document.createElement('p');
+    helpText.className = 'planet-inspect-line';
+    helpText.textContent = 'Double-click a settlement to enter City View';
+
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'planet-back-button';
+    button.className = 'planet-back-button planet-back-button--secondary';
     button.textContent = 'Back to Galaxy';
     button.addEventListener('click', () => {
       this.context.onRequestMode('galaxy2d');
@@ -157,6 +201,7 @@ export class Planet3DMode implements RenderModeController {
     panel.appendChild(tags);
     panel.appendChild(settlements);
     panel.appendChild(selection);
+    panel.appendChild(helpText);
     panel.appendChild(button);
 
     this.context.host.appendChild(panel);

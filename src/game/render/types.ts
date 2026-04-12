@@ -1,4 +1,4 @@
-export type RenderMode = 'galaxy2d' | 'planet3d';
+export type RenderMode = 'galaxy2d' | 'planet3d' | 'city3d';
 
 export type PlanetSeed = number;
 export type PlanetArchetype = 'arid' | 'frozen' | 'volcanic' | 'mineral' | 'terrestrial' | 'oceanic' | 'barren' | 'jungle';
