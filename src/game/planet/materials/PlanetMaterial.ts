@@ -19,17 +19,17 @@ export function createPlanetMaterial(
   debugMode = 0,
 ) {
   const normalizedElevation = normalizeStops(elevationGradient, [1, 1, 1]);
-  const normalizedDepth = normalizeStops(depthGradient, [0, 0, 0.5]);
+  const normalizedDepth = normalizeStops(depthGradient, [0, 0, 0]);
 
   return new THREE.ShaderMaterial({
     uniforms: {
       uMinMax: { value: new THREE.Vector2(minElevation, maxElevation) },
-      uElevationSize: { value: normalizedElevation.length },
-      uDepthSize: { value: normalizedDepth.length },
-      uElevationAnchors: { value: normalizedElevation.map((s) => s.anchor) },
-      uElevationColors: { value: normalizedElevation.map((s) => new THREE.Vector3(...s.color)) },
-      uDepthAnchors: { value: normalizedDepth.map((s) => s.anchor) },
-      uDepthColors: { value: normalizedDepth.map((s) => new THREE.Vector3(...s.color)) },
+      uElevationSize: { value: normalizedElevation.size },
+      uDepthSize: { value: normalizedDepth.size },
+      uElevationAnchors: { value: normalizedElevation.stops.map((s) => s.anchor) },
+      uElevationColors: { value: normalizedElevation.stops.map((s) => new THREE.Vector3(...s.color)) },
+      uDepthAnchors: { value: normalizedDepth.stops.map((s) => s.anchor) },
+      uDepthColors: { value: normalizedDepth.stops.map((s) => new THREE.Vector3(...s.color)) },
       uRoughness: { value: roughness },
       uMetalness: { value: metalness },
       uVegetationDensity: { value: vegetationDensity },
@@ -144,21 +144,22 @@ export function createPlanetMaterial(
         float micro = fbm(vPositionW * 7.5 + vec3(vElevation * 1.2));
         float breakup = mix(macro, micro, 0.32);
 
-        float coastMask = smoothstep(uSeaLevel - uBlendDepth * 0.6, uSeaLevel + uBlendDepth * 1.2, vElevation);
-        float lowSurfaceMask = 1.0 - smoothstep(uSeaLevel - uBlendDepth * 0.35, uSeaLevel + uBlendDepth * 0.9, vElevation);
+        float submergedMask = 1.0 - smoothstep(uSeaLevel - uBlendDepth * 0.35, uSeaLevel + uBlendDepth * 0.12, vElevation);
+        float coastMask = smoothstep(uSeaLevel - uBlendDepth * 0.08, uSeaLevel + uBlendDepth * 0.5, vElevation)
+          * (1.0 - smoothstep(uSeaLevel + uBlendDepth * 0.5, uSeaLevel + uBlendDepth * 1.8, vElevation));
+        float landMask = smoothstep(uSeaLevel + uBlendDepth * 0.05, uSeaLevel + uBlendDepth * 0.9, vElevation);
 
-        float landDetail = (breakup - 0.5) * (0.05 + slope * 0.08);
-        float depthDetail = (macro - 0.5) * 0.045;
+        float landDetail = (breakup - 0.5) * (0.065 + slope * 0.12);
+        float depthDetail = (macro - 0.5) * 0.06;
 
         vec3 depthBase = gradientColor(clamp(depthN + depthDetail, 0.0, 1.0), uDepthSize, uDepthAnchors, uDepthColors);
         vec3 landBase = gradientColor(clamp(elevN + landDetail, 0.0, 1.0), uElevationSize, uElevationAnchors, uElevationColors);
 
-        float beachBand = 1.0 - smoothstep(0.015, 0.08, elevN);
-        float lowlandMask = smoothstep(0.06, 0.34, elevN) * (1.0 - smoothstep(0.48, 0.68, elevN));
-        float uplandMask = smoothstep(0.34, 0.72, elevN);
-        float peakMask = smoothstep(0.7, 0.95, elevN);
+        float basinMask = smoothstep(0.0, 0.24, depthN) * submergedMask;
+        float lowlandMask = smoothstep(0.04, 0.3, elevN) * (1.0 - smoothstep(0.46, 0.7, elevN));
+        float uplandMask = smoothstep(0.32, 0.74, elevN);
+        float peakMask = smoothstep(0.68, 0.96, elevN);
 
-        vec3 coastTint = mix(landBase * 1.06, depthBase * 1.05, 0.35);
         vec3 terrain = landBase;
         float vegetationNoise = smoothstep(0.34, 0.72, breakup);
         float vegetationMask = uVegetationDensity
@@ -166,26 +167,34 @@ export function createPlanetMaterial(
           * (1.0 - smoothstep(0.24, 0.72, slope))
           * vegetationNoise
           * (1.0 - peakMask);
-        terrain = mix(terrain, terrain * 0.9, slope * 0.45);
+        terrain = mix(terrain, terrain * (0.84 + breakup * 0.12), slope * 0.58);
         terrain = mix(terrain, mix(terrain, uCanopyTint, 0.66), vegetationMask);
-        terrain = mix(terrain, terrain * 0.96, lowlandMask * uWetness * 0.36);
-        terrain = mix(terrain, terrain * 1.1, uplandMask * 0.32);
-        terrain = mix(terrain, terrain * 1.18, peakMask * (0.42 + slope * 0.34));
-        terrain = mix(terrain, coastTint, beachBand * 0.5);
+        terrain = mix(terrain, terrain * 0.9, lowlandMask * (0.26 + uWetness * 0.24));
+        terrain = mix(terrain, terrain * 1.12, uplandMask * 0.28);
+        terrain = mix(terrain, terrain * 1.2, peakMask * (0.45 + slope * 0.3));
 
-        vec3 water = depthBase * (0.8 + depthN * 0.28 + uWetness * 0.06);
-        vec3 ice = mix(vec3(0.66, 0.78, 0.84), vec3(0.92, 0.98, 1.0), clamp(depthN + macro * 0.08, 0.0, 1.0));
-        ice = mix(ice, depthBase * 0.8 + vec3(0.34, 0.42, 0.5) * 0.25, smoothstep(0.08, 0.42, depthN) * 0.42);
-        vec3 basalt = mix(vec3(0.04, 0.04, 0.05), vec3(0.12, 0.1, 0.09), clamp(depthN + macro * 0.15, 0.0, 1.0));
-        vec3 lavaGlow = mix(vec3(0.26, 0.09, 0.03), vec3(0.92, 0.33, 0.07), smoothstep(0.72, 1.0, breakup) * smoothstep(0.35, 1.0, depthN));
-        vec3 lava = mix(basalt, lavaGlow, 0.16 + uWetness * 0.06);
+        vec3 coastTint = mix(terrain * 1.02, terrain * 1.12, 0.55) + vec3(0.012, 0.012, 0.01);
+        terrain = mix(terrain, coastTint, coastMask * (0.22 + uWetness * 0.06));
+
+        vec3 water = depthBase * (0.78 + depthN * 0.26 + uWetness * 0.06);
+        water = mix(water, water * 0.78, basinMask * (0.28 + slope * 0.25));
+
+        vec3 ice = mix(vec3(0.48, 0.62, 0.72), vec3(0.86, 0.93, 0.98), clamp(depthN + macro * 0.1, 0.0, 1.0));
+        ice = mix(ice, vec3(0.34, 0.46, 0.58), smoothstep(0.06, 0.34, depthN) * 0.38);
+        ice = mix(ice, ice * 1.1, (1.0 - basinMask) * 0.18);
+
+        vec3 basalt = mix(vec3(0.04, 0.04, 0.05), vec3(0.16, 0.13, 0.11), clamp(depthN + macro * 0.16, 0.0, 1.0));
+        basalt = mix(basalt, basalt * 0.78, basinMask * 0.52);
+        vec3 lavaGlow = mix(vec3(0.26, 0.1, 0.03), vec3(0.82, 0.31, 0.08), smoothstep(0.76, 1.0, breakup) * smoothstep(0.42, 1.0, depthN));
+        vec3 lava = mix(basalt, lavaGlow, 0.08 + smoothstep(0.84, 1.0, breakup) * 0.16);
+
         vec3 lowSurface = water;
         if (uSurfaceMode == 1) {
           lowSurface = ice;
         } else if (uSurfaceMode == 2) {
           lowSurface = lava;
         }
-        vec3 base = mix(lowSurface, terrain, coastMask);
+        vec3 base = mix(lowSurface, terrain, landMask);
 
         if (uDebugMode == 1) {
           gl_FragColor = vec4(normalize(vNormalW) * 0.5 + 0.5, 1.0);
@@ -217,13 +226,13 @@ export function createPlanetMaterial(
         float fresnel = pow(clamp(1.0 - max(dot(N, V), 0.0), 0.0, 1.0), 2.1);
         float shininess = mix(16.0, 96.0, 1.0 - clamp(uRoughness, 0.0, 1.0));
 
-        float waterSpec = (pow(ndoth, 72.0) * 0.82 + pow(ndothFill, 42.0) * 0.32) * lowSurfaceMask * (0.02 + (1.0 - uRoughness) * 0.12 + fresnel * 0.18);
+        float waterSpec = (pow(ndoth, 72.0) * 0.82 + pow(ndothFill, 42.0) * 0.32) * submergedMask * (0.02 + (1.0 - uRoughness) * 0.12 + fresnel * 0.18);
         if (uSurfaceMode == 1) {
           waterSpec *= 0.45;
         } else if (uSurfaceMode == 2) {
           waterSpec *= 0.22;
         }
-        float landSpec = (pow(ndoth, shininess) * 0.72 + pow(ndothFill, shininess * 0.56) * 0.18) * (1.0 - lowSurfaceMask) * (0.008 + uMetalness * 0.1);
+        float landSpec = (pow(ndoth, shininess) * 0.72 + pow(ndothFill, shininess * 0.56) * 0.18) * (1.0 - submergedMask) * (0.008 + uMetalness * 0.1);
 
         float reliefContrast = slope * (0.52 + uplandMask * 0.44) + peakMask * 0.26;
         float lightTerm = 0.18 + keyDiffuse * 0.68 + fillDiffuse * 0.16;
@@ -240,9 +249,13 @@ export function createPlanetMaterial(
 }
 
 function normalizeStops(stops: GradientStop[], fallbackColor: [number, number, number]) {
-  const list = [...stops].sort((a, b) => a.anchor - b.anchor).slice(0, MAX_STOPS);
-  while (list.length < MAX_STOPS) {
-    list.push({ anchor: 1, color: fallbackColor });
+  const sorted = [...stops].sort((a, b) => a.anchor - b.anchor).slice(0, MAX_STOPS);
+  const size = Math.max(1, sorted.length);
+  const normalized = size > 0 ? sorted : [{ anchor: 1, color: fallbackColor }];
+
+  while (normalized.length < MAX_STOPS) {
+    normalized.push({ anchor: 1, color: fallbackColor });
   }
-  return list;
+
+  return { stops: normalized, size };
 }
