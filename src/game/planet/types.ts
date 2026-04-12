@@ -36,6 +36,15 @@ export interface PlanetArchetypePreset {
     metalness: number;
     vegetationDensity: number;
     wetness: number;
+    submergedFlattening: number;
+    slopeDarkening: number;
+    basinDarkening: number;
+    uplandLift: number;
+    peakLift: number;
+    shadowTint: Vector3Tuple;
+    shadowTintStrength: number;
+    coastTintStrength: number;
+    shallowSurfaceBrightness: number;
   };
   postfx: {
     bloom: { strength: number; radius: number; threshold: number };
@@ -60,6 +69,15 @@ export interface PlanetGenerationConfig {
     vegetationDensity: number;
     wetness: number;
     canopyTint: Vector3Tuple;
+    submergedFlattening: number;
+    slopeDarkening: number;
+    basinDarkening: number;
+    uplandLift: number;
+    peakLift: number;
+    shadowTint: Vector3Tuple;
+    shadowTintStrength: number;
+    coastTintStrength: number;
+    shallowSurfaceBrightness: number;
   };
   postfx: PlanetArchetypePreset['postfx'];
 }

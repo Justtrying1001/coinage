@@ -16,6 +16,14 @@ export function createPlanetMaterial(
   vegetationDensity: number,
   wetness: number,
   canopyTint: [number, number, number],
+  slopeDarkening: number,
+  basinDarkening: number,
+  uplandLift: number,
+  peakLift: number,
+  shadowTint: [number, number, number],
+  shadowTintStrength: number,
+  coastTintStrength: number,
+  shallowSurfaceBrightness: number,
   debugMode = 0,
 ) {
   const normalizedElevation = normalizeStops(elevationGradient, [1, 1, 1]);
@@ -35,6 +43,14 @@ export function createPlanetMaterial(
       uVegetationDensity: { value: vegetationDensity },
       uWetness: { value: wetness },
       uCanopyTint: { value: new THREE.Vector3(...canopyTint) },
+      uSlopeDarkening: { value: slopeDarkening },
+      uBasinDarkening: { value: basinDarkening },
+      uUplandLift: { value: uplandLift },
+      uPeakLift: { value: peakLift },
+      uShadowTint: { value: new THREE.Vector3(...shadowTint) },
+      uShadowTintStrength: { value: shadowTintStrength },
+      uCoastTintStrength: { value: coastTintStrength },
+      uShallowSurfaceBrightness: { value: shallowSurfaceBrightness },
       uLightDirection: { value: new THREE.Vector3(0.85, 0.35, 0.55).normalize() },
       uBlendDepth: { value: Math.max(0.001, blendDepth) },
       uSeaLevel: { value: seaLevel },
@@ -69,6 +85,14 @@ export function createPlanetMaterial(
       uniform float uVegetationDensity;
       uniform float uWetness;
       uniform vec3 uCanopyTint;
+      uniform float uSlopeDarkening;
+      uniform float uBasinDarkening;
+      uniform float uUplandLift;
+      uniform float uPeakLift;
+      uniform vec3 uShadowTint;
+      uniform float uShadowTintStrength;
+      uniform float uCoastTintStrength;
+      uniform float uShallowSurfaceBrightness;
       uniform vec3 uLightDirection;
       uniform float uBlendDepth;
       uniform float uSeaLevel;
@@ -167,17 +191,17 @@ export function createPlanetMaterial(
           * (1.0 - smoothstep(0.24, 0.72, slope))
           * vegetationNoise
           * (1.0 - peakMask);
-        terrain = mix(terrain, terrain * (0.84 + breakup * 0.12), slope * 0.58);
+        terrain = mix(terrain, terrain * (1.0 - (0.12 + breakup * 0.12)), slope * uSlopeDarkening);
         terrain = mix(terrain, mix(terrain, uCanopyTint, 0.66), vegetationMask);
-        terrain = mix(terrain, terrain * 0.9, lowlandMask * (0.26 + uWetness * 0.24));
-        terrain = mix(terrain, terrain * 1.12, uplandMask * 0.28);
-        terrain = mix(terrain, terrain * 1.2, peakMask * (0.45 + slope * 0.3));
+        terrain = mix(terrain, terrain * (1.0 - uBasinDarkening), lowlandMask * (0.26 + uWetness * 0.24));
+        terrain = mix(terrain, terrain * (1.0 + uUplandLift), uplandMask * 0.6);
+        terrain = mix(terrain, terrain * (1.0 + uPeakLift), peakMask * (0.5 + slope * 0.28));
 
         vec3 coastTint = mix(terrain * 1.02, terrain * 1.12, 0.55) + vec3(0.012, 0.012, 0.01);
-        terrain = mix(terrain, coastTint, coastMask * (0.22 + uWetness * 0.06));
+        terrain = mix(terrain, coastTint, coastMask * uCoastTintStrength * (0.8 + uWetness * 0.2));
 
-        vec3 water = depthBase * (0.78 + depthN * 0.26 + uWetness * 0.06);
-        water = mix(water, water * 0.78, basinMask * (0.28 + slope * 0.25));
+        vec3 water = depthBase * (0.75 + depthN * (0.22 + uShallowSurfaceBrightness) + uWetness * 0.05);
+        water = mix(water, water * (1.0 - uBasinDarkening), basinMask * (0.32 + slope * 0.2));
 
         vec3 ice = mix(vec3(0.48, 0.62, 0.72), vec3(0.86, 0.93, 0.98), clamp(depthN + macro * 0.1, 0.0, 1.0));
         ice = mix(ice, vec3(0.34, 0.46, 0.58), smoothstep(0.06, 0.34, depthN) * 0.38);
@@ -234,12 +258,14 @@ export function createPlanetMaterial(
         }
         float landSpec = (pow(ndoth, shininess) * 0.72 + pow(ndothFill, shininess * 0.56) * 0.18) * (1.0 - submergedMask) * (0.008 + uMetalness * 0.1);
 
-        float reliefContrast = slope * (0.52 + uplandMask * 0.44) + peakMask * 0.26;
+        float reliefContrast = slope * (0.4 + uSlopeDarkening * 0.7 + uplandMask * (0.24 + uUplandLift * 0.5)) + peakMask * (0.08 + uPeakLift * 0.44);
         float lightTerm = 0.18 + keyDiffuse * 0.68 + fillDiffuse * 0.16;
         lightTerm *= 1.0 + reliefContrast * (0.24 + (1.0 - keyDiffuse) * 0.2);
         lightTerm += hemi * 0.06 + fresnel * 0.035;
 
         vec3 color = base * lightTerm;
+        float shadowMask = clamp((1.0 - keyDiffuse) * (0.7 + slope * 0.8), 0.0, 1.0);
+        color = mix(color, color * uShadowTint, shadowMask * uShadowTintStrength);
         color += vec3(waterSpec + landSpec);
 
         gl_FragColor = vec4(color, 1.0);
