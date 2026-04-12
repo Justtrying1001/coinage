@@ -1,5 +1,6 @@
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
 import type { PlanetVisualProfile, SelectedPlanetRef } from '@/game/render/types';
+import type { PlanetSettlementSlot } from '@/game/planet/slots/types';
 import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
 import { SeededRng } from '@/game/world/rng';
 import { PlanetRuntime } from '@/game/planet/runtime/PlanetRuntime';
@@ -19,8 +20,11 @@ export class Planet3DMode implements RenderModeController {
 
   private isDragging = false;
   private pointerId: number | null = null;
+  private dragDistance = 0;
   private lastX = 0;
   private lastY = 0;
+
+  private selectedSlot: PlanetSettlementSlot | null = null;
 
   constructor(
     private selectedPlanet: SelectedPlanetRef,
@@ -54,6 +58,7 @@ export class Planet3DMode implements RenderModeController {
     if (nextPlanet.id === this.selectedPlanet.id && nextPlanet.seed === this.selectedPlanet.seed) return;
     this.selectedPlanet = nextPlanet;
     this.runtime?.rebuildFromSeed(nextPlanet.seed);
+    this.selectedSlot = null;
     const profile = planetProfileFromSeed(nextPlanet.seed);
     this.updateInspectIdentity(nextPlanet, profile);
   }
@@ -80,6 +85,7 @@ export class Planet3DMode implements RenderModeController {
     if (event.button !== 0) return;
     this.pointerId = event.pointerId;
     this.isDragging = true;
+    this.dragDistance = 0;
     this.lastX = event.clientX;
     this.lastY = event.clientY;
   };
@@ -92,13 +98,22 @@ export class Planet3DMode implements RenderModeController {
     this.lastX = event.clientX;
     this.lastY = event.clientY;
 
+    this.dragDistance += Math.hypot(dx, dy);
     this.runtime.rotate(dx * 0.0088, dy * 0.0088, this.runtime.camera);
   };
 
   private readonly onPointerUp = (event: PointerEvent) => {
     if (event.pointerId !== this.pointerId) return;
+
+    if (this.runtime && this.dragDistance <= 4) {
+      this.selectedSlot = this.runtime.pickSlot(event.clientX, event.clientY);
+      const profile = planetProfileFromSeed(this.selectedPlanet.seed);
+      this.updateInspectIdentity(this.selectedPlanet, profile);
+    }
+
     this.pointerId = null;
     this.isDragging = false;
+    this.dragDistance = 0;
   };
 
   private readonly onKeyDown = (event: KeyboardEvent) => {
@@ -144,21 +159,40 @@ export class Planet3DMode implements RenderModeController {
   }
 
   private updateInspectIdentity(planetRef: SelectedPlanetRef, profile: PlanetVisualProfile) {
-    if (!this.inspectTitle || !this.inspectSubtitle || !this.inspectTags) return;
+    if (!this.inspectTitle || !this.inspectSubtitle || !this.inspectTags || !this.runtime) return;
 
     this.inspectTitle.textContent = `Planet ${planetRef.id.toUpperCase()}`;
+
+    const summary = this.runtime.getSlotSummary();
+    if (this.selectedSlot) {
+      this.inspectSubtitle.textContent = `${toDisplayArchetype(profile.archetype)} world · ${this.selectedSlot.id} selected`;
+      const habitabilityPct = Math.round(this.selectedSlot.habitability * 100);
+      this.inspectTags.innerHTML = '';
+      appendTag(this.inspectTags, `state: ${this.selectedSlot.state}`);
+      appendTag(this.inspectTags, `habitability ${habitabilityPct}%`);
+      appendTag(this.inspectTags, `occupied ${summary.occupied}`);
+      appendTag(this.inspectTags, `available ${summary.available}`);
+      return;
+    }
+
     this.inspectSubtitle.textContent = `${toDisplayArchetype(profile.archetype)} world · Seed ${planetRef.seed.toString(16).toUpperCase().padStart(8, '0')}`;
+    this.inspectTags.innerHTML = '';
+    appendTag(this.inspectTags, `slots ${summary.total}`);
+    appendTag(this.inspectTags, `occupied ${summary.occupied}`);
+    appendTag(this.inspectTags, `available ${summary.available}`);
 
     const tags = derivePlanetTags(planetRef.seed, profile);
-    this.inspectTags.innerHTML = '';
-
     for (const tag of tags) {
-      const chip = document.createElement('span');
-      chip.className = 'planet-inspect-tag';
-      chip.textContent = tag;
-      this.inspectTags.appendChild(chip);
+      appendTag(this.inspectTags, tag);
     }
   }
+}
+
+function appendTag(host: HTMLDivElement, text: string) {
+  const chip = document.createElement('span');
+  chip.className = 'planet-inspect-tag';
+  chip.textContent = text;
+  host.appendChild(chip);
 }
 
 function derivePlanetTags(seed: number, profile: PlanetVisualProfile): string[] {

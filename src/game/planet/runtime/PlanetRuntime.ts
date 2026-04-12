@@ -4,13 +4,20 @@ import { createPlanetGenerationConfig } from '@/game/planet/presets/archetypes';
 import { PlanetGenerator } from '@/game/planet/generation/PlanetGenerator';
 import { PlanetPostFx } from '@/game/planet/postfx/PlanetPostFx';
 import { PlanetScene } from '@/game/planet/runtime/PlanetScene';
+import { PlanetSlotGenerator } from '@/game/planet/slots/PlanetSlotGenerator';
+import { PlanetSlotRenderer } from '@/game/planet/slots/PlanetSlotRenderer';
+import type { PlanetSettlementSlot } from '@/game/planet/slots/types';
 
 export class PlanetRuntime {
   readonly renderer: THREE.WebGLRenderer;
   private readonly sceneKit = new PlanetScene();
   private readonly generator: PlanetGenerator;
+  private readonly slotGenerator = new PlanetSlotGenerator();
+  private readonly slotRenderer = new PlanetSlotRenderer();
   private postFx: PlanetPostFx;
   private planetRoot: THREE.Group | null = null;
+  private slots: PlanetSettlementSlot[] = [];
+  private selectedSlotIndex: number | null = null;
 
   constructor(private readonly host: HTMLDivElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -32,12 +39,23 @@ export class PlanetRuntime {
       disposeHierarchy(this.planetRoot);
     }
 
+    this.sceneKit.root.remove(this.slotRenderer.root);
+    this.slotRenderer.clear();
+    this.slots = [];
+    this.selectedSlotIndex = null;
+
     const profile = planetProfileFromSeed(seed);
     const config = createPlanetGenerationConfig(seed, profile);
     const generated = this.generator.generate(config);
 
     this.planetRoot = generated.root;
     this.sceneKit.root.add(generated.root);
+
+    this.slots = this.slotGenerator.generate(seed, generated.surfaceGeometry, config.seaLevel);
+    this.slotRenderer.build(this.slots, generated.surfaceMesh);
+    this.slotRenderer.setSelected(null);
+    this.slotRenderer.root.quaternion.copy(this.planetRoot.quaternion);
+    this.sceneKit.root.add(this.slotRenderer.root);
 
     this.postFx.setBloom(config.postfx.bloom);
     this.renderer.toneMappingExposure = config.postfx.exposure;
@@ -61,14 +79,47 @@ export class PlanetRuntime {
     const qPitch = new THREE.Quaternion().setFromAxisAngle(axis, deltaPitch);
     this.planetRoot.quaternion.premultiply(qYaw);
     this.planetRoot.quaternion.premultiply(qPitch);
+    this.slotRenderer.root.quaternion.copy(this.planetRoot.quaternion);
   }
 
   get camera() {
     return this.sceneKit.camera;
   }
 
+  pickSlot(clientX: number, clientY: number) {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const pointer = new THREE.Vector2(
+      ((clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1,
+      -((clientY - rect.top) / Math.max(1, rect.height)) * 2 + 1,
+    );
+
+    const picked = this.slotRenderer.pick(pointer, this.sceneKit.camera);
+    this.selectedSlotIndex = picked;
+    this.slotRenderer.setSelected(this.selectedSlotIndex);
+    return this.getSelectedSlot();
+  }
+
+  clearSelectedSlot() {
+    this.selectedSlotIndex = null;
+    this.slotRenderer.setSelected(null);
+  }
+
+  getSelectedSlot() {
+    if (this.selectedSlotIndex == null) return null;
+    return this.slots[this.selectedSlotIndex] ?? null;
+  }
+
+  getSlotSummary() {
+    return {
+      total: this.slots.length,
+      occupied: 0,
+      available: this.slots.length,
+    };
+  }
+
   destroy() {
     if (this.planetRoot) disposeHierarchy(this.planetRoot);
+    this.slotRenderer.dispose();
     this.postFx.dispose();
     this.sceneKit.dispose();
     this.renderer.dispose();

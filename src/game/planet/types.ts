@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import type { PlanetArchetype } from '@/game/render/types';
 import type { Vector3Tuple } from '@/game/planet/utils/vector';
 
@@ -80,4 +81,11 @@ export interface PlanetGenerationConfig {
     shallowSurfaceBrightness: number;
   };
   postfx: PlanetArchetypePreset['postfx'];
+}
+
+
+export interface GeneratedPlanet {
+  root: THREE.Group;
+  surfaceMesh: THREE.Mesh;
+  surfaceGeometry: THREE.BufferGeometry;
 }
