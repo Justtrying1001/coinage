@@ -39,30 +39,30 @@ export class CitySceneController {
     this.archetype = terrain.profile.archetype;
     this.renderer.toneMappingExposure = terrain.config.postfx.exposure;
 
-    this.camera = new PerspectiveCamera(52, 1, 0.1, 900);
-    this.camera.position.set(0, 20, 86);
-    this.camera.lookAt(new Vector3(0, 12, -10));
+    this.camera = new PerspectiveCamera(46, 1, 0.1, 1100);
+    this.camera.position.set(-36, 58, 92);
+    this.camera.lookAt(new Vector3(8, 18, -24));
 
     this.scene = new Scene();
     this.scene.background = gradientColor(terrain.config.elevationGradient, 0.78, 0x1a2432);
     this.scene.fog = new Fog(
       gradientColor(terrain.config.depthGradient, 0.84, 0x2c3c4d),
-      70,
-      260,
+      95,
+      340,
     );
 
     this.scene.add(terrain.mesh);
 
     const key = new DirectionalLight(0xf2f6ff, 1.02 * terrain.profile.lightIntensity);
-    key.position.set(42, 68, 18);
+    key.position.set(54, 76, 24);
     this.scene.add(key);
 
     const fill = new DirectionalLight(gradientColor(terrain.config.elevationGradient, 0.35, 0x9fb6cb), 0.52);
-    fill.position.set(-44, 24, -60);
+    fill.position.set(-62, 30, -78);
     this.scene.add(fill);
 
     const horizon = new DirectionalLight(gradientColor(terrain.config.depthGradient, 0.65, 0x7294b0), 0.34);
-    horizon.position.set(0, 6, 84);
+    horizon.position.set(-12, 10, 104);
     this.scene.add(horizon);
 
     this.postFx = new PlanetPostFx(this.renderer, this.scene, this.camera);
