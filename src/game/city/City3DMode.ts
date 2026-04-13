@@ -4,14 +4,14 @@ import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
 import { BUILDING_DEFINITIONS, toBuildingLabel, type BuildingType } from '@/game/city/data/cityBuildings';
 import { CITY_LAYOUT_TEMPLATE } from '@/game/city/data/cityLayout';
 import type { CitySlotId } from '@/game/city/data/citySlots';
-import { CitySceneController } from '@/game/city/scene/CitySceneController';
+import { CitySceneControllerV2 } from '@/game/city/scene/CitySceneControllerV2';
 import { createCityViewModel, getSlotById, type CityViewModel } from '@/game/city/runtime/cityViewModel';
 import { resolveCityTheme } from '@/game/city/themes/cityThemeResolver';
 
 export class City3DMode implements RenderModeController {
   readonly id = 'city3d' as const;
 
-  private scene: CitySceneController | null = null;
+  private scene: CitySceneControllerV2 | null = null;
   private panel: HTMLDivElement | null = null;
   private headerTitle: HTMLHeadingElement | null = null;
   private headerSubtitle: HTMLParagraphElement | null = null;
@@ -40,7 +40,7 @@ export class City3DMode implements RenderModeController {
   }
 
   mount() {
-    this.scene = new CitySceneController(this.context.host, this.viewModel, this.selectedPlanet.seed);
+    this.scene = new CitySceneControllerV2(this.context.host, this.viewModel, this.selectedPlanet.seed, this.settlementId);
     this.scene.mount();
     this.mountOverlayPanel();
 
@@ -73,7 +73,7 @@ export class City3DMode implements RenderModeController {
     });
 
     this.scene?.destroy();
-    this.scene = new CitySceneController(this.context.host, this.viewModel, this.selectedPlanet.seed);
+    this.scene = new CitySceneControllerV2(this.context.host, this.viewModel, this.selectedPlanet.seed, this.settlementId);
     this.scene.mount();
     this.refreshPanel();
   }
