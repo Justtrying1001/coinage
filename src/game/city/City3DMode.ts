@@ -103,15 +103,19 @@ export class City3DMode implements RenderModeController {
   }
 
   private refreshPanel() {
-    if (!this.headerTitle || !this.headerSubtitle || !this.sectionMeta) return;
+    if (!this.headerTitle || !this.headerSubtitle || !this.sectionMeta || !this.scene) return;
 
-    this.headerTitle.textContent = 'City View // Planet DNA Landscape';
-    this.headerSubtitle.textContent = `Planet ${this.selectedPlanet.id.toUpperCase()} · ${this.settlementId ? `Settlement ${this.settlementId.toUpperCase()}` : 'Terrain Study'}`;
+    const metrics = this.scene.terrainAnalysis.buildZone.metrics;
+    this.headerTitle.textContent = 'City Terrain Foundation';
+    this.headerSubtitle.textContent = `Planet ${this.selectedPlanet.id.toUpperCase()} · ${this.settlementId ? `Settlement ${this.settlementId.toUpperCase()}` : 'Terrain Phase'}`;
 
     this.sectionMeta.innerHTML = '';
-    this.appendLine(this.sectionMeta, `Archetype-derived local landscape: ${this.archetypeLabel}.`);
-    this.appendLine(this.sectionMeta, 'Terrain-only milestone: no buildings, slots, roads, or placement systems.');
-    this.appendLine(this.sectionMeta, 'Gradients, material parameters, relief language, and postfx are inherited from the planet pipeline.');
+    this.appendLine(this.sectionMeta, `Biome recipe: ${this.archetypeLabel}.`);
+    this.appendLine(this.sectionMeta, `Reserved zone cells: ${metrics.reservedCellCount} · Buildable cells: ${metrics.buildableCellCount}.`);
+    this.appendLine(this.sectionMeta, `Slope mean/p90: ${metrics.meanSlopeBuildZone.toFixed(2)}° / ${metrics.p90SlopeBuildZone.toFixed(2)}°.`);
+    this.appendLine(this.sectionMeta, `Contiguous score: ${metrics.contiguousUsableAreaScore.toFixed(2)} · Camera relevance: ${metrics.cameraBuildZoneRelevance.toFixed(2)}.`);
+    this.appendLine(this.sectionMeta, 'Terrain-only phase: no buildings, slots, roads, or construction systems.');
+    this.appendLine(this.sectionMeta, 'Press I to toggle inspect camera controls.');
   }
 
   private appendLine(container: HTMLElement, text: string) {

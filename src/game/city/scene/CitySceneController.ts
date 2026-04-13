@@ -6,24 +6,27 @@ import {
   PerspectiveCamera,
   Scene,
   SRGBColorSpace,
-  Vector3,
   WebGLRenderer,
   type BufferGeometry,
   type Material,
   type Mesh,
   type Object3D,
 } from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { PlanetPostFx } from '@/game/planet/postfx/PlanetPostFx';
 import { createCityLandscapeTerrain } from '@/game/city/terrain/createCityLandscapeTerrain';
 import type { PlanetArchetype } from '@/game/render/types';
+import type { TerrainResult } from '@/game/city/terrain/types';
 
 export class CitySceneController {
   readonly renderer: WebGLRenderer;
   readonly camera: PerspectiveCamera;
   readonly archetype: PlanetArchetype;
+  readonly terrainAnalysis: TerrainResult;
 
   private readonly scene: Scene;
   private readonly postFx: PlanetPostFx;
+  private controls: OrbitControls | null = null;
 
   constructor(
     private readonly host: HTMLDivElement,
@@ -37,36 +40,40 @@ export class CitySceneController {
 
     const terrain = createCityLandscapeTerrain(seed);
     this.archetype = terrain.profile.archetype;
+    this.terrainAnalysis = terrain.analysis;
     this.renderer.toneMappingExposure = terrain.config.postfx.exposure;
 
-    this.camera = new PerspectiveCamera(56, 1, 0.1, 900);
-    this.camera.position.set(0, 18, 72);
-    this.camera.lookAt(new Vector3(0, 11, -56));
+    this.camera = new PerspectiveCamera(52, 1, 0.1, 1400);
+    const anchors = terrain.analysis.cameraAnchors;
+    this.camera.position.set(...anchors.eye);
+    this.camera.lookAt(...anchors.target);
 
     this.scene = new Scene();
-    this.scene.background = gradientColor(terrain.config.elevationGradient, 0.78, 0x1a2432);
+    this.scene.background = gradientColor(terrain.config.elevationGradient, 0.76, 0x1a2432);
     this.scene.fog = new Fog(
       gradientColor(terrain.config.depthGradient, 0.84, 0x2c3c4d),
-      52,
-      240,
+      90,
+      420,
     );
 
     this.scene.add(terrain.mesh);
 
-    const key = new DirectionalLight(0xf2f6ff, 1.02 * terrain.profile.lightIntensity);
-    key.position.set(42, 68, 18);
+    const key = new DirectionalLight(0xf2f6ff, 1.04 * terrain.profile.lightIntensity);
+    key.position.set(terrain.analysis.cameraAnchors.horizon[0], 94, terrain.analysis.cameraAnchors.horizon[2]);
     this.scene.add(key);
 
-    const fill = new DirectionalLight(gradientColor(terrain.config.elevationGradient, 0.35, 0x9fb6cb), 0.52);
-    fill.position.set(-44, 24, -60);
+    const fill = new DirectionalLight(gradientColor(terrain.config.elevationGradient, 0.35, 0x9fb6cb), 0.48);
+    fill.position.set(-72, 28, -86);
     this.scene.add(fill);
 
-    const horizon = new DirectionalLight(gradientColor(terrain.config.depthGradient, 0.65, 0x7294b0), 0.34);
-    horizon.position.set(0, 6, 84);
+    const horizon = new DirectionalLight(gradientColor(terrain.config.depthGradient, 0.65, 0x7294b0), 0.28);
+    horizon.position.set(0, 18, 120);
     this.scene.add(horizon);
 
     this.postFx = new PlanetPostFx(this.renderer, this.scene, this.camera);
     this.postFx.setBloom(terrain.config.postfx.bloom);
+
+    window.addEventListener('keydown', this.onKeyDown);
   }
 
   mount() {
@@ -80,17 +87,50 @@ export class CitySceneController {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(safeWidth, safeHeight, false);
     this.postFx.resize(safeWidth, safeHeight);
+    this.controls?.update();
   }
 
   update() {
+    this.controls?.update();
     this.postFx.render();
   }
 
   destroy() {
+    window.removeEventListener('keydown', this.onKeyDown);
+    this.controls?.dispose();
+    this.controls = null;
     this.postFx.dispose();
     this.renderer.dispose();
     this.disposeSceneTree(this.scene);
     this.renderer.domElement.remove();
+  }
+
+  private readonly onKeyDown = (event: KeyboardEvent) => {
+    if (event.key.toLowerCase() === 'i') {
+      this.toggleInspectControls();
+    }
+  };
+
+  private toggleInspectControls() {
+    if (this.controls) {
+      this.controls.dispose();
+      this.controls = null;
+      const anchors = this.terrainAnalysis.cameraAnchors;
+      this.camera.position.set(...anchors.eye);
+      this.camera.lookAt(...anchors.target);
+      return;
+    }
+
+    const anchors = this.terrainAnalysis.cameraAnchors;
+    this.camera.position.set(...anchors.inspectEye);
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.target.set(...anchors.target);
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.08;
+    this.controls.maxPolarAngle = Math.PI * 0.48;
+    this.controls.minDistance = this.terrainAnalysis.grid.size * 0.14;
+    this.controls.maxDistance = this.terrainAnalysis.grid.size * 0.65;
+    this.controls.update();
   }
 
   private disposeSceneTree(root: Object3D) {
