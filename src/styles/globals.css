@@ -268,154 +268,69 @@ canvas {
   opacity: 0.9;
 }
 
-.city-foundation-root {
+
+.city-view-root {
   position: absolute;
-  inset: 4.2rem 1rem 1rem 1rem;
+  inset: 4.2rem 0 0 0;
   z-index: 11;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
 }
 
-.city-foundation-toolbar {
-  border: 1px solid rgba(130, 194, 232, 0.28);
+.city-view-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.city-view-canvas::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 42%, transparent 20%, rgba(7, 11, 16, 0.36) 100%);
+}
+
+.city-view-hud {
+  position: absolute;
+  left: 1rem;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(161, 204, 226, 0.3);
   border-radius: 10px;
-  background: rgba(5, 14, 24, 0.9);
-  padding: 0.45rem 0.55rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.42rem;
+  background: rgba(10, 18, 26, 0.72);
+  backdrop-filter: blur(2px);
+  pointer-events: auto;
 }
 
-.city-foundation-toolbar__title {
+.city-view-hud__title {
   margin: 0;
-  font-size: 0.64rem;
-  letter-spacing: 0.06em;
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #d6edff;
+  color: #e6f0f8;
 }
 
-.city-foundation-toolbar__meta,
-.city-foundation-toolbar__hint {
+.city-view-hud__meta {
   margin: 0;
   font-size: 0.58rem;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(183, 218, 240, 0.84);
+  color: rgba(197, 224, 241, 0.9);
 }
 
-.city-foundation-toolbar__row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-}
-
-.city-foundation-button {
-  border: 1px solid rgba(122, 194, 236, 0.42);
+.city-view-hud__back {
+  border: 1px solid rgba(151, 200, 226, 0.46);
+  background: rgba(11, 24, 36, 0.84);
+  color: #dceefe;
   border-radius: 999px;
-  padding: 0.26rem 0.54rem;
-  font-size: 0.56rem;
-  text-transform: uppercase;
+  padding: 0.35rem 0.64rem;
+  font-size: 0.62rem;
   letter-spacing: 0.04em;
-  color: #d9f0ff;
-  background: rgba(10, 30, 47, 0.82);
+  text-transform: uppercase;
   cursor: pointer;
 }
 
-.city-foundation-button:hover {
-  border-color: rgba(173, 224, 252, 0.95);
-}
-
-.city-foundation-button.is-active {
-  border-color: rgba(170, 237, 188, 0.96);
-  background: rgba(20, 62, 39, 0.9);
-}
-
-.city-foundation-button:disabled {
-  opacity: 0.42;
-  cursor: not-allowed;
-}
-
-.city-foundation-grid {
-  display: grid;
-  gap: 2px;
-  border: 1px solid rgba(109, 181, 224, 0.28);
-  border-radius: 12px;
-  background:
-    linear-gradient(180deg, rgba(8, 20, 32, 0.9), rgba(4, 11, 20, 0.95)),
-    repeating-linear-gradient(
-      90deg,
-      transparent 0,
-      transparent 28px,
-      rgba(89, 142, 176, 0.06) 28px,
-      rgba(89, 142, 176, 0.06) 29px
-    );
-  padding: 0.45rem;
-  align-content: start;
-  flex: 1;
-}
-
-.city-foundation-tile {
-  aspect-ratio: 1 / 1;
-  border: 1px solid rgba(53, 86, 108, 0.34);
-  background: rgba(34, 51, 49, 0.72);
-  padding: 0;
-  margin: 0;
-  cursor: crosshair;
-  position: relative;
-  color: #e5f5ff;
-}
-
-.city-foundation-tile.is-blocked {
-  background: rgba(34, 27, 36, 0.95);
-  border-color: rgba(112, 76, 97, 0.58);
-}
-
-.city-foundation-tile.is-expansion {
-  background: rgba(38, 45, 66, 0.88);
-  border-color: rgba(114, 141, 203, 0.52);
-}
-
-.city-foundation-tile.zone-core {
-  background: rgba(36, 57, 46, 0.78);
-}
-
-.city-foundation-tile.is-road {
-  background: rgba(65, 86, 98, 0.94);
-  border-color: rgba(163, 205, 229, 0.9);
-  box-shadow: inset 0 0 0 1px rgba(30, 47, 54, 0.55);
-}
-
-.city-foundation-tile.is-building {
-  background: rgba(77, 101, 68, 0.97);
-  border-color: rgba(171, 226, 149, 0.88);
-}
-
-.city-foundation-tile.is-preview-valid {
-  outline: 2px solid rgba(110, 220, 128, 0.9);
-  outline-offset: -2px;
-}
-
-.city-foundation-tile.is-preview-invalid {
-  outline: 2px solid rgba(255, 102, 121, 0.95);
-  outline-offset: -2px;
-}
-
-.city-foundation-label {
-  position: absolute;
-  left: 2px;
-  top: 2px;
-  right: 2px;
-  display: block;
-  font-size: 0.46rem;
-  line-height: 1.2;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  text-align: left;
-  color: #e9f8e7;
-}
-
-.city-foundation-label.is-hq {
-  color: #ffe4aa;
-  font-weight: 700;
+.city-view-hud__back:hover {
+  border-color: rgba(187, 220, 238, 0.9);
 }
