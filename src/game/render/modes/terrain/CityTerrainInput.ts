@@ -69,6 +69,10 @@ export function createCityTerrainInput(seed: number): CityTerrainInput {
       ridgeScale: visual.ridgeScale,
       craterScale: visual.craterScale,
       macroBias: visual.macroBias,
+      ridgeWeight: visual.ridgeWeight,
+      craterWeight: visual.craterWeight,
+      polarWeight: visual.polarWeight,
+      emissiveIntensity: visual.emissiveIntensity,
     },
     material: {
       roughness: planet.material.roughness,

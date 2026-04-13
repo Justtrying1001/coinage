@@ -8,7 +8,6 @@ import { createCityTerrainMaterial } from '@/game/render/modes/terrain/CityTerra
 import { createCityFluidLayer } from '@/game/render/modes/terrain/CityWaterLayer';
 import { buildCityDecor } from '@/game/render/modes/terrain/CityDecorSystem';
 import { applyCityAtmosphere, createCityLighting } from '@/game/render/modes/terrain/CityAtmosphereRig';
-import { summarizeBuildSurface } from '@/game/render/modes/terrain/CityBuildSurface';
 
 const GRID_WIDTH = 20;
 const GRID_HEIGHT = 14;
@@ -115,9 +114,9 @@ export class CityFoundationMode implements RenderModeController {
 
     const scene = new THREE.Scene();
 
-    const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 1200);
-    camera.position.set(0, 126, 176);
-    camera.lookAt(0, 8, 6);
+    const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 1400);
+    camera.position.set(0, 108, 152);
+    camera.lookAt(0, 10, 0);
 
     this.renderer = renderer;
     this.scene = scene;
@@ -199,11 +198,11 @@ export class CityFoundationMode implements RenderModeController {
     this.scene.add(decor);
     this.decorGroup = decor;
 
-    this.syncHud(input.archetype, summarizeBuildSurface(built.buildSurface).stableRatio);
+    this.syncHud(input.archetype);
   }
 
-  private syncHud(archetype: string, stableRatio: number) {
+  private syncHud(archetype: string) {
     if (!this.hudMeta) return;
-    this.hudMeta.textContent = `${this.selectedPlanet.id.toUpperCase()} · ${archetype} · core ${Math.round(stableRatio * 100)}%`;
+    this.hudMeta.textContent = `${this.selectedPlanet.id.toUpperCase()} · ${archetype}`;
   }
 }

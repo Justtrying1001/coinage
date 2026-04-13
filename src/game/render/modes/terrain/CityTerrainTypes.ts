@@ -31,6 +31,10 @@ export interface CityTerrainInput {
     ridgeScale: number;
     craterScale: number;
     macroBias: number;
+    ridgeWeight: number;
+    craterWeight: number;
+    polarWeight: number;
+    emissiveIntensity: number;
   };
   material: {
     roughness: number;
@@ -46,14 +50,6 @@ export interface CityTerrainInput {
 export interface CityLayoutMaskSource {
   blocked: Set<string>;
   expansion: Set<string>;
-}
-
-export interface CityTerrainMeshBundle {
-  near: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
-  far: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
-  water: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null;
-  decor: THREE.Group;
-  buildSurface: BuildSurfaceSnapshot;
 }
 
 export interface BuildSurfaceSnapshot {

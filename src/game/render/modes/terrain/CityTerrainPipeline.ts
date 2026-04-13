@@ -9,14 +9,14 @@ import type {
 } from '@/game/render/modes/terrain/CityTerrainTypes';
 
 export const DEFAULT_TERRAIN_GEOMETRY: TerrainGeometryConfig = {
-  terrainWidth: 280,
-  terrainDepth: 210,
-  farWidth: 620,
-  farDepth: 520,
-  nearSegmentsX: 320,
-  nearSegmentsZ: 240,
-  farSegmentsX: 160,
-  farSegmentsZ: 120,
+  terrainWidth: 360,
+  terrainDepth: 280,
+  farWidth: 880,
+  farDepth: 760,
+  nearSegmentsX: 360,
+  nearSegmentsZ: 280,
+  farSegmentsX: 170,
+  farSegmentsZ: 140,
 };
 
 interface TerrainBuildResult {
@@ -24,9 +24,6 @@ interface TerrainBuildResult {
   farGeometry: THREE.PlaneGeometry;
   buildSurface: BuildSurfaceSnapshot;
 }
-
-const GRID_WIDTH = 20;
-const GRID_HEIGHT = 14;
 
 export function buildTerrainGeometry(
   input: CityTerrainInput,
@@ -98,7 +95,7 @@ function applyHeights(
 
 export function sampleTerrain(
   input: CityTerrainInput,
-  layout: CityLayoutMaskSource,
+  _layout: CityLayoutMaskSource,
   x: number,
   z: number,
   config: TerrainGeometryConfig,
@@ -109,67 +106,67 @@ export function sampleTerrain(
   const nz = z / config.terrainDepth;
   const radial = Math.max(Math.abs(nx), Math.abs(nz));
 
-  const buildCore = smoothstep(1.04, 0.14, radial) * buildableWeight(x, z, layout, config);
-  const transitionBand = smoothstep(0.2, 0.78, radial) * (1 - smoothstep(0.78, 0.94, radial));
+  const buildCore = smoothstep(0.78, 0.08, radial);
+  const transitionBand = smoothstep(0.2, 0.74, radial) * (1 - smoothstep(0.72, 0.92, radial));
 
-  const macro = fbm2(nx * input.shape.continentScale * 2.2, nz * input.shape.continentScale * 2.2, input.seed ^ 0xaaa1, 5);
-  const ridges = ridgeNoise(nx * input.shape.ridgeScale * 0.45, nz * input.shape.ridgeScale * 0.45, input.seed ^ 0x1aa11);
+  const macro = fbm2(nx * input.shape.continentScale * 2.4, nz * input.shape.continentScale * 2.4, input.seed ^ 0xaaa1, 5);
+  const ridges = ridgeNoise(nx * input.shape.ridgeScale * 0.48, nz * input.shape.ridgeScale * 0.48, input.seed ^ 0x1aa11);
   const craters = fbm2(nx * input.shape.craterScale * 0.4, nz * input.shape.craterScale * 0.4, input.seed ^ 0xcc991, 3);
 
-  const biomeLandforms = macro * (0.6 + input.shape.reliefStrength * 2.1)
-    + ridges * spec.ridgeGain
-    - craters * spec.basinBias
-    + fbm2(nx * 5.5, nz * 5.5, input.seed ^ 0x9d44, 3) * spec.duneStrength;
+  const biomeLandforms = macro * (0.74 + input.shape.reliefStrength * 2.4 + input.shape.macroBias * 0.3)
+    + ridges * (spec.ridgeGain + input.shape.ridgeWeight * 0.4)
+    - craters * (spec.basinBias + input.shape.craterWeight * 0.5)
+    + fbm2(nx * 6.3, nz * 6.3, input.seed ^ 0x9d44, 3) * spec.duneStrength;
 
   const perimeter = smoothstep(spec.rimWidth, 1.08, radial) * spec.edgeDrop;
   const micro = fbm2(nx * input.material.microReliefScale, nz * input.material.microReliefScale, input.seed ^ 0x2f, 3)
     * (0.5 + input.material.microReliefStrength * 0.8);
 
-  let heightValue = biomeLandforms * 12;
-  const coreTarget = (Math.round(heightValue / 0.75) * 0.75) + spec.coreLift;
-  heightValue = mix(heightValue, coreTarget, buildCore * 0.82);
-  heightValue += transitionBand * 1.15;
-  heightValue += micro * 2.4;
+  let heightValue = biomeLandforms * 14;
+  const coreTarget = (Math.round(heightValue / 0.8) * 0.8) + spec.coreLift;
+  heightValue = mix(heightValue, coreTarget, buildCore * 0.76);
+  heightValue += transitionBand * 1.35;
+  heightValue += micro * 2.1;
   heightValue -= perimeter;
 
   const wetBase = clamp(input.climate.humidity + spec.wetnessBoost, 0, 1);
-  let shorelineMask = smoothstep(input.planet.surfaceLevel01 - 0.12, input.planet.surfaceLevel01 + 0.1, 1 - radial + macro * 0.1);
+  let shorelineMask = smoothstep(input.planet.surfaceLevel01 - 0.14, input.planet.surfaceLevel01 + 0.12, 1 - radial + macro * 0.12);
 
   if (input.archetype === 'oceanic') {
-    const lagoon = smoothstep(0.1, 0.52, 1 - radial) * 2.8;
-    const shelf = smoothstep(0.22, 0.56, shorelineMask) * 1.6;
+    const lagoon = smoothstep(0.1, 0.56, 1 - radial) * 3.2;
+    const shelf = smoothstep(0.22, 0.6, shorelineMask) * 1.8;
     heightValue = heightValue * shorelineMask + lagoon + shelf;
-    heightValue -= (1 - shorelineMask) * 8.4;
+    heightValue -= (1 - shorelineMask) * 10.8;
   }
 
   if (input.archetype === 'frozen') {
     const shelf = smoothstep(1.02, 0.34, radial + fbm2(nx * 2.2, nz * 2.2, input.seed ^ 0x8181, 2) * 0.08);
-    const fracture = smoothstep(0.34, 0.9, Math.abs(fbm2(nx * 12, nz * 12, input.seed ^ 0xa8a8, 3))) * spec.fractureStrength * 2.4;
+    const fracture = smoothstep(0.34, 0.9, Math.abs(fbm2(nx * 12, nz * 12, input.seed ^ 0xa8a8, 3))) * spec.fractureStrength * 2.8;
     heightValue = heightValue * shelf - fracture;
     shorelineMask *= shelf;
   }
 
   if (input.archetype === 'volcanic') {
-    const caldera = smoothstep(0.12, 0.42, 1 - radial) * smoothstep(0.5, 0.86, ridges);
-    heightValue += caldera * 3.2;
+    const caldera = smoothstep(0.12, 0.44, 1 - radial) * smoothstep(0.5, 0.86, ridges);
+    heightValue += caldera * 4.2;
   }
 
   if (farField) {
-    heightValue = heightValue * 0.56 - 5.5;
+    heightValue = heightValue * 0.58 - 5.2;
   }
 
-  const slopeMask = clamp(Math.abs(ridges) * 0.6 + Math.abs(micro) * 0.45 + radial * 0.34, 0, 1);
-  const cliffMask = smoothstep(0.48, 0.88, slopeMask + transitionBand * 0.4);
-  const frozenMask = clamp(input.climate.frozen + shorelineMask * 0.2, 0, 1);
-  const thermalMask = clamp(input.climate.thermal + (input.archetype === 'volcanic' ? smoothstep(0.46, 0.88, ridges) * 0.35 : 0), 0, 1);
+  const slopeMask = clamp(Math.abs(ridges) * 0.62 + Math.abs(micro) * 0.42 + radial * 0.34, 0, 1);
+  const cliffMask = smoothstep(0.48, 0.88, slopeMask + transitionBand * 0.38);
+  const frozenMask = clamp(input.climate.frozen + input.shape.polarWeight * 0.35 + shorelineMask * 0.2, 0, 1);
+  const thermalMask = clamp(input.climate.thermal + input.shape.emissiveIntensity * 0.5 + (input.archetype === 'volcanic' ? smoothstep(0.46, 0.88, ridges) * 0.35 : 0), 0, 1);
   const mineralMask = clamp(input.climate.minerality + (input.archetype === 'mineral' ? smoothstep(0.42, 0.88, ridges) * 0.36 : 0), 0, 1);
   const wetnessMask = clamp(wetBase + shorelineMask * 0.52 - slopeMask * 0.2, 0, 1);
-  const vegetationSuitability = clamp((wetnessMask * (1 - thermalMask * 0.8) * (1 - cliffMask * 0.7)) * (0.4 + input.climate.vegetation), 0, 1);
+  const vegetationSuitability = clamp((wetnessMask * (1 - thermalMask * 0.8) * (1 - cliffMask * 0.7)) * (0.35 + input.climate.vegetation), 0, 1);
 
   return {
     height: heightValue,
     masks: {
-      height01: clamp((heightValue + 26) / 54, 0, 1),
+      height01: clamp((heightValue + 30) / 64, 0, 1),
       slope: slopeMask,
       cliff: cliffMask,
       wetness: wetnessMask,
@@ -190,10 +187,10 @@ function extractBuildSurface(geometry: THREE.PlaneGeometry, config: TerrainGeome
   for (let i = 0; i < pos.count; i += 1) {
     const x = pos.getX(i) / config.terrainWidth;
     const z = pos.getZ(i) / config.terrainDepth;
-    const center = smoothstep(0.88, 0.12, Math.max(Math.abs(x), Math.abs(z)));
+    const center = smoothstep(0.72, 0.06, Math.max(Math.abs(x), Math.abs(z)));
     const localSlope = Math.abs(fbm2(x * 7.5, z * 7.5, 0x4411aa, 2));
     slopes[i] = localSlope;
-    stableMask[i] = center * (1 - smoothstep(0.32, 0.68, localSlope));
+    stableMask[i] = center * (1 - smoothstep(0.34, 0.68, localSlope));
   }
 
   return {
@@ -202,24 +199,6 @@ function extractBuildSurface(geometry: THREE.PlaneGeometry, config: TerrainGeome
     slopes,
     stableMask,
   };
-}
-
-function buildableWeight(x: number, z: number, layout: CityLayoutMaskSource, config: TerrainGeometryConfig) {
-  const nx = x / config.terrainWidth;
-  const nz = z / config.terrainDepth;
-  const centerMask = smoothstep(1.08, 0.1, Math.max(Math.abs(nx), Math.abs(nz)));
-  const tile = worldToTile(x, z, config);
-  if (!tile) return centerMask * 0.3;
-  const key = `${tile.x},${tile.y}`;
-  const buildable = !layout.blocked.has(key) && !layout.expansion.has(key) ? 1 : 0.1;
-  return centerMask * buildable;
-}
-
-function worldToTile(x: number, z: number, config: TerrainGeometryConfig) {
-  const tx = Math.floor(((x + config.terrainWidth * 0.5) / config.terrainWidth) * GRID_WIDTH);
-  const ty = Math.floor(((z + config.terrainDepth * 0.5) / config.terrainDepth) * GRID_HEIGHT);
-  if (tx < 0 || ty < 0 || tx >= GRID_WIDTH || ty >= GRID_HEIGHT) return null;
-  return { x: tx, y: ty };
 }
 
 function fbm2(x: number, y: number, seed: number, octaves: number) {
