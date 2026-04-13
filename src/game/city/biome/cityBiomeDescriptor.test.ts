@@ -20,7 +20,8 @@ describe('createCityBiomeDescriptorFromSeed', () => {
 
       expect(descriptor.archetype).toBe(archetype);
       expect(descriptor.surfaceMode).toMatch(/water|ice|lava/);
-      expect(descriptor.ambience.length).toBeGreaterThan(8);
+      expect(descriptor.ambience.length).toBeGreaterThan(12);
+      expect(descriptor.landform).toBeTruthy();
       expect(descriptor.dominantGround).toHaveLength(3);
       expect(descriptor.secondaryAccents).toHaveLength(3);
       expect(descriptor.lotStyle).toBeTruthy();
@@ -29,7 +30,18 @@ describe('createCityBiomeDescriptorFromSeed', () => {
       expect(descriptor.humidity).toBeLessThanOrEqual(1);
       expect(descriptor.dryness).toBeGreaterThanOrEqual(0);
       expect(descriptor.dryness).toBeLessThanOrEqual(1);
+      expect(descriptor.relief).toBeGreaterThanOrEqual(0);
+      expect(descriptor.roughness).toBeGreaterThanOrEqual(0);
     }
+  });
+
+  it('gives each biome a distinct environmental signature (not tint-only)', () => {
+    const descriptors = ARCHETYPES.map((archetype) => createCityBiomeDescriptorFromSeed(findSeedForArchetype(archetype)));
+    const landforms = new Set(descriptors.map((descriptor) => descriptor.landform));
+    const perimeters = new Set(descriptors.map((descriptor) => descriptor.perimeterStyle));
+
+    expect(landforms.size).toBe(ARCHETYPES.length);
+    expect(perimeters.size).toBe(ARCHETYPES.length);
   });
 
   it('is deterministic for the same seed', () => {

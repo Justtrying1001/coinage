@@ -5,10 +5,12 @@ import type { GradientStop, PlanetGenerationConfig, PlanetSurfaceMode } from '@/
 
 export type CityLotStyle = 'terraced' | 'platform' | 'courtyard' | 'stilted' | 'reinforced';
 export type CityPerimeterStyle = 'coastal' | 'dune' | 'glacial' | 'basalt' | 'crystalline' | 'temperate' | 'overgrown' | 'wasteland';
+export type CityLandform = 'archipelago' | 'mesa' | 'ice-shelf' | 'caldera' | 'fault-plateau' | 'green-basin' | 'canopy-clearing' | 'sterile-basin';
 
 export interface CityBiomeDescriptor {
   archetype: PlanetArchetype;
   surfaceMode: PlanetSurfaceMode;
+  landform: CityLandform;
   ambience: string;
   dominantGround: [string, string, string];
   secondaryAccents: [string, string, string];
@@ -18,10 +20,13 @@ export interface CityBiomeDescriptor {
   thermal: number;
   minerality: number;
   vegetation: number;
+  relief: number;
+  roughness: number;
   lotStyle: CityLotStyle;
   perimeterStyle: CityPerimeterStyle;
   lotContrast: number;
   peripheralDensity: number;
+  edgeGlow: number;
 }
 
 export function createCityBiomeDescriptorFromSeed(seed: PlanetSeed) {
@@ -34,20 +39,20 @@ export function createCityBiomeDescriptor(profile: PlanetVisualProfile, generati
   const wetness = clamp(generation.material.wetness);
   const vegetation = clamp(generation.material.vegetationDensity);
   const dryness = clamp(1 - wetness * 0.82);
-  const frost = generation.surfaceMode === 'ice' ? clamp(0.6 + profile.polarWeight * 0.8) : clamp(profile.polarWeight * 0.4);
+  const frost = generation.surfaceMode === 'ice' ? clamp(0.62 + profile.polarWeight * 0.75) : clamp(profile.polarWeight * 0.38);
   const thermal = generation.surfaceMode === 'lava'
-    ? clamp(0.58 + generation.material.lavaAccentStrength * 0.45 + profile.emissiveIntensity * 0.8)
-    : clamp(profile.emissiveIntensity * 1.9);
-  const minerality = clamp(generation.material.metalness * 1.65 + generation.material.basaltContrast * 0.95 + profile.craterWeight * 0.42);
+    ? clamp(0.55 + generation.material.lavaAccentStrength * 0.6 + profile.emissiveIntensity * 0.85)
+    : clamp(profile.emissiveIntensity * 1.65);
+  const minerality = clamp(generation.material.metalness * 1.6 + generation.material.basaltContrast * 0.92 + profile.craterWeight * 0.46);
 
-  const dominantGround = gradientTriplet(generation.elevationGradient, [0.18, 0.56, 0.85]);
-  const secondaryAccents = gradientTriplet(generation.depthGradient, [0.22, 0.52, 0.82]);
-
+  const dominantGround = gradientTriplet(generation.elevationGradient, [0.16, 0.52, 0.82]);
+  const secondaryAccents = gradientTriplet(generation.depthGradient, [0.16, 0.48, 0.78]);
   const archetypeStyle = ARCHETYPE_STYLE[profile.archetype] ?? styleForSurfaceMode(generation.surfaceMode);
 
   return {
     archetype: profile.archetype,
     surfaceMode: generation.surfaceMode,
+    landform: archetypeStyle.landform,
     ambience: archetypeStyle.ambience,
     dominantGround,
     secondaryAccents,
@@ -57,36 +62,84 @@ export function createCityBiomeDescriptor(profile: PlanetVisualProfile, generati
     thermal,
     minerality,
     vegetation,
+    relief: clamp(profile.reliefStrength * 4.2),
+    roughness: clamp((profile.roughness + generation.material.microReliefStrength) * 0.6),
     lotStyle: archetypeStyle.lotStyle,
     perimeterStyle: archetypeStyle.perimeterStyle,
-    lotContrast: clamp(0.2 + generation.material.microAlbedoBreakup * 1.6 + (1 - wetness) * 0.1),
-    peripheralDensity: clamp(0.26 + vegetation * 0.36 + minerality * 0.24),
+    lotContrast: clamp(0.26 + generation.material.microAlbedoBreakup * 1.25 + (1 - wetness) * 0.1),
+    peripheralDensity: clamp(0.22 + vegetation * 0.36 + minerality * 0.26),
+    edgeGlow: clamp(0.14 + thermal * 0.42 + frost * 0.12 + wetness * 0.06),
   };
 }
 
-const ARCHETYPE_STYLE: Record<PlanetArchetype, { ambience: string; lotStyle: CityLotStyle; perimeterStyle: CityPerimeterStyle }> = {
-  oceanic: { ambience: 'Harbor terraces over lagoon shelf', lotStyle: 'stilted', perimeterStyle: 'coastal' },
-  arid: { ambience: 'Sun-scorched plateaus and dust basins', lotStyle: 'courtyard', perimeterStyle: 'dune' },
-  frozen: { ambience: 'Cryo plateaus and wind-cut ridges', lotStyle: 'platform', perimeterStyle: 'glacial' },
-  volcanic: { ambience: 'Stabilized basalt shelves near thermal seams', lotStyle: 'reinforced', perimeterStyle: 'basalt' },
-  mineral: { ambience: 'Dense extraction-ready crystalline bedrock', lotStyle: 'terraced', perimeterStyle: 'crystalline' },
-  terrestrial: { ambience: 'Balanced temperate foundations', lotStyle: 'courtyard', perimeterStyle: 'temperate' },
-  jungle: { ambience: 'Humid clearings carved into dense canopy', lotStyle: 'stilted', perimeterStyle: 'overgrown' },
-  barren: { ambience: 'Austere frontier slabs on sterile ground', lotStyle: 'reinforced', perimeterStyle: 'wasteland' },
+const ARCHETYPE_STYLE: Record<PlanetArchetype, {
+  ambience: string;
+  lotStyle: CityLotStyle;
+  perimeterStyle: CityPerimeterStyle;
+  landform: CityLandform;
+}> = {
+  oceanic: {
+    ambience: 'Coastal colony terraces anchored between lagoon and reef shelf',
+    lotStyle: 'stilted',
+    perimeterStyle: 'coastal',
+    landform: 'archipelago',
+  },
+  arid: {
+    ambience: 'Wind-cut desert mesas prepared for settlement pads',
+    lotStyle: 'courtyard',
+    perimeterStyle: 'dune',
+    landform: 'mesa',
+  },
+  frozen: {
+    ambience: 'Engineered outpost carved into fractured ice shelf',
+    lotStyle: 'platform',
+    perimeterStyle: 'glacial',
+    landform: 'ice-shelf',
+  },
+  volcanic: {
+    ambience: 'Basaltic caldera rim stabilized around thermal vents',
+    lotStyle: 'reinforced',
+    perimeterStyle: 'basalt',
+    landform: 'caldera',
+  },
+  mineral: {
+    ambience: 'Dense tectonic terrace over mineral-rich fault plateau',
+    lotStyle: 'terraced',
+    perimeterStyle: 'crystalline',
+    landform: 'fault-plateau',
+  },
+  terrestrial: {
+    ambience: 'Temperate basin with prepared civic terraces',
+    lotStyle: 'courtyard',
+    perimeterStyle: 'temperate',
+    landform: 'green-basin',
+  },
+  jungle: {
+    ambience: 'Humid canopy clearing with reinforced foundation rings',
+    lotStyle: 'stilted',
+    perimeterStyle: 'overgrown',
+    landform: 'canopy-clearing',
+  },
+  barren: {
+    ambience: 'Austere sterile basin with functional colony slabs',
+    lotStyle: 'reinforced',
+    perimeterStyle: 'wasteland',
+    landform: 'sterile-basin',
+  },
 };
 
 function styleForSurfaceMode(surfaceMode: PlanetSurfaceMode) {
-  if (surfaceMode === 'ice') return { ambience: 'Cold engineered outpost', lotStyle: 'platform' as const, perimeterStyle: 'glacial' as const };
-  if (surfaceMode === 'lava') return { ambience: 'Thermal fortified district', lotStyle: 'reinforced' as const, perimeterStyle: 'basalt' as const };
-  return { ambience: 'Hydrated expansion district', lotStyle: 'courtyard' as const, perimeterStyle: 'temperate' as const };
+  if (surfaceMode === 'ice') {
+    return { ambience: 'Cold engineered outpost', lotStyle: 'platform' as const, perimeterStyle: 'glacial' as const, landform: 'ice-shelf' as const };
+  }
+  if (surfaceMode === 'lava') {
+    return { ambience: 'Thermal fortified district', lotStyle: 'reinforced' as const, perimeterStyle: 'basalt' as const, landform: 'caldera' as const };
+  }
+  return { ambience: 'Hydrated expansion district', lotStyle: 'courtyard' as const, perimeterStyle: 'temperate' as const, landform: 'green-basin' as const };
 }
 
 function gradientTriplet(gradient: GradientStop[], anchors: [number, number, number]): [string, string, string] {
-  return [
-    sampleGradient(gradient, anchors[0]),
-    sampleGradient(gradient, anchors[1]),
-    sampleGradient(gradient, anchors[2]),
-  ];
+  return [sampleGradient(gradient, anchors[0]), sampleGradient(gradient, anchors[1]), sampleGradient(gradient, anchors[2])];
 }
 
 function sampleGradient(gradient: GradientStop[], anchor: number) {

@@ -274,158 +274,187 @@ canvas {
   z-index: 11;
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: 0.55rem;
 }
 
 .city-base-layer-hud {
-  border: 1px solid rgba(131, 201, 236, 0.3);
-  border-radius: 12px;
-  background: linear-gradient(180deg, rgba(5, 15, 24, 0.9), rgba(7, 20, 31, 0.8));
-  backdrop-filter: blur(4px);
-  padding: 0.58rem 0.72rem;
+  align-self: flex-start;
+  max-width: 26rem;
+  padding: 0.44rem 0.58rem;
+  border-radius: 10px;
+  border: 1px solid rgba(142, 201, 233, 0.24);
+  background: rgba(3, 10, 17, 0.56);
+  backdrop-filter: blur(3px);
   display: grid;
-  gap: 0.34rem;
-  max-width: 34rem;
+  gap: 0.24rem;
 }
 
 .city-base-layer-title {
   margin: 0;
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   line-height: 1.2;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #e7f6ff;
+  color: rgba(232, 245, 255, 0.95);
 }
 
 .city-base-layer-subtitle,
 .city-base-layer-ambience {
   margin: 0;
-  font-size: 0.61rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: rgba(204, 229, 245, 0.9);
+  font-size: 0.56rem;
+  letter-spacing: 0.05em;
+  color: rgba(207, 231, 246, 0.9);
 }
 
 .city-base-layer-ambience {
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
   text-transform: none;
-  letter-spacing: 0.03em;
-  font-size: 0.67rem;
-  color: rgba(190, 221, 240, 0.95);
 }
 
 .city-base-layer-controls {
   display: flex;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
 .city-base-layer-button {
-  border: 1px solid rgba(151, 214, 246, 0.5);
+  border: 1px solid rgba(148, 210, 245, 0.44);
   border-radius: 999px;
-  padding: 0.3rem 0.7rem;
-  font-size: 0.58rem;
-  letter-spacing: 0.06em;
+  padding: 0.23rem 0.62rem;
+  font-size: 0.55rem;
   text-transform: uppercase;
-  color: #dcf3ff;
-  background: rgba(8, 25, 38, 0.82);
+  letter-spacing: 0.05em;
+  color: #daf1ff;
+  background: rgba(6, 20, 31, 0.74);
   cursor: pointer;
 }
 
 .city-base-layer-button:hover {
-  border-color: rgba(192, 235, 255, 0.96);
+  border-color: rgba(188, 233, 255, 0.94);
 }
 
 .city-base-layer-stage {
   position: relative;
   flex: 1;
-  min-height: 280px;
+  min-height: 300px;
   border-radius: 16px;
-  border: 1px solid rgba(116, 185, 222, 0.3);
   overflow: hidden;
-  --city-ground-a: #4a5d69;
-  --city-ground-b: #5f7568;
-  --city-ground-c: #85908e;
-  --city-accent-a: #1e3242;
-  --city-accent-b: #2d4554;
-  --city-accent-c: #4f6f7f;
-  background: radial-gradient(circle at 70% -5%, color-mix(in srgb, var(--city-ground-c) 40%, #ffffff 8%) 0%, transparent 45%),
-    radial-gradient(circle at 15% 130%, color-mix(in srgb, var(--city-accent-c) 38%, #00131f 32%) 0%, transparent 48%),
-    linear-gradient(145deg, var(--city-ground-a), var(--city-ground-b) 42%, var(--city-ground-c));
+  border: 1px solid rgba(112, 185, 223, 0.28);
+  background: radial-gradient(circle at 50% -20%, rgba(193, 227, 246, 0.18), transparent 54%), #050c14;
+  --city-ground-a: #3f545f;
+  --city-ground-b: #597268;
+  --city-ground-c: #7e8f85;
+  --city-accent-a: #223647;
+  --city-accent-b: #365467;
+  --city-accent-c: #4f7282;
+  --city-glow: 0.26;
 }
 
-.city-base-layer-surface {
-  position: absolute;
-  inset: 5% 4% 6% 4%;
-  border-radius: 18px;
-  background:
-    radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--city-ground-c) 42%, #ffffff 8%) 0%, transparent 43%),
-    radial-gradient(circle at 50% 65%, color-mix(in srgb, var(--city-accent-b) 45%, transparent 55%) 0%, transparent 62%),
-    linear-gradient(168deg, color-mix(in srgb, var(--city-ground-a) 84%, #09131d 16%), color-mix(in srgb, var(--city-ground-b) 78%, #05090f 22%));
-  box-shadow: inset 0 0 0 1px rgba(205, 232, 246, 0.15), inset 0 0 40px rgba(8, 18, 26, 0.45);
+.city-base-layer-world {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
-.city-base-layer-surface[data-surface-mode='ice'] {
-  filter: saturate(0.82) brightness(1.07);
+.city-world-backdrop {
+  opacity: 0.96;
 }
 
-.city-base-layer-surface[data-surface-mode='lava'] {
-  filter: saturate(1.16) contrast(1.06);
+.city-world-periphery {
+  fill: color-mix(in srgb, var(--city-accent-a) 72%, #01070d 28%);
 }
 
-.city-base-layer-core {
-  position: absolute;
-  left: 50%;
-  top: 52%;
-  width: 34%;
-  height: 24%;
-  transform: translate(-50%, -50%);
-  border-radius: 22px;
-  background:
-    linear-gradient(160deg, color-mix(in srgb, var(--city-accent-c) 62%, #d4e5ef 8%), color-mix(in srgb, var(--city-accent-a) 72%, #000000 28%));
-  box-shadow: 0 10px 28px rgba(3, 8, 12, 0.45), inset 0 0 0 1px rgba(219, 238, 247, 0.28);
+.city-world-terrain-rim {
+  mix-blend-mode: screen;
+}
+
+.city-world-terrain {
+  stroke: rgba(219, 235, 245, 0.13);
+  stroke-width: 2;
+}
+
+.city-world-terrain-shadow {
+  fill: rgba(0, 0, 0, 0.52);
+}
+
+.city-world-terrain-grain {
+  fill: rgba(255, 255, 255, 0.9);
+  mix-blend-mode: soft-light;
+}
+
+.city-world-detail-line {
+  stroke: color-mix(in srgb, var(--city-accent-c) 44%, #eff8ff 5%);
+  stroke-width: 2.2;
+  fill: none;
+  stroke-linecap: round;
+}
+
+.city-world-plateau-edge {
+  fill: none;
+  stroke: color-mix(in srgb, var(--city-ground-c) 58%, #f3f9ff 8%);
+  stroke-width: 3;
+  opacity: 0.62;
 }
 
 .city-base-layer-lot {
-  position: absolute;
-  border-radius: 10px;
-  background: linear-gradient(165deg, color-mix(in srgb, var(--city-accent-c) 68%, #dbe9f2 8%), color-mix(in srgb, var(--city-accent-a) 72%, #000000 25%));
-  box-shadow: 0 3px 12px rgba(5, 13, 20, 0.33), inset 0 0 0 1px rgba(213, 232, 245, 0.18);
+  fill: color-mix(in srgb, var(--city-ground-c) 52%, #d2e5ef 8%);
+  stroke: color-mix(in srgb, var(--city-accent-a) 72%, #000000 28%);
+  stroke-width: 2;
+}
+
+.city-base-layer-lot.is-core {
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.1)) drop-shadow(0 8px 8px rgba(0, 0, 0, 0.22));
 }
 
 .city-base-layer-lot.is-expansion {
-  border-style: dashed;
-  border-width: 1px;
-  border-color: rgba(185, 213, 231, 0.35);
-  background: linear-gradient(150deg, color-mix(in srgb, var(--city-ground-c) 74%, #b9d8e8 4%), color-mix(in srgb, var(--city-ground-a) 80%, #04080e 20%));
+  fill: color-mix(in srgb, var(--city-ground-b) 64%, #9fc7db 5%);
+  stroke-dasharray: 8 7;
+  stroke-opacity: 0.75;
 }
 
-.city-base-layer-surface[data-lot-style='stilted'] .city-base-layer-lot {
-  border-radius: 14px;
+.city-world-thermal-fissure {
+  stroke: color-mix(in srgb, #ff9251 72%, #ffe5a4 12%);
+  stroke-width: 3.4;
+  fill: none;
+  opacity: 0.78;
+  filter: drop-shadow(0 0 8px rgba(255, 120, 45, calc(var(--city-glow) * 0.95)));
 }
 
-.city-base-layer-surface[data-lot-style='reinforced'] .city-base-layer-lot {
-  border-radius: 7px;
-  box-shadow: 0 3px 10px rgba(5, 12, 20, 0.45), inset 0 0 0 1px rgba(232, 239, 244, 0.16);
+.city-world-ice-crack {
+  stroke: color-mix(in srgb, #d8edff 72%, #6ca9d4 18%);
+  stroke-width: 2;
+  fill: none;
+  opacity: 0.6;
 }
 
-.city-base-layer-surface[data-lot-style='courtyard'] .city-base-layer-lot {
-  border-radius: 16px;
+.city-base-layer-stage[data-perimeter-style='coastal'] .city-world-periphery {
+  fill: color-mix(in srgb, #113550 68%, var(--city-accent-b) 32%);
 }
 
-.city-base-layer-decor {
-  position: absolute;
-  border-radius: 999px;
-  background: radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--city-ground-c) 56%, #ffffff 6%), color-mix(in srgb, var(--city-ground-a) 70%, #000000 30%));
-  pointer-events: none;
+.city-base-layer-stage[data-perimeter-style='dune'] .city-world-periphery {
+  fill: color-mix(in srgb, #5f3f23 72%, var(--city-accent-a) 28%);
 }
 
-.city-base-layer-surface[data-perimeter-style='coastal'] .city-base-layer-decor {
-  filter: saturate(1.15);
+.city-base-layer-stage[data-perimeter-style='glacial'] .city-world-periphery {
+  fill: color-mix(in srgb, #35556d 70%, #c2e3f8 20%);
 }
 
-.city-base-layer-surface[data-perimeter-style='glacial'] .city-base-layer-decor {
-  filter: brightness(1.12) saturate(0.75);
+.city-base-layer-stage[data-perimeter-style='basalt'] .city-world-periphery {
+  fill: color-mix(in srgb, #26191d 74%, #59211d 18%);
 }
 
-.city-base-layer-surface[data-perimeter-style='basalt'] .city-base-layer-decor {
-  filter: contrast(1.25) saturate(1.2);
+.city-base-layer-stage[data-perimeter-style='crystalline'] .city-world-periphery {
+  fill: color-mix(in srgb, #293140 70%, #7488ad 20%);
+}
+
+.city-base-layer-stage[data-perimeter-style='temperate'] .city-world-periphery {
+  fill: color-mix(in srgb, #1d3b2e 70%, #3f5d44 24%);
+}
+
+.city-base-layer-stage[data-perimeter-style='overgrown'] .city-world-periphery {
+  fill: color-mix(in srgb, #143121 72%, #32543b 24%);
+}
+
+.city-base-layer-stage[data-perimeter-style='wasteland'] .city-world-periphery {
+  fill: color-mix(in srgb, #3c332f 76%, #5a4b44 18%);
 }
