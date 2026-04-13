@@ -147,7 +147,7 @@ export class Planet3DMode implements RenderModeController {
 
     const helpText = document.createElement('p');
     helpText.className = 'planet-inspect-line';
-    helpText.textContent = 'Settlement inspection only. City View is temporarily offline.';
+    helpText.textContent = 'Settlement inspection active. Enter City View for biome base layer.';
 
     const button = document.createElement('button');
     button.type = 'button';
