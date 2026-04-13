@@ -4,7 +4,7 @@ import { Galaxy2DMode } from '@/game/render/modes/Galaxy2DMode';
 import type { Galaxy2DViewSnapshot } from '@/game/render/modes/Galaxy2DMode';
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
 import { Planet3DMode } from '@/game/render/modes/Planet3DMode';
-import { CityViewPlaceholderMode } from '@/game/render/modes/CityViewPlaceholderMode';
+import { CityFoundationMode } from '@/game/render/modes/CityFoundationMode';
 
 interface RenderModeFactory {
   createGalaxyMode: (
@@ -58,7 +58,7 @@ export class CoinageRenderApp {
           initialViewSnapshot: options?.viewSnapshot ?? this.galaxyViewSnapshot,
         }),
       createPlanetMode: (planet, context) => new Planet3DMode(planet, context),
-      createCityMode: (planet, context) => new CityViewPlaceholderMode(planet, context),
+      createCityMode: (planet, context) => new CityFoundationMode(planet, context),
     };
   }
 

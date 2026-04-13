@@ -268,35 +268,120 @@ canvas {
   opacity: 0.9;
 }
 
-.city-reset-panel {
+.city-foundation-root {
   position: absolute;
-  left: 1rem;
-  bottom: 1rem;
-  z-index: 12;
+  inset: 4.5rem 1rem 1rem 1rem;
+  z-index: 11;
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) 1fr;
+  gap: 0.9rem;
+}
+
+.city-foundation-hud {
+  border: 1px solid rgba(130, 194, 232, 0.35);
+  border-radius: 12px;
+  background: rgba(6, 15, 25, 0.93);
+  padding: 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  min-width: 250px;
-  max-width: min(380px, calc(100vw - 2rem));
-  padding: 0.82rem;
-  border-radius: 12px;
-  border: 1px solid rgba(157, 218, 255, 0.3);
-  background: linear-gradient(180deg, rgba(9, 21, 34, 0.8), rgba(6, 14, 22, 0.84));
-  box-shadow: 0 8px 24px rgba(3, 9, 15, 0.45);
-  backdrop-filter: blur(3px);
+  gap: 0.6rem;
 }
 
-.city-reset-panel__title {
+.city-foundation-title {
   margin: 0;
-  font-size: 0.84rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.city-reset-panel__subtitle {
-  margin: -0.1rem 0 0;
-  font-size: 0.66rem;
+  font-size: 0.82rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(165, 204, 230, 0.86);
+}
+
+.city-foundation-meta,
+.city-foundation-legend,
+.city-foundation-hint {
+  margin: 0;
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(183, 218, 240, 0.9);
+}
+
+.city-foundation-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+}
+
+.city-foundation-button {
+  border: 1px solid rgba(122, 194, 236, 0.45);
+  border-radius: 999px;
+  padding: 0.34rem 0.68rem;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #d9f0ff;
+  background: rgba(10, 30, 47, 0.92);
+  cursor: pointer;
+}
+
+.city-foundation-button:hover {
+  border-color: rgba(173, 224, 252, 0.95);
+}
+
+.city-foundation-grid {
+  display: grid;
+  gap: 2px;
+  border: 1px solid rgba(109, 181, 224, 0.3);
+  border-radius: 12px;
+  background: rgba(4, 11, 20, 0.9);
+  padding: 0.45rem;
+  align-content: start;
+}
+
+.city-foundation-tile {
+  aspect-ratio: 1 / 1;
+  border: 1px solid rgba(56, 93, 118, 0.55);
+  background: rgba(20, 39, 54, 0.8);
+  padding: 0;
+  margin: 0;
+  cursor: crosshair;
+  position: relative;
+  color: #e5f5ff;
+}
+
+.city-foundation-tile.is-blocked {
+  background: rgba(37, 19, 34, 0.92);
+  border-color: rgba(130, 68, 104, 0.7);
+}
+
+.city-foundation-tile.is-road {
+  background: rgba(24, 57, 72, 0.92);
+  border-color: rgba(110, 184, 222, 0.76);
+}
+
+.city-foundation-tile.is-building {
+  background: rgba(39, 70, 39, 0.95);
+  border-color: rgba(118, 209, 121, 0.85);
+}
+
+.city-foundation-tile.is-preview-valid {
+  outline: 2px solid rgba(110, 220, 128, 0.9);
+  outline-offset: -2px;
+}
+
+.city-foundation-tile.is-preview-invalid {
+  outline: 2px solid rgba(255, 102, 121, 0.95);
+  outline-offset: -2px;
+}
+
+.city-foundation-label {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  right: 2px;
+  display: block;
+  font-size: 0.46rem;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  text-align: left;
+  color: #e9f8e7;
 }
