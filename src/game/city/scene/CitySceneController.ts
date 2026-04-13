@@ -14,6 +14,7 @@ import {
   type BufferGeometry,
   CylinderGeometry,
   RingGeometry,
+  CircleGeometry,
 } from 'three';
 import { CityAssetRegistry } from '@/game/city/assets/CityAssetRegistry';
 import { createCityScene } from '@/game/city/scene/createCityScene';
@@ -21,10 +22,10 @@ import type { CityInteractionTarget, CityViewModel } from '@/game/city/runtime/c
 import { CityRaycaster } from '@/game/city/interaction/CityRaycaster';
 
 interface CitySlotVisual {
-  slot: Mesh;
+  foundation: Mesh;
   ring: Mesh;
-  deck: Mesh;
-  supports: Mesh[];
+  marker: Mesh;
+  pylons: Mesh[];
   buildingRoot: Group;
 }
 
@@ -34,6 +35,7 @@ export class CitySceneController {
 
   private readonly scene: Scene;
   private readonly cityRoot: Group;
+  private readonly sampleGroundHeight: (x: number, z: number) => number;
   private readonly raycaster = new CityRaycaster();
   private readonly assets = new CityAssetRegistry();
   private readonly slotVisuals = new Map<string, CitySlotVisual>();
@@ -43,16 +45,17 @@ export class CitySceneController {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.12;
+    this.renderer.toneMappingExposure = 1.06;
     this.renderer.domElement.className = 'render-surface render-surface--city3d';
 
-    this.camera = new PerspectiveCamera(38, 1, 0.1, 220);
-    this.camera.position.set(24, 19, 22);
-    this.camera.lookAt(0, 2.4, 0);
+    this.camera = new PerspectiveCamera(44, 1, 0.1, 260);
+    this.camera.position.set(-19, 17, 28);
+    this.camera.lookAt(0, 3.5, 0);
 
     const scaffold = createCityScene(viewModel.cityTheme, seed);
     this.scene = scaffold.scene;
     this.cityRoot = scaffold.cityRoot;
+    this.sampleGroundHeight = scaffold.sampleGroundHeight;
   }
 
   mount() {
@@ -91,72 +94,70 @@ export class CitySceneController {
   }
 
   private buildStaticScene() {
-    const padGeometry = new CylinderGeometry(2.24, 2.42, 0.46, 8);
-    const deckGeometry = new CylinderGeometry(1.82, 1.96, 0.38, 8);
-    const trimGeometry = new RingGeometry(1.9, 2.3, 8);
-    const supportGeometry = new BoxGeometry(0.24, 0.8, 0.24);
+    const baseGeometry = new CylinderGeometry(2.35, 2.7, 0.56, 18);
+    const ringGeometry = new RingGeometry(1.9, 2.35, 24);
+    const markerGeometry = new CircleGeometry(1.24, 20);
+    const pylonGeometry = new BoxGeometry(0.2, 0.9, 0.2);
 
     for (const slot of this.viewModel.layout.slots) {
+      const y = this.sampleGroundHeight(slot.position.x, slot.position.z);
+      const scale = slot.scale ?? 1;
+
       const baseMaterial = new MeshStandardMaterial({
-        color: slot.startsLocked ? 0x5b6673 : this.viewModel.cityTheme.padColor,
-        roughness: 0.48,
-        metalness: 0.36,
+        color: slot.startsLocked ? 0x5f6068 : this.viewModel.cityTheme.padColor,
+        roughness: 0.64,
+        metalness: 0.21,
       });
-      const deckMaterial = new MeshStandardMaterial({
-        color: this.viewModel.cityTheme.metalColor,
-        roughness: 0.35,
-        metalness: 0.68,
-      });
-      const trimMaterial = new MeshStandardMaterial({
-        color: this.viewModel.cityTheme.padTrimColor,
-        roughness: 0.3,
-        metalness: 0.75,
-        emissive: this.viewModel.cityTheme.emissiveAccent,
+      const ringMaterial = new MeshStandardMaterial({
+        color: this.viewModel.cityTheme.structureTrimColor,
+        roughness: 0.2,
+        metalness: 0.72,
+        emissive: this.viewModel.cityTheme.padGlow,
         emissiveIntensity: 0.08,
       });
+      const markerMaterial = new MeshStandardMaterial({
+        color: this.viewModel.cityTheme.structureBaseColor,
+        roughness: 0.42,
+        metalness: 0.46,
+      });
 
-      const slotMesh = new Mesh(padGeometry, baseMaterial);
-      slotMesh.position.set(slot.position.x, slot.position.y + 0.14, slot.position.z);
-      slotMesh.rotation.y = slot.rotationY;
-      slotMesh.scale.setScalar(slot.scale ?? 1);
-      slotMesh.userData.cityTargetType = 'slot';
-      slotMesh.userData.citySlotId = slot.id;
+      const foundation = new Mesh(baseGeometry, baseMaterial);
+      foundation.position.set(slot.position.x, y + 0.2, slot.position.z);
+      foundation.rotation.y = slot.rotationY;
+      foundation.scale.setScalar(scale);
+      foundation.userData.cityTargetType = 'slot';
+      foundation.userData.citySlotId = slot.id;
 
-      const deckMesh = new Mesh(deckGeometry, deckMaterial);
-      deckMesh.position.set(slot.position.x, slot.position.y + 0.44, slot.position.z);
-      deckMesh.rotation.y = slot.rotationY;
-      deckMesh.scale.setScalar(slot.scale ?? 1);
+      const ring = new Mesh(ringGeometry, ringMaterial);
+      ring.position.set(slot.position.x, y + 0.49, slot.position.z);
+      ring.rotation.set(-Math.PI / 2, slot.rotationY, 0);
+      ring.scale.setScalar(scale);
 
-      const ringMesh = new Mesh(trimGeometry, trimMaterial);
-      ringMesh.position.set(slot.position.x, slot.position.y + 0.65, slot.position.z);
-      ringMesh.rotation.set(-Math.PI / 2, slot.rotationY, 0);
-      ringMesh.scale.setScalar(slot.scale ?? 1);
+      const marker = new Mesh(markerGeometry, markerMaterial);
+      marker.position.set(slot.position.x, y + 0.5, slot.position.z);
+      marker.rotation.set(-Math.PI / 2, slot.rotationY, 0);
+      marker.scale.setScalar(scale * 0.85);
 
-      const supports: Mesh[] = [];
+      const pylons: Mesh[] = [];
       const supportOffsets = [
-        new Vector3(1.35, -0.15, 1.35),
-        new Vector3(-1.35, -0.15, 1.35),
-        new Vector3(1.35, -0.15, -1.35),
-        new Vector3(-1.35, -0.15, -1.35),
+        new Vector3(1.55, -0.2, 1.55),
+        new Vector3(-1.55, -0.2, 1.55),
+        new Vector3(1.55, -0.2, -1.55),
+        new Vector3(-1.55, -0.2, -1.55),
       ];
-
       for (const offset of supportOffsets) {
-        const support = new Mesh(supportGeometry, deckMaterial);
-        support.position.set(slot.position.x + offset.x, slot.position.y + offset.y, slot.position.z + offset.z);
-        supports.push(support);
-        this.cityRoot.add(support);
+        const pylon = new Mesh(pylonGeometry, markerMaterial);
+        pylon.position.set(slot.position.x + offset.x * scale, y + offset.y, slot.position.z + offset.z * scale);
+        pylons.push(pylon);
+        this.cityRoot.add(pylon);
       }
 
       const buildingRoot = new Group();
-      buildingRoot.position.set(slot.position.x, slot.position.y + 0.58, slot.position.z);
+      buildingRoot.position.set(slot.position.x, y + 0.58, slot.position.z);
       buildingRoot.rotation.y = slot.rotationY;
 
-      this.cityRoot.add(slotMesh);
-      this.cityRoot.add(deckMesh);
-      this.cityRoot.add(ringMesh);
-      this.cityRoot.add(buildingRoot);
-
-      this.slotVisuals.set(slot.id, { slot: slotMesh, ring: ringMesh, deck: deckMesh, supports, buildingRoot });
+      this.cityRoot.add(foundation, ring, marker, buildingRoot);
+      this.slotVisuals.set(slot.id, { foundation, ring, marker, pylons, buildingRoot });
     }
   }
 
@@ -182,24 +183,24 @@ export class CitySceneController {
   }
 
   private applySlotColor(visuals: CitySlotVisual, model: CityViewModel, slotId: string, isLocked: boolean) {
-    const slotMaterial = visuals.slot.material as MeshStandardMaterial;
-    const deckMaterial = visuals.deck.material as MeshStandardMaterial;
+    const baseMaterial = visuals.foundation.material as MeshStandardMaterial;
     const ringMaterial = visuals.ring.material as MeshStandardMaterial;
+    const markerMaterial = visuals.marker.material as MeshStandardMaterial;
 
     if (isLocked) {
-      slotMaterial.color.setHex(0x5a6674);
-      deckMaterial.color.setHex(0x4b5865);
-      ringMaterial.color.setHex(0x728294);
+      baseMaterial.color.setHex(0x585f6a);
+      markerMaterial.color.setHex(0x4f5664);
+      ringMaterial.color.setHex(0x6f7480);
       ringMaterial.emissiveIntensity = 0;
       return;
     }
 
     const highlighted = model.selectedTarget.type !== 'none' && model.selectedTarget.slotId === slotId;
-    slotMaterial.color.set(highlighted ? model.cityTheme.padTrimColor : model.cityTheme.padColor);
-    deckMaterial.color.set(model.cityTheme.metalColor);
-    ringMaterial.color.set(highlighted ? model.cityTheme.accentColor : model.cityTheme.padTrimColor);
-    ringMaterial.emissive.set(model.cityTheme.emissiveAccent);
-    ringMaterial.emissiveIntensity = highlighted ? 0.24 : 0.08;
+    baseMaterial.color.set(highlighted ? model.cityTheme.structureTrimColor : model.cityTheme.padColor);
+    markerMaterial.color.set(model.cityTheme.structureBaseColor);
+    ringMaterial.color.set(highlighted ? model.cityTheme.padGlow : model.cityTheme.structureTrimColor);
+    ringMaterial.emissive.set(model.cityTheme.padGlow);
+    ringMaterial.emissiveIntensity = highlighted ? 0.28 : 0.09;
   }
 
   private disposeSceneTree(root: Object3D) {
