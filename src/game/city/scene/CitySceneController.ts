@@ -14,7 +14,7 @@ import {
   type Object3D,
 } from 'three';
 import { PlanetPostFx } from '@/game/planet/postfx/PlanetPostFx';
-import { createPlanetSurfaceAdapter } from '@/game/city/terrain/createPlanetSurfaceAdapter';
+import { createCityLandscapeTerrain } from '@/game/city/terrain/createCityLandscapeTerrain';
 import type { PlanetArchetype } from '@/game/render/types';
 
 export class CitySceneController {
@@ -35,20 +35,20 @@ export class CitySceneController {
     this.renderer.toneMapping = ACESFilmicToneMapping;
     this.renderer.domElement.className = 'render-surface render-surface--city3d';
 
-    const terrain = createPlanetSurfaceAdapter(seed);
+    const terrain = createCityLandscapeTerrain(seed);
     this.archetype = terrain.profile.archetype;
     this.renderer.toneMappingExposure = terrain.config.postfx.exposure;
 
-    this.camera = new PerspectiveCamera(52, 1, 0.1, 900);
-    this.camera.position.set(0, 20, 86);
-    this.camera.lookAt(new Vector3(0, 12, -10));
+    this.camera = new PerspectiveCamera(56, 1, 0.1, 900);
+    this.camera.position.set(0, 18, 72);
+    this.camera.lookAt(new Vector3(0, 11, -56));
 
     this.scene = new Scene();
     this.scene.background = gradientColor(terrain.config.elevationGradient, 0.78, 0x1a2432);
     this.scene.fog = new Fog(
       gradientColor(terrain.config.depthGradient, 0.84, 0x2c3c4d),
-      70,
-      260,
+      52,
+      240,
     );
 
     this.scene.add(terrain.mesh);

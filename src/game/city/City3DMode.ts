@@ -105,13 +105,13 @@ export class City3DMode implements RenderModeController {
   private refreshPanel() {
     if (!this.headerTitle || !this.headerSubtitle || !this.sectionMeta) return;
 
-    this.headerTitle.textContent = 'City View // Planet Surface Adapter';
-    this.headerSubtitle.textContent = `Planet ${this.selectedPlanet.id.toUpperCase()} · ${this.settlementId ? `Settlement ${this.settlementId.toUpperCase()}` : 'Terrain Baseline'}`;
+    this.headerTitle.textContent = 'City View // Planet DNA Landscape';
+    this.headerSubtitle.textContent = `Planet ${this.selectedPlanet.id.toUpperCase()} · ${this.settlementId ? `Settlement ${this.settlementId.toUpperCase()}` : 'Terrain Study'}`;
 
     this.sectionMeta.innerHTML = '';
-    this.appendLine(this.sectionMeta, `Archetype-derived local surface: ${this.archetypeLabel}.`);
+    this.appendLine(this.sectionMeta, `Archetype-derived local landscape: ${this.archetypeLabel}.`);
     this.appendLine(this.sectionMeta, 'Terrain-only milestone: no buildings, slots, roads, or placement systems.');
-    this.appendLine(this.sectionMeta, 'Material/shader, gradients, and postfx are inherited from the planet pipeline.');
+    this.appendLine(this.sectionMeta, 'Gradients, material parameters, relief language, and postfx are inherited from the planet pipeline.');
   }
 
   private appendLine(container: HTMLElement, text: string) {
