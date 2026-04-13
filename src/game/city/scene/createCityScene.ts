@@ -1,28 +1,32 @@
 import {
   AmbientLight,
+  BackSide,
   BoxGeometry,
   Color,
   DirectionalLight,
   Fog,
   Group,
   HemisphereLight,
-  Matrix4,
   Mesh,
+  MeshBasicMaterial,
   MeshStandardMaterial,
-  Object3D,
-  PlaneGeometry,
   Scene,
+  SphereGeometry,
   Vector3,
 } from 'three';
 import type { CityTheme } from '@/game/city/themes/cityThemePresets';
+import type { CityBiomeContext } from '@/game/city/runtime/CityBiomeContext';
 import { SeededRng } from '@/game/world/rng';
+import { createCityTerrainMaterial } from '@/game/city/terrain/createCityTerrainMaterial';
+import { generateCitySurfaceSlice, type CitySurfaceSlice } from '@/game/city/terrain/generateCitySurfaceSlice';
 
 export interface CitySceneScaffold {
   scene: Scene;
   cityRoot: Group;
+  terrain: CitySurfaceSlice;
 }
 
-export function createCityScene(theme: CityTheme, seed: number): CitySceneScaffold {
+export function createCityScene(theme: CityTheme, seed: number, biomeContext: CityBiomeContext): CitySceneScaffold {
   const scene = new Scene();
   scene.background = new Color(theme.clearColor);
   scene.fog = new Fog(theme.fogColor, theme.fogNear, theme.fogFar);
@@ -31,121 +35,102 @@ export function createCityScene(theme: CityTheme, seed: number): CitySceneScaffo
   cityRoot.name = 'city-root';
   scene.add(cityRoot);
 
-  const terrain = createTerrainPatch(theme, seed);
-  terrain.receiveShadow = true;
-  cityRoot.add(terrain);
+  const terrain = generateCitySurfaceSlice(biomeContext);
+  const terrainMesh = new Mesh(terrain.geometry, createCityTerrainMaterial(biomeContext));
+  terrainMesh.receiveShadow = true;
+  cityRoot.add(terrainMesh);
 
-  const shelf = new Mesh(
-    new BoxGeometry(62, 5, 62),
-    new MeshStandardMaterial({
-      color: theme.groundShadowColor,
-      roughness: 0.9,
-      metalness: 0.03,
-    }),
-  );
-  shelf.position.y = -2.6;
-  cityRoot.add(shelf);
+  addDistantRelief(scene, theme, biomeContext);
+  addBiomeSetDressing(cityRoot, theme, seed, biomeContext, terrain);
 
-  addIceOutcrops(cityRoot, theme, seed);
-
-  const hemi = new HemisphereLight(0xb7dcff, 0x1a2b3d, 0.48);
+  const hemi = new HemisphereLight(0xb7dcff, 0x1a2b3d, 0.52);
   scene.add(hemi);
 
   const ambient = new AmbientLight(theme.ambientLightColor, theme.ambientLightIntensity);
   scene.add(ambient);
 
   const keyLight = new DirectionalLight(theme.directionalLightColor, theme.directionalLightIntensity);
-  keyLight.position.set(20, 26, 12);
+  keyLight.position.set(18, 26, 10);
   scene.add(keyLight);
 
   const rimLight = new DirectionalLight(theme.rimLightColor, theme.rimLightIntensity);
-  rimLight.position.set(-24, 10, -20);
+  rimLight.position.set(-20, 12, -24);
   scene.add(rimLight);
 
-  return { scene, cityRoot };
+  return { scene, cityRoot, terrain };
 }
 
-function createTerrainPatch(theme: CityTheme, seed: number): Mesh {
-  const geometry = new PlaneGeometry(56, 56, 70, 70);
-  const rng = new SeededRng(seed ^ 0x8f1734aa);
-  const position = geometry.getAttribute('position');
+function addDistantRelief(scene: Scene, theme: CityTheme, context: CityBiomeContext) {
+  const hazeColor = new Color(theme.fogColor).lerp(new Color(theme.clearColor), 0.25);
+  const haze = new Mesh(
+    new SphereGeometry(140, 24, 18),
+    new MeshBasicMaterial({ color: hazeColor, side: BackSide, transparent: true, opacity: 0.34 }),
+  );
+  haze.position.y = 30;
+  scene.add(haze);
 
-  for (let index = 0; index < position.count; index += 1) {
-    const x = position.getX(index);
-    const z = position.getY(index);
+  const ridgeColor = new Color(theme.groundShadowColor)
+    .lerp(new Color().fromArray(context.planetGenerationConfig.elevationGradient[context.planetGenerationConfig.elevationGradient.length - 1]?.color ?? [0.6, 0.6, 0.6]), 0.2)
+    .multiplyScalar(0.8);
 
-    const radial = Math.min(1, Math.hypot(x, z) / 28);
-    const ridge = Math.sin(x * 0.28 + 0.8) * 0.32 + Math.cos(z * 0.31 - 0.6) * 0.26;
-    const micro = Math.sin((x + z) * 0.72) * 0.08;
-    const terrace = Math.floor((ridge + 0.8) * 2.8) / 2.8;
-    const crater = -Math.exp(-((x - 7.5) ** 2 + (z + 6.2) ** 2) / 46) * 0.65;
-    const plateau = Math.exp(-((x + 8.8) ** 2 + (z - 7.6) ** 2) / 78) * 0.52;
-
-    const noise = rng.range(-0.03, 0.03);
-    const edgeDrop = -Math.pow(radial, 2.3) * 2.2;
-    const height = terrace * 0.52 + micro + crater + plateau + edgeDrop + noise;
-
-    position.setZ(index, height);
+  for (let i = 0; i < 12; i += 1) {
+    const ridge = new Mesh(
+      new BoxGeometry(18, 5 + i * 0.45, 4),
+      new MeshStandardMaterial({ color: ridgeColor, roughness: 0.94, metalness: 0.05 }),
+    );
+    const angle = (i / 12) * Math.PI * 2;
+    ridge.position.set(Math.cos(angle) * 44, -1.5, Math.sin(angle) * 38);
+    ridge.rotation.y = -angle + Math.PI * 0.5;
+    scene.add(ridge);
   }
-
-  geometry.computeVertexNormals();
-  geometry.rotateX(-Math.PI / 2);
-
-  const material = new MeshStandardMaterial({
-    color: theme.groundColor,
-    roughness: 0.88,
-    metalness: 0.06,
-  });
-
-  return new Mesh(geometry, material);
 }
 
-function addIceOutcrops(root: Group, theme: CityTheme, seed: number) {
+function addBiomeSetDressing(root: Group, theme: CityTheme, seed: number, context: CityBiomeContext, terrain: CitySurfaceSlice) {
   const rng = new SeededRng(seed ^ 0x4bd84c11);
-  const crystalGeom = new BoxGeometry(0.7, 2.2, 0.7);
-  const crystalMat = new MeshStandardMaterial({
-    color: new Color(theme.groundColor).lerp(new Color(0xd5ecff), 0.35),
-    emissive: new Color(theme.emissiveAccent),
-    emissiveIntensity: 0.08,
-    roughness: 0.24,
-    metalness: 0.18,
-  });
+  const mode = context.planetGenerationConfig.surfaceMode;
+  const rockColor = new Color(theme.groundShadowColor).lerp(new Color(theme.groundColor), 0.3);
+  const geom = new BoxGeometry(0.9, 1.8, 0.9);
 
-  const marker = new Object3D();
-  const matrix = new Matrix4();
+  for (let i = 0; i < 42; i += 1) {
+    const angle = rng.range(0, Math.PI * 2);
+    const radius = rng.range(14, 30);
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+    const y = terrain.sampleHeight(x, z);
 
-  for (let i = 0; i < 24; i += 1) {
-    const angle = (i / 24) * Math.PI * 2 + rng.range(-0.16, 0.16);
-    const radius = rng.range(18, 26);
-    marker.position.set(Math.cos(angle) * radius, -0.2, Math.sin(angle) * radius);
-    marker.rotation.set(rng.range(-0.2, 0.2), rng.range(0, Math.PI), rng.range(-0.2, 0.2));
-    marker.scale.set(rng.range(0.7, 1.35), rng.range(0.6, 1.7), rng.range(0.7, 1.2));
-    marker.updateMatrix();
-    matrix.copy(marker.matrix);
-
-    const crystal = new Mesh(crystalGeom, crystalMat);
-    crystal.applyMatrix4(matrix);
-    root.add(crystal);
+    const outcrop = new Mesh(
+      geom,
+      new MeshStandardMaterial({
+        color: rockColor,
+        roughness: 0.5,
+        metalness: mode === 'lava' ? 0.25 : 0.12,
+        emissive: mode === 'lava' ? new Color(theme.emissiveAccent) : new Color(0x000000),
+        emissiveIntensity: mode === 'lava' ? 0.13 : 0,
+      }),
+    );
+    outcrop.position.set(x, y + 0.4, z);
+    outcrop.scale.set(rng.range(0.8, 2), rng.range(0.6, 2.8), rng.range(0.8, 1.9));
+    root.add(outcrop);
   }
 
-  const beaconMat = new MeshStandardMaterial({
+  const conduitMat = new MeshStandardMaterial({
     color: theme.metalColor,
-    roughness: 0.45,
-    metalness: 0.65,
+    roughness: 0.4,
+    metalness: 0.72,
     emissive: theme.emissiveAccent,
-    emissiveIntensity: 0.2,
+    emissiveIntensity: 0.09,
   });
 
-  const beaconPositions = [
-    new Vector3(-15.5, 0.8, 0),
-    new Vector3(15.5, 0.8, 0),
-    new Vector3(0, 0.8, -15.5),
-    new Vector3(0, 0.8, 15.5),
+  const conduitPositions = [
+    new Vector3(-9, terrain.sampleHeight(-9, -11) + 0.22, -11),
+    new Vector3(10.5, terrain.sampleHeight(10.5, -8) + 0.22, -8),
+    new Vector3(-12, terrain.sampleHeight(-12, 9) + 0.22, 9),
   ];
 
-  for (const position of beaconPositions) {
-    const beacon = new Mesh(new BoxGeometry(0.8, 1.6, 0.8), beaconMat);
-    beacon.position.copy(position);
-    root.add(beacon);
+  for (const position of conduitPositions) {
+    const conduit = new Mesh(new BoxGeometry(7.5, 0.22, 0.22), conduitMat);
+    conduit.position.copy(position);
+    conduit.rotation.y = rng.range(-0.8, 0.8);
+    root.add(conduit);
   }
 }

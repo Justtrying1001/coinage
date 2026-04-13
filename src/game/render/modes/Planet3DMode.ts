@@ -3,6 +3,9 @@ import type { PlanetVisualProfile, SelectedPlanetRef } from '@/game/render/types
 import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
 import { SeededRng } from '@/game/world/rng';
 import { PlanetRuntime } from '@/game/planet/runtime/PlanetRuntime';
+import { createPlanetGenerationConfig } from '@/game/planet/presets/archetypes';
+import type { SettlementSlot } from '@/game/planet/runtime/SettlementSlots';
+import type { CityBiomeContext } from '@/game/city/runtime/CityBiomeContext';
 
 interface LastSettlementClick {
   slotId: string;
@@ -130,7 +133,7 @@ export class Planet3DMode implements RenderModeController {
 
       if (picked?.id) {
         if (this.isDoubleClickSettlement(picked.id, event.clientX, event.clientY)) {
-          this.context.onEnterCity(picked.id);
+          this.context.onEnterCity(picked.id, this.toCityBiomeContext(picked));
           this.lastSettlementClick = null;
         } else {
           this.lastSettlementClick = {
@@ -148,6 +151,25 @@ export class Planet3DMode implements RenderModeController {
     this.pointerId = null;
     this.isDragging = false;
   };
+
+
+  private toCityBiomeContext(slot: SettlementSlot): CityBiomeContext {
+    const planetProfile = planetProfileFromSeed(this.selectedPlanet.seed);
+    const planetGenerationConfig = createPlanetGenerationConfig(this.selectedPlanet.seed, planetProfile);
+    return {
+      settlement: {
+        settlementId: slot.id,
+        radialUp: [slot.radialUp.x, slot.radialUp.y, slot.radialUp.z],
+        normal: [slot.normal.x, slot.normal.y, slot.normal.z],
+        latitude: slot.latitude,
+        longitude: slot.longitude,
+        elevation: slot.elevation,
+        habitability: slot.habitability,
+      },
+      planetProfile,
+      planetGenerationConfig,
+    };
+  }
 
   private readonly onKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {

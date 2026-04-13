@@ -1,30 +1,36 @@
 import {
   ACESFilmicToneMapping,
   BoxGeometry,
+  CircleGeometry,
   Group,
   Mesh,
   MeshStandardMaterial,
   PerspectiveCamera,
   SRGBColorSpace,
   Scene,
+  Vector2,
   Vector3,
   WebGLRenderer,
   type Object3D,
   type Material,
   type BufferGeometry,
   CylinderGeometry,
-  RingGeometry,
 } from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { CityAssetRegistry } from '@/game/city/assets/CityAssetRegistry';
 import { createCityScene } from '@/game/city/scene/createCityScene';
 import type { CityInteractionTarget, CityViewModel } from '@/game/city/runtime/cityViewModel';
 import { CityRaycaster } from '@/game/city/interaction/CityRaycaster';
+import type { CityBiomeContext } from '@/game/city/runtime/CityBiomeContext';
+import type { CitySlotId } from '@/game/city/data/citySlots';
+import type { CitySurfaceSlice } from '@/game/city/terrain/generateCitySurfaceSlice';
 
 interface CitySlotVisual {
   slot: Mesh;
-  ring: Mesh;
-  deck: Mesh;
-  supports: Mesh[];
+  apron: Mesh;
   buildingRoot: Group;
 }
 
@@ -34,25 +40,44 @@ export class CitySceneController {
 
   private readonly scene: Scene;
   private readonly cityRoot: Group;
+  private readonly terrain: CitySurfaceSlice;
   private readonly raycaster = new CityRaycaster();
   private readonly assets = new CityAssetRegistry();
   private readonly slotVisuals = new Map<string, CitySlotVisual>();
+  private readonly composer: EffectComposer;
+  private readonly bloom: UnrealBloomPass;
 
-  constructor(private readonly host: HTMLDivElement, private viewModel: CityViewModel, seed: number) {
+  constructor(
+    private readonly host: HTMLDivElement,
+    private viewModel: CityViewModel,
+    seed: number,
+    biomeContext: CityBiomeContext,
+  ) {
     this.renderer = new WebGLRenderer({ antialias: true, alpha: false });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.12;
+    this.renderer.toneMappingExposure = biomeContext.planetGenerationConfig.postfx.exposure;
     this.renderer.domElement.className = 'render-surface render-surface--city3d';
 
-    this.camera = new PerspectiveCamera(38, 1, 0.1, 220);
-    this.camera.position.set(24, 19, 22);
-    this.camera.lookAt(0, 2.4, 0);
+    this.camera = new PerspectiveCamera(42, 1, 0.1, 260);
+    this.camera.position.set(22, 16, 26);
+    this.camera.lookAt(0, 2.8, -1.5);
 
-    const scaffold = createCityScene(viewModel.cityTheme, seed);
+    const scaffold = createCityScene(viewModel.cityTheme, seed, biomeContext);
     this.scene = scaffold.scene;
     this.cityRoot = scaffold.cityRoot;
+    this.terrain = scaffold.terrain;
+
+    this.composer = new EffectComposer(this.renderer);
+    this.bloom = new UnrealBloomPass(new Vector2(1, 1), 0.01, 0.2, 0.9);
+    this.bloom.strength = biomeContext.planetGenerationConfig.surfaceMode === 'lava' ? 0.045 : 0.01;
+    this.bloom.radius = 0.08;
+    this.bloom.threshold = 0.92;
+
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    this.composer.addPass(this.bloom);
+    this.composer.addPass(new OutputPass());
   }
 
   mount() {
@@ -67,10 +92,13 @@ export class CitySceneController {
     this.camera.aspect = safeWidth / safeHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(safeWidth, safeHeight, false);
+    this.composer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.composer.setSize(safeWidth, safeHeight);
+    this.bloom.setSize(safeWidth, safeHeight);
   }
 
   update() {
-    this.renderer.render(this.scene, this.camera);
+    this.composer.render();
   }
 
   pickTarget(clientX: number, clientY: number): CityInteractionTarget {
@@ -83,6 +111,8 @@ export class CitySceneController {
   }
 
   destroy() {
+    this.composer.dispose();
+    this.bloom.dispose();
     this.renderer.dispose();
     this.assets.dispose();
     this.disposeSceneTree(this.scene);
@@ -91,72 +121,85 @@ export class CitySceneController {
   }
 
   private buildStaticScene() {
-    const padGeometry = new CylinderGeometry(2.24, 2.42, 0.46, 8);
-    const deckGeometry = new CylinderGeometry(1.82, 1.96, 0.38, 8);
-    const trimGeometry = new RingGeometry(1.9, 2.3, 8);
-    const supportGeometry = new BoxGeometry(0.24, 0.8, 0.24);
+    const foundationGeometry = new CylinderGeometry(2.45, 2.8, 0.28, 20);
+    const apronGeometry = new CircleGeometry(3.2, 26);
 
     for (const slot of this.viewModel.layout.slots) {
-      const baseMaterial = new MeshStandardMaterial({
-        color: slot.startsLocked ? 0x5b6673 : this.viewModel.cityTheme.padColor,
-        roughness: 0.48,
-        metalness: 0.36,
+      const terrainHeight = this.terrain.sampleHeight(slot.position.x, slot.position.z);
+      const groundNormal = this.terrain.sampleNormal(slot.position.x, slot.position.z);
+      const scale = slot.scale ?? 1;
+
+      const foundationMaterial = new MeshStandardMaterial({
+        color: slot.startsLocked ? 0x4f5a67 : this.viewModel.cityTheme.padColor,
+        roughness: 0.84,
+        metalness: 0.12,
       });
-      const deckMaterial = new MeshStandardMaterial({
-        color: this.viewModel.cityTheme.metalColor,
-        roughness: 0.35,
-        metalness: 0.68,
-      });
-      const trimMaterial = new MeshStandardMaterial({
-        color: this.viewModel.cityTheme.padTrimColor,
-        roughness: 0.3,
-        metalness: 0.75,
+      const apronMaterial = new MeshStandardMaterial({
+        color: this.viewModel.cityTheme.groundShadowColor,
+        roughness: 0.96,
+        metalness: 0.03,
         emissive: this.viewModel.cityTheme.emissiveAccent,
-        emissiveIntensity: 0.08,
+        emissiveIntensity: 0.035,
       });
 
-      const slotMesh = new Mesh(padGeometry, baseMaterial);
-      slotMesh.position.set(slot.position.x, slot.position.y + 0.14, slot.position.z);
-      slotMesh.rotation.y = slot.rotationY;
-      slotMesh.scale.setScalar(slot.scale ?? 1);
-      slotMesh.userData.cityTargetType = 'slot';
-      slotMesh.userData.citySlotId = slot.id;
+      const foundation = new Mesh(foundationGeometry, foundationMaterial);
+      foundation.position.set(slot.position.x, terrainHeight + 0.16, slot.position.z);
+      foundation.scale.setScalar(scale);
+      foundation.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), groundNormal);
+      foundation.userData.cityTargetType = 'slot';
+      foundation.userData.citySlotId = slot.id;
 
-      const deckMesh = new Mesh(deckGeometry, deckMaterial);
-      deckMesh.position.set(slot.position.x, slot.position.y + 0.44, slot.position.z);
-      deckMesh.rotation.y = slot.rotationY;
-      deckMesh.scale.setScalar(slot.scale ?? 1);
-
-      const ringMesh = new Mesh(trimGeometry, trimMaterial);
-      ringMesh.position.set(slot.position.x, slot.position.y + 0.65, slot.position.z);
-      ringMesh.rotation.set(-Math.PI / 2, slot.rotationY, 0);
-      ringMesh.scale.setScalar(slot.scale ?? 1);
-
-      const supports: Mesh[] = [];
-      const supportOffsets = [
-        new Vector3(1.35, -0.15, 1.35),
-        new Vector3(-1.35, -0.15, 1.35),
-        new Vector3(1.35, -0.15, -1.35),
-        new Vector3(-1.35, -0.15, -1.35),
-      ];
-
-      for (const offset of supportOffsets) {
-        const support = new Mesh(supportGeometry, deckMaterial);
-        support.position.set(slot.position.x + offset.x, slot.position.y + offset.y, slot.position.z + offset.z);
-        supports.push(support);
-        this.cityRoot.add(support);
-      }
+      const apron = new Mesh(apronGeometry, apronMaterial);
+      apron.position.set(slot.position.x, terrainHeight + 0.05, slot.position.z);
+      apron.rotation.x = -Math.PI / 2;
+      apron.scale.setScalar(scale * 1.03);
 
       const buildingRoot = new Group();
-      buildingRoot.position.set(slot.position.x, slot.position.y + 0.58, slot.position.z);
+      buildingRoot.position.set(slot.position.x, terrainHeight + 0.28, slot.position.z);
       buildingRoot.rotation.y = slot.rotationY;
 
-      this.cityRoot.add(slotMesh);
-      this.cityRoot.add(deckMesh);
-      this.cityRoot.add(ringMesh);
+      this.cityRoot.add(apron);
+      this.cityRoot.add(foundation);
       this.cityRoot.add(buildingRoot);
+      this.slotVisuals.set(slot.id, { slot: foundation, apron, buildingRoot });
+    }
 
-      this.slotVisuals.set(slot.id, { slot: slotMesh, ring: ringMesh, deck: deckMesh, supports, buildingRoot });
+    this.buildRoadNetwork();
+  }
+
+  private buildRoadNetwork() {
+    const roadMaterial = new MeshStandardMaterial({
+      color: this.viewModel.cityTheme.metalColor,
+      roughness: 0.65,
+      metalness: 0.24,
+      emissive: this.viewModel.cityTheme.emissiveAccent,
+      emissiveIntensity: 0.04,
+    });
+
+    const slotMap = new Map(this.viewModel.layout.slots.map((slot) => [slot.id, slot] as const));
+    const roads: Array<[CitySlotId, CitySlotId]> = [
+      ['slot-hq-core', 'slot-econ-west'],
+      ['slot-hq-core', 'slot-econ-east'],
+      ['slot-hq-core', 'slot-utility-north'],
+      ['slot-hq-core', 'slot-utility-south'],
+      ['slot-econ-west', 'slot-mixed-northwest'],
+      ['slot-econ-east', 'slot-mixed-southeast'],
+    ];
+
+    for (const [fromId, toId] of roads) {
+      const from = slotMap.get(fromId);
+      const to = slotMap.get(toId);
+      if (!from || !to) continue;
+
+      const fromHeight = this.terrain.sampleHeight(from.position.x, from.position.z) + 0.07;
+      const toHeight = this.terrain.sampleHeight(to.position.x, to.position.z) + 0.07;
+      const delta = new Vector3(to.position.x - from.position.x, toHeight - fromHeight, to.position.z - from.position.z);
+      const length = Math.max(0.1, delta.length());
+
+      const road = new Mesh(new BoxGeometry(length, 0.06, 0.7), roadMaterial);
+      road.position.set((from.position.x + to.position.x) * 0.5, (fromHeight + toHeight) * 0.5, (from.position.z + to.position.z) * 0.5);
+      road.lookAt(to.position.x, toHeight, to.position.z);
+      this.cityRoot.add(road);
     }
   }
 
@@ -183,23 +226,20 @@ export class CitySceneController {
 
   private applySlotColor(visuals: CitySlotVisual, model: CityViewModel, slotId: string, isLocked: boolean) {
     const slotMaterial = visuals.slot.material as MeshStandardMaterial;
-    const deckMaterial = visuals.deck.material as MeshStandardMaterial;
-    const ringMaterial = visuals.ring.material as MeshStandardMaterial;
+    const apronMaterial = visuals.apron.material as MeshStandardMaterial;
 
     if (isLocked) {
       slotMaterial.color.setHex(0x5a6674);
-      deckMaterial.color.setHex(0x4b5865);
-      ringMaterial.color.setHex(0x728294);
-      ringMaterial.emissiveIntensity = 0;
+      apronMaterial.color.setHex(0x3f4954);
+      apronMaterial.emissiveIntensity = 0.01;
       return;
     }
 
     const highlighted = model.selectedTarget.type !== 'none' && model.selectedTarget.slotId === slotId;
     slotMaterial.color.set(highlighted ? model.cityTheme.padTrimColor : model.cityTheme.padColor);
-    deckMaterial.color.set(model.cityTheme.metalColor);
-    ringMaterial.color.set(highlighted ? model.cityTheme.accentColor : model.cityTheme.padTrimColor);
-    ringMaterial.emissive.set(model.cityTheme.emissiveAccent);
-    ringMaterial.emissiveIntensity = highlighted ? 0.24 : 0.08;
+    apronMaterial.color.set(highlighted ? model.cityTheme.padTrimColor : model.cityTheme.groundShadowColor);
+    apronMaterial.emissive.set(model.cityTheme.emissiveAccent);
+    apronMaterial.emissiveIntensity = highlighted ? 0.14 : 0.04;
   }
 
   private disposeSceneTree(root: Object3D) {

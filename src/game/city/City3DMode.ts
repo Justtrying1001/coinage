@@ -1,11 +1,13 @@
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
 import type { SelectedPlanetRef } from '@/game/render/types';
 import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
+import { createPlanetGenerationConfig } from '@/game/planet/presets/archetypes';
 import { BUILDING_DEFINITIONS, toBuildingLabel, type BuildingType } from '@/game/city/data/cityBuildings';
 import { CITY_LAYOUT_TEMPLATE } from '@/game/city/data/cityLayout';
 import type { CitySlotId } from '@/game/city/data/citySlots';
 import { CitySceneController } from '@/game/city/scene/CitySceneController';
 import { createCityViewModel, getSlotById, type CityViewModel } from '@/game/city/runtime/cityViewModel';
+import type { CityBiomeContext } from '@/game/city/runtime/CityBiomeContext';
 import { resolveCityTheme } from '@/game/city/themes/cityThemeResolver';
 
 export class City3DMode implements RenderModeController {
@@ -28,6 +30,7 @@ export class City3DMode implements RenderModeController {
     private selectedPlanet: SelectedPlanetRef,
     private readonly context: ModeContext,
     private readonly settlementId: string | null,
+    private biomeContext: CityBiomeContext | null,
   ) {
     const profile = planetProfileFromSeed(selectedPlanet.seed);
     const cityTheme = resolveCityTheme(profile.archetype);
@@ -40,7 +43,7 @@ export class City3DMode implements RenderModeController {
   }
 
   mount() {
-    this.scene = new CitySceneController(this.context.host, this.viewModel, this.selectedPlanet.seed);
+    this.scene = new CitySceneController(this.context.host, this.viewModel, this.selectedPlanet.seed, this.resolveBiomeContext());
     this.scene.mount();
     this.mountOverlayPanel();
 
@@ -62,6 +65,7 @@ export class City3DMode implements RenderModeController {
   setSelectedPlanet(nextPlanet: SelectedPlanetRef) {
     if (nextPlanet.id === this.selectedPlanet.id && nextPlanet.seed === this.selectedPlanet.seed) return;
     this.selectedPlanet = nextPlanet;
+    this.biomeContext = null;
 
     const profile = planetProfileFromSeed(nextPlanet.seed);
     const cityTheme = resolveCityTheme(profile.archetype);
@@ -73,7 +77,7 @@ export class City3DMode implements RenderModeController {
     });
 
     this.scene?.destroy();
-    this.scene = new CitySceneController(this.context.host, this.viewModel, this.selectedPlanet.seed);
+    this.scene = new CitySceneController(this.context.host, this.viewModel, this.selectedPlanet.seed, this.resolveBiomeContext());
     this.scene.mount();
     this.refreshPanel();
   }
@@ -259,6 +263,29 @@ export class City3DMode implements RenderModeController {
     button.textContent = label;
     button.addEventListener('click', onClick);
     return button;
+  }
+
+
+  private resolveBiomeContext(): CityBiomeContext {
+    if (this.biomeContext) return this.biomeContext;
+
+    const planetProfile = planetProfileFromSeed(this.selectedPlanet.seed);
+    const planetGenerationConfig = createPlanetGenerationConfig(this.selectedPlanet.seed, planetProfile);
+    const fallback: CityBiomeContext = {
+      settlement: {
+        settlementId: this.settlementId ?? 'city-core',
+        radialUp: [0, 1, 0],
+        normal: [0, 1, 0],
+        latitude: 0,
+        longitude: 0,
+        elevation: 1,
+        habitability: 0.5,
+      },
+      planetProfile,
+      planetGenerationConfig,
+    };
+    this.biomeContext = fallback;
+    return fallback;
   }
 
   private appendLine(container: HTMLElement, text: string) {
