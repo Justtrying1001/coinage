@@ -10,6 +10,7 @@ export class City3DMode implements RenderModeController {
   private headerTitle: HTMLHeadingElement | null = null;
   private headerSubtitle: HTMLParagraphElement | null = null;
   private sectionMeta: HTMLDivElement | null = null;
+  private archetypeLabel = 'unknown';
 
   constructor(
     private selectedPlanet: SelectedPlanetRef,
@@ -19,6 +20,7 @@ export class City3DMode implements RenderModeController {
 
   mount() {
     this.scene = new CitySceneController(this.context.host, this.selectedPlanet.seed);
+    this.archetypeLabel = this.scene.archetype;
     this.scene.mount();
     this.mountOverlayPanel();
     window.addEventListener('keydown', this.onKeyDown);
@@ -38,6 +40,7 @@ export class City3DMode implements RenderModeController {
 
     this.scene?.destroy();
     this.scene = new CitySceneController(this.context.host, this.selectedPlanet.seed);
+    this.archetypeLabel = this.scene.archetype;
     this.scene.mount();
     this.refreshPanel();
   }
@@ -102,12 +105,13 @@ export class City3DMode implements RenderModeController {
   private refreshPanel() {
     if (!this.headerTitle || !this.headerSubtitle || !this.sectionMeta) return;
 
-    this.headerTitle.textContent = 'City View // Frozen Terrain Prototype';
+    this.headerTitle.textContent = 'City View // Planet Surface Adapter';
     this.headerSubtitle.textContent = `Planet ${this.selectedPlanet.id.toUpperCase()} · ${this.settlementId ? `Settlement ${this.settlementId.toUpperCase()}` : 'Terrain Baseline'}`;
 
     this.sectionMeta.innerHTML = '';
-    this.appendLine(this.sectionMeta, 'Terrain-only milestone: no buildings, slots, or placement systems.');
-    this.appendLine(this.sectionMeta, 'Shader-driven snow/ice/rock blending based on height + slope.');
+    this.appendLine(this.sectionMeta, `Archetype-derived local surface: ${this.archetypeLabel}.`);
+    this.appendLine(this.sectionMeta, 'Terrain-only milestone: no buildings, slots, roads, or placement systems.');
+    this.appendLine(this.sectionMeta, 'Material/shader, gradients, and postfx are inherited from the planet pipeline.');
   }
 
   private appendLine(container: HTMLElement, text: string) {
