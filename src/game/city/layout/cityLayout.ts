@@ -1,4 +1,5 @@
-export type CityTileKind = 'buildable' | 'blocked' | 'road' | 'building';
+export type CityTileKind = 'buildable' | 'blocked' | 'road' | 'building' | 'expansion';
+export type CityZone = 'core' | 'expansion' | 'blocked';
 
 export interface GridSize {
   width: number;
@@ -27,31 +28,33 @@ export interface BuildingPlacement {
   label: string;
   anchor: TileCoord;
   footprint: BuildingFootprint;
+  fixed?: boolean;
 }
 
 export interface CityLayoutSnapshot {
   grid: GridSize;
   blocked: Set<string>;
+  expansion: Set<string>;
   roads: Set<string>;
   buildings: BuildingPlacement[];
 }
 
-const BLOCKED_RING_PADDING = 1;
-
 export class CityLayoutStore {
   private nextBuildingId = 1;
   private readonly blocked = new Set<string>();
+  private readonly expansion = new Set<string>();
   private readonly roads = new Set<string>();
   private readonly buildings = new Map<string, BuildingPlacement>();
 
   constructor(private readonly grid: GridSize) {
-    this.seedBlockedTiles();
+    this.seedSpatialScaffold();
   }
 
   getSnapshot(): CityLayoutSnapshot {
     return {
       grid: this.grid,
       blocked: new Set(this.blocked),
+      expansion: new Set(this.expansion),
       roads: new Set(this.roads),
       buildings: [...this.buildings.values()],
     };
@@ -60,9 +63,17 @@ export class CityLayoutStore {
   getTileKind(x: number, y: number): CityTileKind {
     const key = tileKey(x, y);
     if (this.blocked.has(key)) return 'blocked';
+    if (this.expansion.has(key)) return 'expansion';
     if (this.findBuildingAt(x, y)) return 'building';
     if (this.roads.has(key)) return 'road';
     return 'buildable';
+  }
+
+  getTileZone(x: number, y: number): CityZone {
+    const key = tileKey(x, y);
+    if (this.blocked.has(key)) return 'blocked';
+    if (this.expansion.has(key)) return 'expansion';
+    return 'core';
   }
 
   canPlaceRoad(x: number, y: number) {
@@ -70,6 +81,7 @@ export class CityLayoutStore {
     const key = tileKey(x, y);
     if (this.blocked.has(key)) return false;
     if (this.findBuildingAt(x, y)) return false;
+    if (!this.isRoadConnectedToNetwork(x, y)) return false;
     return true;
   }
 
@@ -84,17 +96,27 @@ export class CityLayoutStore {
   }
 
   canPlaceBuilding(anchor: TileCoord, footprint: BuildingFootprint, ignoreBuildingId?: string) {
+    let touchesRoadNetwork = false;
     for (const tile of iterateFootprint(anchor, footprint)) {
       if (!this.isWithinBounds(tile.x, tile.y)) return false;
       const key = tileKey(tile.x, tile.y);
       if (this.blocked.has(key)) return false;
+      if (this.expansion.has(key)) return false;
       if (this.roads.has(key)) return false;
 
       const occupant = this.findBuildingAt(tile.x, tile.y);
       if (!occupant) continue;
       if (!ignoreBuildingId || occupant.id !== ignoreBuildingId) return false;
     }
-    return true;
+
+    for (const tile of iterateFootprint(anchor, footprint)) {
+      if (this.hasRoadOrHubNeighbor(tile.x, tile.y, ignoreBuildingId)) {
+        touchesRoadNetwork = true;
+        break;
+      }
+    }
+
+    return touchesRoadNetwork;
   }
 
   placeBuilding(definition: BuildingDefinition, anchor: TileCoord) {
@@ -119,6 +141,8 @@ export class CityLayoutStore {
   }
 
   removeBuilding(buildingId: string) {
+    const building = this.buildings.get(buildingId);
+    if (building?.fixed) return false;
     return this.buildings.delete(buildingId);
   }
 
@@ -143,7 +167,7 @@ export class CityLayoutStore {
     return null;
   }
 
-  private seedBlockedTiles() {
+  private seedSpatialScaffold() {
     const { width, height } = this.grid;
     for (let x = 0; x < width; x += 1) {
       this.blocked.add(tileKey(x, 0));
@@ -156,10 +180,76 @@ export class CityLayoutStore {
 
     const centerX = Math.floor(width / 2);
     const centerY = Math.floor(height / 2);
-    for (let y = centerY - BLOCKED_RING_PADDING; y <= centerY + BLOCKED_RING_PADDING; y += 1) {
-      this.blocked.add(tileKey(centerX - 4, y));
-      this.blocked.add(tileKey(centerX + 4, y));
+
+    for (let x = 2; x <= 4; x += 1) {
+      for (let y = 3; y <= height - 4; y += 1) {
+        this.expansion.add(tileKey(x, y));
+      }
     }
+
+    for (let x = width - 5; x <= width - 3; x += 1) {
+      for (let y = 3; y <= height - 4; y += 1) {
+        this.expansion.add(tileKey(x, y));
+      }
+    }
+
+    const hq: BuildingPlacement = {
+      id: 'hq',
+      type: 'industry',
+      label: 'Town Hall',
+      anchor: { x: centerX - 1, y: centerY - 1 },
+      footprint: { width: 3, height: 3 },
+      fixed: true,
+    };
+    this.buildings.set(hq.id, hq);
+
+    for (let x = 2; x <= width - 3; x += 1) {
+      if (x >= hq.anchor.x && x < hq.anchor.x + hq.footprint.width) continue;
+      this.roads.add(tileKey(x, centerY));
+    }
+    for (let y = 2; y <= height - 3; y += 1) {
+      if (y >= hq.anchor.y && y < hq.anchor.y + hq.footprint.height) continue;
+      this.roads.add(tileKey(centerX, y));
+    }
+
+    for (let x = hq.anchor.x - 1; x <= hq.anchor.x + hq.footprint.width; x += 1) {
+      if (x <= 1 || x >= width - 1) continue;
+      this.roads.add(tileKey(x, hq.anchor.y - 1));
+      this.roads.add(tileKey(x, hq.anchor.y + hq.footprint.height));
+    }
+    for (let y = hq.anchor.y - 1; y <= hq.anchor.y + hq.footprint.height; y += 1) {
+      if (y <= 1 || y >= height - 1) continue;
+      this.roads.add(tileKey(hq.anchor.x - 1, y));
+      this.roads.add(tileKey(hq.anchor.x + hq.footprint.width, y));
+    }
+  }
+
+  private hasRoadOrHubNeighbor(x: number, y: number, ignoreBuildingId?: string) {
+    const deltas: TileCoord[] = [
+      { x: 1, y: 0 },
+      { x: -1, y: 0 },
+      { x: 0, y: 1 },
+      { x: 0, y: -1 },
+    ];
+
+    for (const delta of deltas) {
+      const nx = x + delta.x;
+      const ny = y + delta.y;
+      if (!this.isWithinBounds(nx, ny)) continue;
+      const key = tileKey(nx, ny);
+      if (this.roads.has(key)) return true;
+      const neighborBuilding = this.findBuildingAt(nx, ny);
+      if (!neighborBuilding) continue;
+      if (neighborBuilding.fixed) return true;
+      if (ignoreBuildingId && neighborBuilding.id === ignoreBuildingId) continue;
+    }
+
+    return false;
+  }
+
+  private isRoadConnectedToNetwork(x: number, y: number) {
+    if (this.roads.size === 0) return true;
+    return this.hasRoadOrHubNeighbor(x, y);
   }
 }
 

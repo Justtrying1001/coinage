@@ -8,8 +8,9 @@ const GRID_WIDTH = 20;
 const GRID_HEIGHT = 14;
 
 const BUILDING_LIBRARY: Record<string, BuildingDefinition> = {
-  habitat: { type: 'habitat', label: 'Habitat', footprint: { width: 2, height: 2 } },
-  foundry: { type: 'industry', label: 'Foundry', footprint: { width: 3, height: 2 } },
+  habitatSmall: { type: 'habitat', label: 'Habitat S', footprint: { width: 2, height: 2 } },
+  workshop: { type: 'industry', label: 'Workshop', footprint: { width: 3, height: 2 } },
+  depotLarge: { type: 'industry', label: 'Depot L', footprint: { width: 4, height: 3 } },
 };
 
 export class CityFoundationMode implements RenderModeController {
@@ -20,11 +21,13 @@ export class CityFoundationMode implements RenderModeController {
   private gridEl: HTMLDivElement | null = null;
   private hudMeta: HTMLParagraphElement | null = null;
   private hudHint: HTMLParagraphElement | null = null;
-  private selectedBlueprintKey: keyof typeof BUILDING_LIBRARY = 'habitat';
+  private selectedBlueprintKey: keyof typeof BUILDING_LIBRARY = 'habitatSmall';
   private mode: BuildMode = 'idle';
   private hoverCoord: TileCoord | null = null;
   private dragRoadActive = false;
   private movingBuildingId: string | null = null;
+  private readonly modeButtons = new Map<BuildMode, HTMLButtonElement>();
+  private readonly blueprintButtons = new Map<keyof typeof BUILDING_LIBRARY, HTMLButtonElement>();
 
   constructor(
     private selectedPlanet: SelectedPlanetRef,
@@ -35,7 +38,7 @@ export class CityFoundationMode implements RenderModeController {
     const root = document.createElement('section');
     root.className = 'city-foundation-root';
 
-    const hud = this.buildHud();
+    const hud = this.buildCompactHud();
     const grid = document.createElement('div');
     grid.className = 'city-foundation-grid';
     grid.style.gridTemplateColumns = `repeat(${GRID_WIDTH}, minmax(0, 1fr))`;
@@ -67,62 +70,79 @@ export class CityFoundationMode implements RenderModeController {
     this.hudHint = null;
   }
 
-  private buildHud() {
+  private buildCompactHud() {
     const panel = document.createElement('div');
-    panel.className = 'city-foundation-hud';
+    panel.className = 'city-foundation-toolbar';
 
-    const title = document.createElement('h2');
-    title.className = 'city-foundation-title';
-    title.textContent = 'City Foundation / Debug Layout';
+    const title = document.createElement('p');
+    title.className = 'city-foundation-toolbar__title';
+    title.textContent = 'City Foundation · Town Hall Hub';
 
     const meta = document.createElement('p');
-    meta.className = 'city-foundation-meta';
+    meta.className = 'city-foundation-toolbar__meta';
     this.hudMeta = meta;
 
     const controls = document.createElement('div');
-    controls.className = 'city-foundation-controls';
+    controls.className = 'city-foundation-toolbar__row';
 
     controls.append(
-      this.createModeButton('Idle', () => this.setMode('idle')),
-      this.createModeButton('Place Building', () => this.setMode('place-building')),
-      this.createModeButton('Place Road', () => this.setMode('place-road')),
-      this.createModeButton('Move Building', () => this.setMode('move-building')),
-      this.createModeButton('Back to Planet', () => this.context.onRequestMode('planet3d')),
+      this.createModeButton('idle', 'Idle', () => this.setMode('idle')),
+      this.createModeButton('place-building', 'Place Building', () => this.setMode('place-building')),
+      this.createModeButton('place-road', 'Place Road', () => this.setMode('place-road')),
+      this.createModeButton('move-building', 'Move Building', () => this.setMode('move-building')),
+      this.createActionButton('Back to Planet', () => this.context.onRequestMode('planet3d')),
     );
 
     const blueprintControls = document.createElement('div');
-    blueprintControls.className = 'city-foundation-controls';
+    blueprintControls.className = 'city-foundation-toolbar__row';
     blueprintControls.append(
-      this.createModeButton('Blueprint: Habitat 2x2', () => {
-        this.selectedBlueprintKey = 'habitat';
+      this.createActionButton('HQ 3x3 (Fixed)', () => {
+        this.syncHud();
+      }, true),
+      this.createBlueprintButton('habitatSmall', 'Habitat 2x2', () => {
+        this.selectedBlueprintKey = 'habitatSmall';
         this.syncHud();
         this.renderGrid();
       }),
-      this.createModeButton('Blueprint: Foundry 3x2', () => {
-        this.selectedBlueprintKey = 'foundry';
+      this.createBlueprintButton('workshop', 'Workshop 3x2', () => {
+        this.selectedBlueprintKey = 'workshop';
+        this.syncHud();
+        this.renderGrid();
+      }),
+      this.createBlueprintButton('depotLarge', 'Depot 4x3', () => {
+        this.selectedBlueprintKey = 'depotLarge';
         this.syncHud();
         this.renderGrid();
       }),
     );
 
-    const legend = document.createElement('p');
-    legend.className = 'city-foundation-legend';
-    legend.textContent = 'Legend: blocked · buildable · road · building · preview(valid/invalid)';
-
     const hint = document.createElement('p');
-    hint.className = 'city-foundation-hint';
+    hint.className = 'city-foundation-toolbar__hint';
     this.hudHint = hint;
 
-    panel.append(title, meta, controls, blueprintControls, legend, hint);
+    panel.append(title, controls, blueprintControls, meta, hint);
     return panel;
   }
 
-  private createModeButton(label: string, onClick: () => void) {
+  private createActionButton(label: string, onClick: () => void, disabled = false) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'city-foundation-button';
     button.textContent = label;
+    button.disabled = disabled;
     button.addEventListener('click', onClick);
+    return button;
+  }
+
+  private createModeButton(mode: BuildMode, label: string, onClick: () => void) {
+    const button = this.createActionButton(label, onClick, false);
+    this.modeButtons.set(mode, button);
+    return button;
+  }
+
+  private createBlueprintButton(key: keyof typeof BUILDING_LIBRARY, label: string, onClick: () => void) {
+    const button = this.createActionButton(label, onClick, false);
+    this.blueprintButtons.set(key, button);
     return button;
   }
 
@@ -148,7 +168,9 @@ export class CityFoundationMode implements RenderModeController {
         tile.addEventListener('click', this.onTileClick);
 
         const kind = this.layout.getTileKind(x, y);
+        const zone = this.layout.getTileZone(x, y);
         tile.classList.add(`is-${kind}`);
+        tile.classList.add(`zone-${zone}`);
 
         const preview = previewTiles.get(tileKey(x, y));
         if (preview === 'valid') tile.classList.add('is-preview-valid');
@@ -159,6 +181,7 @@ export class CityFoundationMode implements RenderModeController {
           const marker = document.createElement('span');
           marker.className = 'city-foundation-label';
           marker.textContent = building.label;
+          if (building.fixed) marker.classList.add('is-hq');
           tile.appendChild(marker);
         } else if (occupiedOrigins.has(tileKey(x, y))) {
           tile.setAttribute('aria-label', occupiedOrigins.get(tileKey(x, y)) ?? '');
@@ -210,18 +233,26 @@ export class CityFoundationMode implements RenderModeController {
   private syncHud() {
     const snapshot = this.layout.getSnapshot();
     if (this.hudMeta) {
-      this.hudMeta.textContent = `Planet ${this.selectedPlanet.id.toUpperCase()} · grid ${snapshot.grid.width}x${snapshot.grid.height} · buildings ${snapshot.buildings.length} · roads ${snapshot.roads.size}`;
+      const expansionTiles = snapshot.expansion.size;
+      this.hudMeta.textContent = `P:${this.selectedPlanet.id.toUpperCase()} · ${snapshot.grid.width}x${snapshot.grid.height} · B:${snapshot.buildings.length} · R:${snapshot.roads.size} · EXP:${expansionTiles}`;
     }
 
     if (!this.hudHint) return;
-    if (this.mode === 'idle') this.hudHint.textContent = 'Idle mode: inspect the flat/debug layout.';
-    if (this.mode === 'place-building') this.hudHint.textContent = `Place building: click a tile anchor (${BUILDING_LIBRARY[this.selectedBlueprintKey].label}).`;
-    if (this.mode === 'place-road') this.hudHint.textContent = 'Place road: click/drag across buildable tiles.';
+    if (this.mode === 'idle') this.hudHint.textContent = 'Hub locked. Roads structure districts. Expansion pads are reserved.';
+    if (this.mode === 'place-building') this.hudHint.textContent = `Build mode: ${BUILDING_LIBRARY[this.selectedBlueprintKey].label} (must touch road/hub).`;
+    if (this.mode === 'place-road') this.hudHint.textContent = 'Road mode: drag from existing network to extend arteries.';
     if (this.mode === 'move-building') {
       this.hudHint.textContent = this.movingBuildingId
         ? 'Move building: choose destination tile for selected building.'
         : 'Move building: click an existing building first, then click destination.';
     }
+
+    this.modeButtons.forEach((button, mode) => {
+      button.classList.toggle('is-active', mode === this.mode);
+    });
+    this.blueprintButtons.forEach((button, key) => {
+      button.classList.toggle('is-active', key === this.selectedBlueprintKey);
+    });
   }
 
   private readonly onTilePointerEnter = (event: PointerEvent) => {
