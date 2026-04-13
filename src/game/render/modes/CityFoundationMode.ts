@@ -24,6 +24,9 @@ interface BiomeTerrainProfile {
   ruggedness: number;
   edgeDrop: number;
   centerStability: number;
+  plateauLift: number;
+  beach?: string;
+  coldRock?: string;
   decor: 'forest' | 'rocks' | 'ice' | 'crystals' | 'deadland';
 }
 
@@ -41,6 +44,8 @@ const BIOME_TERRAIN: Record<PlanetArchetype, BiomeTerrainProfile> = {
     ruggedness: 0.55,
     edgeDrop: 28,
     centerStability: 0.75,
+    plateauLift: 1.8,
+    beach: '#dcc792',
     decor: 'forest',
   },
   frozen: {
@@ -56,6 +61,8 @@ const BIOME_TERRAIN: Record<PlanetArchetype, BiomeTerrainProfile> = {
     ruggedness: 0.62,
     edgeDrop: 21,
     centerStability: 0.84,
+    plateauLift: 1.4,
+    coldRock: '#7e8f9f',
     decor: 'ice',
   },
   arid: {
@@ -70,6 +77,7 @@ const BIOME_TERRAIN: Record<PlanetArchetype, BiomeTerrainProfile> = {
     ruggedness: 0.66,
     edgeDrop: 18,
     centerStability: 0.65,
+    plateauLift: 2.4,
     decor: 'rocks',
   },
   volcanic: {
@@ -84,6 +92,7 @@ const BIOME_TERRAIN: Record<PlanetArchetype, BiomeTerrainProfile> = {
     ruggedness: 0.82,
     edgeDrop: 24,
     centerStability: 0.6,
+    plateauLift: 2.8,
     decor: 'deadland',
   },
   mineral: {
@@ -98,6 +107,7 @@ const BIOME_TERRAIN: Record<PlanetArchetype, BiomeTerrainProfile> = {
     ruggedness: 0.74,
     edgeDrop: 19,
     centerStability: 0.66,
+    plateauLift: 2.2,
     decor: 'crystals',
   },
   terrestrial: {
@@ -112,6 +122,7 @@ const BIOME_TERRAIN: Record<PlanetArchetype, BiomeTerrainProfile> = {
     ruggedness: 0.56,
     edgeDrop: 16,
     centerStability: 0.78,
+    plateauLift: 1.5,
     decor: 'forest',
   },
   jungle: {
@@ -126,6 +137,7 @@ const BIOME_TERRAIN: Record<PlanetArchetype, BiomeTerrainProfile> = {
     ruggedness: 0.59,
     edgeDrop: 17,
     centerStability: 0.72,
+    plateauLift: 1.7,
     decor: 'forest',
   },
   barren: {
@@ -140,6 +152,7 @@ const BIOME_TERRAIN: Record<PlanetArchetype, BiomeTerrainProfile> = {
     ruggedness: 0.71,
     edgeDrop: 15,
     centerStability: 0.62,
+    plateauLift: 2.1,
     decor: 'rocks',
   },
 };
@@ -238,6 +251,8 @@ export class CityFoundationMode implements RenderModeController {
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.03;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.domElement.classList.add('render-surface');
@@ -245,14 +260,14 @@ export class CityFoundationMode implements RenderModeController {
 
     const scene = new THREE.Scene();
 
-    const camera = new THREE.PerspectiveCamera(44, 1, 0.1, 900);
-    camera.position.set(0, 126, 148);
-    camera.lookAt(0, 4, 6);
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 900);
+    camera.position.set(0, 132, 158);
+    camera.lookAt(0, 7, 8);
 
-    const hemi = new THREE.HemisphereLight(0xe7f1ff, 0x2f3123, 0.88);
+    const hemi = new THREE.HemisphereLight(0xe7f1ff, 0x2f3123, 0.92);
     scene.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xfff2d7, 1.1);
+    const sun = new THREE.DirectionalLight(0xfff2d7, 1.25);
     sun.position.set(90, 130, 35);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -262,7 +277,7 @@ export class CityFoundationMode implements RenderModeController {
     sun.shadow.camera.bottom = -190;
     scene.add(sun);
 
-    const fill = new THREE.DirectionalLight(0xb7d5ff, 0.25);
+    const fill = new THREE.DirectionalLight(0xb7d5ff, 0.35);
     fill.position.set(-50, 38, -90);
     scene.add(fill);
 
@@ -308,7 +323,7 @@ export class CityFoundationMode implements RenderModeController {
     this.scene.fog = new THREE.Fog(new THREE.Color(biome.fog), 140, 460);
     this.scene.background = new THREE.Color(biome.sky);
 
-    const farGeo = new THREE.PlaneGeometry(FAR_FIELD_WIDTH, FAR_FIELD_DEPTH, 120, 96);
+    const farGeo = new THREE.PlaneGeometry(FAR_FIELD_WIDTH, FAR_FIELD_DEPTH, 140, 110);
     farGeo.rotateX(-Math.PI / 2);
     applyTerrainHeights(farGeo, this.selectedPlanet.seed ^ 0x44bb11, visual, biome, snapshot, true);
     farGeo.computeVertexNormals();
@@ -327,7 +342,7 @@ export class CityFoundationMode implements RenderModeController {
     this.scene.add(farField);
     this.farField = farField;
 
-    const terrainGeo = new THREE.PlaneGeometry(TERRAIN_WIDTH, TERRAIN_DEPTH, 260, 190);
+    const terrainGeo = new THREE.PlaneGeometry(TERRAIN_WIDTH, TERRAIN_DEPTH, 300, 220);
     terrainGeo.rotateX(-Math.PI / 2);
     applyTerrainHeights(terrainGeo, this.selectedPlanet.seed, visual, biome, snapshot, false);
     terrainGeo.computeVertexNormals();
@@ -410,29 +425,34 @@ function sampleTerrainHeight(
   const macro = fbm2(nx * visual.continentScale * 2.6, nz * visual.continentScale * 2.6, seed, 5);
   const ridges = ridgeNoise(nx * visual.ridgeScale * 0.5, nz * visual.ridgeScale * 0.5, seed ^ 0x15ab11cd);
   const micro = fbm2(nx * 8.5, nz * 8.5, seed ^ 0xba11, 3);
+  const erosion = fbm2(nx * 16.5, nz * 16.5, seed ^ 0x911ee, 2);
 
-  let height = (macro * 0.7 + ridges * biome.ruggedness + micro * 0.26) * biome.relief;
+  let height = (macro * 0.7 + ridges * biome.ruggedness + micro * 0.26 + erosion * 0.16) * biome.relief;
 
   const buildableHint = buildableWeight(x, z, snapshot);
   const cityShelf = smoothstep(0.12, 0.82, buildableHint);
-  const stable = Math.round(height / 0.65) * 0.65;
+  const stable = Math.round(height / 0.65) * 0.65 + biome.plateauLift;
   height = height * (1 - cityShelf * biome.centerStability) + stable * cityShelf * biome.centerStability;
 
   const rim = smoothstep(0.52, 1.08, radial);
   height -= rim * biome.edgeDrop;
 
   if (visual.archetype === 'oceanic') {
-    const coastMask = smoothstep(1.06, 0.28, radial + fbm2(nx * 3.5, nz * 3.5, seed ^ 0x99, 2) * 0.14);
-    const lagoon = smoothstep(0.23, 0.64, 1 - radial) * 2.5;
+    const coastNoise = fbm2(nx * 3.5, nz * 3.5, seed ^ 0x99, 2) * 0.14;
+    const coastMask = smoothstep(1.08, 0.26, radial + coastNoise);
+    const lagoon = smoothstep(0.26, 0.66, 1 - radial) * 2.8;
+    const shoreStep = smoothstep(0.18, 0.38, coastMask) * 1.3;
     height = height * coastMask + lagoon;
-    height -= (1 - coastMask) * 9;
+    height += shoreStep;
+    height -= (1 - coastMask) * 10.5;
   }
 
   if (visual.archetype === 'frozen') {
-    const shelf = smoothstep(1.02, 0.34, radial + fbm2(nx * 2.2, nz * 2.2, seed ^ 0xff22, 2) * 0.08);
+    const shelf = smoothstep(1.04, 0.32, radial + fbm2(nx * 2.2, nz * 2.2, seed ^ 0xff22, 2) * 0.08);
     const cracked = fbm2(nx * 14, nz * 14, seed ^ 0x1199dd, 2);
-    const fracture = smoothstep(0.42, 0.78, Math.abs(cracked)) * 1.7;
-    height = height * shelf - (1 - shelf) * 6.5 - fracture;
+    const fracture = smoothstep(0.4, 0.8, Math.abs(cracked)) * 2.1;
+    const cliffBand = smoothstep(0.45, 0.65, radial) * smoothstep(0.76, 0.58, radial) * 3.6;
+    height = height * shelf + cliffBand - (1 - shelf) * 7.4 - fracture;
   }
 
   if (visual.archetype === 'volcanic') {
@@ -461,22 +481,31 @@ function tintTerrain(geometry: THREE.PlaneGeometry, visual: PlanetVisualProfile,
     const x = pos.getX(i) / TERRAIN_WIDTH;
     const z = pos.getZ(i) / TERRAIN_DEPTH;
 
-    const blend = smoothstep(-9, 10, y);
-    const slope = smoothstep(0.2, 0.9, Math.abs(fbm2(x * 7.4, z * 7.4, 0x7711af, 2)) + visual.reliefSharpness * 0.15);
+    const blend = smoothstep(-9, 11.5, y);
+    const slopeNoise = Math.abs(fbm2(x * 7.4, z * 7.4, 0x7711af, 2));
+    const slope = smoothstep(0.24, 0.94, slopeNoise + visual.reliefSharpness * 0.16);
+    const sediment = smoothstep(0.28, 0.82, fbm2(x * 12.2, z * 12.2, 0x1988cd, 3));
 
     const color = low.clone().lerp(high, blend);
     color.lerp(cliff, slope * 0.42);
+    color.lerp(accent, sediment * 0.12);
 
     if (visual.archetype === 'oceanic') {
       const beach = smoothstep(-7.2, -3.3, y);
-      color.lerp(new THREE.Color('#dbc995'), beach * 0.6);
+      color.lerp(new THREE.Color(biome.beach ?? '#dbc995'), beach * 0.72);
+      const wetSand = smoothstep(-7.8, -5.9, y);
+      color.lerp(new THREE.Color('#9f8c64'), wetSand * 0.3);
     }
 
     if (visual.archetype === 'frozen') {
-      const ice = smoothstep(-6.4, 5.5, y);
+      const ice = smoothstep(-6.6, 5.8, y);
       color.lerp(new THREE.Color('#f3fbff'), ice * 0.35);
       const blueIce = smoothstep(-7.5, -4.4, y);
-      color.lerp(new THREE.Color('#99cfe2'), blueIce * 0.32);
+      color.lerp(new THREE.Color('#99cfe2'), blueIce * 0.34);
+      if (biome.coldRock) {
+        const frozenRock = smoothstep(0.58, 0.93, slopeNoise);
+        color.lerp(new THREE.Color(biome.coldRock), frozenRock * 0.38);
+      }
     }
 
     if (visual.archetype === 'jungle' || visual.archetype === 'terrestrial') {
@@ -512,8 +541,8 @@ function buildDecorGroup(
 ) {
   const group = new THREE.Group();
   const rng = mulberry32(seed ^ 0xee45aa91);
-
-  const count = biome.decor === 'forest' ? 140 : biome.decor === 'rocks' ? 100 : 90;
+  const count = biome.decor === 'forest' ? 220 : biome.decor === 'rocks' ? 160 : 130;
+  const instances: Array<{ x: number; z: number; s: number; r: number; y: number }> = [];
   for (let i = 0; i < count; i += 1) {
     const ring = lerp(0.56, 1.04, rng());
     const angle = rng() * Math.PI * 2;
@@ -522,21 +551,34 @@ function buildDecorGroup(
 
     if (buildableWeight(x, z, snapshot) > 0.72) continue;
 
-    const geo = pickDecorGeometry(biome.decor, rng);
-    const mat = new THREE.MeshStandardMaterial({
-      color: pickDecorColor(biome, visual, rng),
-      roughness: 0.92,
-      metalness: biome.decor === 'crystals' ? 0.34 : 0.06,
+    instances.push({
+      x,
+      z,
+      y: sampleTerrainHeight(x, z, seed, visual, biome, snapshot, false) + 0.2,
+      r: rng() * Math.PI * 2,
+      s: lerp(0.72, 1.72, rng()),
     });
-
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(x, sampleTerrainHeight(x, z, seed, visual, biome, snapshot, false) + 0.2, z);
-    mesh.rotation.y = rng() * Math.PI * 2;
-    mesh.scale.setScalar(lerp(0.72, 1.72, rng()));
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    group.add(mesh);
   }
+
+  const geo = pickDecorGeometry(biome.decor, rng);
+  const mat = new THREE.MeshStandardMaterial({
+    color: pickDecorColor(biome, visual, rng),
+    roughness: 0.9,
+    metalness: biome.decor === 'crystals' ? 0.34 : 0.06,
+  });
+  const instanced = new THREE.InstancedMesh(geo, mat, instances.length);
+  const dummy = new THREE.Object3D();
+  instances.forEach((item, idx) => {
+    dummy.position.set(item.x, item.y, item.z);
+    dummy.rotation.set(0, item.r, 0);
+    dummy.scale.setScalar(item.s);
+    dummy.updateMatrix();
+    instanced.setMatrixAt(idx, dummy.matrix);
+  });
+  instanced.instanceMatrix.needsUpdate = true;
+  instanced.castShadow = true;
+  instanced.receiveShadow = true;
+  group.add(instanced);
 
   return group;
 }
