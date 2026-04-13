@@ -1,8 +1,8 @@
 import {
   BufferAttribute,
-  BufferGeometry,
   MathUtils,
   Mesh,
+  PlaneGeometry,
   Vector3,
   type Mesh as MeshType,
 } from 'three';
@@ -24,13 +24,13 @@ export function createPlanetSurfaceAdapter(seed: number): CityPlanetTerrain {
   const profile = planetProfileFromSeed(seed);
   const config = createPlanetGenerationConfig(seed, profile);
 
-  const patchResolution = Math.max(196, config.resolution + 64);
-  const patchArc = MathUtils.lerp(0.36, 0.52, MathUtils.clamp(profile.reliefStrength * 1.4 + profile.reliefSharpness * 0.35, 0, 1));
-  const worldScale = 54;
+  const size = 220;
+  const resolution = Math.max(220, config.resolution + 88);
+  const arcSpan = MathUtils.lerp(0.22, 0.36, MathUtils.clamp(profile.reliefSharpness * 0.5 + profile.reliefStrength * 2.4, 0, 1));
 
   const rng = new SeededRng(seed ^ 0x17c9ab2f);
-  const phi = rng.range(0.45, 1.05);
-  const theta = rng.range(0.2, Math.PI * 1.85);
+  const phi = rng.range(0.38, 1.18);
+  const theta = rng.range(0, Math.PI * 2);
   const patchCenter = new Vector3(
     Math.sin(phi) * Math.cos(theta),
     Math.cos(phi),
@@ -42,60 +42,56 @@ export function createPlanetSurfaceAdapter(seed: number): CityPlanetTerrain {
   tangent.normalize();
   const bitangent = new Vector3().crossVectors(patchCenter, tangent).normalize();
 
-  const geometry = new BufferGeometry();
-  const vertCount = patchResolution * patchResolution;
-  const positions = new Float32Array(vertCount * 3);
-  const elevations = new Float32Array(vertCount);
-  const indices = new Uint32Array((patchResolution - 1) * (patchResolution - 1) * 6);
+  const geometry = new PlaneGeometry(size, size, resolution, resolution);
+  const position = geometry.getAttribute('position');
+  const vertexCount = position.count;
+
+  const elevations = new Float32Array(vertexCount);
+  const unscaledRelief = new Float32Array(vertexCount);
 
   let minElevation = Number.POSITIVE_INFINITY;
   let maxElevation = Number.NEGATIVE_INFINITY;
 
-  let v = 0;
-  for (let y = 0; y < patchResolution; y += 1) {
-    for (let x = 0; x < patchResolution; x += 1) {
-      const i = x + y * patchResolution;
-      const u = (x / (patchResolution - 1)) * 2 - 1;
-      const w = (y / (patchResolution - 1)) * 2 - 1;
+  for (let i = 0; i < vertexCount; i += 1) {
+    const x = position.getX(i);
+    const z = position.getY(i);
+    const u = x / (size * 0.5);
+    const w = z / (size * 0.5);
 
-      const surfaceDir = new Vector3()
-        .copy(patchCenter)
-        .addScaledVector(tangent, u * patchArc)
-        .addScaledVector(bitangent, w * patchArc)
-        .normalize();
+    const surfaceDir = new Vector3()
+      .copy(patchCenter)
+      .addScaledVector(tangent, u * arcSpan)
+      .addScaledVector(bitangent, w * arcSpan)
+      .normalize();
 
-      const unscaled = calculateUnscaledElevation(surfaceDir, config.filters, seed);
-      const clampedRelief = Math.max(0, unscaled);
-      const elevation = 1 + unscaled;
-      const point = surfaceDir.multiplyScalar(1 + clampedRelief);
+    const unscaled = calculateUnscaledElevation(surfaceDir, config.filters, seed);
+    const elevation = 1 + unscaled;
 
-      positions[v++] = point.x * worldScale;
-      positions[v++] = point.y * worldScale;
-      positions[v++] = point.z * worldScale;
-      elevations[i] = elevation;
+    elevations[i] = elevation;
+    unscaledRelief[i] = unscaled;
 
-      if (elevation < minElevation) minElevation = elevation;
-      if (elevation > maxElevation) maxElevation = elevation;
-    }
+    if (elevation < minElevation) minElevation = elevation;
+    if (elevation > maxElevation) maxElevation = elevation;
   }
 
-  let t = 0;
-  for (let y = 0; y < patchResolution - 1; y += 1) {
-    for (let x = 0; x < patchResolution - 1; x += 1) {
-      const i = x + y * patchResolution;
-      indices[t++] = i + patchResolution;
-      indices[t++] = i + patchResolution + 1;
-      indices[t++] = i;
-      indices[t++] = i + patchResolution + 1;
-      indices[t++] = i + 1;
-      indices[t++] = i;
-    }
+  const surfaceLevel = MathUtils.lerp(minElevation, maxElevation, config.surfaceLevel01);
+  const reliefAmplitude = MathUtils.lerp(56, 92, MathUtils.clamp(profile.reliefStrength * 3.2 + profile.reliefSharpness * 0.22, 0, 1));
+
+  for (let i = 0; i < vertexCount; i += 1) {
+    const elevation = elevations[i];
+    const unscaled = Math.max(0, unscaledRelief[i]);
+    const elevN = MathUtils.clamp((elevation - minElevation) / Math.max(0.0001, maxElevation - minElevation), 0, 1);
+
+    const lowlandFlatten = elevation < surfaceLevel ? MathUtils.lerp(0.2, 0.62, config.surfaceLevel01) : 1;
+    const peakLift = Math.pow(Math.max(0, elevN - 0.55), 1.5) * reliefAmplitude * 0.45;
+    const localHeight = unscaled * reliefAmplitude * lowlandFlatten + peakLift;
+
+    position.setZ(i, localHeight);
   }
 
-  geometry.setAttribute('position', new BufferAttribute(positions, 3));
-  geometry.setAttribute('aElevation', new BufferAttribute(elevations, 1));
-  geometry.setIndex(new BufferAttribute(indices, 1));
+  geometry.rotateX(-Math.PI / 2);
   geometry.computeVertexNormals();
+  geometry.setAttribute('aElevation', new BufferAttribute(elevations, 1));
 
   const material = createPlanetMaterial(
     config.elevationGradient,
@@ -131,6 +127,8 @@ export function createPlanetSurfaceAdapter(seed: number): CityPlanetTerrain {
     config.material.lavaAccentStrength,
     config.material.emissiveStrength,
     config.material.basaltContrast,
+    0,
+    { useWorldUp: true },
   );
 
   const mesh = new Mesh(geometry, material);

@@ -39,6 +39,7 @@ export function createPlanetMaterial(
   emissiveStrength: number,
   basaltContrast: number,
   debugMode = 0,
+  options?: { useWorldUp?: boolean },
 ) {
   const normalizedElevation = normalizeStops(elevationGradient, [1, 1, 1]);
   const normalizedDepth = normalizeStops(depthGradient, [0, 0, 0]);
@@ -84,6 +85,7 @@ export function createPlanetMaterial(
       uEmissiveStrength: { value: emissiveStrength },
       uBasaltContrast: { value: basaltContrast },
       uDebugMode: { value: debugMode },
+      uUseWorldUp: { value: options?.useWorldUp ? 1 : 0 },
     },
     vertexShader: `
       attribute float aElevation;
@@ -142,6 +144,7 @@ export function createPlanetMaterial(
       uniform float uEmissiveStrength;
       uniform float uBasaltContrast;
       uniform int uDebugMode;
+      uniform int uUseWorldUp;
       varying float vElevation;
       varying vec3 vNormalW;
       varying vec3 vPositionW;
@@ -204,7 +207,7 @@ export function createPlanetMaterial(
       void main() {
         vec3 NGeo = normalize(vNormalW);
         vec3 N = NGeo;
-        vec3 up = normalize(vPositionW);
+        vec3 up = uUseWorldUp == 1 ? vec3(0.0, 1.0, 0.0) : normalize(vPositionW);
         float geoSlope = clamp(1.0 - dot(NGeo, up), 0.0, 1.0);
         float eps = 0.045;
         vec3 surfaceP = vSurfaceDirL;
