@@ -274,187 +274,80 @@ canvas {
   z-index: 11;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.5rem;
+}
+
+.city-base-layer-stage {
+  position: relative;
+  flex: 1;
+  min-height: 320px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(109, 183, 222, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(203, 234, 250, 0.06), 0 12px 32px rgba(0, 0, 0, 0.32);
+  background: radial-gradient(circle at 50% -28%, rgba(191, 224, 245, 0.17), transparent 52%), #040a12;
+  --city-ground-a: #41545f;
+  --city-ground-b: #5a6f67;
+  --city-ground-c: #849087;
+  --city-accent-a: #243a4b;
+  --city-accent-b: #3a5668;
+  --city-accent-c: #567586;
+  --city-glow: 0.2;
+}
+
+.city-base-layer-stage canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .city-base-layer-hud {
   align-self: flex-start;
-  max-width: 26rem;
-  padding: 0.44rem 0.58rem;
-  border-radius: 10px;
-  border: 1px solid rgba(142, 201, 233, 0.24);
-  background: rgba(3, 10, 17, 0.56);
-  backdrop-filter: blur(3px);
+  max-width: 24rem;
   display: grid;
-  gap: 0.24rem;
+  gap: 0.2rem;
+  padding: 0.44rem 0.54rem;
+  border-radius: 10px;
+  border: 1px solid rgba(134, 196, 228, 0.25);
+  background: rgba(3, 12, 20, 0.54);
+  backdrop-filter: blur(3px);
 }
 
 .city-base-layer-title {
   margin: 0;
-  font-size: 0.66rem;
-  line-height: 1.2;
-  letter-spacing: 0.08em;
+  font-size: 0.64rem;
   text-transform: uppercase;
-  color: rgba(232, 245, 255, 0.95);
+  letter-spacing: 0.08em;
+  color: rgba(229, 243, 255, 0.96);
 }
 
 .city-base-layer-subtitle,
 .city-base-layer-ambience {
   margin: 0;
   font-size: 0.56rem;
-  letter-spacing: 0.05em;
-  color: rgba(207, 231, 246, 0.9);
+  letter-spacing: 0.04em;
+  color: rgba(198, 227, 244, 0.88);
 }
 
 .city-base-layer-ambience {
-  font-size: 0.62rem;
+  font-size: 0.61rem;
   letter-spacing: 0.02em;
-  text-transform: none;
-}
-
-.city-base-layer-controls {
-  display: flex;
-  gap: 0.35rem;
 }
 
 .city-base-layer-button {
-  border: 1px solid rgba(148, 210, 245, 0.44);
+  margin-top: 0.2rem;
+  justify-self: start;
+  border: 1px solid rgba(146, 208, 241, 0.42);
   border-radius: 999px;
-  padding: 0.23rem 0.62rem;
+  padding: 0.24rem 0.62rem;
   font-size: 0.55rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #daf1ff;
-  background: rgba(6, 20, 31, 0.74);
+  color: #dcf1ff;
+  background: rgba(5, 17, 29, 0.78);
   cursor: pointer;
 }
 
 .city-base-layer-button:hover {
-  border-color: rgba(188, 233, 255, 0.94);
-}
-
-.city-base-layer-stage {
-  position: relative;
-  flex: 1;
-  min-height: 300px;
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid rgba(112, 185, 223, 0.28);
-  background: radial-gradient(circle at 50% -20%, rgba(193, 227, 246, 0.18), transparent 54%), #050c14;
-  --city-ground-a: #3f545f;
-  --city-ground-b: #597268;
-  --city-ground-c: #7e8f85;
-  --city-accent-a: #223647;
-  --city-accent-b: #365467;
-  --city-accent-c: #4f7282;
-  --city-glow: 0.26;
-}
-
-.city-base-layer-world {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.city-world-backdrop {
-  opacity: 0.96;
-}
-
-.city-world-periphery {
-  fill: color-mix(in srgb, var(--city-accent-a) 72%, #01070d 28%);
-}
-
-.city-world-terrain-rim {
-  mix-blend-mode: screen;
-}
-
-.city-world-terrain {
-  stroke: rgba(219, 235, 245, 0.13);
-  stroke-width: 2;
-}
-
-.city-world-terrain-shadow {
-  fill: rgba(0, 0, 0, 0.52);
-}
-
-.city-world-terrain-grain {
-  fill: rgba(255, 255, 255, 0.9);
-  mix-blend-mode: soft-light;
-}
-
-.city-world-detail-line {
-  stroke: color-mix(in srgb, var(--city-accent-c) 44%, #eff8ff 5%);
-  stroke-width: 2.2;
-  fill: none;
-  stroke-linecap: round;
-}
-
-.city-world-plateau-edge {
-  fill: none;
-  stroke: color-mix(in srgb, var(--city-ground-c) 58%, #f3f9ff 8%);
-  stroke-width: 3;
-  opacity: 0.62;
-}
-
-.city-base-layer-lot {
-  fill: color-mix(in srgb, var(--city-ground-c) 52%, #d2e5ef 8%);
-  stroke: color-mix(in srgb, var(--city-accent-a) 72%, #000000 28%);
-  stroke-width: 2;
-}
-
-.city-base-layer-lot.is-core {
-  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.1)) drop-shadow(0 8px 8px rgba(0, 0, 0, 0.22));
-}
-
-.city-base-layer-lot.is-expansion {
-  fill: color-mix(in srgb, var(--city-ground-b) 64%, #9fc7db 5%);
-  stroke-dasharray: 8 7;
-  stroke-opacity: 0.75;
-}
-
-.city-world-thermal-fissure {
-  stroke: color-mix(in srgb, #ff9251 72%, #ffe5a4 12%);
-  stroke-width: 3.4;
-  fill: none;
-  opacity: 0.78;
-  filter: drop-shadow(0 0 8px rgba(255, 120, 45, calc(var(--city-glow) * 0.95)));
-}
-
-.city-world-ice-crack {
-  stroke: color-mix(in srgb, #d8edff 72%, #6ca9d4 18%);
-  stroke-width: 2;
-  fill: none;
-  opacity: 0.6;
-}
-
-.city-base-layer-stage[data-perimeter-style='coastal'] .city-world-periphery {
-  fill: color-mix(in srgb, #113550 68%, var(--city-accent-b) 32%);
-}
-
-.city-base-layer-stage[data-perimeter-style='dune'] .city-world-periphery {
-  fill: color-mix(in srgb, #5f3f23 72%, var(--city-accent-a) 28%);
-}
-
-.city-base-layer-stage[data-perimeter-style='glacial'] .city-world-periphery {
-  fill: color-mix(in srgb, #35556d 70%, #c2e3f8 20%);
-}
-
-.city-base-layer-stage[data-perimeter-style='basalt'] .city-world-periphery {
-  fill: color-mix(in srgb, #26191d 74%, #59211d 18%);
-}
-
-.city-base-layer-stage[data-perimeter-style='crystalline'] .city-world-periphery {
-  fill: color-mix(in srgb, #293140 70%, #7488ad 20%);
-}
-
-.city-base-layer-stage[data-perimeter-style='temperate'] .city-world-periphery {
-  fill: color-mix(in srgb, #1d3b2e 70%, #3f5d44 24%);
-}
-
-.city-base-layer-stage[data-perimeter-style='overgrown'] .city-world-periphery {
-  fill: color-mix(in srgb, #143121 72%, #32543b 24%);
-}
-
-.city-base-layer-stage[data-perimeter-style='wasteland'] .city-world-periphery {
-  fill: color-mix(in srgb, #3c332f 76%, #5a4b44 18%);
+  border-color: rgba(184, 229, 252, 0.92);
 }
