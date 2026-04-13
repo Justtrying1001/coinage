@@ -32,6 +32,9 @@ export class CityAssetRegistry {
     const dark = this.makeMaterial(baseColor.clone().offsetHSL(0, -0.03, -0.14), theme, 0.66, 0.28, 0.02);
     const accent = this.makeMaterial(baseColor.clone().offsetHSL(0, 0.05, 0.22), theme, 0.34, 0.62, 0.22);
 
+    group.add(this.scaledCylinder(1.75, 1.92, 0.32, dark, 0.22));
+    group.add(this.scaledBox(2.2, 0.16, 2.2, accent, 0.42, 0, -0.08));
+
     if (type === 'hq') {
       group.add(this.scaledBox(3.8, 2.2, 3.6, hull, 1.2));
       group.add(this.scaledBox(2.2, 2.1, 2.1, dark, 3.05));
@@ -81,6 +84,8 @@ export class CityAssetRegistry {
     for (let i = 0; i < visualState.moduleCount; i += 1) {
       group.add(this.scaledCylinder(0.21, 0.21, 0.95, accent, 3.2 + i * 0.62, -1 + i * 0.7, 0.95 - i * 0.32));
     }
+
+    group.add(this.scaledCylinder(0.11, 0.11, 1.4, accent, 2.2 + level * 0.18, 0.95, -0.95));
 
     return group;
   }
