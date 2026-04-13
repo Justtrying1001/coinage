@@ -135,22 +135,22 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
         }
 
         if (uViewMode > 0) {
-          vec3 buildableColor = vec3(0.22, 0.66, 0.28);
-          vec3 blockedColor = vec3(0.73, 0.2, 0.18);
-          vec3 expansionColor = vec3(0.72, 0.56, 0.22);
-          vec3 riskColor = vec3(0.78, 0.44, 0.14);
-          vec3 utility = mix(vec3(0.14, 0.18, 0.2), buildableColor, vBuildable);
+          vec3 buildableColor = vec3(0.23, 0.63, 0.34);
+          vec3 blockedColor = vec3(0.72, 0.24, 0.2);
+          vec3 expansionColor = vec3(0.69, 0.57, 0.24);
+          vec3 riskColor = vec3(0.77, 0.48, 0.16);
+          vec3 utility = mix(vec3(0.18, 0.22, 0.25), buildableColor, vBuildable);
           utility = mix(utility, expansionColor, vExpansion * 0.72);
           utility = mix(utility, blockedColor, vBlocked);
-          utility = mix(utility, riskColor, vRisk * 0.6);
+          utility = mix(utility, riskColor, vRisk * 0.45);
 
           float gridCell = 4.5;
           vec2 g = abs(fract(vWorldPos.xz / gridCell) - 0.5);
           float line = smoothstep(0.49, 0.5, max(g.x, g.y));
           float gridMask = (uViewMode == 1 ? 0.8 : 0.95) * line;
 
-          baseColor = mix(baseColor * (uViewMode == 1 ? 0.55 : 0.35), utility, uViewMode == 1 ? 0.72 : 0.94);
-          baseColor = mix(baseColor, vec3(0.88, 0.92, 0.94), gridMask * 0.45);
+          baseColor = mix(baseColor * (uViewMode == 1 ? 0.65 : 0.42), utility, uViewMode == 1 ? 0.62 : 0.88);
+          baseColor = mix(baseColor, vec3(0.9, 0.94, 0.96), gridMask * 0.55);
         }
 
         diffuseColor.rgb = baseColor;

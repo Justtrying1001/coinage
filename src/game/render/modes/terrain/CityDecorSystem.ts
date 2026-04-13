@@ -31,6 +31,8 @@ export function buildCityDecor(
       const ring = 0.35 + hash(seed + i * 91) * 0.6;
       const x = rx * config.farWidth * ring * 0.48;
       const z = rz * config.farDepth * ring * 0.48;
+      const nz = z / config.farDepth;
+      if (nz > 0.02) continue;
 
       const s = sampleTerrain(input, EMPTY_LAYOUT, x, z, config, true);
       if (s.masks.shoreline < prop.minShoreline || s.masks.cliff > prop.maxCliff || s.masks.vegetationSuitability < prop.minVegetation) continue;

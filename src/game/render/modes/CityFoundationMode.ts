@@ -25,7 +25,9 @@ export class CityFoundationMode implements RenderModeController {
 
   private renderer: THREE.WebGLRenderer | null = null;
   private scene: THREE.Scene | null = null;
-  private camera: THREE.PerspectiveCamera | null = null;
+  private perspectiveCamera: THREE.PerspectiveCamera | null = null;
+  private orthoCamera: THREE.OrthographicCamera | null = null;
+  private activeCamera: THREE.Camera | null = null;
 
   private terrain: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null = null;
   private farField: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null = null;
@@ -60,11 +62,11 @@ export class CityFoundationMode implements RenderModeController {
 
     const modeWrap = document.createElement('div');
     modeWrap.className = 'city-view-hud__modes';
-
-    const normalBtn = this.createModeButton('Normal', 'normal');
-    const buildBtn = this.createModeButton('Build', 'build');
-    const flatBtn = this.createModeButton('Flat', 'flat');
-    modeWrap.append(normalBtn, buildBtn, flatBtn);
+    modeWrap.append(
+      this.createModeButton('Normal', 'normal'),
+      this.createModeButton('Build', 'build'),
+      this.createModeButton('Flat', 'flat'),
+    );
 
     const back = document.createElement('button');
     back.type = 'button';
@@ -84,17 +86,28 @@ export class CityFoundationMode implements RenderModeController {
   }
 
   resize(width: number, height: number) {
-    if (!this.renderer || !this.camera) return;
+    if (!this.renderer || !this.perspectiveCamera || !this.orthoCamera) return;
     const safeW = Math.max(width, 1);
     const safeH = Math.max(height, 1);
+
     this.renderer.setSize(safeW, safeH, false);
-    this.camera.aspect = safeW / safeH;
-    this.camera.updateProjectionMatrix();
+
+    this.perspectiveCamera.aspect = safeW / safeH;
+    this.perspectiveCamera.updateProjectionMatrix();
+
+    const aspect = safeW / safeH;
+    const orthoHalfHeight = 220;
+    const orthoHalfWidth = orthoHalfHeight * aspect;
+    this.orthoCamera.left = -orthoHalfWidth;
+    this.orthoCamera.right = orthoHalfWidth;
+    this.orthoCamera.top = orthoHalfHeight;
+    this.orthoCamera.bottom = -orthoHalfHeight;
+    this.orthoCamera.updateProjectionMatrix();
   }
 
   update() {
-    if (!this.renderer || !this.scene || !this.camera) return;
-    this.renderer.render(this.scene, this.camera);
+    if (!this.renderer || !this.scene || !this.activeCamera) return;
+    this.renderer.render(this.scene, this.activeCamera);
   }
 
   setSelectedPlanet(nextPlanet: SelectedPlanetRef) {
@@ -113,7 +126,9 @@ export class CityFoundationMode implements RenderModeController {
     this.hudMeta = null;
     this.hudBuildInfo = null;
     this.scene = null;
-    this.camera = null;
+    this.activeCamera = null;
+    this.perspectiveCamera = null;
+    this.orthoCamera = null;
     this.renderer = null;
   }
 
@@ -139,7 +154,7 @@ export class CityFoundationMode implements RenderModeController {
 
     const setMode = (mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null) => {
       if (!mesh) return;
-      const setter = mesh?.material.userData?.setViewMode;
+      const setter = mesh.material.userData?.setViewMode;
       if (typeof setter === 'function') setter(this.viewMode);
       mesh.material.needsUpdate = true;
     };
@@ -147,25 +162,23 @@ export class CityFoundationMode implements RenderModeController {
     setMode(this.terrain);
     setMode(this.farField);
 
-    if (this.decorGroup) {
-      this.decorGroup.visible = this.viewMode === 'normal';
-    }
+    if (this.decorGroup) this.decorGroup.visible = this.viewMode === 'normal';
+    if (this.water) this.water.visible = this.viewMode !== 'flat';
 
-    if (this.water) {
-      this.water.visible = this.viewMode !== 'flat';
-    }
+    if (!this.perspectiveCamera || !this.orthoCamera) return;
 
-    if (this.camera) {
-      if (this.viewMode === 'flat') {
-        this.camera.position.set(0, 186, 74);
-        this.camera.lookAt(0, 0, 0);
-      } else if (this.viewMode === 'build') {
-        this.camera.position.set(-24, 122, 144);
-        this.camera.lookAt(-8, 8, 2);
-      } else {
-        this.camera.position.set(-16, 98, 162);
-        this.camera.lookAt(-10, 11, 4);
-      }
+    if (this.viewMode === 'normal') {
+      this.activeCamera = this.perspectiveCamera;
+      this.perspectiveCamera.position.set(0, 150, 255);
+      this.perspectiveCamera.lookAt(0, 8, -95);
+    } else if (this.viewMode === 'build') {
+      this.activeCamera = this.orthoCamera;
+      this.orthoCamera.position.set(0, 260, 170);
+      this.orthoCamera.lookAt(0, 0, -90);
+    } else {
+      this.activeCamera = this.orthoCamera;
+      this.orthoCamera.position.set(0, 300, 115);
+      this.orthoCamera.lookAt(0, 0, -110);
     }
   }
 
@@ -176,7 +189,7 @@ export class CityFoundationMode implements RenderModeController {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.08;
+    renderer.toneMappingExposure = 1.12;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.domElement.classList.add('render-surface');
@@ -184,13 +197,14 @@ export class CityFoundationMode implements RenderModeController {
 
     const scene = new THREE.Scene();
 
-    const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 2600);
-    camera.position.set(-16, 98, 162);
-    camera.lookAt(-10, 11, 4);
+    const perspectiveCamera = new THREE.PerspectiveCamera(42, 1, 0.1, 3000);
+    const orthoCamera = new THREE.OrthographicCamera(-220, 220, 220, -220, 0.1, 3000);
 
     this.renderer = renderer;
     this.scene = scene;
-    this.camera = camera;
+    this.perspectiveCamera = perspectiveCamera;
+    this.orthoCamera = orthoCamera;
+    this.activeCamera = perspectiveCamera;
   }
 
   private disposeCurrentMeshes() {
@@ -245,15 +259,13 @@ export class CityFoundationMode implements RenderModeController {
 
     const built = buildTerrainGeometry(input, { blocked: snapshot.blocked, expansion: snapshot.expansion }, DEFAULT_TERRAIN_GEOMETRY);
 
-    const farMat = createCityTerrainMaterial(input, true, this.viewMode);
-    const farField = new THREE.Mesh(built.farGeometry, farMat);
-    farField.position.y = -10.2;
+    const farField = new THREE.Mesh(built.farGeometry, createCityTerrainMaterial(input, true, this.viewMode));
+    farField.position.y = -28;
     farField.receiveShadow = true;
     this.scene.add(farField);
     this.farField = farField;
 
-    const terrainMat = createCityTerrainMaterial(input, false, this.viewMode);
-    const terrain = new THREE.Mesh(built.nearGeometry, terrainMat);
+    const terrain = new THREE.Mesh(built.nearGeometry, createCityTerrainMaterial(input, false, this.viewMode));
     terrain.receiveShadow = true;
     this.scene.add(terrain);
     this.terrain = terrain;
@@ -268,19 +280,23 @@ export class CityFoundationMode implements RenderModeController {
     this.scene.add(decor);
     this.decorGroup = decor;
 
-    this.syncHud(input.archetype, built.buildSurface.stableMask);
+    this.syncHud(input.archetype, built.buildSurface.stableMask, built.buildSurface.buildableMask);
     this.syncViewModeState();
   }
 
-  private syncHud(archetype: string, stableMask: Float32Array) {
+  private syncHud(archetype: string, stableMask: Float32Array, buildableMask: Float32Array) {
     if (!this.hudMeta || !this.hudBuildInfo) return;
     this.hudMeta.textContent = `${this.selectedPlanet.id.toUpperCase()} · ${archetype}`;
 
     let stable = 0;
+    let buildable = 0;
     for (let i = 0; i < stableMask.length; i += 1) {
       if (stableMask[i] > 0.5) stable += 1;
+      if (buildableMask[i] > 0.5) buildable += 1;
     }
-    const ratio = stableMask.length > 0 ? Math.round((stable / stableMask.length) * 100) : 0;
-    this.hudBuildInfo.textContent = `Build surface ${ratio}%`;
+
+    const stableRatio = stableMask.length > 0 ? Math.round((stable / stableMask.length) * 100) : 0;
+    const buildableRatio = buildableMask.length > 0 ? Math.round((buildable / buildableMask.length) * 100) : 0;
+    this.hudBuildInfo.textContent = `Buildable ${buildableRatio}% · Stable ${stableRatio}%`;
   }
 }

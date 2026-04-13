@@ -9,14 +9,14 @@ import type {
 } from '@/game/render/modes/terrain/CityTerrainTypes';
 
 export const DEFAULT_TERRAIN_GEOMETRY: TerrainGeometryConfig = {
-  terrainWidth: 420,
-  terrainDepth: 340,
-  farWidth: 1320,
-  farDepth: 1080,
-  nearSegmentsX: 300,
-  nearSegmentsZ: 240,
-  farSegmentsX: 260,
-  farSegmentsZ: 220,
+  terrainWidth: 620,
+  terrainDepth: 560,
+  farWidth: 2000,
+  farDepth: 1700,
+  nearSegmentsX: 260,
+  nearSegmentsZ: 220,
+  farSegmentsX: 240,
+  farSegmentsZ: 200,
 };
 
 interface TerrainBuildResult {
@@ -103,17 +103,11 @@ function applyHeights(
     masks.mineralized[i] = sample.masks.mineralized;
     masks.vegetation[i] = sample.masks.vegetationSuitability;
 
-    const state = sampleBuildState(layout, x, z, config, input);
+    const state = sampleBuildState(layout, x, z, config, input, sample.masks.slope);
     masks.buildable[i] = state.buildable;
     masks.blocked[i] = state.blocked;
     masks.expansion[i] = state.expansion;
-    masks.risk[i] = clamp(
-      sample.masks.slope * 0.45
-        + (1 - sample.masks.shoreline) * (input.archetype === 'oceanic' ? 0.25 : 0.1)
-        + sample.masks.cliff * 0.2,
-      0,
-      1,
-    );
+    masks.risk[i] = state.risk;
   }
 
   pos.needsUpdate = true;
@@ -140,25 +134,27 @@ function sampleBuildState(
   z: number,
   config: TerrainGeometryConfig,
   input: CityTerrainInput,
+  slope: number,
 ) {
   const nx = x / config.terrainWidth;
   const nz = z / config.terrainDepth;
 
-  const tx = Math.floor(((nx + 0.5) * 20));
-  const ty = Math.floor(((nz + 0.5) * 14));
-  const key = `${clamp(tx, 0, 19)},${clamp(ty, 0, 13)}`;
+  const tx = Math.floor((nx + 0.5) * 20);
+  const ty = Math.floor((nz + 0.5) * 14);
+  const key = `${clamp(Math.round(tx), 0, 19)},${clamp(Math.round(ty), 0, 13)}`;
 
   const blocked = layout.blocked.has(key) ? 1 : 0;
   const expansion = layout.expansion.has(key) ? 1 : 0;
-  const ellipse = smoothEllipse(
-    nx - input.local.playableOffsetX,
-    nz - input.local.playableOffsetZ,
-    input.local.playableRadiusX,
-    input.local.playableRadiusZ,
-  );
 
-  const buildable = clamp(ellipse * (1 - blocked) * (1 - expansion * 0.65), 0, 1);
-  return { blocked, expansion, buildable };
+  const foregroundBand = smoothstep(-0.08, 0.34, nz);
+  const sideFalloff = smoothstep(0.64, 0.12, Math.abs(nx));
+  const buildPad = foregroundBand * sideFalloff;
+  const slopePenalty = smoothstep(0.11, 0.28, slope);
+
+  const buildable = clamp(buildPad * (1 - blocked) * (1 - expansion * 0.5) * (1 - slopePenalty), 0, 1);
+  const risk = clamp((1 - buildPad) * 0.65 + slopePenalty * 0.55 + blocked * 0.3, 0, 1);
+
+  return { blocked, expansion, buildable, risk };
 }
 
 export function sampleTerrain(
@@ -176,82 +172,83 @@ export function sampleTerrain(
   const wx = nx * 3.2 + input.local.originX;
   const wz = nz * 3.2 + input.local.originZ;
 
-  const continental = fbm2(wx * input.shape.continentScale * 0.7, wz * input.shape.continentScale * 0.7, input.seed ^ 0x33a2, 5);
-  const ridges = ridgeNoise(wx * input.shape.ridgeScale * 0.2, wz * input.shape.ridgeScale * 0.2, input.seed ^ 0x99d1);
-  const basins = fbm2(wx * input.shape.craterScale * 0.2, wz * input.shape.craterScale * 0.2, input.seed ^ 0x118f, 3);
-  const micro = fbm2(wx * input.material.microReliefScale * 0.5, wz * input.material.microReliefScale * 0.5, input.seed ^ 0x6f, 3)
-    * (0.3 + input.material.microReliefStrength * 0.9);
+  const foregroundBand = smoothstep(-0.08, 0.34, nz);
+  const midBand = smoothstep(-0.32, 0.08, nz) * (1 - foregroundBand * 0.72);
+  const backgroundBand = smoothstep(0.14, -0.5, nz);
 
-  const playable = smoothEllipse(
-    nx - input.local.playableOffsetX,
-    nz - input.local.playableOffsetZ,
-    input.local.playableRadiusX,
-    input.local.playableRadiusZ,
-  );
+  const continental = fbm2(wx * input.shape.continentScale * 0.6, wz * input.shape.continentScale * 0.6, input.seed ^ 0x33a2, 5);
+  const ridges = ridgeNoise(wx * input.shape.ridgeScale * 0.22, wz * input.shape.ridgeScale * 0.22, input.seed ^ 0x99d1);
+  const basins = fbm2(wx * input.shape.craterScale * 0.18, wz * input.shape.craterScale * 0.18, input.seed ^ 0x118f, 3);
+  const micro = fbm2(wx * input.material.microReliefScale * 0.34, wz * input.material.microReliefScale * 0.34, input.seed ^ 0x6f, 2);
 
   const coastDistance = nx * input.local.coastDirX + nz * input.local.coastDirZ + input.local.coastBias;
-  let shorelineMask = smoothstep(-0.18, 0.26, coastDistance + continental * 0.14);
-  if (input.archetype === 'oceanic') shorelineMask = smoothstep(-0.32, 0.2, coastDistance + continental * 0.16);
+  let shorelineMask = smoothstep(-0.16, 0.24, coastDistance + continental * 0.12);
+  if (input.archetype === 'oceanic') shorelineMask = smoothstep(-0.3, 0.16, coastDistance + continental * 0.14);
 
-  let baseHeight = continental * (20 + input.shape.reliefStrength * 22)
-    + ridges * (spec.ridgeGain * 14 + input.shape.ridgeWeight * 8)
-    - basins * (spec.basinBias * 12 + input.shape.craterWeight * 7)
-    + micro * 3.8;
+  const baseFlat = spec.coreLift * 1.6 + continental * 1.1 + micro * 0.35;
 
-  const playableTarget = mix(baseHeight, baseHeight * 0.5 + spec.coreLift * 2.3, playable * 0.9);
-  baseHeight = mix(baseHeight, playableTarget, playable);
+  let midRelief = (continental * 3.4 + ridges * 2.2 - basins * 1.8) * midBand;
+  let backRelief = (continental * 18 + ridges * 15 - basins * 10 + micro * 4) * backgroundBand;
 
-  if (input.archetype === 'oceanic') {
-    const lagoon = smoothstep(-0.24, 0.12, coastDistance + continental * 0.1);
-    baseHeight = mix(baseHeight - 10.5, baseHeight + 1.3, lagoon);
+  if (input.archetype === 'arid') {
+    backRelief += fbm2(wx * 8.4, wz * 8.4, input.seed ^ 0x4a4a, 3) * 9.5 * backgroundBand;
   }
 
   if (input.archetype === 'frozen') {
-    const fracture = smoothstep(0.32, 0.88, Math.abs(fbm2(wx * 5.8, wz * 5.8, input.seed ^ 0x8181, 3))) * spec.fractureStrength;
-    baseHeight -= fracture * 5.8;
-    shorelineMask = mix(shorelineMask, shorelineMask * 0.55 + 0.35, 0.4);
-  }
-
-  if (input.archetype === 'arid') {
-    const dunes = fbm2(wx * 10.5, wz * 10.5, input.seed ^ 0x4a4a, 4) * spec.duneStrength * 5.2;
-    baseHeight += dunes;
+    const fracture = smoothstep(0.34, 0.9, Math.abs(fbm2(wx * 6.2, wz * 6.2, input.seed ^ 0x8181, 3))) * spec.fractureStrength;
+    backRelief -= fracture * 8.8 * backgroundBand;
+    midRelief -= fracture * 1.2 * midBand;
+    shorelineMask = mix(shorelineMask, shorelineMask * 0.62 + 0.28, 0.38);
   }
 
   if (input.archetype === 'volcanic') {
-    const faults = ridgeNoise(wx * 2.6, wz * 2.6, input.seed ^ 0xee11);
-    baseHeight += smoothstep(0.4, 0.9, faults) * 8.2;
+    const faults = ridgeNoise(wx * 2.4, wz * 2.4, input.seed ^ 0xee11);
+    backRelief += smoothstep(0.42, 0.9, faults) * 12 * backgroundBand;
   }
 
   if (input.archetype === 'mineral') {
-    const strata = ridgeNoise(wx * 3.2, wz * 3.2, input.seed ^ 0x1313);
-    baseHeight += smoothstep(0.35, 0.9, strata) * 6.1;
+    const strata = ridgeNoise(wx * 3.1, wz * 3.1, input.seed ^ 0x1313);
+    backRelief += smoothstep(0.34, 0.9, strata) * 8.5 * backgroundBand;
   }
 
-  const edgeMask = smoothstep(0.88, 1.22, Math.max(Math.abs(nx), Math.abs(nz)));
-  let heightValue = baseHeight - edgeMask * (12 + spec.edgeDrop * 0.4);
+  if (input.archetype === 'oceanic') {
+    const coastalShelf = smoothstep(-0.2, 0.2, coastDistance + continental * 0.1);
+    backRelief = mix(backRelief - 22, backRelief + 5, coastalShelf);
+  }
+
+  const sideMask = smoothstep(1.2, 0.2, Math.abs(nx));
+  let heightValue = baseFlat * foregroundBand + midRelief + backRelief * sideMask;
 
   if (farField) {
-    heightValue = heightValue * 1.25 - 10.5;
+    const horizonRamp = smoothstep(0.04, -0.52, nz);
+    heightValue = heightValue + horizonRamp * 28 - 12;
   }
 
-  const slopeMask = clamp(Math.abs(ridges) * 0.6 + Math.abs(micro) * 0.42 + edgeMask * 0.25, 0, 1);
-  const cliffMask = smoothstep(0.48, 0.86, slopeMask + (1 - shorelineMask) * 0.15);
+  const edgeMask = smoothstep(0.86, 1.18, Math.max(Math.abs(nx), Math.abs(nz)));
+  heightValue -= edgeMask * (6 + spec.edgeDrop * 0.2);
 
-  const wetBase = clamp(input.climate.humidity + spec.wetnessBoost, 0, 1);
-  const frozenMask = clamp(input.climate.frozen + input.shape.polarWeight * 0.38 + (input.archetype === 'frozen' ? 0.3 : 0), 0, 1);
-  const thermalMask = clamp(input.climate.thermal + (input.archetype === 'volcanic' ? cliffMask * 0.45 : 0), 0, 1);
-  const mineralMask = clamp(input.climate.minerality + (input.archetype === 'mineral' ? cliffMask * 0.36 : 0), 0, 1);
-  const wetnessMask = clamp(wetBase + shorelineMask * 0.4 - slopeMask * 0.22, 0, 1);
-  const vegetationSuitability = clamp(
-    wetnessMask * (1 - thermalMask * 0.84) * (1 - cliffMask * 0.68) * (0.35 + input.climate.vegetation),
+  const slopeMask = clamp(
+    Math.abs(backRelief) * 0.03
+      + Math.abs(midRelief) * 0.06
+      + Math.abs(micro) * 0.12
+      + (1 - foregroundBand) * 0.2,
     0,
     1,
   );
 
+  const cliffMask = smoothstep(0.42, 0.86, slopeMask + backgroundBand * 0.24);
+
+  const wetBase = clamp(input.climate.humidity + spec.wetnessBoost, 0, 1);
+  const frozenMask = clamp(input.climate.frozen + input.shape.polarWeight * 0.34 + (input.archetype === 'frozen' ? 0.35 : 0), 0, 1);
+  const thermalMask = clamp(input.climate.thermal + (input.archetype === 'volcanic' ? cliffMask * 0.5 : 0), 0, 1);
+  const mineralMask = clamp(input.climate.minerality + (input.archetype === 'mineral' ? cliffMask * 0.34 : 0), 0, 1);
+  const wetnessMask = clamp(wetBase + shorelineMask * 0.4 - slopeMask * 0.18, 0, 1);
+  const vegetationSuitability = clamp(wetnessMask * (1 - thermalMask * 0.82) * (1 - cliffMask * 0.72) * (0.32 + input.climate.vegetation), 0, 1);
+
   return {
     height: heightValue,
     masks: {
-      height01: clamp((heightValue + 52) / 120, 0, 1),
+      height01: clamp((heightValue + 80) / 170, 0, 1),
       slope: slopeMask,
       cliff: cliffMask,
       wetness: wetnessMask,
@@ -271,12 +268,12 @@ function extractBuildSurface(geometry: THREE.PlaneGeometry, masks: RuntimeMasks,
   for (let i = 0; i < pos.count; i += 1) {
     const nx = pos.getX(i) / config.terrainWidth;
     const nz = pos.getZ(i) / config.terrainDepth;
-    const inner = smoothEllipse(nx, nz, 0.45, 0.34);
+
+    const foregroundBand = smoothstep(-0.08, 0.34, nz);
+    const sideFalloff = smoothstep(0.66, 0.08, Math.abs(nx));
+
     stableMask[i] = clamp(
-      masks.buildable[i]
-      * inner
-      * (1 - smoothstep(0.34, 0.72, masks.slope[i]))
-      * (1 - masks.risk[i] * 0.5),
+      masks.buildable[i] * foregroundBand * sideFalloff * (1 - smoothstep(0.11, 0.24, masks.slope[i])) * (1 - masks.risk[i] * 0.45),
       0,
       1,
     );
@@ -293,11 +290,6 @@ function extractBuildSurface(geometry: THREE.PlaneGeometry, masks: RuntimeMasks,
     expansionMask: masks.expansion,
     riskMask: masks.risk,
   };
-}
-
-function smoothEllipse(x: number, z: number, rx: number, rz: number) {
-  const d = Math.sqrt((x * x) / (rx * rx) + (z * z) / (rz * rz));
-  return smoothstep(1.05, 0.08, d);
 }
 
 function fbm2(x: number, y: number, seed: number, octaves: number) {
