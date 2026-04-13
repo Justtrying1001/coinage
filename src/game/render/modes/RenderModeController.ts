@@ -4,7 +4,6 @@ export interface ModeContext {
   host: HTMLDivElement;
   onSelectPlanet: (planet: SelectedPlanetRef) => void;
   onRequestMode: (mode: RenderMode) => void;
-  onEnterCity: (settlementId: string) => void;
 }
 
 export interface RenderModeController {
