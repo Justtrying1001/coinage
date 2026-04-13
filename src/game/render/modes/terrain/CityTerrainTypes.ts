@@ -45,6 +45,17 @@ export interface CityTerrainInput {
     microNormalStrength: number;
     microAlbedoBreakup: number;
   };
+  local: {
+    originX: number;
+    originZ: number;
+    coastDirX: number;
+    coastDirZ: number;
+    coastBias: number;
+    playableRadiusX: number;
+    playableRadiusZ: number;
+    playableOffsetX: number;
+    playableOffsetZ: number;
+  };
 }
 
 export interface CityLayoutMaskSource {
@@ -55,8 +66,13 @@ export interface CityLayoutMaskSource {
 export interface BuildSurfaceSnapshot {
   width: number;
   depth: number;
+  heights: Float32Array;
   slopes: Float32Array;
   stableMask: Float32Array;
+  buildableMask: Float32Array;
+  blockedMask: Float32Array;
+  expansionMask: Float32Array;
+  riskMask: Float32Array;
 }
 
 export interface TerrainGeometryConfig {

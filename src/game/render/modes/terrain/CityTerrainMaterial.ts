@@ -1,12 +1,20 @@
 import * as THREE from 'three';
 import type { CityTerrainInput } from '@/game/render/modes/terrain/CityTerrainTypes';
 
-export function createCityTerrainMaterial(input: CityTerrainInput, farField = false) {
+export type CityRenderViewMode = 'normal' | 'build' | 'flat';
+
+interface CityTerrainMaterial extends THREE.MeshStandardMaterial {
+  userData: THREE.MeshStandardMaterial['userData'] & {
+    setViewMode?: (next: CityRenderViewMode) => void;
+  };
+}
+
+export function createCityTerrainMaterial(input: CityTerrainInput, farField = false, initialMode: CityRenderViewMode = 'normal') {
   const mat = new THREE.MeshStandardMaterial({
     color: input.palettes.low,
     roughness: THREE.MathUtils.clamp(input.material.roughness + (farField ? 0.08 : 0), 0.08, 1),
     metalness: THREE.MathUtils.clamp(input.material.metalness * (farField ? 0.5 : 1), 0, 0.6),
-  });
+  }) as CityTerrainMaterial;
 
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uLow = { value: input.palettes.low };
@@ -15,6 +23,11 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
     shader.uniforms.uAccent = { value: input.palettes.accent };
     shader.uniforms.uFogTint = { value: input.palettes.fog };
     shader.uniforms.uFarField = { value: farField ? 1 : 0 };
+    shader.uniforms.uViewMode = { value: initialMode === 'normal' ? 0 : initialMode === 'build' ? 1 : 2 };
+
+    mat.userData.setViewMode = (next: CityRenderViewMode) => {
+      shader.uniforms.uViewMode.value = next === 'normal' ? 0 : next === 'build' ? 1 : 2;
+    };
 
     shader.vertexShader = shader.vertexShader
       .replace(
@@ -29,6 +42,10 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
         attribute float aThermal;
         attribute float aMineralized;
         attribute float aVegetation;
+        attribute float aBuildable;
+        attribute float aBlocked;
+        attribute float aExpansion;
+        attribute float aRisk;
         varying float vHeight01;
         varying float vSlope;
         varying float vCliff;
@@ -38,6 +55,11 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
         varying float vThermal;
         varying float vMineralized;
         varying float vVegetation;
+        varying float vBuildable;
+        varying float vBlocked;
+        varying float vExpansion;
+        varying float vRisk;
+        varying vec3 vWorldPos;
       `,
       )
       .replace(
@@ -52,6 +74,16 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
         vThermal = aThermal;
         vMineralized = aMineralized;
         vVegetation = aVegetation;
+        vBuildable = aBuildable;
+        vBlocked = aBlocked;
+        vExpansion = aExpansion;
+        vRisk = aRisk;
+      `,
+      )
+      .replace(
+        '#include <worldpos_vertex>',
+        `#include <worldpos_vertex>
+        vWorldPos = worldPosition.xyz;
       `,
       );
 
@@ -65,6 +97,7 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
         uniform vec3 uAccent;
         uniform vec3 uFogTint;
         uniform int uFarField;
+        uniform int uViewMode;
         varying float vHeight01;
         varying float vSlope;
         varying float vCliff;
@@ -74,26 +107,50 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
         varying float vThermal;
         varying float vMineralized;
         varying float vVegetation;
+        varying float vBuildable;
+        varying float vBlocked;
+        varying float vExpansion;
+        varying float vRisk;
+        varying vec3 vWorldPos;
       `,
       )
       .replace(
         '#include <color_fragment>',
         `#include <color_fragment>
-        vec3 baseColor = mix(uLow, uHigh, smoothstep(0.16, 0.88, vHeight01));
-        baseColor = mix(baseColor, uCliff, vCliff * 0.72);
-        baseColor = mix(baseColor, uAccent, vVegetation * 0.34 + vMineralized * 0.28);
+        vec3 baseColor = mix(uLow, uHigh, smoothstep(0.14, 0.88, vHeight01));
+        baseColor = mix(baseColor, uCliff, vCliff * 0.7);
+        baseColor = mix(baseColor, uAccent, vVegetation * 0.3 + vMineralized * 0.24);
 
         vec3 wetTint = vec3(0.88, 0.94, 1.02);
-        vec3 frostTint = vec3(0.86, 0.93, 1.04);
+        vec3 frostTint = vec3(0.85, 0.92, 1.03);
         vec3 heatTint = vec3(1.06, 0.88, 0.74);
 
-        baseColor *= mix(vec3(1.0), wetTint, vWetness * 0.18);
-        baseColor *= mix(vec3(1.0), frostTint, vFrozen * 0.25);
+        baseColor *= mix(vec3(1.0), wetTint, vWetness * 0.16);
+        baseColor *= mix(vec3(1.0), frostTint, vFrozen * 0.24);
         baseColor *= mix(vec3(1.0), heatTint, vThermal * 0.2);
-        baseColor = mix(baseColor, baseColor * vec3(1.08, 1.04, 0.92), vShoreline * 0.26);
+        baseColor = mix(baseColor, baseColor * vec3(1.09, 1.04, 0.92), vShoreline * 0.24);
 
         if (uFarField == 1) {
-          baseColor = mix(baseColor, uFogTint, 0.4);
+          baseColor = mix(baseColor, uFogTint, 0.36);
+        }
+
+        if (uViewMode > 0) {
+          vec3 buildableColor = vec3(0.22, 0.66, 0.28);
+          vec3 blockedColor = vec3(0.73, 0.2, 0.18);
+          vec3 expansionColor = vec3(0.72, 0.56, 0.22);
+          vec3 riskColor = vec3(0.78, 0.44, 0.14);
+          vec3 utility = mix(vec3(0.14, 0.18, 0.2), buildableColor, vBuildable);
+          utility = mix(utility, expansionColor, vExpansion * 0.72);
+          utility = mix(utility, blockedColor, vBlocked);
+          utility = mix(utility, riskColor, vRisk * 0.6);
+
+          float gridCell = 4.5;
+          vec2 g = abs(fract(vWorldPos.xz / gridCell) - 0.5);
+          float line = smoothstep(0.49, 0.5, max(g.x, g.y));
+          float gridMask = (uViewMode == 1 ? 0.8 : 0.95) * line;
+
+          baseColor = mix(baseColor * (uViewMode == 1 ? 0.55 : 0.35), utility, uViewMode == 1 ? 0.72 : 0.94);
+          baseColor = mix(baseColor, vec3(0.88, 0.92, 0.94), gridMask * 0.45);
         }
 
         diffuseColor.rgb = baseColor;
@@ -102,12 +159,14 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
       .replace(
         'float roughnessFactor = roughness;',
         `float roughnessFactor = roughness;
-        roughnessFactor = clamp(roughnessFactor + vCliff * 0.18 + vMineralized * 0.06 - vWetness * 0.12, 0.05, 1.0);`,
+        roughnessFactor = clamp(roughnessFactor + vCliff * 0.18 + vMineralized * 0.06 - vWetness * 0.12, 0.05, 1.0);
+        if (uViewMode == 2) roughnessFactor = max(roughnessFactor, 0.82);`,
       )
       .replace(
         'float metalnessFactor = metalness;',
         `float metalnessFactor = metalness;
-        metalnessFactor = clamp(metalnessFactor + vMineralized * 0.24 - vWetness * 0.03, 0.0, 0.8);`,
+        metalnessFactor = clamp(metalnessFactor + vMineralized * 0.24 - vWetness * 0.03, 0.0, 0.8);
+        if (uViewMode > 0) metalnessFactor *= 0.42;`,
       );
   };
 

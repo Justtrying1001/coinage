@@ -47,6 +47,10 @@ export function createCityTerrainInput(seed: number): CityTerrainInput {
   const frozen = visual.archetype === 'frozen' ? 1 : clamp((0.45 - planet.material.wetness) + visual.polarWeight, 0, 1);
   const thermal = visual.archetype === 'volcanic' ? clamp(0.55 + visual.emissiveIntensity * 2.4, 0, 1) : clamp(visual.emissiveIntensity * 1.5, 0, 1);
   const minerality = clamp(visual.metalness * 1.7 + (visual.archetype === 'mineral' ? 0.45 : 0), 0, 1);
+  const theta = ((seed >>> 8) % 360) * (Math.PI / 180);
+  const coastDirX = Math.cos(theta);
+  const coastDirZ = Math.sin(theta);
+  const coastBias = clamp((visual.oceanLevel - 0.34) * 0.9 + (visual.archetype === 'oceanic' ? 0.24 : 0), -0.2, 0.55);
 
   return {
     seed,
@@ -82,6 +86,17 @@ export function createCityTerrainInput(seed: number): CityTerrainInput {
       microReliefScale: planet.material.microReliefScale,
       microNormalStrength: planet.material.microNormalStrength,
       microAlbedoBreakup: planet.material.microAlbedoBreakup,
+    },
+    local: {
+      originX: (((seed >>> 2) & 1023) / 1023) * 18 - 9,
+      originZ: (((seed >>> 12) & 1023) / 1023) * 18 - 9,
+      coastDirX,
+      coastDirZ,
+      coastBias,
+      playableRadiusX: 0.38 + (((seed >>> 22) & 255) / 255) * 0.08,
+      playableRadiusZ: 0.3 + (((seed >>> 26) & 63) / 63) * 0.08,
+      playableOffsetX: coastDirX * -0.12,
+      playableOffsetZ: coastDirZ * -0.12,
     },
   };
 }

@@ -6,42 +6,57 @@ export function createCityFluidLayer(input: CityTerrainInput, config: TerrainGeo
   const spec = CITY_BIOME_SPECS[input.archetype];
   if (spec.waterMode === 'none') return null;
 
-  const geo = new THREE.PlaneGeometry(config.farWidth * 0.98, config.farDepth * 0.96, 140, 120);
+  const geo = new THREE.PlaneGeometry(config.farWidth, config.farDepth, 200, 170);
   geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position;
+  const alpha = new Float32Array(pos.count);
 
   for (let i = 0; i < pos.count; i += 1) {
-    const x = pos.getX(i) / config.farWidth;
-    const z = pos.getZ(i) / config.farDepth;
-    const ripple = Math.sin((x + input.seed * 0.0001) * 24) * Math.cos((z - input.seed * 0.00013) * 22) * 0.35;
-    const shelf = smoothstep(0.24, 0.8, 1 - Math.max(Math.abs(x) * 1.06, Math.abs(z) * 1.02));
-    const y = ripple * (spec.waterMode === 'ice' ? 0.12 : 0.45) + shelf * 0.2;
+    const nx = pos.getX(i) / config.farWidth;
+    const nz = pos.getZ(i) / config.farDepth;
+    const coastDistance = nx * input.local.coastDirX + nz * input.local.coastDirZ + input.local.coastBias;
+
+    const wave = Math.sin((nx + input.seed * 0.00009) * 22) * Math.cos((nz - input.seed * 0.00007) * 19) * 0.45;
+    const mask = smoothstep(-0.42, spec.waterMode === 'water' ? 0.02 : -0.08, coastDistance);
+    const y = wave * (spec.waterMode === 'ice' ? 0.12 : 0.52) + (1 - mask) * 0.8;
     pos.setY(i, y);
+    alpha[i] = clamp((1 - mask) * (spec.waterMode === 'lava' ? 0.76 : 0.9), 0, 1);
   }
 
+  geo.setAttribute('aAlpha', new THREE.BufferAttribute(alpha, 1));
   pos.needsUpdate = true;
   geo.computeVertexNormals();
 
   const color = spec.waterMode === 'lava'
-    ? new THREE.Color('#8e2b12')
+    ? new THREE.Color('#922f16')
     : spec.waterMode === 'ice'
-      ? new THREE.Color('#9dc5d8')
+      ? new THREE.Color('#a8cfe0')
       : input.palettes.water.clone();
 
   const mat = new THREE.MeshStandardMaterial({
     color,
-    roughness: spec.waterMode === 'lava' ? 0.84 : spec.waterMode === 'ice' ? 0.26 : 0.18,
-    metalness: spec.waterMode === 'lava' ? 0.04 : 0.12,
+    roughness: spec.waterMode === 'lava' ? 0.84 : spec.waterMode === 'ice' ? 0.28 : 0.14,
+    metalness: spec.waterMode === 'lava' ? 0.04 : 0.14,
     transparent: true,
-    opacity: spec.waterMode === 'ice' ? 0.72 : 0.86,
-    emissive: spec.waterMode === 'lava' ? new THREE.Color('#b64624') : new THREE.Color('#000000'),
-    emissiveIntensity: spec.waterMode === 'lava' ? 0.38 : 0,
+    opacity: spec.waterMode === 'lava' ? 0.8 : 0.86,
+    emissive: spec.waterMode === 'lava' ? new THREE.Color('#c9532a') : new THREE.Color('#000000'),
+    emissiveIntensity: spec.waterMode === 'lava' ? 0.42 : 0,
+    depthWrite: false,
   });
 
+  mat.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float aAlpha;\nvarying float vAlpha;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvAlpha = aAlpha;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying float vAlpha;')
+      .replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'vec4 diffuseColor = vec4( diffuse, opacity * vAlpha );');
+  };
+
   const mesh = new THREE.Mesh(geo, mat);
-  const level = spec.waterMode === 'water' ? -5.4 : spec.waterMode === 'ice' ? -3.9 : -7.4;
+  const level = spec.waterMode === 'water' ? -4.9 : spec.waterMode === 'ice' ? -3.5 : -6.6;
   mesh.position.y = level;
-  mesh.receiveShadow = spec.waterMode !== 'water';
+  mesh.receiveShadow = false;
   return mesh;
 }
 
