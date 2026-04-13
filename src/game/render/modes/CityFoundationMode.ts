@@ -164,6 +164,15 @@ export class CityFoundationMode implements RenderModeController {
 
     if (this.decorGroup) this.decorGroup.visible = this.viewMode === 'normal';
     if (this.water) this.water.visible = this.viewMode !== 'flat';
+    if (this.scene?.fog instanceof THREE.Fog) {
+      if (this.viewMode === 'normal') {
+        this.scene.fog.near = 760;
+        this.scene.fog.far = 2400;
+      } else {
+        this.scene.fog.near = 1400;
+        this.scene.fog.far = 3600;
+      }
+    }
 
     if (!this.perspectiveCamera || !this.orthoCamera) return;
 

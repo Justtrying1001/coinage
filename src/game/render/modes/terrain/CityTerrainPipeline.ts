@@ -146,12 +146,12 @@ function sampleBuildState(
   const blocked = layout.blocked.has(key) ? 1 : 0;
   const expansion = layout.expansion.has(key) ? 1 : 0;
 
-  const foregroundBand = smoothstep(-0.08, 0.34, nz);
-  const sideFalloff = smoothstep(0.64, 0.12, Math.abs(nx));
+  const foregroundBand = smoothstep(-0.02, 0.46, nz);
+  const sideFalloff = smoothstep(0.72, 0.08, Math.abs(nx));
   const buildPad = foregroundBand * sideFalloff;
-  const slopePenalty = smoothstep(0.11, 0.28, slope);
+  const slopePenalty = smoothstep(0.08, 0.2, slope);
 
-  const buildable = clamp(buildPad * (1 - blocked) * (1 - expansion * 0.5) * (1 - slopePenalty), 0, 1);
+  const buildable = clamp(buildPad * (1 - blocked) * (1 - expansion * 0.45) * (1 - slopePenalty), 0, 1);
   const risk = clamp((1 - buildPad) * 0.65 + slopePenalty * 0.55 + blocked * 0.3, 0, 1);
 
   return { blocked, expansion, buildable, risk };
@@ -172,9 +172,9 @@ export function sampleTerrain(
   const wx = nx * 3.2 + input.local.originX;
   const wz = nz * 3.2 + input.local.originZ;
 
-  const foregroundBand = smoothstep(-0.08, 0.34, nz);
-  const midBand = smoothstep(-0.32, 0.08, nz) * (1 - foregroundBand * 0.72);
-  const backgroundBand = smoothstep(0.14, -0.5, nz);
+  const foregroundBand = smoothstep(0.0, 0.46, nz);
+  const midBand = smoothstep(-0.22, 0.12, nz) * (1 - foregroundBand * 0.85);
+  const backgroundBand = smoothstep(0.06, -0.56, nz);
 
   const continental = fbm2(wx * input.shape.continentScale * 0.6, wz * input.shape.continentScale * 0.6, input.seed ^ 0x33a2, 5);
   const ridges = ridgeNoise(wx * input.shape.ridgeScale * 0.22, wz * input.shape.ridgeScale * 0.22, input.seed ^ 0x99d1);
@@ -185,53 +185,58 @@ export function sampleTerrain(
   let shorelineMask = smoothstep(-0.16, 0.24, coastDistance + continental * 0.12);
   if (input.archetype === 'oceanic') shorelineMask = smoothstep(-0.3, 0.16, coastDistance + continental * 0.14);
 
-  const baseFlat = spec.coreLift * 1.6 + continental * 1.1 + micro * 0.35;
+  const padMicro = micro * 0.08;
+  const baseFlat = 10.5 + spec.coreLift * 0.6 + continental * 0.35 + padMicro;
 
-  let midRelief = (continental * 3.4 + ridges * 2.2 - basins * 1.8) * midBand;
-  let backRelief = (continental * 18 + ridges * 15 - basins * 10 + micro * 4) * backgroundBand;
+  let midRelief = (continental * 2.2 + ridges * 1.8 - basins * 1.2) * midBand;
+  let backRelief = (continental * 22 + ridges * 18 - basins * 12 + micro * 5.2) * backgroundBand;
 
   if (input.archetype === 'arid') {
-    backRelief += fbm2(wx * 8.4, wz * 8.4, input.seed ^ 0x4a4a, 3) * 9.5 * backgroundBand;
+    backRelief += fbm2(wx * 8.4, wz * 8.4, input.seed ^ 0x4a4a, 3) * 12.5 * backgroundBand;
   }
 
   if (input.archetype === 'frozen') {
     const fracture = smoothstep(0.34, 0.9, Math.abs(fbm2(wx * 6.2, wz * 6.2, input.seed ^ 0x8181, 3))) * spec.fractureStrength;
-    backRelief -= fracture * 8.8 * backgroundBand;
-    midRelief -= fracture * 1.2 * midBand;
+    backRelief -= fracture * 11.2 * backgroundBand;
+    midRelief -= fracture * 1.8 * midBand;
     shorelineMask = mix(shorelineMask, shorelineMask * 0.62 + 0.28, 0.38);
   }
 
   if (input.archetype === 'volcanic') {
     const faults = ridgeNoise(wx * 2.4, wz * 2.4, input.seed ^ 0xee11);
-    backRelief += smoothstep(0.42, 0.9, faults) * 12 * backgroundBand;
+    backRelief += smoothstep(0.42, 0.9, faults) * 15 * backgroundBand;
   }
 
   if (input.archetype === 'mineral') {
     const strata = ridgeNoise(wx * 3.1, wz * 3.1, input.seed ^ 0x1313);
-    backRelief += smoothstep(0.34, 0.9, strata) * 8.5 * backgroundBand;
+    backRelief += smoothstep(0.34, 0.9, strata) * 11 * backgroundBand;
   }
 
   if (input.archetype === 'oceanic') {
-    const coastalShelf = smoothstep(-0.2, 0.2, coastDistance + continental * 0.1);
-    backRelief = mix(backRelief - 22, backRelief + 5, coastalShelf);
+    const coastalShelf = smoothstep(-0.26, 0.12, coastDistance + continental * 0.08);
+    backRelief = mix(backRelief - 30, backRelief + 4, coastalShelf);
+    midRelief = mix(midRelief - 8, midRelief, coastalShelf);
   }
 
   const sideMask = smoothstep(1.2, 0.2, Math.abs(nx));
   let heightValue = baseFlat * foregroundBand + midRelief + backRelief * sideMask;
 
+  const platformMask = foregroundBand * smoothstep(0.74, 0.08, Math.abs(nx));
+  heightValue = mix(heightValue, 10.2 + padMicro, platformMask * 0.96);
+
   if (farField) {
-    const horizonRamp = smoothstep(0.04, -0.52, nz);
-    heightValue = heightValue + horizonRamp * 28 - 12;
+    const horizonRamp = smoothstep(0.02, -0.6, nz);
+    heightValue = heightValue + horizonRamp * 34 - 22;
   }
 
   const edgeMask = smoothstep(0.86, 1.18, Math.max(Math.abs(nx), Math.abs(nz)));
-  heightValue -= edgeMask * (6 + spec.edgeDrop * 0.2);
+  heightValue -= edgeMask * (8 + spec.edgeDrop * 0.2);
 
   const slopeMask = clamp(
     Math.abs(backRelief) * 0.03
       + Math.abs(midRelief) * 0.06
-      + Math.abs(micro) * 0.12
-      + (1 - foregroundBand) * 0.2,
+      + Math.abs(micro) * 0.04
+      + (1 - foregroundBand) * 0.24,
     0,
     1,
   );
@@ -269,11 +274,11 @@ function extractBuildSurface(geometry: THREE.PlaneGeometry, masks: RuntimeMasks,
     const nx = pos.getX(i) / config.terrainWidth;
     const nz = pos.getZ(i) / config.terrainDepth;
 
-    const foregroundBand = smoothstep(-0.08, 0.34, nz);
-    const sideFalloff = smoothstep(0.66, 0.08, Math.abs(nx));
+    const foregroundBand = smoothstep(0.0, 0.46, nz);
+    const sideFalloff = smoothstep(0.72, 0.08, Math.abs(nx));
 
     stableMask[i] = clamp(
-      masks.buildable[i] * foregroundBand * sideFalloff * (1 - smoothstep(0.11, 0.24, masks.slope[i])) * (1 - masks.risk[i] * 0.45),
+      masks.buildable[i] * foregroundBand * sideFalloff * (1 - smoothstep(0.08, 0.2, masks.slope[i])) * (1 - masks.risk[i] * 0.35),
       0,
       1,
     );

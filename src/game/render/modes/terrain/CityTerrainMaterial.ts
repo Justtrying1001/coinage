@@ -131,7 +131,7 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
         baseColor = mix(baseColor, baseColor * vec3(1.09, 1.04, 0.92), vShoreline * 0.24);
 
         if (uFarField == 1) {
-          baseColor = mix(baseColor, uFogTint, 0.36);
+          baseColor = mix(baseColor, uFogTint, 0.18);
         }
 
         if (uViewMode > 0) {

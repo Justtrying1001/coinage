@@ -3,7 +3,7 @@ import type { CityTerrainInput } from '@/game/render/modes/terrain/CityTerrainTy
 
 export function applyCityAtmosphere(scene: THREE.Scene, input: CityTerrainInput) {
   scene.background = input.palettes.sky.clone();
-  scene.fog = new THREE.Fog(input.palettes.fog.clone(), 120, 520);
+  scene.fog = new THREE.Fog(input.palettes.fog.clone().lerp(input.palettes.sky, 0.35), 760, 2400);
 }
 
 export function createCityLighting(input: CityTerrainInput) {

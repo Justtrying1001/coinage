@@ -48,9 +48,13 @@ export function createCityTerrainInput(seed: number): CityTerrainInput {
   const thermal = visual.archetype === 'volcanic' ? clamp(0.55 + visual.emissiveIntensity * 2.4, 0, 1) : clamp(visual.emissiveIntensity * 1.5, 0, 1);
   const minerality = clamp(visual.metalness * 1.7 + (visual.archetype === 'mineral' ? 0.45 : 0), 0, 1);
   const theta = ((seed >>> 8) % 360) * (Math.PI / 180);
-  const coastDirX = Math.cos(theta);
-  const coastDirZ = Math.sin(theta);
-  const coastBias = clamp((visual.oceanLevel - 0.34) * 0.9 + (visual.archetype === 'oceanic' ? 0.24 : 0), -0.2, 0.55);
+  const defaultCoastDirX = Math.cos(theta);
+  const defaultCoastDirZ = Math.sin(theta);
+  const coastDirX = visual.archetype === 'oceanic' ? 0 : defaultCoastDirX;
+  const coastDirZ = visual.archetype === 'oceanic' ? -1 : defaultCoastDirZ;
+  const coastBias = visual.archetype === 'oceanic'
+    ? -0.04
+    : clamp((visual.oceanLevel - 0.34) * 0.9, -0.2, 0.5);
 
   return {
     seed,
