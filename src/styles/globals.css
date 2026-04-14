@@ -223,10 +223,35 @@ a {
 
 .galaxy-inspect-meta {
   margin: 0;
-  font-size: 0.67rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  color: rgba(198, 228, 250, 0.92);
+}
+
+.galaxy-inspect-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.galaxy-inspect-chip {
+  border-radius: 999px;
+  border: 1px solid rgba(155, 213, 246, 0.4);
+  background: rgba(12, 34, 52, 0.8);
+  color: #d5edff;
+  font-size: 0.62rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: rgba(198, 228, 250, 0.9);
+  padding: 0.22rem 0.48rem;
+}
+
+.galaxy-inspect-summary {
+  margin: 0;
+  font-size: 0.69rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(219, 240, 255, 0.95);
+  font-weight: 600;
 }
 
 .galaxy-inspect-slots {
@@ -240,10 +265,14 @@ a {
 
 .galaxy-inspect-slot {
   margin: 0;
-  font-size: 0.66rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: rgba(198, 228, 250, 0.84);
+  font-size: 0.65rem;
+  letter-spacing: 0.03em;
+  color: rgba(208, 232, 248, 0.9);
+  line-height: 1.4;
+  padding: 0.26rem 0.38rem;
+  border: 1px solid rgba(111, 165, 197, 0.2);
+  border-radius: 8px;
+  background: rgba(8, 25, 39, 0.56);
 }
 
 .planet-inspect-title {

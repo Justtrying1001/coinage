@@ -1,4 +1,4 @@
-import type { GalaxyData, GalaxyNode } from '@/game/render/types';
+import type { GalaxyData, GalaxyNode, PlanetSettlementTelemetry } from '@/game/render/types';
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
 import type { SelectedPlanetRef } from '@/game/render/types';
 import { generateSeededStarfield } from '@/game/render/starfield';
@@ -24,6 +24,7 @@ export interface Galaxy2DViewSnapshot {
 interface Galaxy2DModeOptions {
   initialSelectedPlanet?: SelectedPlanetRef | null;
   initialViewSnapshot?: Galaxy2DViewSnapshot | null;
+  settlementTelemetry?: Map<string, PlanetSettlementTelemetry>;
 }
 
 export class Galaxy2DMode implements RenderModeController {
@@ -33,6 +34,8 @@ export class Galaxy2DMode implements RenderModeController {
   private readonly ctx = this.canvas.getContext('2d');
   private readonly starfield = generateSeededStarfield(0xdecafbad, 1400, { min: 8, max: 18 });
   private readonly archetypeByNodeId = new Map<string, ReturnType<typeof planetProfileFromSeed>['archetype']>();
+  private readonly spriteCache = new Map<string, HTMLCanvasElement>();
+  private readonly worldStars: Array<{ x: number; y: number; alpha: number; size: number }> = [];
 
   private transform: ViewTransform = { x: 0, y: 0, zoom: 1 };
   private width = 1;
@@ -55,7 +58,9 @@ export class Galaxy2DMode implements RenderModeController {
   private infoTitle: HTMLHeadingElement | null = null;
   private infoMeta: HTMLParagraphElement | null = null;
   private infoSlotSummary: HTMLParagraphElement | null = null;
+  private infoChipRow: HTMLDivElement | null = null;
   private infoSlotList: HTMLUListElement | null = null;
+  private settlementTelemetry = new Map<string, PlanetSettlementTelemetry>();
 
   constructor(
     private readonly galaxy: GalaxyData,
@@ -64,9 +69,19 @@ export class Galaxy2DMode implements RenderModeController {
   ) {
     this.selectedNodeId = options?.initialSelectedPlanet?.id ?? null;
     this.initialViewSnapshot = options?.initialViewSnapshot ?? null;
+    this.settlementTelemetry = options?.settlementTelemetry ?? this.settlementTelemetry;
     this.nodeBounds = this.computeNodeBounds();
     for (const node of galaxy.nodes) {
       this.archetypeByNodeId.set(node.id, planetProfileFromSeed(node.seed).archetype);
+    }
+    for (let index = 0; index < this.starfield.length; index += 1) {
+      const star = this.starfield[index];
+      this.worldStars.push({
+        x: normalize(star.x, -18, 18) * this.galaxy.width + (index % 5) * 11,
+        y: normalize(star.y + star.z * 0.5, -18, 18) * this.galaxy.height + (index % 7) * 9,
+        alpha: 0.13 + star.intensity * 0.24,
+        size: 0.8 + star.size * 1.15,
+      });
     }
   }
 
@@ -215,11 +230,13 @@ export class Galaxy2DMode implements RenderModeController {
     if (!this.ctx) return;
 
     this.ctx.clearRect(0, 0, this.width, this.height);
-    this.drawScreenBackground();
+    this.ctx.fillStyle = '#02050d';
+    this.ctx.fillRect(0, 0, this.width, this.height);
 
     this.ctx.save();
     this.ctx.translate(this.transform.x, this.transform.y);
     this.ctx.scale(this.transform.zoom, this.transform.zoom);
+    this.drawWorldBackground();
 
     for (const node of this.galaxy.nodes) {
       this.drawNode(node);
@@ -228,21 +245,14 @@ export class Galaxy2DMode implements RenderModeController {
     this.ctx.restore();
   }
 
-  private drawScreenBackground() {
+  private drawWorldBackground() {
     if (!this.ctx) return;
-
-    this.ctx.fillStyle = '#02050d';
-    this.ctx.fillRect(0, 0, this.width, this.height);
-
-    for (let i = 0; i < this.starfield.length; i += 1) {
-      const star = this.starfield[i];
-      const sx = ((star.x * 0.5 + star.z * 0.5) * 20 + this.width * 0.5 + i * 3.1) % this.width;
-      const sy = ((star.y * 0.7 - star.z * 0.35) * 18 + this.height * 0.5 + i * 1.9) % this.height;
-      const px = sx < 0 ? sx + this.width : sx;
-      const py = sy < 0 ? sy + this.height : sy;
-      this.ctx.fillStyle = `rgba(191, 216, 255, ${0.18 + star.intensity * 0.34})`;
+    for (const star of this.worldStars) {
+      const px = modulo(star.x, this.galaxy.width);
+      const py = modulo(star.y, this.galaxy.height);
+      this.ctx.fillStyle = `rgba(191, 216, 255, ${star.alpha})`;
       this.ctx.beginPath();
-      this.ctx.arc(px, py, star.size * 0.7, 0, Math.PI * 2);
+      this.ctx.arc(px, py, star.size, 0, Math.PI * 2);
       this.ctx.fill();
     }
   }
@@ -253,35 +263,15 @@ export class Galaxy2DMode implements RenderModeController {
     const isHovered = node.id === this.hoveredNodeId;
     const isSelected = node.id === this.selectedNodeId;
     const radius = this.getNodeRadius(node) * (isHovered ? 1.14 : 1);
-    const style = getBiomeStyle(this.archetypeByNodeId.get(node.id) ?? 'terrestrial');
+    const archetype = this.archetypeByNodeId.get(node.id) ?? 'terrestrial';
+    const sprite = this.getOrCreatePlanetSprite(archetype);
 
     this.ctx.beginPath();
-    this.ctx.fillStyle = style.halo;
-    this.ctx.arc(node.x, node.y, radius + 3.2, 0, Math.PI * 2);
+    this.ctx.fillStyle = 'rgba(153, 225, 255, 0.16)';
+    this.ctx.arc(node.x, node.y, radius + 2.8, 0, Math.PI * 2);
     this.ctx.fill();
 
-    this.ctx.beginPath();
-    this.ctx.fillStyle = style.rim;
-    this.ctx.arc(node.x, node.y, radius + 0.9, 0, Math.PI * 2);
-    this.ctx.fill();
-
-    this.ctx.beginPath();
-    this.ctx.fillStyle = style.base;
-    this.ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
-    this.ctx.fill();
-
-    this.ctx.beginPath();
-    this.ctx.fillStyle = style.core;
-    this.ctx.arc(node.x - radius * 0.25, node.y - radius * 0.2, radius * 0.48, 0, Math.PI * 2);
-    this.ctx.fill();
-
-    if (style.ring) {
-      this.ctx.beginPath();
-      this.ctx.strokeStyle = style.ring;
-      this.ctx.lineWidth = clamp(1.4 / this.transform.zoom, 0.7, 1.6);
-      this.ctx.ellipse(node.x, node.y, radius + 1.7, radius * 0.65, Math.PI * 0.2, 0, Math.PI * 2);
-      this.ctx.stroke();
-    }
+    this.ctx.drawImage(sprite, node.x - radius, node.y - radius, radius * 2, radius * 2);
 
     if (isHovered || isSelected) {
       this.ctx.beginPath();
@@ -411,14 +401,18 @@ export class Galaxy2DMode implements RenderModeController {
     const meta = document.createElement('p');
     meta.className = 'galaxy-inspect-meta';
 
+    const chipRow = document.createElement('div');
+    chipRow.className = 'galaxy-inspect-chips';
+
     const slotSummary = document.createElement('p');
-    slotSummary.className = 'galaxy-inspect-meta';
+    slotSummary.className = 'galaxy-inspect-summary';
 
     const slotList = document.createElement('ul');
     slotList.className = 'galaxy-inspect-slots';
 
     panel.appendChild(title);
     panel.appendChild(meta);
+    panel.appendChild(chipRow);
     panel.appendChild(slotSummary);
     panel.appendChild(slotList);
 
@@ -426,12 +420,13 @@ export class Galaxy2DMode implements RenderModeController {
     this.infoPanel = panel;
     this.infoTitle = title;
     this.infoMeta = meta;
+    this.infoChipRow = chipRow;
     this.infoSlotSummary = slotSummary;
     this.infoSlotList = slotList;
   }
 
   private refreshInfoPanel() {
-    if (!this.infoPanel || !this.infoTitle || !this.infoMeta || !this.infoSlotSummary || !this.infoSlotList) return;
+    if (!this.infoPanel || !this.infoTitle || !this.infoMeta || !this.infoSlotSummary || !this.infoSlotList || !this.infoChipRow) return;
 
     const focusNode = this.galaxy.nodes.find((node) => node.id === this.selectedNodeId)
       ?? this.galaxy.nodes.find((node) => node.id === this.hoveredNodeId)
@@ -441,6 +436,7 @@ export class Galaxy2DMode implements RenderModeController {
       this.infoPanel.style.opacity = '0.75';
       this.infoTitle.textContent = 'Select a planet';
       this.infoMeta.textContent = 'Click a world to inspect biome and settlement slots.';
+      this.infoChipRow.innerHTML = '';
       this.infoSlotSummary.textContent = '';
       this.infoSlotList.innerHTML = '';
       return;
@@ -451,13 +447,76 @@ export class Galaxy2DMode implements RenderModeController {
 
     const archetype = this.archetypeByNodeId.get(focusNode.id) ?? 'terrestrial';
     this.infoMeta.textContent = `Biome: ${toDisplayArchetype(archetype)}`;
-    this.infoSlotSummary.textContent = 'Slots: unavailable in Galaxy View';
+    this.infoChipRow.innerHTML = '';
+    this.infoChipRow.appendChild(makeChip(`Biome: ${toDisplayArchetype(archetype)}`));
+    this.infoChipRow.appendChild(makeChip(`Population: ${focusNode.populationBand}`));
 
     this.infoSlotList.innerHTML = '';
-    const line = document.createElement('li');
-    line.className = 'galaxy-inspect-slot';
-    line.textContent = 'Open Planet View to inspect slot count and occupancy.';
-    this.infoSlotList.appendChild(line);
+    const telemetry = this.settlementTelemetry.get(focusNode.id);
+    if (!telemetry) {
+      this.infoSlotSummary.textContent = 'Villes / emplacements: non inspectés';
+      const line = document.createElement('li');
+      line.className = 'galaxy-inspect-slot';
+      line.textContent = 'Ouvre Planet View une fois pour charger les emplacements réels.';
+      this.infoSlotList.appendChild(line);
+      return;
+    }
+
+    this.infoSlotSummary.textContent = `${telemetry.occupied}/${telemetry.total} emplacements occupés`;
+    for (let i = 0; i < telemetry.slots.length; i += 1) {
+      const slot = telemetry.slots[i];
+      const line = document.createElement('li');
+      line.className = 'galaxy-inspect-slot';
+      const city = slot.cityName ? ` — ville: ${slot.cityName}` : '';
+      const owner = slot.owner ? ` — owner: ${slot.owner}` : '';
+      line.textContent = `Emplacement ${i + 1} — ${slot.state === 'occupied' ? 'occupé' : 'libre'}${city}${owner}`;
+      this.infoSlotList.appendChild(line);
+    }
+  }
+
+  private getOrCreatePlanetSprite(archetype: ReturnType<typeof planetProfileFromSeed>['archetype']) {
+    if (this.spriteCache.has(archetype)) return this.spriteCache.get(archetype) as HTMLCanvasElement;
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return canvas;
+
+    const style = getBiomeStyle(archetype);
+    const cx = 64;
+    const cy = 64;
+    const r = 56;
+    ctx.clearRect(0, 0, 128, 128);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.clip();
+
+    const base = ctx.createRadialGradient(cx - 18, cy - 20, 8, cx, cy, r + 2);
+    base.addColorStop(0, style.lit);
+    base.addColorStop(0.56, style.mid);
+    base.addColorStop(1, style.dark);
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, 128, 128);
+
+    drawBiomePattern(ctx, archetype, style);
+
+    const shadow = ctx.createLinearGradient(cx + 8, cy - r, cx + r, cy + r * 0.7);
+    shadow.addColorStop(0, 'rgba(5, 8, 14, 0)');
+    shadow.addColorStop(0.72, 'rgba(5, 8, 14, 0.34)');
+    shadow.addColorStop(1, 'rgba(4, 7, 12, 0.56)');
+    ctx.fillStyle = shadow;
+    ctx.fillRect(0, 0, 128, 128);
+
+    ctx.restore();
+    ctx.beginPath();
+    ctx.strokeStyle = style.rim;
+    ctx.lineWidth = 2.2;
+    ctx.arc(cx, cy, r - 0.8, 0, Math.PI * 2);
+    ctx.stroke();
+
+    this.spriteCache.set(archetype, canvas);
+    return canvas;
   }
 }
 
@@ -470,37 +529,81 @@ function normalize(value: number, min: number, max: number) {
   return clamp((value - min) / (max - min), 0, 1);
 }
 
+function modulo(value: number, size: number) {
+  const wrapped = value % size;
+  return wrapped < 0 ? wrapped + size : wrapped;
+}
+
 function toDisplayArchetype(archetype: ReturnType<typeof planetProfileFromSeed>['archetype']) {
   return `${archetype.charAt(0).toUpperCase()}${archetype.slice(1)}`;
 }
 
 function getBiomeStyle(archetype: ReturnType<typeof planetProfileFromSeed>['archetype']) {
-  const base: Record<ReturnType<typeof planetProfileFromSeed>['archetype'], { base: string; core: string; rim: string; halo: string; ring?: string }> = {
+  const base: Record<ReturnType<typeof planetProfileFromSeed>['archetype'], { lit: string; mid: string; dark: string; rim: string; accent: string }> = {
     frozen: {
-      base: '#d6eeff', core: '#f5fdff', rim: '#9fd7ff', halo: 'rgba(179, 222, 255, 0.2)', ring: 'rgba(205, 237, 255, 0.6)',
+      lit: '#eef8ff', mid: '#b8dbf3', dark: '#6f93b8', rim: '#d7ebff', accent: '#f8fdff',
     },
     oceanic: {
-      base: '#2c91c4', core: '#74d8ff', rim: '#b7f1ff', halo: 'rgba(116, 203, 255, 0.2)',
+      lit: '#7fd6ff', mid: '#2f8bc2', dark: '#1a4369', rim: '#9de1ff', accent: '#6bc07e',
     },
     arid: {
-      base: '#c39255', core: '#f1d09c', rim: '#f3bc73', halo: 'rgba(233, 179, 115, 0.18)',
+      lit: '#f2d6a5', mid: '#c7914f', dark: '#7d5431', rim: '#efc78c', accent: '#c97642',
     },
     volcanic: {
-      base: '#4a2a2d', core: '#ff6f39', rim: '#d34a3f', halo: 'rgba(255, 120, 76, 0.22)',
+      lit: '#d7613f', mid: '#6d312d', dark: '#2c1719', rim: '#ff8a53', accent: '#ffb15a',
     },
     mineral: {
-      base: '#8b8198', core: '#dad1e6', rim: '#b9a8cc', halo: 'rgba(171, 155, 214, 0.2)', ring: 'rgba(208, 193, 240, 0.48)',
+      lit: '#d4cade', mid: '#9587a8', dark: '#544a63', rim: '#c9bcdb', accent: '#8ec5d6',
     },
     terrestrial: {
-      base: '#4a8759', core: '#9fdea4', rim: '#8ec99a', halo: 'rgba(139, 214, 152, 0.2)',
+      lit: '#9fdaa2', mid: '#4f8a58', dark: '#2d4f35', rim: '#b2ddb2', accent: '#75a16a',
     },
     barren: {
-      base: '#7f7f7f', core: '#c8c8c8', rim: '#9f9f9f', halo: 'rgba(176, 176, 176, 0.16)',
+      lit: '#cbcbc9', mid: '#8f8f8b', dark: '#545452', rim: '#b9b9b5', accent: '#9f8b7d',
     },
     jungle: {
-      base: '#2d8740', core: '#79df80', rim: '#a1eba1', halo: 'rgba(113, 228, 131, 0.2)',
+      lit: '#8ee08a', mid: '#2f7f40', dark: '#1b4826', rim: '#b6ebb0', accent: '#65b85c',
     },
   };
 
   return base[archetype];
+}
+
+function drawBiomePattern(
+  ctx: CanvasRenderingContext2D,
+  archetype: ReturnType<typeof planetProfileFromSeed>['archetype'],
+  style: { accent: string },
+) {
+  ctx.fillStyle = style.accent;
+  if (archetype === 'oceanic' || archetype === 'terrestrial' || archetype === 'jungle') {
+    for (let i = 0; i < 5; i += 1) {
+      ctx.beginPath();
+      ctx.ellipse(30 + i * 14, 48 + (i % 2) * 10, 12, 6, i * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (archetype === 'volcanic') {
+    ctx.strokeStyle = style.accent;
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 6; i += 1) {
+      ctx.beginPath();
+      ctx.moveTo(24 + i * 14, 26 + (i % 3) * 7);
+      ctx.lineTo(34 + i * 12, 92 - (i % 2) * 9);
+      ctx.stroke();
+    }
+  } else {
+    for (let i = 0; i < 16; i += 1) {
+      ctx.globalAlpha = 0.28;
+      ctx.beginPath();
+      ctx.arc(20 + (i * 23) % 92, 20 + (i * 17) % 92, 3 + (i % 4), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+function makeChip(text: string) {
+  const chip = document.createElement('span');
+  chip.className = 'galaxy-inspect-chip';
+  chip.textContent = text;
+  return chip;
 }

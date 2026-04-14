@@ -115,7 +115,8 @@ function generateBalancedPlacements({
       const candidate = sampleSpiralCandidate(width, height, rng, arms, minMargin);
       const nearest = nearestDistance(candidate, points);
       const edgeProximity = Math.min(candidate.x - minMargin, width - minMargin - candidate.x, candidate.y - minMargin, height - minMargin - candidate.y);
-      const score = nearest * 1.1 + edgeProximity * 0.32 - candidate.radial * 20;
+      const centerPenalty = Math.max(0, 0.34 - candidate.radial) * 42;
+      const score = nearest * 1.1 + edgeProximity * 0.36 - centerPenalty;
       if (score > bestScore) {
         best = candidate;
         bestScore = score;
@@ -131,12 +132,12 @@ function generateBalancedPlacements({
 
 function sampleSpiralCandidate(width: number, height: number, rng: SeededRng, arms: SpiralArm[], margin: number): PlacementPoint {
   const arm = weightedPick(arms, rng);
-  const radial = Math.pow(rng.next(), 0.72);
+  const radial = clamp(0.08 + Math.pow(rng.next(), 0.48) * 0.9, 0.08, 0.98);
   const swirl = radial * 5.4;
   const armNoise = rng.range(-0.28, 0.28);
   const angle = arm.angleOffset + swirl + armNoise;
-  const ellipseX = 0.44 + rng.range(-0.03, 0.04);
-  const ellipseY = 0.34 + rng.range(-0.02, 0.03);
+  const ellipseX = 0.47 + rng.range(-0.03, 0.04);
+  const ellipseY = 0.39 + rng.range(-0.02, 0.03);
 
   const xNorm = 0.5 + Math.cos(angle) * radial * ellipseX;
   const yNorm = 0.5 + Math.sin(angle) * radial * ellipseY;
@@ -190,9 +191,18 @@ function relaxPlacements(
         }
       }
 
-      const pullToCenter = 0.03 + point.radial * 0.02;
-      pushX += (centerX - point.x) * 0.0009 * pullToCenter;
-      pushY += (centerY - point.y) * 0.0009 * pullToCenter;
+      const offsetX = (point.x - centerX) / (width * 0.5);
+      const offsetY = (point.y - centerY) / (height * 0.5);
+      const normRadius = Math.hypot(offsetX, offsetY);
+      if (normRadius < 0.34 && normRadius > 0.001) {
+        const outward = (0.34 - normRadius) * 0.9;
+        pushX += (offsetX / normRadius) * outward;
+        pushY += (offsetY / normRadius) * outward;
+      } else if (normRadius > 0.94) {
+        const inward = (normRadius - 0.94) * 0.65;
+        pushX -= (offsetX / normRadius) * inward;
+        pushY -= (offsetY / normRadius) * inward;
+      }
 
       point.x = clamp(point.x + pushX + rng.range(-0.12, 0.12), margin, width - margin);
       point.y = clamp(point.y + pushY + rng.range(-0.12, 0.12), margin, height - margin);

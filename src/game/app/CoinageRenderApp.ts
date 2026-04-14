@@ -1,4 +1,4 @@
-import type { RenderMode, SelectedPlanetRef } from '@/game/render/types';
+import type { PlanetSettlementTelemetry, RenderMode, SelectedPlanetRef } from '@/game/render/types';
 import { generateGalaxyData, selectPrimaryPlanet } from '@/game/world/galaxyGenerator';
 import { Galaxy2DMode } from '@/game/render/modes/Galaxy2DMode';
 import type { Galaxy2DViewSnapshot } from '@/game/render/modes/Galaxy2DMode';
@@ -9,7 +9,11 @@ import { CityFoundationMode } from '@/game/render/modes/CityFoundationMode';
 interface RenderModeFactory {
   createGalaxyMode: (
     context: ModeContext,
-    options?: { selectedPlanet?: SelectedPlanetRef | null; viewSnapshot?: Galaxy2DViewSnapshot | null },
+    options?: {
+      selectedPlanet?: SelectedPlanetRef | null;
+      viewSnapshot?: Galaxy2DViewSnapshot | null;
+      settlementTelemetry?: Map<string, PlanetSettlementTelemetry>;
+    },
   ) => RenderModeController;
   createPlanetMode: (planet: SelectedPlanetRef, context: ModeContext) => RenderModeController;
   createCityMode: (planet: SelectedPlanetRef, context: ModeContext) => RenderModeController;
@@ -37,6 +41,7 @@ export class CoinageRenderApp {
   private galaxyData;
   private galaxyViewSnapshot: Galaxy2DViewSnapshot | null = null;
   private readonly modeFactory: RenderModeFactory;
+  private readonly settlementTelemetry = new Map<string, PlanetSettlementTelemetry>();
 
   constructor(
     private readonly host: HTMLDivElement,
@@ -56,6 +61,7 @@ export class CoinageRenderApp {
         new Galaxy2DMode(this.galaxyData, context, {
           initialSelectedPlanet: options?.selectedPlanet ?? this.selectedPlanet,
           initialViewSnapshot: options?.viewSnapshot ?? this.galaxyViewSnapshot,
+          settlementTelemetry: options?.settlementTelemetry ?? this.settlementTelemetry,
         }),
       createPlanetMode: (planet, context) => new Planet3DMode(planet, context),
       createCityMode: (planet, context) => new CityFoundationMode(planet, context),
@@ -148,6 +154,9 @@ export class CoinageRenderApp {
       onRequestMode: (mode: RenderMode) => {
         this.switchMode(mode);
       },
+      onPlanetTelemetry: (planetId, telemetry) => {
+        this.settlementTelemetry.set(planetId, telemetry);
+      },
     };
 
     const activePlanet = this.selectedPlanet ?? selectPrimaryPlanet(this.galaxyData);
@@ -155,6 +164,7 @@ export class CoinageRenderApp {
       this.activeController = this.modeFactory.createGalaxyMode(context, {
         selectedPlanet: this.selectedPlanet,
         viewSnapshot: this.galaxyViewSnapshot,
+        settlementTelemetry: this.settlementTelemetry,
       });
     } else if (nextMode === 'planet3d') {
       this.activeController = this.modeFactory.createPlanetMode(activePlanet, context);

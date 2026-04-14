@@ -1,9 +1,10 @@
-import type { RenderMode, SelectedPlanetRef } from '@/game/render/types';
+import type { PlanetSettlementTelemetry, RenderMode, SelectedPlanetRef } from '@/game/render/types';
 
 export interface ModeContext {
   host: HTMLDivElement;
   onSelectPlanet: (planet: SelectedPlanetRef) => void;
   onRequestMode: (mode: RenderMode) => void;
+  onPlanetTelemetry: (planetId: string, telemetry: PlanetSettlementTelemetry) => void;
 }
 
 export interface RenderModeController {
