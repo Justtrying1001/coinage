@@ -25,7 +25,8 @@ export function buildCityDecor(
     source: position,
     exclusionMask: buildMask,
     primaryMask: backgroundMask,
-    density: input.archetype === 'volcanic' ? 0.028 : 0.018,
+    secondaryMask: transitionMask,
+    density: input.archetype === 'volcanic' ? 0.036 : 0.024,
     rng,
     scale: [1.4, 5.2],
     clusterSeed: input.seed ^ 0x9e3779b9,
@@ -39,12 +40,12 @@ export function buildCityDecor(
       source: position,
       exclusionMask: buildMask,
       primaryMask: transitionMask,
-      density: input.archetype === 'jungle' ? 0.05 : 0.028,
+      density: input.archetype === 'jungle' ? 0.06 : 0.032,
       rng,
       scale: [1.2, 3.4],
       clusterSeed: input.seed ^ 0x85ebca6b,
       geometry: new THREE.ConeGeometry(0.85, 2.8, 6),
-      material: new THREE.MeshStandardMaterial({ color: input.palettes.accent.clone().lerp(input.palettes.low, 0.45), roughness: 0.86, metalness: 0.02 }),
+      material: new THREE.MeshStandardMaterial({ color: input.palettes.accent.clone().lerp(input.palettes.low, 0.4), roughness: 0.82, metalness: 0.02 }),
       yOffset: 0.6,
     });
     group.add(flora);
@@ -59,6 +60,7 @@ function createScatterLayer(params: {
   exclusionMask: THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
   primaryMask: THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
   density: number;
+  secondaryMask?: THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
   rng: () => number;
   scale: [number, number];
   clusterSeed: number;
@@ -71,12 +73,13 @@ function createScatterLayer(params: {
   for (let i = 0; i < params.source.count; i += 1) {
     const excluded = params.exclusionMask.getX(i);
     const priority = params.primaryMask.getX(i);
-    if (excluded > 0.16 || priority < 0.24) continue;
+    const secondary = params.secondaryMask ? params.secondaryMask.getX(i) : 0;
+    if (excluded > 0.2 || priority + secondary * 0.4 < 0.22) continue;
 
     const x = params.source.getX(i);
     const z = params.source.getZ(i);
     const cluster = clusterFactor(x, z, params.clusterSeed);
-    const chance = params.density * priority * cluster;
+    const chance = params.density * (priority * 0.78 + secondary * 0.35) * cluster;
     if (params.rng() > chance) continue;
 
     candidates.push(i);

@@ -16,6 +16,7 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
     shader.uniforms.uAccent = { value: input.palettes.accent };
     shader.uniforms.uFogTint = { value: input.palettes.fog };
     shader.uniforms.uFarField = { value: farField ? 1 : 0 };
+    shader.uniforms.uSaturationBoost = { value: farField ? 1.02 : 1.12 };
 
     shader.vertexShader = shader.vertexShader
       .replace(
@@ -80,6 +81,7 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
         uniform vec3 uAccent;
         uniform vec3 uFogTint;
         uniform int uFarField;
+        uniform float uSaturationBoost;
         varying float vHeight01;
         varying float vSlope;
         varying float vCliff;
@@ -99,28 +101,32 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
       .replace(
         '#include <color_fragment>',
         `#include <color_fragment>
-        float breakup = sin(vWorldXZ.x * 0.043 + vWorldXZ.y * 0.027) * 0.5 + cos(vWorldXZ.x * 0.018 - vWorldXZ.y * 0.051) * 0.5;
+        float breakup = sin(vWorldXZ.x * 0.039 + vWorldXZ.y * 0.024) * 0.5 + cos(vWorldXZ.x * 0.017 - vWorldXZ.y * 0.048) * 0.5;
         breakup = breakup * 0.5 + 0.5;
 
-        vec3 baseColor = mix(uLow, uHigh, smoothstep(0.14, 0.9, vHeight01 + (breakup - 0.5) * 0.04));
+        float heightMix = smoothstep(0.08, 0.92, vHeight01 + (breakup - 0.5) * 0.06);
+        vec3 baseColor = mix(uLow, uHigh, heightMix);
 
         if (${materialMode === 'standard' ? 1 : 0} == 0) {
-          baseColor = mix(baseColor, uCliff, vCliff * 0.64);
-          baseColor = mix(baseColor, uAccent, vVegetation * 0.28 + vMineralized * 0.2);
-          baseColor *= mix(vec3(1.0), vec3(0.9, 0.95, 1.02), vWetness * 0.17);
-          baseColor *= mix(vec3(1.0), vec3(0.86, 0.93, 1.04), vFrozen * 0.24);
-          baseColor *= mix(vec3(1.0), vec3(1.08, 0.89, 0.74), vThermal * 0.17);
-          baseColor = mix(baseColor, baseColor * vec3(1.08, 1.05, 0.95), vShoreline * 0.18);
+          baseColor = mix(baseColor, uCliff, smoothstep(0.24, 0.88, vCliff) * 0.72);
+          baseColor = mix(baseColor, uAccent, clamp(vVegetation * 0.42 + vMineralized * 0.24, 0.0, 0.56));
+          baseColor *= mix(vec3(1.0), vec3(0.86, 0.94, 1.06), vWetness * 0.24);
+          baseColor *= mix(vec3(1.0), vec3(0.82, 0.9, 1.08), vFrozen * 0.34);
+          baseColor *= mix(vec3(1.0), vec3(1.12, 0.86, 0.7), vThermal * 0.22);
+          baseColor = mix(baseColor, baseColor * vec3(1.1, 1.08, 0.96), vShoreline * 0.22);
         }
 
         vec3 zoned = baseColor;
-        zoned = mix(zoned, zoned * vec3(1.03, 1.03, 1.02), vBuildMask * 0.45);
-        zoned = mix(zoned, zoned * vec3(0.985, 0.985, 0.97), vTransitionMask * 0.18);
-        zoned = mix(zoned, zoned * vec3(0.95, 0.96, 1.02), vBackgroundMask * 0.26);
-        zoned = mix(zoned, zoned * vec3(0.98, 1.0, 1.04), smoothstep(0.65, 1.0, vDepthMask) * 0.12);
+        float softBuild = smoothstep(0.3, 0.9, vBuildMask);
+        zoned = mix(zoned, zoned * vec3(1.02, 1.02, 1.015), softBuild * 0.24);
+        zoned = mix(zoned, zoned * vec3(0.96, 0.97, 1.03), vBackgroundMask * 0.16);
+        zoned = mix(zoned, zoned * vec3(0.98, 0.99, 1.04), smoothstep(0.5, 1.0, vDepthMask) * 0.09);
+
+        float luminance = dot(zoned, vec3(0.2126, 0.7152, 0.0722));
+        zoned = mix(vec3(luminance), zoned, uSaturationBoost);
 
         if (uFarField == 1) {
-          zoned = mix(zoned, uFogTint, 0.2);
+          zoned = mix(zoned, uFogTint, 0.28);
         }
 
         diffuseColor.rgb = zoned;
@@ -129,12 +135,12 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
       .replace(
         'float roughnessFactor = roughness;',
         `float roughnessFactor = roughness;
-        roughnessFactor = clamp(roughnessFactor + vCliff * 0.22 + vBackgroundMask * 0.06 - vBuildMask * 0.08, 0.07, 1.0);`,
+        roughnessFactor = clamp(roughnessFactor + vCliff * 0.24 + vBackgroundMask * 0.1 - vBuildMask * 0.06 - vShoreline * 0.08, 0.05, 1.0);`,
       )
       .replace(
         'float metalnessFactor = metalness;',
         `float metalnessFactor = metalness;
-        metalnessFactor = clamp(metalnessFactor + vMineralized * 0.22 - vBuildMask * 0.05, 0.0, 0.8);`,
+        metalnessFactor = clamp(metalnessFactor + vMineralized * 0.24 - vBuildMask * 0.04 + vThermal * 0.06, 0.0, 0.82);`,
       );
   };
 
