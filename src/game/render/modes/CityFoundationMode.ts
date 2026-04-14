@@ -3,14 +3,26 @@ import type { ModeContext, RenderModeController } from '@/game/render/modes/Rend
 import type { SelectedPlanetRef } from '@/game/render/types';
 import { CityLayoutStore } from '@/game/city/layout/cityLayout';
 import { createCityTerrainInput } from '@/game/render/modes/terrain/CityTerrainInput';
-import { buildTerrainGeometry, DEFAULT_TERRAIN_GEOMETRY } from '@/game/render/modes/terrain/CityTerrainPipeline';
+import { buildCityTerrainEngine, type CityTerrainViewMode } from '@/game/render/modes/terrain/CityTerrainEngine';
 import { createCityTerrainMaterial } from '@/game/render/modes/terrain/CityTerrainMaterial';
 import { createCityFluidLayer } from '@/game/render/modes/terrain/CityWaterLayer';
 import { buildCityDecor } from '@/game/render/modes/terrain/CityDecorSystem';
 import { applyCityAtmosphere, createCityLighting } from '@/game/render/modes/terrain/CityAtmosphereRig';
+import type { TerrainGeometryConfig } from '@/game/render/modes/terrain/CityTerrainTypes';
 
 const GRID_WIDTH = 20;
 const GRID_HEIGHT = 14;
+
+const DEFAULT_TERRAIN_GEOMETRY: TerrainGeometryConfig = {
+  terrainWidth: 360,
+  terrainDepth: 280,
+  farWidth: 880,
+  farDepth: 760,
+  nearSegmentsX: 360,
+  nearSegmentsZ: 280,
+  farSegmentsX: 170,
+  farSegmentsZ: 140,
+};
 
 export class CityFoundationMode implements RenderModeController {
   readonly id = 'city3d' as const;
@@ -29,6 +41,7 @@ export class CityFoundationMode implements RenderModeController {
   private water: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null = null;
   private decorGroup: THREE.Group | null = null;
   private atmosphereGroup: THREE.Group | null = null;
+  private cityViewMode: CityTerrainViewMode = 'normal';
 
   constructor(
     private selectedPlanet: SelectedPlanetRef,
@@ -63,6 +76,7 @@ export class CityFoundationMode implements RenderModeController {
     this.canvasWrap = canvasWrap;
 
     this.initScene();
+    window.addEventListener('keydown', this.onKeyModeCycle);
     this.rebuildCityTerrain();
   }
 
@@ -89,6 +103,7 @@ export class CityFoundationMode implements RenderModeController {
   destroy() {
     this.disposeCurrentMeshes();
     this.renderer?.dispose();
+    window.removeEventListener('keydown', this.onKeyModeCycle);
     this.root?.remove();
 
     this.root = null;
@@ -173,16 +188,16 @@ export class CityFoundationMode implements RenderModeController {
     this.scene.add(atmosphereRig);
     this.atmosphereGroup = atmosphereRig;
 
-    const built = buildTerrainGeometry(input, { blocked: snapshot.blocked, expansion: snapshot.expansion }, DEFAULT_TERRAIN_GEOMETRY);
+    const built = buildCityTerrainEngine(input, DEFAULT_TERRAIN_GEOMETRY, this.cityViewMode);
 
-    const farMat = createCityTerrainMaterial(input, true);
+    const farMat = createCityTerrainMaterial(input, true, built.materialMode);
     const farField = new THREE.Mesh(built.farGeometry, farMat);
     farField.position.y = -3.2;
     farField.receiveShadow = true;
     this.scene.add(farField);
     this.farField = farField;
 
-    const terrainMat = createCityTerrainMaterial(input, false);
+    const terrainMat = createCityTerrainMaterial(input, false, built.materialMode);
     const terrain = new THREE.Mesh(built.nearGeometry, terrainMat);
     terrain.receiveShadow = true;
     this.scene.add(terrain);
@@ -203,6 +218,17 @@ export class CityFoundationMode implements RenderModeController {
 
   private syncHud(archetype: string) {
     if (!this.hudMeta) return;
-    this.hudMeta.textContent = `${this.selectedPlanet.id.toUpperCase()} · ${archetype}`;
+    this.hudMeta.textContent = `${this.selectedPlanet.id.toUpperCase()} · ${archetype} · ${this.cityViewMode}`;
   }
+
+  private readonly onKeyModeCycle = (event: KeyboardEvent) => {
+    if (event.key.toLowerCase() !== 'm') return;
+    const nextMode: Record<CityTerrainViewMode, CityTerrainViewMode> = {
+      normal: 'build',
+      build: 'flat',
+      flat: 'normal',
+    };
+    this.cityViewMode = nextMode[this.cityViewMode];
+    this.rebuildCityTerrain();
+  };
 }

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import type { CityTerrainInput } from '@/game/render/modes/terrain/CityTerrainTypes';
+import type { CityTerrainMaterialMode } from '@/game/render/modes/terrain/CityTerrainEngine';
 
-export function createCityTerrainMaterial(input: CityTerrainInput, farField = false) {
+export function createCityTerrainMaterial(input: CityTerrainInput, farField = false, materialMode: CityTerrainMaterialMode = 'heightBlend') {
   const mat = new THREE.MeshStandardMaterial({
     color: input.palettes.low,
     roughness: THREE.MathUtils.clamp(input.material.roughness + (farField ? 0.08 : 0), 0.08, 1),
@@ -80,6 +81,10 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
         '#include <color_fragment>',
         `#include <color_fragment>
         vec3 baseColor = mix(uLow, uHigh, smoothstep(0.16, 0.88, vHeight01));
+        if (${materialMode === 'standard' ? 1 : 0} == 1) {
+          diffuseColor.rgb = baseColor;
+          return;
+        }
         baseColor = mix(baseColor, uCliff, vCliff * 0.72);
         baseColor = mix(baseColor, uAccent, vVegetation * 0.34 + vMineralized * 0.28);
 
