@@ -1,4 +1,11 @@
-import type { GalaxyData, GalaxyNode, PlanetArchetype, PlanetSeed, PlanetVisualProfile, SelectedPlanetRef } from '@/game/render/types';
+import type {
+  GalaxyData,
+  GalaxyNode,
+  PlanetArchetype,
+  PlanetSeed,
+  PlanetVisualProfile,
+  SelectedPlanetRef,
+} from '@/game/render/types';
 import { SeededRng } from '@/game/world/rng';
 
 interface GalaxyGeneratorConfig {
@@ -13,6 +20,15 @@ interface SpiralArm {
   weight: number;
 }
 
+interface PlacementPoint {
+  x: number;
+  y: number;
+  radial: number;
+}
+
+const TOKEN_SYMBOLS = ['Jup', 'Sol', 'Nex', 'Astra', 'Orion', 'Vex', 'Trit'];
+const OWNER_NAMES = ['Iris', 'Noah', 'Mara', 'Dax', 'Lina', 'Kade', 'Aya', 'Rune', 'Sora'];
+
 export function generateGalaxyData({
   seed,
   width,
@@ -21,32 +37,33 @@ export function generateGalaxyData({
 }: GalaxyGeneratorConfig): GalaxyData {
   const rng = new SeededRng(seed);
   const arms = buildArms(rng);
-  const nodes: GalaxyNode[] = [];
   const totalNodes = Math.max(1, Math.floor(nodeCount));
+  const placements = generateBalancedPlacements({ width, height, count: totalNodes, rng, arms });
+  const nodes: GalaxyNode[] = [];
 
   for (let i = 0; i < totalNodes; i += 1) {
-    const arm = weightedPick(arms, rng);
-    const radial = Math.pow(rng.next(), 0.62);
-    const swirl = radial * 4.6;
-    const armNoise = rng.range(-0.34, 0.34);
-    const angle = arm.angleOffset + swirl + armNoise;
-
-    const spread = (1 - radial) * 0.08 + 0.02;
-    const xNorm = 0.5 + Math.cos(angle) * radial * (0.42 + rng.range(-spread, spread));
-    const yNorm = 0.5 + Math.sin(angle) * radial * (0.34 + rng.range(-spread, spread));
-
+    const placement = placements[i];
     const nodeSeed = hashPlanetSeed(seed, i);
-    const coreBias = 1 - radial;
+    const coreBias = 1 - placement.radial;
+    const profile = planetProfileFromSeed(nodeSeed);
 
     nodes.push({
       id: `p-${i + 1}`,
       name: `Planet ${String(i + 1).padStart(3, '0')}`,
-      x: clamp(xNorm * width, 48, width - 48),
-      y: clamp(yNorm * height, 48, height - 48),
-      radius: 2.1 + rng.range(0, 2.4) + coreBias * 1.8,
+      x: placement.x,
+      y: placement.y,
+      radius: 2.8 + rng.range(0, 2.5) + coreBias * 1.45,
       seed: nodeSeed,
+      archetype: profile.archetype,
       populationBand: pickPopulationBand(rng, coreBias),
+      tokenSymbol: null,
+      slots: [],
     });
+  }
+
+  assignTokenOwnership(seed, nodes);
+  for (const node of nodes) {
+    node.slots = generatePlanetSlots(node);
   }
 
   return { seed, width, height, nodes };
@@ -84,6 +101,172 @@ export function planetProfileFromSeed(seed: PlanetSeed): PlanetVisualProfile {
 export function selectPrimaryPlanet(galaxy: GalaxyData): SelectedPlanetRef {
   const byId = [...galaxy.nodes].sort((a, b) => a.id.localeCompare(b.id))[0];
   return { id: byId.id, seed: byId.seed };
+}
+
+function generateBalancedPlacements({
+  width,
+  height,
+  count,
+  rng,
+  arms,
+}: {
+  width: number;
+  height: number;
+  count: number;
+  rng: SeededRng;
+  arms: SpiralArm[];
+}): PlacementPoint[] {
+  const minMargin = 56;
+  const minDistanceBase = Math.sqrt((width * height) / Math.max(1, count)) * 0.56;
+  const points: PlacementPoint[] = [];
+
+  for (let i = 0; i < count; i += 1) {
+    let best: PlacementPoint | null = null;
+    let bestScore = Number.NEGATIVE_INFINITY;
+
+    for (let attempt = 0; attempt < 14; attempt += 1) {
+      const candidate = sampleSpiralCandidate(width, height, rng, arms, minMargin);
+      const nearest = nearestDistance(candidate, points);
+      const edgeProximity = Math.min(candidate.x - minMargin, width - minMargin - candidate.x, candidate.y - minMargin, height - minMargin - candidate.y);
+      const score = nearest * 1.1 + edgeProximity * 0.32 - candidate.radial * 20;
+      if (score > bestScore) {
+        best = candidate;
+        bestScore = score;
+      }
+    }
+
+    points.push(best ?? sampleSpiralCandidate(width, height, rng, arms, minMargin));
+  }
+
+  relaxPlacements(points, width, height, minMargin, minDistanceBase, rng);
+  return points;
+}
+
+function sampleSpiralCandidate(width: number, height: number, rng: SeededRng, arms: SpiralArm[], margin: number): PlacementPoint {
+  const arm = weightedPick(arms, rng);
+  const radial = Math.pow(rng.next(), 0.72);
+  const swirl = radial * 5.4;
+  const armNoise = rng.range(-0.28, 0.28);
+  const angle = arm.angleOffset + swirl + armNoise;
+  const ellipseX = 0.44 + rng.range(-0.03, 0.04);
+  const ellipseY = 0.34 + rng.range(-0.02, 0.03);
+
+  const xNorm = 0.5 + Math.cos(angle) * radial * ellipseX;
+  const yNorm = 0.5 + Math.sin(angle) * radial * ellipseY;
+
+  return {
+    x: clamp(xNorm * width, margin, width - margin),
+    y: clamp(yNorm * height, margin, height - margin),
+    radial,
+  };
+}
+
+function nearestDistance(candidate: PlacementPoint, points: PlacementPoint[]) {
+  if (points.length === 0) return Number.POSITIVE_INFINITY;
+  let best = Number.POSITIVE_INFINITY;
+  for (const point of points) {
+    const distance = Math.hypot(candidate.x - point.x, candidate.y - point.y);
+    if (distance < best) best = distance;
+  }
+  return best;
+}
+
+function relaxPlacements(
+  points: PlacementPoint[],
+  width: number,
+  height: number,
+  margin: number,
+  targetDistance: number,
+  rng: SeededRng,
+) {
+  const centerX = width * 0.5;
+  const centerY = height * 0.5;
+
+  for (let iteration = 0; iteration < 16; iteration += 1) {
+    for (let i = 0; i < points.length; i += 1) {
+      const point = points[i];
+      let pushX = 0;
+      let pushY = 0;
+
+      for (let j = 0; j < points.length; j += 1) {
+        if (i === j) continue;
+        const other = points[j];
+        const dx = point.x - other.x;
+        const dy = point.y - other.y;
+        const distance = Math.hypot(dx, dy);
+        const minDistance = targetDistance * (0.92 + Math.abs(point.radial - other.radial) * 0.16);
+
+        if (distance < minDistance && distance > 0.0001) {
+          const strength = ((minDistance - distance) / minDistance) * 1.12;
+          pushX += (dx / distance) * strength;
+          pushY += (dy / distance) * strength;
+        }
+      }
+
+      const pullToCenter = 0.03 + point.radial * 0.02;
+      pushX += (centerX - point.x) * 0.0009 * pullToCenter;
+      pushY += (centerY - point.y) * 0.0009 * pullToCenter;
+
+      point.x = clamp(point.x + pushX + rng.range(-0.12, 0.12), margin, width - margin);
+      point.y = clamp(point.y + pushY + rng.range(-0.12, 0.12), margin, height - margin);
+      point.radial = Math.min(1, Math.hypot((point.x - centerX) / width, (point.y - centerY) / height) * 2.45);
+    }
+  }
+}
+
+function assignTokenOwnership(seed: number, nodes: GalaxyNode[]) {
+  const rng = new SeededRng(seed ^ 0x61c88647);
+  const tokenCount = rng.int(2, 5);
+  const chosenTokens = seededShuffle([...TOKEN_SYMBOLS], rng).slice(0, tokenCount);
+
+  const tokenPlanets = new Map<string, GalaxyNode[]>();
+  for (const symbol of chosenTokens) tokenPlanets.set(symbol, []);
+
+  for (const node of nodes) {
+    const ownershipRoll = rng.next() + (node.populationBand === 'dense' ? 0.24 : node.populationBand === 'settled' ? 0.14 : 0);
+    if (ownershipRoll < 0.72) continue;
+
+    const token = chosenTokens[rng.int(0, chosenTokens.length - 1)];
+    node.tokenSymbol = token;
+    tokenPlanets.get(token)?.push(node);
+  }
+
+  for (const [token, planets] of tokenPlanets.entries()) {
+    planets
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .forEach((planet, index) => {
+        planet.name = `${token}-${String(index + 1).padStart(2, '0')}`;
+      });
+  }
+}
+
+function seededShuffle<T>(values: T[], rng: SeededRng) {
+  const output = [...values];
+  for (let i = output.length - 1; i > 0; i -= 1) {
+    const j = rng.int(0, i);
+    [output[i], output[j]] = [output[j], output[i]];
+  }
+  return output;
+}
+
+function generatePlanetSlots(node: GalaxyNode) {
+  const rng = new SeededRng(node.seed ^ 0xa341316c);
+  const slotCount = node.populationBand === 'dense' ? rng.int(5, 7) : node.populationBand === 'settled' ? rng.int(4, 6) : rng.int(3, 5);
+  const occupiedTarget = node.populationBand === 'dense' ? Math.ceil(slotCount * rng.range(0.55, 0.85)) : node.populationBand === 'settled' ? Math.ceil(slotCount * rng.range(0.32, 0.62)) : Math.floor(slotCount * rng.range(0.1, 0.35));
+
+  return Array.from({ length: slotCount }, (_, index) => {
+    const occupied = index < occupiedTarget;
+    const owner = occupied
+      ? node.tokenSymbol
+        ? `${node.tokenSymbol.toLowerCase()}-${OWNER_NAMES[rng.int(0, OWNER_NAMES.length - 1)].toLowerCase()}`
+        : OWNER_NAMES[rng.int(0, OWNER_NAMES.length - 1)].toLowerCase()
+      : null;
+
+    return {
+      id: `slot-${String(index + 1).padStart(2, '0')}`,
+      owner,
+    };
+  });
 }
 
 function pickPopulationBand(rng: SeededRng, coreBias: number): GalaxyNode['populationBand'] {

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { SeededRng } from '@/game/world/rng';
+import { generateSeededStarfield } from '@/game/render/starfield';
 
 export class PlanetScene {
   readonly scene = new THREE.Scene();
@@ -35,17 +35,14 @@ export class PlanetScene {
   }
 
   private createStarfield() {
-    const rng = new SeededRng(0xdecafbad);
-    const starCount = 1800;
-    const positions = new Float32Array(starCount * 3);
+    const starPoints = generateSeededStarfield(0xdecafbad, 1800, { min: 8, max: 18 });
+    const positions = new Float32Array(starPoints.length * 3);
 
-    for (let i = 0; i < starCount; i += 1) {
-      const theta = rng.range(0, Math.PI * 2);
-      const phi = Math.acos(rng.range(-1, 1));
-      const radius = rng.range(8, 18);
-      positions[i * 3] = Math.sin(phi) * Math.cos(theta) * radius;
-      positions[i * 3 + 1] = Math.cos(phi) * radius;
-      positions[i * 3 + 2] = Math.sin(phi) * Math.sin(theta) * radius;
+    for (let i = 0; i < starPoints.length; i += 1) {
+      const star = starPoints[i];
+      positions[i * 3] = star.x;
+      positions[i * 3 + 1] = star.y;
+      positions[i * 3 + 2] = star.z;
     }
 
     const geometry = new THREE.BufferGeometry();

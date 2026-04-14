@@ -1,11 +1,19 @@
 import type { GalaxyData, GalaxyNode } from '@/game/render/types';
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
 import type { SelectedPlanetRef } from '@/game/render/types';
+import { generateSeededStarfield } from '@/game/render/starfield';
 
 interface ViewTransform {
   x: number;
   y: number;
   zoom: number;
+}
+
+interface Bounds {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
 }
 
 export interface Galaxy2DViewSnapshot {
@@ -21,46 +29,31 @@ export class Galaxy2DMode implements RenderModeController {
   readonly id = 'galaxy2d' as const;
 
   private readonly canvas = document.createElement('canvas');
-
   private readonly ctx = this.canvas.getContext('2d');
+  private readonly starfield = generateSeededStarfield(0xdecafbad, 1400, { min: 8, max: 18 });
 
   private transform: ViewTransform = { x: 0, y: 0, zoom: 1 };
-
   private width = 1;
-
   private height = 1;
-
   private hoveredNodeId: string | null = null;
-
   private selectedNodeId: string | null = null;
-
   private isDragging = false;
-
   private pointerId: number | null = null;
-
   private lastX = 0;
-
   private lastY = 0;
-
   private downX = 0;
-
   private downY = 0;
-
   private dirty = true;
-
-  private readonly minZoom = 0.55;
-
-  private readonly maxZoom = 2.8;
-
-  private entryTransition:
-    | {
-        nodeId: string;
-        startedAt: number;
-        durationMs: number;
-      }
-    | null = null;
-
+  private minZoom = 0.6;
+  private maxZoom = 3.1;
   private initialViewSnapshot: Galaxy2DViewSnapshot | null = null;
+  private nodeBounds: Bounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+
+  private infoPanel: HTMLDivElement | null = null;
+  private infoTitle: HTMLHeadingElement | null = null;
+  private infoMeta: HTMLParagraphElement | null = null;
+  private infoSlotSummary: HTMLParagraphElement | null = null;
+  private infoSlotList: HTMLUListElement | null = null;
 
   constructor(
     private readonly galaxy: GalaxyData,
@@ -69,6 +62,7 @@ export class Galaxy2DMode implements RenderModeController {
   ) {
     this.selectedNodeId = options?.initialSelectedPlanet?.id ?? null;
     this.initialViewSnapshot = options?.initialViewSnapshot ?? null;
+    this.nodeBounds = this.computeNodeBounds();
   }
 
   mount() {
@@ -78,6 +72,8 @@ export class Galaxy2DMode implements RenderModeController {
     this.context.host.appendChild(this.canvas);
     this.context.host.style.cursor = 'grab';
 
+    this.mountInfoPanel();
+
     this.canvas.addEventListener('pointerdown', this.onPointerDown);
     window.addEventListener('pointermove', this.onPointerMove);
     window.addEventListener('pointerup', this.onPointerUp);
@@ -86,10 +82,13 @@ export class Galaxy2DMode implements RenderModeController {
 
     if (this.initialViewSnapshot) {
       this.transform = { ...this.initialViewSnapshot.transform };
+      this.updateZoomBounds();
       this.clampTransform();
     } else {
       this.centerMap();
     }
+
+    this.refreshInfoPanel();
     this.draw();
   }
 
@@ -103,21 +102,12 @@ export class Galaxy2DMode implements RenderModeController {
     this.canvas.style.height = `${this.height}px`;
     this.ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+    this.updateZoomBounds();
     this.clampTransform();
     this.invalidate();
   }
 
   update() {
-    if (this.entryTransition) {
-      this.invalidate();
-      const elapsed = performance.now() - this.entryTransition.startedAt;
-      if (elapsed >= this.entryTransition.durationMs) {
-        this.entryTransition = null;
-        this.context.onRequestMode('planet3d');
-        return;
-      }
-    }
-
     if (!this.dirty) return;
     this.draw();
     this.dirty = false;
@@ -130,13 +120,12 @@ export class Galaxy2DMode implements RenderModeController {
     window.removeEventListener('pointercancel', this.onPointerUp);
     this.canvas.removeEventListener('wheel', this.onWheel);
     this.canvas.remove();
+    this.infoPanel?.remove();
     this.context.host.style.cursor = 'default';
-    this.entryTransition = null;
   }
 
   private readonly onPointerDown = (event: PointerEvent) => {
     if (event.button !== 0) return;
-    if (this.entryTransition) return;
     this.pointerId = event.pointerId;
     this.isDragging = true;
     this.lastX = event.clientX;
@@ -148,7 +137,6 @@ export class Galaxy2DMode implements RenderModeController {
   };
 
   private readonly onPointerMove = (event: PointerEvent) => {
-    if (this.entryTransition) return;
     const rect = this.canvas.getBoundingClientRect();
     const localX = event.clientX - rect.left;
     const localY = event.clientY - rect.top;
@@ -159,6 +147,7 @@ export class Galaxy2DMode implements RenderModeController {
       if (!this.isDragging) {
         this.context.host.style.cursor = this.hoveredNodeId ? 'pointer' : 'grab';
       }
+      this.refreshInfoPanel();
       this.invalidate();
     }
 
@@ -185,11 +174,7 @@ export class Galaxy2DMode implements RenderModeController {
       if (node) {
         this.selectedNodeId = node.id;
         this.context.onSelectPlanet({ id: node.id, seed: node.seed });
-        this.entryTransition = {
-          nodeId: node.id,
-          startedAt: performance.now(),
-          durationMs: 220,
-        };
+        this.refreshInfoPanel();
         this.invalidate();
       }
     }
@@ -201,7 +186,6 @@ export class Galaxy2DMode implements RenderModeController {
   };
 
   private readonly onWheel = (event: WheelEvent) => {
-    if (this.entryTransition) return;
     event.preventDefault();
     const previous = this.transform.zoom;
     const next = clamp(previous * (event.deltaY < 0 ? 1.08 : 0.92), this.minZoom, this.maxZoom);
@@ -226,35 +210,75 @@ export class Galaxy2DMode implements RenderModeController {
     if (!this.ctx) return;
 
     this.ctx.clearRect(0, 0, this.width, this.height);
-    this.ctx.fillStyle = '#040811';
-    this.ctx.fillRect(0, 0, this.width, this.height);
+    this.drawScreenBackground();
 
     this.ctx.save();
     this.ctx.translate(this.transform.x, this.transform.y);
     this.ctx.scale(this.transform.zoom, this.transform.zoom);
 
-    this.drawBackdrop();
+    this.drawConnections();
     for (const node of this.galaxy.nodes) {
       this.drawNode(node);
     }
 
     this.ctx.restore();
-    this.drawHud();
   }
 
-  private drawBackdrop() {
+  private drawScreenBackground() {
     if (!this.ctx) return;
-    this.ctx.fillStyle = 'rgba(82, 171, 213, 0.09)';
-    for (let i = 0; i < this.galaxy.nodes.length; i += 7) {
-      const node = this.galaxy.nodes[i];
+
+    this.ctx.fillStyle = '#02050d';
+    this.ctx.fillRect(0, 0, this.width, this.height);
+
+    for (let i = 0; i < this.starfield.length; i += 1) {
+      const star = this.starfield[i];
+      const sx = ((star.x * 0.5 + star.z * 0.5) * 20 + this.width * 0.5 + i * 3.1) % this.width;
+      const sy = ((star.y * 0.7 - star.z * 0.35) * 18 + this.height * 0.5 + i * 1.9) % this.height;
+      const px = sx < 0 ? sx + this.width : sx;
+      const py = sy < 0 ? sy + this.height : sy;
+      this.ctx.fillStyle = `rgba(191, 216, 255, ${0.18 + star.intensity * 0.34})`;
       this.ctx.beginPath();
-      this.ctx.arc(node.x, node.y, 1.1, 0, Math.PI * 2);
+      this.ctx.arc(px, py, star.size * 0.7, 0, Math.PI * 2);
       this.ctx.fill();
     }
+  }
 
-    this.ctx.strokeStyle = 'rgba(84, 145, 184, 0.05)';
-    this.ctx.lineWidth = 1 / this.transform.zoom;
-    this.ctx.strokeRect(0, 0, this.galaxy.width, this.galaxy.height);
+  private drawConnections() {
+    if (!this.ctx) return;
+
+    this.ctx.strokeStyle = 'rgba(84, 145, 184, 0.06)';
+    this.ctx.lineWidth = 0.8 / this.transform.zoom;
+
+    for (let i = 0; i < this.galaxy.nodes.length; i += 1) {
+      const source = this.galaxy.nodes[i];
+      let nearestA: GalaxyNode | null = null;
+      let nearestB: GalaxyNode | null = null;
+      let da = Number.POSITIVE_INFINITY;
+      let db = Number.POSITIVE_INFINITY;
+
+      for (let j = 0; j < this.galaxy.nodes.length; j += 1) {
+        if (i === j) continue;
+        const target = this.galaxy.nodes[j];
+        const d = Math.hypot(source.x - target.x, source.y - target.y);
+        if (d < da) {
+          nearestB = nearestA;
+          db = da;
+          nearestA = target;
+          da = d;
+        } else if (d < db) {
+          nearestB = target;
+          db = d;
+        }
+      }
+
+      for (const target of [nearestA, nearestB]) {
+        if (!target || target.id < source.id) continue;
+        this.ctx.beginPath();
+        this.ctx.moveTo(source.x, source.y);
+        this.ctx.lineTo(target.x, target.y);
+        this.ctx.stroke();
+      }
+    }
   }
 
   private drawNode(node: GalaxyNode) {
@@ -262,36 +286,43 @@ export class Galaxy2DMode implements RenderModeController {
 
     const isHovered = node.id === this.hoveredNodeId;
     const isSelected = node.id === this.selectedNodeId;
-    const transitionSelected = node.id === this.entryTransition?.nodeId;
-    const transitionT = transitionSelected ? this.getEntryProgress() : 0;
-    const alpha = node.populationBand === 'dense' ? 0.92 : node.populationBand === 'settled' ? 0.72 : 0.5;
-    const radius = this.getNodeRadius(node) * (isHovered ? 1.18 : 1) + transitionT * 1.8;
-    const fillColor =
-      node.populationBand === 'dense'
-        ? `rgba(180, 235, 255, ${alpha})`
-        : node.populationBand === 'settled'
-          ? `rgba(126, 206, 246, ${alpha})`
-          : `rgba(96, 171, 218, ${alpha})`;
+    const radius = this.getNodeRadius(node) * (isHovered ? 1.14 : 1);
+    const style = getBiomeStyle(node.archetype);
 
     this.ctx.beginPath();
-    this.ctx.fillStyle = isSelected ? 'rgba(214, 244, 255, 0.98)' : fillColor;
+    this.ctx.fillStyle = style.halo;
+    this.ctx.arc(node.x, node.y, radius + 3.2, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    this.ctx.beginPath();
+    this.ctx.fillStyle = style.rim;
+    this.ctx.arc(node.x, node.y, radius + 0.9, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    this.ctx.beginPath();
+    this.ctx.fillStyle = style.base;
     this.ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
     this.ctx.fill();
 
-    if (isHovered || isSelected || transitionSelected) {
+    this.ctx.beginPath();
+    this.ctx.fillStyle = style.core;
+    this.ctx.arc(node.x - radius * 0.25, node.y - radius * 0.2, radius * 0.48, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    if (style.ring) {
       this.ctx.beginPath();
-      this.ctx.strokeStyle = isSelected || transitionSelected ? 'rgba(149, 236, 255, 0.96)' : 'rgba(149, 236, 255, 0.72)';
-      this.ctx.lineWidth = clamp(1.6 / this.transform.zoom, 0.8, 2);
+      this.ctx.strokeStyle = style.ring;
+      this.ctx.lineWidth = clamp(1.4 / this.transform.zoom, 0.7, 1.6);
+      this.ctx.ellipse(node.x, node.y, radius + 1.7, radius * 0.65, Math.PI * 0.2, 0, Math.PI * 2);
+      this.ctx.stroke();
+    }
+
+    if (isHovered || isSelected) {
+      this.ctx.beginPath();
+      this.ctx.strokeStyle = isSelected ? 'rgba(196, 241, 255, 0.96)' : 'rgba(154, 227, 255, 0.82)';
+      this.ctx.lineWidth = clamp(1.8 / this.transform.zoom, 0.9, 2.1);
       this.ctx.arc(node.x, node.y, radius + this.getFocusHalo(), 0, Math.PI * 2);
       this.ctx.stroke();
-
-      if (isSelected || transitionSelected) {
-        this.ctx.beginPath();
-        this.ctx.strokeStyle = transitionSelected ? `rgba(149, 236, 255, ${0.45 + transitionT * 0.45})` : 'rgba(149, 236, 255, 0.48)';
-        this.ctx.lineWidth = clamp(1 / this.transform.zoom, 0.6, 1.4);
-        this.ctx.arc(node.x, node.y, radius + this.getFocusHalo() + 4.4 + transitionT * 9.5, 0, Math.PI * 2);
-        this.ctx.stroke();
-      }
     }
   }
 
@@ -314,72 +345,87 @@ export class Galaxy2DMode implements RenderModeController {
   }
 
   private centerMap() {
-    this.transform.x = this.width * 0.5 - this.galaxy.width * 0.5;
-    this.transform.y = this.height * 0.5 - this.galaxy.height * 0.5;
-    this.transform.zoom = 1;
+    const bounds = this.nodeBounds;
+    const occupiedWidth = Math.max(1, bounds.maxX - bounds.minX);
+    const occupiedHeight = Math.max(1, bounds.maxY - bounds.minY);
+    const fitPadding = 0.14;
+    const fitZoom = Math.min(
+      this.width / (occupiedWidth * (1 + fitPadding)),
+      this.height / (occupiedHeight * (1 + fitPadding)),
+    );
+
+    this.updateZoomBounds();
+    this.transform.zoom = clamp(fitZoom, this.minZoom, this.maxZoom);
+
+    const centerX = (bounds.minX + bounds.maxX) * 0.5;
+    const centerY = (bounds.minY + bounds.maxY) * 0.5;
+    this.transform.x = this.width * 0.5 - centerX * this.transform.zoom;
+    this.transform.y = this.height * 0.5 - centerY * this.transform.zoom;
     this.clampTransform();
   }
 
   private clampTransform() {
-    const viewWidth = this.galaxy.width * this.transform.zoom;
-    const viewHeight = this.galaxy.height * this.transform.zoom;
+    const bounds = this.nodeBounds;
+    const worldPadding = 80;
+    const minWorldX = Math.max(0, bounds.minX - worldPadding);
+    const maxWorldX = Math.min(this.galaxy.width, bounds.maxX + worldPadding);
+    const minWorldY = Math.max(0, bounds.minY - worldPadding);
+    const maxWorldY = Math.min(this.galaxy.height, bounds.maxY + worldPadding);
 
-    const minX = Math.min(0, this.width - viewWidth);
-    const minY = Math.min(0, this.height - viewHeight);
+    const minX = this.width - maxWorldX * this.transform.zoom;
+    const maxX = -minWorldX * this.transform.zoom;
+    const minY = this.height - maxWorldY * this.transform.zoom;
+    const maxY = -minWorldY * this.transform.zoom;
 
-    this.transform.x = clamp(this.transform.x, minX, 0);
-    this.transform.y = clamp(this.transform.y, minY, 0);
+    this.transform.x = clamp(this.transform.x, Math.min(minX, maxX), Math.max(minX, maxX));
+    this.transform.y = clamp(this.transform.y, Math.min(minY, maxY), Math.max(minY, maxY));
+  }
+
+  private updateZoomBounds() {
+    const bounds = this.nodeBounds;
+    const occupiedWidth = Math.max(1, bounds.maxX - bounds.minX);
+    const occupiedHeight = Math.max(1, bounds.maxY - bounds.minY);
+    const fit = Math.min(this.width / occupiedWidth, this.height / occupiedHeight);
+    this.minZoom = clamp(fit * 0.78, 0.7, 1.3);
+    this.maxZoom = Math.max(2.7, this.minZoom + 1.2);
+    this.transform.zoom = clamp(this.transform.zoom, this.minZoom, this.maxZoom);
+  }
+
+  private computeNodeBounds(): Bounds {
+    let minX = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+
+    for (const node of this.galaxy.nodes) {
+      minX = Math.min(minX, node.x - node.radius);
+      maxX = Math.max(maxX, node.x + node.radius);
+      minY = Math.min(minY, node.y - node.radius);
+      maxY = Math.max(maxY, node.y + node.radius);
+    }
+
+    if (!Number.isFinite(minX)) return { minX: 0, maxX: this.galaxy.width, minY: 0, maxY: this.galaxy.height };
+    return { minX, maxX, minY, maxY };
   }
 
   private invalidate() {
     this.dirty = true;
   }
 
-  private drawHud() {
-    if (!this.ctx) return;
-
-    const focusNode = this.galaxy.nodes.find((node) => node.id === this.hoveredNodeId)
-      ?? this.galaxy.nodes.find((node) => node.id === this.selectedNodeId);
-
-    if (!focusNode) return;
-
-    const screenX = focusNode.x * this.transform.zoom + this.transform.x;
-    const screenY = focusNode.y * this.transform.zoom + this.transform.y;
-    const panelX = clamp(screenX + 16, 12, this.width - 228);
-    const panelY = clamp(screenY - 62, 12, this.height - 68);
-
-    this.ctx.save();
-    this.ctx.fillStyle = 'rgba(8, 22, 35, 0.86)';
-    this.ctx.strokeStyle = 'rgba(128, 214, 255, 0.46)';
-    this.ctx.lineWidth = 1;
-    this.ctx.beginPath();
-    roundRect(this.ctx, panelX, panelY, 216, 54, 8);
-    this.ctx.fill();
-    this.ctx.stroke();
-
-    this.ctx.fillStyle = '#dbf2ff';
-    this.ctx.font = '600 12px Inter, system-ui, sans-serif';
-    this.ctx.fillText(focusNode.name, panelX + 10, panelY + 19);
-
-    this.ctx.fillStyle = 'rgba(189, 224, 244, 0.9)';
-    this.ctx.font = '500 11px Inter, system-ui, sans-serif';
-    this.ctx.fillText(`ID ${focusNode.id} • ${focusNode.populationBand.toUpperCase()}`, panelX + 10, panelY + 37);
-    this.ctx.restore();
-  }
-
   private getNodeRadius(node: GalaxyNode) {
     const zoomT = normalize(this.transform.zoom, this.minZoom, this.maxZoom);
-    const emphasis = 1.3 - zoomT * 0.25;
+    const emphasis = 1.18 - zoomT * 0.18;
     return node.radius * emphasis;
   }
 
   private getFocusHalo() {
     const zoomT = normalize(this.transform.zoom, this.minZoom, this.maxZoom);
-    return 5.4 - zoomT * 2.2;
+    return 5 - zoomT * 1.7;
   }
 
   setSelectedPlanet(nextPlanet: SelectedPlanetRef) {
     this.selectedNodeId = nextPlanet.id;
+    this.refreshInfoPanel();
     this.invalidate();
   }
 
@@ -389,10 +435,68 @@ export class Galaxy2DMode implements RenderModeController {
     };
   }
 
-  private getEntryProgress() {
-    if (!this.entryTransition) return 0;
-    const elapsed = performance.now() - this.entryTransition.startedAt;
-    return clamp(elapsed / this.entryTransition.durationMs, 0, 1);
+  private mountInfoPanel() {
+    const panel = document.createElement('div');
+    panel.className = 'galaxy-inspect-panel';
+
+    const title = document.createElement('h2');
+    title.className = 'galaxy-inspect-title';
+
+    const meta = document.createElement('p');
+    meta.className = 'galaxy-inspect-meta';
+
+    const slotSummary = document.createElement('p');
+    slotSummary.className = 'galaxy-inspect-meta';
+
+    const slotList = document.createElement('ul');
+    slotList.className = 'galaxy-inspect-slots';
+
+    panel.appendChild(title);
+    panel.appendChild(meta);
+    panel.appendChild(slotSummary);
+    panel.appendChild(slotList);
+
+    this.context.host.appendChild(panel);
+    this.infoPanel = panel;
+    this.infoTitle = title;
+    this.infoMeta = meta;
+    this.infoSlotSummary = slotSummary;
+    this.infoSlotList = slotList;
+  }
+
+  private refreshInfoPanel() {
+    if (!this.infoPanel || !this.infoTitle || !this.infoMeta || !this.infoSlotSummary || !this.infoSlotList) return;
+
+    const focusNode = this.galaxy.nodes.find((node) => node.id === this.selectedNodeId)
+      ?? this.galaxy.nodes.find((node) => node.id === this.hoveredNodeId)
+      ?? null;
+
+    if (!focusNode) {
+      this.infoPanel.style.opacity = '0.75';
+      this.infoTitle.textContent = 'Select a planet';
+      this.infoMeta.textContent = 'Click a world to inspect biome and settlement slots.';
+      this.infoSlotSummary.textContent = '';
+      this.infoSlotList.innerHTML = '';
+      return;
+    }
+
+    this.infoPanel.style.opacity = '1';
+    this.infoTitle.textContent = focusNode.name;
+    this.infoMeta.textContent = `Biome: ${toDisplayArchetype(focusNode.archetype)}`;
+
+    const occupied = focusNode.slots.filter((slot) => slot.owner).length;
+    this.infoSlotSummary.textContent = `${occupied}/${focusNode.slots.length} slots occupied`;
+
+    this.infoSlotList.innerHTML = '';
+    for (let i = 0; i < focusNode.slots.length; i += 1) {
+      const slot = focusNode.slots[i];
+      const line = document.createElement('li');
+      line.className = 'galaxy-inspect-slot';
+      line.textContent = slot.owner
+        ? `Slot ${i + 1} — occupied — owner: ${slot.owner}`
+        : `Slot ${i + 1} — free`;
+      this.infoSlotList.appendChild(line);
+    }
   }
 }
 
@@ -405,22 +509,37 @@ function normalize(value: number, min: number, max: number) {
   return clamp((value - min) / (max - min), 0, 1);
 }
 
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number,
-) {
-  ctx.moveTo(x + radius, y);
-  ctx.lineTo(x + width - radius, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-  ctx.lineTo(x + width, y + height - radius);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-  ctx.lineTo(x + radius, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-  ctx.lineTo(x, y + radius);
-  ctx.quadraticCurveTo(x, y, x + radius, y);
-  ctx.closePath();
+function toDisplayArchetype(archetype: GalaxyNode['archetype']) {
+  return `${archetype.charAt(0).toUpperCase()}${archetype.slice(1)}`;
+}
+
+function getBiomeStyle(archetype: GalaxyNode['archetype']) {
+  const base: Record<GalaxyNode['archetype'], { base: string; core: string; rim: string; halo: string; ring?: string }> = {
+    frozen: {
+      base: '#d6eeff', core: '#f5fdff', rim: '#9fd7ff', halo: 'rgba(179, 222, 255, 0.2)', ring: 'rgba(205, 237, 255, 0.6)',
+    },
+    oceanic: {
+      base: '#2c91c4', core: '#74d8ff', rim: '#b7f1ff', halo: 'rgba(116, 203, 255, 0.2)',
+    },
+    arid: {
+      base: '#c39255', core: '#f1d09c', rim: '#f3bc73', halo: 'rgba(233, 179, 115, 0.18)',
+    },
+    volcanic: {
+      base: '#4a2a2d', core: '#ff6f39', rim: '#d34a3f', halo: 'rgba(255, 120, 76, 0.22)',
+    },
+    mineral: {
+      base: '#8b8198', core: '#dad1e6', rim: '#b9a8cc', halo: 'rgba(171, 155, 214, 0.2)', ring: 'rgba(208, 193, 240, 0.48)',
+    },
+    terrestrial: {
+      base: '#4a8759', core: '#9fdea4', rim: '#8ec99a', halo: 'rgba(139, 214, 152, 0.2)',
+    },
+    barren: {
+      base: '#7f7f7f', core: '#c8c8c8', rim: '#9f9f9f', halo: 'rgba(176, 176, 176, 0.16)',
+    },
+    jungle: {
+      base: '#2d8740', core: '#79df80', rim: '#a1eba1', halo: 'rgba(113, 228, 131, 0.2)',
+    },
+  };
+
+  return base[archetype];
 }
