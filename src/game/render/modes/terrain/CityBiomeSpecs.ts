@@ -1,53 +1,76 @@
 import type { PlanetArchetype } from '@/game/render/types';
+import type { CityTerrainAlgorithm, CityTerrainMaterialMode } from '@/game/render/modes/terrain/CityTerrainEngine';
 
 export interface CityBiomeSpec {
-  coreLift: number;
-  edgeDrop: number;
-  rimWidth: number;
-  basinBias: number;
-  ridgeGain: number;
-  duneStrength: number;
-  shelfStrength: number;
-  fractureStrength: number;
-  wetnessBoost: number;
-  thermalBoost: number;
-  mineralBoost: number;
-  decorDensity: number;
-  decorType: 'coastal' | 'frozen' | 'arid' | 'volcanic' | 'mineral' | 'temperate' | 'jungle' | 'barren';
-  waterMode: 'water' | 'ice' | 'lava' | 'none';
+  algorithm: CityTerrainAlgorithm;
+  minHeight: number;
+  maxHeight: number;
+  frequency: number;
+  moisture: number;
+  frozen: number;
+  thermal: number;
+  minerality: number;
+  buildArea: {
+    widthPct: number;
+    depthPct: number;
+    flatten: number;
+    height: number;
+  };
+  materialMode: CityTerrainMaterialMode;
+  water: {
+    mode: 'water' | 'ice' | 'lava' | 'none';
+    level: number;
+    coastBlend: number;
+  };
 }
 
 export const CITY_BIOME_SPECS: Record<PlanetArchetype, CityBiomeSpec> = {
   oceanic: {
-    coreLift: 2.4, edgeDrop: 26, rimWidth: 0.54, basinBias: 0.32, ridgeGain: 0.5, duneStrength: 0.08, shelfStrength: 0.86, fractureStrength: 0.08,
-    wetnessBoost: 0.4, thermalBoost: 0, mineralBoost: 0.04, decorDensity: 1.1, decorType: 'coastal', waterMode: 'water',
+    algorithm: 'simplexLayers', minHeight: -14, maxHeight: 24, frequency: 2.1, moisture: 0.82, frozen: 0.02, thermal: 0.08, minerality: 0.12,
+    buildArea: { widthPct: 0.62, depthPct: 0.46, flatten: 0.88, height: -1.8 },
+    materialMode: 'heightBlend',
+    water: { mode: 'water', level: -4.8, coastBlend: 0.28 },
   },
   frozen: {
-    coreLift: 1.5, edgeDrop: 22, rimWidth: 0.58, basinBias: 0.24, ridgeGain: 0.62, duneStrength: 0.05, shelfStrength: 0.72, fractureStrength: 0.88,
-    wetnessBoost: 0.18, thermalBoost: 0, mineralBoost: 0.1, decorDensity: 0.95, decorType: 'frozen', waterMode: 'ice',
+    algorithm: 'diamondSquare', minHeight: -18, maxHeight: 19, frequency: 1.9, moisture: 0.48, frozen: 0.94, thermal: 0.04, minerality: 0.2,
+    buildArea: { widthPct: 0.58, depthPct: 0.44, flatten: 0.86, height: -0.9 },
+    materialMode: 'heightBlend',
+    water: { mode: 'ice', level: -3.6, coastBlend: 0.22 },
   },
   arid: {
-    coreLift: 2.1, edgeDrop: 18, rimWidth: 0.6, basinBias: 0.2, ridgeGain: 0.64, duneStrength: 0.82, shelfStrength: 0.18, fractureStrength: 0.22,
-    wetnessBoost: -0.18, thermalBoost: 0.08, mineralBoost: 0.12, decorDensity: 0.85, decorType: 'arid', waterMode: 'none',
+    algorithm: 'perlinLayers', minHeight: -10, maxHeight: 22, frequency: 2.9, moisture: 0.12, frozen: 0, thermal: 0.25, minerality: 0.26,
+    buildArea: { widthPct: 0.64, depthPct: 0.5, flatten: 0.9, height: -0.6 },
+    materialMode: 'heightBlend',
+    water: { mode: 'none', level: -6.2, coastBlend: 0.15 },
   },
   volcanic: {
-    coreLift: 2.7, edgeDrop: 24, rimWidth: 0.57, basinBias: 0.26, ridgeGain: 0.9, duneStrength: 0.18, shelfStrength: 0.08, fractureStrength: 0.74,
-    wetnessBoost: -0.24, thermalBoost: 0.9, mineralBoost: 0.22, decorDensity: 0.7, decorType: 'volcanic', waterMode: 'lava',
+    algorithm: 'fault', minHeight: -16, maxHeight: 30, frequency: 2.3, moisture: 0.04, frozen: 0, thermal: 0.96, minerality: 0.46,
+    buildArea: { widthPct: 0.54, depthPct: 0.42, flatten: 0.78, height: -1.4 },
+    materialMode: 'heightBlend',
+    water: { mode: 'lava', level: -7.4, coastBlend: 0.2 },
   },
   mineral: {
-    coreLift: 2.2, edgeDrop: 20, rimWidth: 0.6, basinBias: 0.18, ridgeGain: 0.76, duneStrength: 0.14, shelfStrength: 0.12, fractureStrength: 0.36,
-    wetnessBoost: -0.06, thermalBoost: 0.15, mineralBoost: 0.92, decorDensity: 0.92, decorType: 'mineral', waterMode: 'none',
+    algorithm: 'perlin', minHeight: -12, maxHeight: 24, frequency: 2.4, moisture: 0.08, frozen: 0.04, thermal: 0.16, minerality: 0.92,
+    buildArea: { widthPct: 0.6, depthPct: 0.5, flatten: 0.9, height: -1 },
+    materialMode: 'heightBlend',
+    water: { mode: 'none', level: -6.8, coastBlend: 0.12 },
   },
   terrestrial: {
-    coreLift: 1.8, edgeDrop: 16, rimWidth: 0.64, basinBias: 0.15, ridgeGain: 0.52, duneStrength: 0.12, shelfStrength: 0.2, fractureStrength: 0.16,
-    wetnessBoost: 0.22, thermalBoost: 0.05, mineralBoost: 0.08, decorDensity: 1.08, decorType: 'temperate', waterMode: 'none',
+    algorithm: 'simplex', minHeight: -9, maxHeight: 20, frequency: 2.35, moisture: 0.55, frozen: 0.1, thermal: 0.12, minerality: 0.2,
+    buildArea: { widthPct: 0.66, depthPct: 0.54, flatten: 0.94, height: -0.2 },
+    materialMode: 'heightBlend',
+    water: { mode: 'none', level: -5.4, coastBlend: 0.2 },
   },
   jungle: {
-    coreLift: 1.9, edgeDrop: 17, rimWidth: 0.62, basinBias: 0.24, ridgeGain: 0.56, duneStrength: 0.06, shelfStrength: 0.24, fractureStrength: 0.14,
-    wetnessBoost: 0.34, thermalBoost: 0.08, mineralBoost: 0.05, decorDensity: 1.2, decorType: 'jungle', waterMode: 'none',
+    algorithm: 'simplexLayers', minHeight: -8, maxHeight: 18, frequency: 2.55, moisture: 0.92, frozen: 0, thermal: 0.16, minerality: 0.14,
+    buildArea: { widthPct: 0.64, depthPct: 0.5, flatten: 0.9, height: -0.1 },
+    materialMode: 'heightBlend',
+    water: { mode: 'none', level: -4.9, coastBlend: 0.28 },
   },
   barren: {
-    coreLift: 2.1, edgeDrop: 15, rimWidth: 0.65, basinBias: 0.12, ridgeGain: 0.58, duneStrength: 0.3, shelfStrength: 0.1, fractureStrength: 0.2,
-    wetnessBoost: -0.22, thermalBoost: 0.06, mineralBoost: 0.12, decorDensity: 0.72, decorType: 'barren', waterMode: 'none',
+    algorithm: 'diamondSquare', minHeight: -11, maxHeight: 17, frequency: 1.7, moisture: 0.06, frozen: 0.08, thermal: 0.14, minerality: 0.32,
+    buildArea: { widthPct: 0.62, depthPct: 0.48, flatten: 0.9, height: -0.7 },
+    materialMode: 'heightBlend',
+    water: { mode: 'none', level: -6.4, coastBlend: 0.1 },
   },
 };
