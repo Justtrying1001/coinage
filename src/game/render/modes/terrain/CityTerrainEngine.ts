@@ -43,9 +43,9 @@ export function buildCityTerrainEngine(
     depth: config.farDepth,
     xSegments: config.farSegmentsX,
     zSegments: config.farSegmentsZ,
-    minHeight: spec.minHeight - 14,
-    maxHeight: spec.maxHeight + 6,
-    frequency: spec.frequency * 0.75,
+    minHeight: spec.minHeight - 8,
+    maxHeight: spec.maxHeight + 10,
+    frequency: spec.frequency * 0.7,
   }, viewMode, true, 9017);
 
   return {
@@ -131,6 +131,7 @@ function buildField(
   geometry.setAttribute('aBuildMask', new THREE.BufferAttribute(composition.buildMask, 1));
   geometry.setAttribute('aTransitionMask', new THREE.BufferAttribute(composition.transitionMask, 1));
   geometry.setAttribute('aBackgroundMask', new THREE.BufferAttribute(composition.backgroundMask, 1));
+  geometry.setAttribute('aDepthMask', new THREE.BufferAttribute(composition.depthMask, 1));
 
   return { geometry, slopeMask, stableMask };
 }

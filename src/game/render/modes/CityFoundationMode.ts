@@ -122,7 +122,7 @@ export class CityFoundationMode implements RenderModeController {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 0.98;
+    renderer.toneMappingExposure = 1.02;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.domElement.classList.add('render-surface');
@@ -192,7 +192,7 @@ export class CityFoundationMode implements RenderModeController {
 
     const farMat = createCityTerrainMaterial(input, true, built.materialMode);
     const farField = new THREE.Mesh(built.farGeometry, farMat);
-    farField.position.y = -3.2;
+    farField.position.y = -1.4;
     farField.receiveShadow = true;
     this.scene.add(farField);
     this.farField = farField;

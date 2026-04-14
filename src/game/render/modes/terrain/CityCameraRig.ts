@@ -7,27 +7,28 @@ export function applyCityCameraRig(
   mode: CityTerrainViewMode,
   config: TerrainGeometryConfig,
 ) {
+  const lateral = config.terrainWidth * 0.14;
   const presets: Record<CityTerrainViewMode, { fov: number; position: THREE.Vector3; target: THREE.Vector3; near: number; far: number }> = {
     normal: {
-      fov: 46,
-      position: new THREE.Vector3(0, 92, config.terrainDepth * 0.72),
-      target: new THREE.Vector3(0, 8, -config.terrainDepth * 0.12),
-      near: 0.5,
-      far: 1700,
-    },
-    build: {
-      fov: 42,
-      position: new THREE.Vector3(0, 132, config.terrainDepth * 0.62),
-      target: new THREE.Vector3(0, 2, config.terrainDepth * 0.03),
-      near: 0.5,
-      far: 1700,
-    },
-    flat: {
-      fov: 38,
-      position: new THREE.Vector3(0, 172, config.terrainDepth * 0.5),
-      target: new THREE.Vector3(0, 0, config.terrainDepth * 0.06),
+      fov: 43,
+      position: new THREE.Vector3(lateral, 88, config.terrainDepth * 0.74),
+      target: new THREE.Vector3(0, 7, -config.terrainDepth * 0.08),
       near: 0.5,
       far: 1800,
+    },
+    build: {
+      fov: 40,
+      position: new THREE.Vector3(lateral * 0.68, 118, config.terrainDepth * 0.63),
+      target: new THREE.Vector3(0, 1.5, config.terrainDepth * 0.02),
+      near: 0.5,
+      far: 1800,
+    },
+    flat: {
+      fov: 36,
+      position: new THREE.Vector3(lateral * 0.35, 152, config.terrainDepth * 0.54),
+      target: new THREE.Vector3(0, -0.5, config.terrainDepth * 0.05),
+      near: 0.5,
+      far: 1900,
     },
   };
 

@@ -25,9 +25,10 @@ export function buildCityDecor(
     source: position,
     exclusionMask: buildMask,
     primaryMask: backgroundMask,
-    density: input.archetype === 'volcanic' ? 0.032 : 0.022,
+    density: input.archetype === 'volcanic' ? 0.028 : 0.018,
     rng,
-    scale: [1.2, 4.4],
+    scale: [1.4, 5.2],
+    clusterSeed: input.seed ^ 0x9e3779b9,
     geometry: new THREE.DodecahedronGeometry(1, 0),
     material: new THREE.MeshStandardMaterial({ color: input.palettes.cliff.clone().lerp(decorColor, 0.2), roughness: 0.9, metalness: 0.05 }),
   });
@@ -38,10 +39,11 @@ export function buildCityDecor(
       source: position,
       exclusionMask: buildMask,
       primaryMask: transitionMask,
-      density: input.archetype === 'jungle' ? 0.065 : 0.035,
+      density: input.archetype === 'jungle' ? 0.05 : 0.028,
       rng,
-      scale: [1.1, 2.8],
-      geometry: new THREE.ConeGeometry(0.8, 2.6, 6),
+      scale: [1.2, 3.4],
+      clusterSeed: input.seed ^ 0x85ebca6b,
+      geometry: new THREE.ConeGeometry(0.85, 2.8, 6),
       material: new THREE.MeshStandardMaterial({ color: input.palettes.accent.clone().lerp(input.palettes.low, 0.45), roughness: 0.86, metalness: 0.02 }),
       yOffset: 0.6,
     });
@@ -59,6 +61,7 @@ function createScatterLayer(params: {
   density: number;
   rng: () => number;
   scale: [number, number];
+  clusterSeed: number;
   geometry: THREE.BufferGeometry;
   material: THREE.MeshStandardMaterial;
   yOffset?: number;
@@ -68,8 +71,14 @@ function createScatterLayer(params: {
   for (let i = 0; i < params.source.count; i += 1) {
     const excluded = params.exclusionMask.getX(i);
     const priority = params.primaryMask.getX(i);
-    if (excluded > 0.22 || priority < 0.32) continue;
-    if (params.rng() > params.density * priority) continue;
+    if (excluded > 0.16 || priority < 0.24) continue;
+
+    const x = params.source.getX(i);
+    const z = params.source.getZ(i);
+    const cluster = clusterFactor(x, z, params.clusterSeed);
+    const chance = params.density * priority * cluster;
+    if (params.rng() > chance) continue;
+
     candidates.push(i);
   }
 
@@ -91,13 +100,20 @@ function createScatterLayer(params: {
     pos.set(x, y, z);
     quat.setFromEuler(new THREE.Euler(0, params.rng() * Math.PI * 2, 0));
     const s = THREE.MathUtils.lerp(params.scale[0], params.scale[1], params.rng());
-    scale.set(s, s * THREE.MathUtils.lerp(0.8, 1.3, params.rng()), s);
+    scale.set(s, s * THREE.MathUtils.lerp(0.8, 1.35, params.rng()), s);
     matrix.compose(pos, quat, scale);
     mesh.setMatrixAt(i, matrix);
   }
 
   mesh.instanceMatrix.needsUpdate = true;
   return mesh;
+}
+
+function clusterFactor(x: number, z: number, seed: number) {
+  const s1 = Math.sin((x + seed * 0.0013) * 0.026) * Math.cos((z - seed * 0.0017) * 0.021);
+  const s2 = Math.cos((x - seed * 0.0009) * 0.012 + (z + seed * 0.0004) * 0.017);
+  const n = (s1 * 0.65 + s2 * 0.35) * 0.5 + 0.5;
+  return THREE.MathUtils.smoothstep(n, 0.38, 0.92);
 }
 
 function seededRandom(seed: number) {
