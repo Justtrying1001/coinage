@@ -44,9 +44,9 @@ export function buildCityTerrainEngine(
     xSegments: config.farSegmentsX,
     zSegments: config.farSegmentsZ,
     minHeight: spec.minHeight - 8,
-    maxHeight: spec.maxHeight + 10,
-    frequency: spec.frequency * 0.7,
-  }, viewMode, true, 9017);
+    maxHeight: spec.maxHeight + 8,
+    frequency: spec.frequency * 0.78,
+  }, viewMode, true, 0);
 
   return {
     nearGeometry: near.geometry,
