@@ -15,15 +15,9 @@ interface GalaxyGeneratorConfig {
   nodeCount?: number;
 }
 
-interface SpiralArm {
-  angleOffset: number;
-  weight: number;
-}
-
 interface PlacementPoint {
   x: number;
   y: number;
-  radial: number;
 }
 
 export function generateGalaxyData({
@@ -33,15 +27,17 @@ export function generateGalaxyData({
   nodeCount = 520,
 }: GalaxyGeneratorConfig): GalaxyData {
   const rng = new SeededRng(seed);
-  const arms = buildArms(rng);
   const totalNodes = Math.max(1, Math.floor(nodeCount));
-  const placements = generateBalancedPlacements({ width, height, count: totalNodes, rng, arms });
+  const placements = generateBlueNoisePlacements({ width, height, count: totalNodes, rng });
   const nodes: GalaxyNode[] = [];
 
   for (let i = 0; i < totalNodes; i += 1) {
     const placement = placements[i];
     const nodeSeed = hashPlanetSeed(seed, i);
-    const coreBias = 1 - placement.radial;
+    const centerDx = (placement.x - width * 0.5) / (width * 0.5);
+    const centerDy = (placement.y - height * 0.5) / (height * 0.5);
+    const radial = Math.min(1, Math.hypot(centerDx, centerDy));
+    const coreBias = 1 - radial;
     nodes.push({
       id: `p-${i + 1}`,
       name: `Planet ${String(i + 1).padStart(3, '0')}`,
@@ -90,63 +86,90 @@ export function selectPrimaryPlanet(galaxy: GalaxyData): SelectedPlanetRef {
   return { id: byId.id, seed: byId.seed };
 }
 
-function generateBalancedPlacements({
+function generateBlueNoisePlacements({
   width,
   height,
   count,
   rng,
-  arms,
 }: {
   width: number;
   height: number;
   count: number;
   rng: SeededRng;
-  arms: SpiralArm[];
 }): PlacementPoint[] {
-  const minMargin = 42;
-  const minDistanceBase = Math.sqrt((width * height) / Math.max(1, count)) * 0.56;
+  const margin = 54;
+  const active = {
+    minX: margin,
+    minY: margin,
+    maxX: width - margin,
+    maxY: height - margin,
+  };
+  const activeWidth = active.maxX - active.minX;
+  const activeHeight = active.maxY - active.minY;
+  let minDistance = Math.sqrt((activeWidth * activeHeight) / Math.max(1, count)) * 0.77;
+  let selected: PlacementPoint[] = [];
+  for (let pass = 0; pass < 4; pass += 1) {
+    selected = samplePoissonLike(active, count, minDistance, rng);
+    if (selected.length >= count) break;
+    minDistance *= 0.92;
+  }
+  if (selected.length < count) {
+    while (selected.length < count) {
+      selected.push({
+        x: rng.range(active.minX, active.maxX),
+        y: rng.range(active.minY, active.maxY),
+      });
+    }
+  }
+  relaxPlacements(selected, active, minDistance, rng);
+  return selected;
+}
+
+function samplePoissonLike(
+  active: { minX: number; minY: number; maxX: number; maxY: number },
+  count: number,
+  minDistance: number,
+  rng: SeededRng,
+) {
+  const cellSize = minDistance / Math.SQRT2;
+  const cols = Math.ceil((active.maxX - active.minX) / cellSize);
+  const rows = Math.ceil((active.maxY - active.minY) / cellSize);
+  const grid = new Int32Array(cols * rows).fill(-1);
   const points: PlacementPoint[] = [];
+  const maxAttempts = count * 240;
+  let attempts = 0;
 
-  for (let i = 0; i < count; i += 1) {
-    let best: PlacementPoint | null = null;
-    let bestScore = Number.NEGATIVE_INFINITY;
+  while (points.length < count && attempts < maxAttempts) {
+    attempts += 1;
+    const candidate = {
+      x: rng.range(active.minX, active.maxX),
+      y: rng.range(active.minY, active.maxY),
+    };
+    const gx = Math.floor((candidate.x - active.minX) / cellSize);
+    const gy = Math.floor((candidate.y - active.minY) / cellSize);
+    let valid = true;
 
-    for (let attempt = 0; attempt < 14; attempt += 1) {
-      const candidate = sampleSpiralCandidate(width, height, rng, arms, minMargin);
-      const nearest = nearestDistance(candidate, points);
-      const edgeProximity = Math.min(candidate.x - minMargin, width - minMargin - candidate.x, candidate.y - minMargin, height - minMargin - candidate.y);
-      const centerPenalty = Math.max(0, 0.3 - candidate.radial) * 36;
-      const score = nearest * 1.1 + edgeProximity * 0.36 - centerPenalty;
-      if (score > bestScore) {
-        best = candidate;
-        bestScore = score;
+    for (let oy = -2; oy <= 2 && valid; oy += 1) {
+      for (let ox = -2; ox <= 2; ox += 1) {
+        const nx = gx + ox;
+        const ny = gy + oy;
+        if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+        const pointIndex = grid[ny * cols + nx];
+        if (pointIndex < 0) continue;
+        const other = points[pointIndex];
+        if (Math.hypot(candidate.x - other.x, candidate.y - other.y) < minDistance) {
+          valid = false;
+          break;
+        }
       }
     }
 
-    points.push(best ?? sampleSpiralCandidate(width, height, rng, arms, minMargin));
+    if (!valid) continue;
+    grid[gy * cols + gx] = points.length;
+    points.push(candidate);
   }
 
-  relaxPlacements(points, width, height, minMargin, minDistanceBase, rng);
   return points;
-}
-
-function sampleSpiralCandidate(width: number, height: number, rng: SeededRng, arms: SpiralArm[], margin: number): PlacementPoint {
-  const arm = weightedPick(arms, rng);
-  const radial = clamp(0.08 + Math.pow(rng.next(), 0.48) * 0.9, 0.08, 0.98);
-  const swirl = radial * 5.4;
-  const armNoise = rng.range(-0.28, 0.28);
-  const angle = arm.angleOffset + swirl + armNoise;
-  const ellipseX = 0.5 + rng.range(-0.03, 0.04);
-  const ellipseY = 0.43 + rng.range(-0.02, 0.03);
-
-  const xNorm = 0.5 + Math.cos(angle) * radial * ellipseX;
-  const yNorm = 0.5 + Math.sin(angle) * radial * ellipseY;
-
-  return {
-    x: clamp(xNorm * width, margin, width - margin),
-    y: clamp(yNorm * height, margin, height - margin),
-    radial,
-  };
 }
 
 function nearestDistance(candidate: PlacementPoint, points: PlacementPoint[]) {
@@ -161,14 +184,14 @@ function nearestDistance(candidate: PlacementPoint, points: PlacementPoint[]) {
 
 function relaxPlacements(
   points: PlacementPoint[],
-  width: number,
-  height: number,
-  margin: number,
+  active: { minX: number; minY: number; maxX: number; maxY: number },
   targetDistance: number,
   rng: SeededRng,
 ) {
-  const centerX = width * 0.5;
-  const centerY = height * 0.5;
+  const centerX = (active.minX + active.maxX) * 0.5;
+  const centerY = (active.minY + active.maxY) * 0.5;
+  const spanX = active.maxX - active.minX;
+  const spanY = active.maxY - active.minY;
 
   for (let iteration = 0; iteration < 16; iteration += 1) {
     for (let i = 0; i < points.length; i += 1) {
@@ -182,7 +205,7 @@ function relaxPlacements(
         const dx = point.x - other.x;
         const dy = point.y - other.y;
         const distance = Math.hypot(dx, dy);
-        const minDistance = targetDistance * (0.92 + Math.abs(point.radial - other.radial) * 0.16);
+        const minDistance = targetDistance;
 
         if (distance < minDistance && distance > 0.0001) {
           const strength = ((minDistance - distance) / minDistance) * 1.12;
@@ -191,22 +214,16 @@ function relaxPlacements(
         }
       }
 
-      const offsetX = (point.x - centerX) / (width * 0.5);
-      const offsetY = (point.y - centerY) / (height * 0.5);
-      const normRadius = Math.hypot(offsetX, offsetY);
-      if (normRadius < 0.38 && normRadius > 0.001) {
-        const outward = (0.38 - normRadius) * 0.82;
-        pushX += (offsetX / normRadius) * outward;
-        pushY += (offsetY / normRadius) * outward;
-      } else if (normRadius > 0.94) {
-        const inward = (normRadius - 0.94) * 0.65;
-        pushX -= (offsetX / normRadius) * inward;
-        pushY -= (offsetY / normRadius) * inward;
+      const offsetX = (point.x - centerX) / Math.max(1, spanX * 0.5);
+      const offsetY = (point.y - centerY) / Math.max(1, spanY * 0.5);
+      const radius = Math.hypot(offsetX, offsetY);
+      if (radius < 0.22 && radius > 0.001) {
+        pushX += (offsetX / radius) * (0.22 - radius) * 0.9;
+        pushY += (offsetY / radius) * (0.22 - radius) * 0.9;
       }
 
-      point.x = clamp(point.x + pushX + rng.range(-0.12, 0.12), margin, width - margin);
-      point.y = clamp(point.y + pushY + rng.range(-0.12, 0.12), margin, height - margin);
-      point.radial = Math.min(1, Math.hypot((point.x - centerX) / width, (point.y - centerY) / height) * 2.45);
+      point.x = clamp(point.x + pushX + rng.range(-0.08, 0.08), active.minX, active.maxX);
+      point.y = clamp(point.y + pushY + rng.range(-0.08, 0.08), active.minY, active.maxY);
     }
   }
 }
@@ -216,26 +233,6 @@ function pickPopulationBand(rng: SeededRng, coreBias: number): GalaxyNode['popul
   if (roll > 0.95) return 'dense';
   if (roll > 0.45) return 'settled';
   return 'sparse';
-}
-
-function buildArms(rng: SeededRng): SpiralArm[] {
-  const armCount = 4;
-  return Array.from({ length: armCount }, (_, i) => ({
-    angleOffset: (Math.PI * 2 * i) / armCount + rng.range(-0.2, 0.2),
-    weight: rng.range(0.85, 1.25),
-  }));
-}
-
-function weightedPick<T extends { weight: number }>(values: T[], rng: SeededRng): T {
-  const totalWeight = values.reduce((sum, item) => sum + item.weight, 0);
-  let marker = rng.range(0, totalWeight);
-
-  for (const value of values) {
-    marker -= value.weight;
-    if (marker <= 0) return value;
-  }
-
-  return values[values.length - 1];
 }
 
 function hashPlanetSeed(seed: number, index: number): number {

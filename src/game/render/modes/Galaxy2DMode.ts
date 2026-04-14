@@ -1,12 +1,12 @@
 import type { GalaxyData, GalaxyNode } from '@/game/render/types';
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
 import type { SelectedPlanetRef } from '@/game/render/types';
-import { generateSeededStarfield } from '@/game/render/starfield';
 import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
 import * as THREE from 'three';
 import { createPlanetGenerationConfig } from '@/game/planet/presets/archetypes';
 import { PlanetGenerator } from '@/game/planet/generation/PlanetGenerator';
 import { generateSettlementSlots } from '@/game/planet/runtime/SettlementSlots';
+import { SeededStarBackground } from '@/game/render/SeededStarBackground';
 
 interface ViewTransform {
   x: number;
@@ -35,10 +35,13 @@ export class Galaxy2DMode implements RenderModeController {
 
   private readonly canvas = document.createElement('canvas');
   private readonly ctx = this.canvas.getContext('2d');
-  private readonly starfield = generateSeededStarfield(0xdecafbad, 1400, { min: 8, max: 18 });
+  private readonly starBackground = new SeededStarBackground({
+    seed: 0xdecafbad,
+    count: 1400,
+    radiusRange: { min: 8, max: 18 },
+  });
   private readonly archetypeByNodeId = new Map<string, ReturnType<typeof planetProfileFromSeed>['archetype']>();
   private readonly spriteCache = new Map<string, HTMLCanvasElement>();
-  private readonly worldStars: Array<{ x: number; y: number; alpha: number; size: number }> = [];
 
   private transform: ViewTransform = { x: 0, y: 0, zoom: 1 };
   private width = 1;
@@ -80,15 +83,6 @@ export class Galaxy2DMode implements RenderModeController {
       this.archetypeByNodeId.set(node.id, planetProfileFromSeed(node.seed).archetype);
     }
 
-    for (let index = 0; index < this.starfield.length; index += 1) {
-      const star = this.starfield[index];
-      this.worldStars.push({
-        x: normalize(star.x, -18, 18) * this.galaxy.width,
-        y: normalize(star.y + star.z * 0.45, -18, 18) * this.galaxy.height,
-        alpha: 0.08 + star.intensity * 0.15,
-        size: 0.45 + star.size * 0.75,
-      });
-    }
   }
 
   mount() {
@@ -256,12 +250,7 @@ export class Galaxy2DMode implements RenderModeController {
 
   private drawWorldBackground() {
     if (!this.ctx) return;
-    for (const star of this.worldStars) {
-      this.ctx.fillStyle = `rgba(191, 216, 255, ${star.alpha})`;
-      this.ctx.beginPath();
-      this.ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-      this.ctx.fill();
-    }
+    this.starBackground.renderToWorld2D(this.ctx, this.galaxy.width, this.galaxy.height);
   }
 
   private drawNode(node: GalaxyNode) {
