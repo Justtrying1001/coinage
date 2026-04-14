@@ -26,9 +26,6 @@ interface PlacementPoint {
   radial: number;
 }
 
-const TOKEN_SYMBOLS = ['Jup', 'Sol', 'Nex', 'Astra', 'Orion', 'Vex', 'Trit'];
-const OWNER_NAMES = ['Iris', 'Noah', 'Mara', 'Dax', 'Lina', 'Kade', 'Aya', 'Rune', 'Sora'];
-
 export function generateGalaxyData({
   seed,
   width,
@@ -45,8 +42,6 @@ export function generateGalaxyData({
     const placement = placements[i];
     const nodeSeed = hashPlanetSeed(seed, i);
     const coreBias = 1 - placement.radial;
-    const profile = planetProfileFromSeed(nodeSeed);
-
     nodes.push({
       id: `p-${i + 1}`,
       name: `Planet ${String(i + 1).padStart(3, '0')}`,
@@ -54,16 +49,8 @@ export function generateGalaxyData({
       y: placement.y,
       radius: 2.8 + rng.range(0, 2.5) + coreBias * 1.45,
       seed: nodeSeed,
-      archetype: profile.archetype,
       populationBand: pickPopulationBand(rng, coreBias),
-      tokenSymbol: null,
-      slots: [],
     });
-  }
-
-  assignTokenOwnership(seed, nodes);
-  for (const node of nodes) {
-    node.slots = generatePlanetSlots(node);
   }
 
   return { seed, width, height, nodes };
@@ -212,61 +199,6 @@ function relaxPlacements(
       point.radial = Math.min(1, Math.hypot((point.x - centerX) / width, (point.y - centerY) / height) * 2.45);
     }
   }
-}
-
-function assignTokenOwnership(seed: number, nodes: GalaxyNode[]) {
-  const rng = new SeededRng(seed ^ 0x61c88647);
-  const tokenCount = rng.int(2, 5);
-  const chosenTokens = seededShuffle([...TOKEN_SYMBOLS], rng).slice(0, tokenCount);
-
-  const tokenPlanets = new Map<string, GalaxyNode[]>();
-  for (const symbol of chosenTokens) tokenPlanets.set(symbol, []);
-
-  for (const node of nodes) {
-    const ownershipRoll = rng.next() + (node.populationBand === 'dense' ? 0.24 : node.populationBand === 'settled' ? 0.14 : 0);
-    if (ownershipRoll < 0.72) continue;
-
-    const token = chosenTokens[rng.int(0, chosenTokens.length - 1)];
-    node.tokenSymbol = token;
-    tokenPlanets.get(token)?.push(node);
-  }
-
-  for (const [token, planets] of tokenPlanets.entries()) {
-    planets
-      .sort((a, b) => a.id.localeCompare(b.id))
-      .forEach((planet, index) => {
-        planet.name = `${token}-${String(index + 1).padStart(2, '0')}`;
-      });
-  }
-}
-
-function seededShuffle<T>(values: T[], rng: SeededRng) {
-  const output = [...values];
-  for (let i = output.length - 1; i > 0; i -= 1) {
-    const j = rng.int(0, i);
-    [output[i], output[j]] = [output[j], output[i]];
-  }
-  return output;
-}
-
-function generatePlanetSlots(node: GalaxyNode) {
-  const rng = new SeededRng(node.seed ^ 0xa341316c);
-  const slotCount = node.populationBand === 'dense' ? rng.int(5, 7) : node.populationBand === 'settled' ? rng.int(4, 6) : rng.int(3, 5);
-  const occupiedTarget = node.populationBand === 'dense' ? Math.ceil(slotCount * rng.range(0.55, 0.85)) : node.populationBand === 'settled' ? Math.ceil(slotCount * rng.range(0.32, 0.62)) : Math.floor(slotCount * rng.range(0.1, 0.35));
-
-  return Array.from({ length: slotCount }, (_, index) => {
-    const occupied = index < occupiedTarget;
-    const owner = occupied
-      ? node.tokenSymbol
-        ? `${node.tokenSymbol.toLowerCase()}-${OWNER_NAMES[rng.int(0, OWNER_NAMES.length - 1)].toLowerCase()}`
-        : OWNER_NAMES[rng.int(0, OWNER_NAMES.length - 1)].toLowerCase()
-      : null;
-
-    return {
-      id: `slot-${String(index + 1).padStart(2, '0')}`,
-      owner,
-    };
-  });
 }
 
 function pickPopulationBand(rng: SeededRng, coreBias: number): GalaxyNode['populationBand'] {

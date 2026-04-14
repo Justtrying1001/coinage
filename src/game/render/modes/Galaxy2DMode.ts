@@ -2,6 +2,7 @@ import type { GalaxyData, GalaxyNode } from '@/game/render/types';
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
 import type { SelectedPlanetRef } from '@/game/render/types';
 import { generateSeededStarfield } from '@/game/render/starfield';
+import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
 
 interface ViewTransform {
   x: number;
@@ -31,6 +32,7 @@ export class Galaxy2DMode implements RenderModeController {
   private readonly canvas = document.createElement('canvas');
   private readonly ctx = this.canvas.getContext('2d');
   private readonly starfield = generateSeededStarfield(0xdecafbad, 1400, { min: 8, max: 18 });
+  private readonly archetypeByNodeId = new Map<string, ReturnType<typeof planetProfileFromSeed>['archetype']>();
 
   private transform: ViewTransform = { x: 0, y: 0, zoom: 1 };
   private width = 1;
@@ -63,6 +65,9 @@ export class Galaxy2DMode implements RenderModeController {
     this.selectedNodeId = options?.initialSelectedPlanet?.id ?? null;
     this.initialViewSnapshot = options?.initialViewSnapshot ?? null;
     this.nodeBounds = this.computeNodeBounds();
+    for (const node of galaxy.nodes) {
+      this.archetypeByNodeId.set(node.id, planetProfileFromSeed(node.seed).archetype);
+    }
   }
 
   mount() {
@@ -216,7 +221,6 @@ export class Galaxy2DMode implements RenderModeController {
     this.ctx.translate(this.transform.x, this.transform.y);
     this.ctx.scale(this.transform.zoom, this.transform.zoom);
 
-    this.drawConnections();
     for (const node of this.galaxy.nodes) {
       this.drawNode(node);
     }
@@ -243,51 +247,13 @@ export class Galaxy2DMode implements RenderModeController {
     }
   }
 
-  private drawConnections() {
-    if (!this.ctx) return;
-
-    this.ctx.strokeStyle = 'rgba(84, 145, 184, 0.06)';
-    this.ctx.lineWidth = 0.8 / this.transform.zoom;
-
-    for (let i = 0; i < this.galaxy.nodes.length; i += 1) {
-      const source = this.galaxy.nodes[i];
-      let nearestA: GalaxyNode | null = null;
-      let nearestB: GalaxyNode | null = null;
-      let da = Number.POSITIVE_INFINITY;
-      let db = Number.POSITIVE_INFINITY;
-
-      for (let j = 0; j < this.galaxy.nodes.length; j += 1) {
-        if (i === j) continue;
-        const target = this.galaxy.nodes[j];
-        const d = Math.hypot(source.x - target.x, source.y - target.y);
-        if (d < da) {
-          nearestB = nearestA;
-          db = da;
-          nearestA = target;
-          da = d;
-        } else if (d < db) {
-          nearestB = target;
-          db = d;
-        }
-      }
-
-      for (const target of [nearestA, nearestB]) {
-        if (!target || target.id < source.id) continue;
-        this.ctx.beginPath();
-        this.ctx.moveTo(source.x, source.y);
-        this.ctx.lineTo(target.x, target.y);
-        this.ctx.stroke();
-      }
-    }
-  }
-
   private drawNode(node: GalaxyNode) {
     if (!this.ctx) return;
 
     const isHovered = node.id === this.hoveredNodeId;
     const isSelected = node.id === this.selectedNodeId;
     const radius = this.getNodeRadius(node) * (isHovered ? 1.14 : 1);
-    const style = getBiomeStyle(node.archetype);
+    const style = getBiomeStyle(this.archetypeByNodeId.get(node.id) ?? 'terrestrial');
 
     this.ctx.beginPath();
     this.ctx.fillStyle = style.halo;
@@ -482,21 +448,16 @@ export class Galaxy2DMode implements RenderModeController {
 
     this.infoPanel.style.opacity = '1';
     this.infoTitle.textContent = focusNode.name;
-    this.infoMeta.textContent = `Biome: ${toDisplayArchetype(focusNode.archetype)}`;
 
-    const occupied = focusNode.slots.filter((slot) => slot.owner).length;
-    this.infoSlotSummary.textContent = `${occupied}/${focusNode.slots.length} slots occupied`;
+    const archetype = this.archetypeByNodeId.get(focusNode.id) ?? 'terrestrial';
+    this.infoMeta.textContent = `Biome: ${toDisplayArchetype(archetype)}`;
+    this.infoSlotSummary.textContent = 'Slots: unavailable in Galaxy View';
 
     this.infoSlotList.innerHTML = '';
-    for (let i = 0; i < focusNode.slots.length; i += 1) {
-      const slot = focusNode.slots[i];
-      const line = document.createElement('li');
-      line.className = 'galaxy-inspect-slot';
-      line.textContent = slot.owner
-        ? `Slot ${i + 1} — occupied — owner: ${slot.owner}`
-        : `Slot ${i + 1} — free`;
-      this.infoSlotList.appendChild(line);
-    }
+    const line = document.createElement('li');
+    line.className = 'galaxy-inspect-slot';
+    line.textContent = 'Open Planet View to inspect slot count and occupancy.';
+    this.infoSlotList.appendChild(line);
   }
 }
 
@@ -509,12 +470,12 @@ function normalize(value: number, min: number, max: number) {
   return clamp((value - min) / (max - min), 0, 1);
 }
 
-function toDisplayArchetype(archetype: GalaxyNode['archetype']) {
+function toDisplayArchetype(archetype: ReturnType<typeof planetProfileFromSeed>['archetype']) {
   return `${archetype.charAt(0).toUpperCase()}${archetype.slice(1)}`;
 }
 
-function getBiomeStyle(archetype: GalaxyNode['archetype']) {
-  const base: Record<GalaxyNode['archetype'], { base: string; core: string; rim: string; halo: string; ring?: string }> = {
+function getBiomeStyle(archetype: ReturnType<typeof planetProfileFromSeed>['archetype']) {
+  const base: Record<ReturnType<typeof planetProfileFromSeed>['archetype'], { base: string; core: string; rim: string; halo: string; ring?: string }> = {
     frozen: {
       base: '#d6eeff', core: '#f5fdff', rim: '#9fd7ff', halo: 'rgba(179, 222, 255, 0.2)', ring: 'rgba(205, 237, 255, 0.6)',
     },

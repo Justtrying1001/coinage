@@ -7,7 +7,7 @@ import { generateGalaxyData, selectPrimaryPlanet } from '@/game/world/galaxyGene
 
 export function GameShell() {
   const initialSelectedPlanet = useMemo<SelectedPlanetRef>(() => {
-    const galaxy = generateGalaxyData({ seed: 78231, width: 6200, height: 4200, nodeCount: 560 });
+    const galaxy = generateGalaxyData({ seed: 78231, width: 18000, height: 12000, nodeCount: 560 });
     return selectPrimaryPlanet(galaxy);
   }, []);
 

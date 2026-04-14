@@ -35,10 +35,7 @@ export interface GalaxyNode {
   y: number;
   radius: number;
   seed: PlanetSeed;
-  archetype: PlanetArchetype;
   populationBand: 'sparse' | 'settled' | 'dense';
-  tokenSymbol: string | null;
-  slots: GalaxyNodeSlot[];
 }
 
 export interface GalaxyData {
@@ -46,9 +43,4 @@ export interface GalaxyData {
   width: number;
   height: number;
   nodes: GalaxyNode[];
-}
-
-export interface GalaxyNodeSlot {
-  id: string;
-  owner: string | null;
 }
