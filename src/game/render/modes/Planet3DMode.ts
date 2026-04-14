@@ -36,12 +36,6 @@ export class Planet3DMode implements RenderModeController {
     this.runtime.setSettlementSelectionListener((snapshot) => {
       this.updateInspectSettlement(snapshot.total, snapshot.occupied, snapshot.available);
       this.updateInspectSelection(snapshot.selected?.id ?? null, snapshot.selected?.habitability ?? null);
-      this.context.onPlanetTelemetry(this.selectedPlanet.id, {
-        total: snapshot.total,
-        occupied: snapshot.occupied,
-        available: snapshot.available,
-        slots: snapshot.slots,
-      });
     });
     this.runtime.rebuildFromSeed(this.selectedPlanet.seed);
     this.mountInspectPanel();

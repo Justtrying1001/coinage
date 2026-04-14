@@ -12,12 +12,6 @@ interface SettlementSnapshot {
   total: number;
   occupied: number;
   available: number;
-  slots: Array<{
-    id: string;
-    state: 'free' | 'occupied';
-    cityName: string | null;
-    owner: string | null;
-  }>;
   selected: SettlementSlot | null;
 }
 
@@ -134,19 +128,12 @@ export class PlanetRuntime {
     const total = this.settlementSlots.length;
     const occupied = 0;
     const available = total;
-    const slots = this.settlementSlots.map((slot) => ({
-      id: slot.id,
-      state: (slot.state === 'empty' ? 'free' : 'occupied') as 'free' | 'occupied',
-      cityName: null,
-      owner: null,
-    }));
     const selected = this.selectedSlotIndex == null ? null : (this.settlementSlots[this.selectedSlotIndex] ?? null);
 
     return {
       total,
       occupied,
       available,
-      slots,
       selected,
     };
   }

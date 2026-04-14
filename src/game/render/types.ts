@@ -44,17 +44,3 @@ export interface GalaxyData {
   height: number;
   nodes: GalaxyNode[];
 }
-
-export interface PlanetSettlementSlotTelemetry {
-  id: string;
-  state: 'free' | 'occupied';
-  cityName: string | null;
-  owner: string | null;
-}
-
-export interface PlanetSettlementTelemetry {
-  total: number;
-  occupied: number;
-  available: number;
-  slots: PlanetSettlementSlotTelemetry[];
-}
