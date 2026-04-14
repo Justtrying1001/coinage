@@ -8,6 +8,7 @@ import { createCityTerrainMaterial } from '@/game/render/modes/terrain/CityTerra
 import { createCityFluidLayer } from '@/game/render/modes/terrain/CityWaterLayer';
 import { buildCityDecor } from '@/game/render/modes/terrain/CityDecorSystem';
 import { applyCityAtmosphere, createCityLighting } from '@/game/render/modes/terrain/CityAtmosphereRig';
+import { applyCityCameraRig } from '@/game/render/modes/terrain/CityCameraRig';
 import type { TerrainGeometryConfig } from '@/game/render/modes/terrain/CityTerrainTypes';
 
 const GRID_WIDTH = 20;
@@ -121,7 +122,7 @@ export class CityFoundationMode implements RenderModeController {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.06;
+    renderer.toneMappingExposure = 0.98;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.domElement.classList.add('render-surface');
@@ -129,9 +130,8 @@ export class CityFoundationMode implements RenderModeController {
 
     const scene = new THREE.Scene();
 
-    const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 1400);
-    camera.position.set(0, 108, 152);
-    camera.lookAt(0, 10, 0);
+    const camera = new THREE.PerspectiveCamera(46, 1, 0.5, 1700);
+    applyCityCameraRig(camera, this.cityViewMode, DEFAULT_TERRAIN_GEOMETRY);
 
     this.renderer = renderer;
     this.scene = scene;
@@ -203,13 +203,15 @@ export class CityFoundationMode implements RenderModeController {
     this.scene.add(terrain);
     this.terrain = terrain;
 
+    if (this.camera) applyCityCameraRig(this.camera, this.cityViewMode, DEFAULT_TERRAIN_GEOMETRY);
+
     const fluid = createCityFluidLayer(input, DEFAULT_TERRAIN_GEOMETRY);
     if (fluid) {
       this.scene.add(fluid);
       this.water = fluid;
     }
 
-    const decor = buildCityDecor(input, snapshot, DEFAULT_TERRAIN_GEOMETRY);
+    const decor = buildCityDecor(input, snapshot, DEFAULT_TERRAIN_GEOMETRY, terrain);
     this.scene.add(decor);
     this.decorGroup = decor;
 

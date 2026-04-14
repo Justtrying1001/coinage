@@ -2,40 +2,44 @@ import * as THREE from 'three';
 import type { CityTerrainInput } from '@/game/render/modes/terrain/CityTerrainTypes';
 
 export function applyCityAtmosphere(scene: THREE.Scene, input: CityTerrainInput) {
-  scene.background = input.palettes.sky.clone();
-  scene.fog = new THREE.Fog(input.palettes.fog.clone(), 120, 520);
+  const sky = input.palettes.sky.clone().lerp(new THREE.Color('#7c93ad'), 0.15);
+  scene.background = sky;
+  scene.fog = new THREE.Fog(input.palettes.fog.clone().lerp(sky, 0.28), 260, 1250);
 }
 
 export function createCityLighting(input: CityTerrainInput) {
   const group = new THREE.Group();
 
-  const hemi = new THREE.HemisphereLight(0xe6f0ff, 0x2c2f22, 0.9 + input.visual.lightIntensity * 0.08);
+  const hemi = new THREE.HemisphereLight(0xe9f3ff, 0x2f312a, 0.86 + input.visual.lightIntensity * 0.09);
   group.add(hemi);
 
-  const sun = new THREE.DirectionalLight(0xfff2d7, 1.18 + input.visual.lightIntensity * 0.12);
-  sun.position.set(90, 136, 38);
+  const sun = new THREE.DirectionalLight(0xfff2d4, 1.04 + input.visual.lightIntensity * 0.15);
+  sun.position.set(130, 172, 42);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = -220;
-  sun.shadow.camera.right = 220;
-  sun.shadow.camera.top = 220;
-  sun.shadow.camera.bottom = -220;
+  sun.shadow.camera.left = -360;
+  sun.shadow.camera.right = 360;
+  sun.shadow.camera.top = 250;
+  sun.shadow.camera.bottom = -250;
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 540;
   group.add(sun);
 
-  const fill = new THREE.DirectionalLight(0xb7d5ff, 0.32 + input.climate.humidity * 0.2);
-  fill.position.set(-58, 42, -94);
+  const fill = new THREE.DirectionalLight(0xa9cbff, 0.24 + input.climate.humidity * 0.16);
+  fill.position.set(-88, 56, -132);
   group.add(fill);
 
   const horizon = new THREE.Mesh(
-    new THREE.CylinderGeometry(390, 440, 96, 72, 1, true),
+    new THREE.CylinderGeometry(680, 760, 180, 80, 1, true),
     new THREE.MeshBasicMaterial({
-      color: input.palettes.fog.clone().lerp(input.palettes.sky, 0.35),
+      color: input.palettes.fog.clone().lerp(input.palettes.sky, 0.36),
       side: THREE.BackSide,
       transparent: true,
-      opacity: 0.58,
+      opacity: 0.42,
+      depthWrite: false,
     }),
   );
-  horizon.position.y = 10;
+  horizon.position.y = 30;
   group.add(horizon);
 
   return group;
