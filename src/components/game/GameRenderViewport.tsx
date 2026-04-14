@@ -22,8 +22,8 @@ export function GameRenderViewport({ mode, selectedPlanet, onSelectedPlanetChang
 
     const app = new CoinageRenderApp(root, {
       seed: 78231,
-      galaxyWidth: 18000,
-      galaxyHeight: 12000,
+      galaxyWidth: 12000,
+      galaxyHeight: 8000,
       planetCount: 560,
       initialMode: 'galaxy2d',
       initialSelectedPlanet: initialSelectedRef.current,

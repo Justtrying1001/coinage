@@ -45,9 +45,16 @@ export class SeededStarBackground {
     for (const star of this.stars) {
       const x = normalize(star.x, -18, 18) * worldWidth;
       const y = normalize(star.y, -18, 18) * worldHeight;
-      ctx.fillStyle = `rgba(191, 216, 255, ${0.08 + star.intensity * 0.15})`;
+      const alpha = 0.28 + star.intensity * 0.42;
+      const size = 0.42 + star.size * 0.78;
+      ctx.fillStyle = `rgba(191, 216, 255, ${alpha})`;
       ctx.beginPath();
-      ctx.arc(x, y, 0.45 + star.size * 0.75, 0, Math.PI * 2);
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = `rgba(214, 232, 255, ${alpha * 0.45})`;
+      ctx.beginPath();
+      ctx.arc(x, y, size * 0.45, 0, Math.PI * 2);
       ctx.fill();
     }
   }

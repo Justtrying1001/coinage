@@ -37,7 +37,7 @@ export class Galaxy2DMode implements RenderModeController {
   private readonly ctx = this.canvas.getContext('2d');
   private readonly starBackground = new SeededStarBackground({
     seed: 0xdecafbad,
-    count: 1400,
+    count: 1800,
     radiusRange: { min: 8, max: 18 },
   });
   private readonly archetypeByNodeId = new Map<string, ReturnType<typeof planetProfileFromSeed>['archetype']>();
@@ -95,6 +95,7 @@ export class Galaxy2DMode implements RenderModeController {
     this.mountInfoPanel();
 
     this.canvas.addEventListener('pointerdown', this.onPointerDown);
+    this.canvas.addEventListener('dblclick', this.onDoubleClick);
     window.addEventListener('pointermove', this.onPointerMove);
     window.addEventListener('pointerup', this.onPointerUp);
     window.addEventListener('pointercancel', this.onPointerUp);
@@ -135,6 +136,7 @@ export class Galaxy2DMode implements RenderModeController {
 
   destroy() {
     this.canvas.removeEventListener('pointerdown', this.onPointerDown);
+    this.canvas.removeEventListener('dblclick', this.onDoubleClick);
     window.removeEventListener('pointermove', this.onPointerMove);
     window.removeEventListener('pointerup', this.onPointerUp);
     window.removeEventListener('pointercancel', this.onPointerUp);
@@ -226,6 +228,17 @@ export class Galaxy2DMode implements RenderModeController {
     this.transform.y = localY - worldY * next;
 
     this.clampTransform();
+    this.invalidate();
+  };
+
+  private readonly onDoubleClick = (event: MouseEvent) => {
+    if (this.isDragging) return;
+    const rect = this.canvas.getBoundingClientRect();
+    const node = this.pickNode(event.clientX - rect.left, event.clientY - rect.top);
+    if (!node) return;
+    this.selectedNodeId = node.id;
+    this.context.onSelectPlanet({ id: node.id, seed: node.seed });
+    this.context.onRequestMode('planet3d');
     this.invalidate();
   };
 
@@ -360,7 +373,7 @@ export class Galaxy2DMode implements RenderModeController {
 
   private getNodeRadius(node: GalaxyNode) {
     const zoomT = normalize(this.transform.zoom, this.minZoom, this.maxZoom);
-    const emphasis = 1.12 - zoomT * 0.15;
+    const emphasis = 2.05 - zoomT * 0.2;
     return node.radius * emphasis;
   }
 
