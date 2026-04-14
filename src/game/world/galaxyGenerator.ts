@@ -103,7 +103,7 @@ function generateBalancedPlacements({
   rng: SeededRng;
   arms: SpiralArm[];
 }): PlacementPoint[] {
-  const minMargin = 56;
+  const minMargin = 42;
   const minDistanceBase = Math.sqrt((width * height) / Math.max(1, count)) * 0.56;
   const points: PlacementPoint[] = [];
 
@@ -115,7 +115,7 @@ function generateBalancedPlacements({
       const candidate = sampleSpiralCandidate(width, height, rng, arms, minMargin);
       const nearest = nearestDistance(candidate, points);
       const edgeProximity = Math.min(candidate.x - minMargin, width - minMargin - candidate.x, candidate.y - minMargin, height - minMargin - candidate.y);
-      const centerPenalty = Math.max(0, 0.34 - candidate.radial) * 42;
+      const centerPenalty = Math.max(0, 0.3 - candidate.radial) * 36;
       const score = nearest * 1.1 + edgeProximity * 0.36 - centerPenalty;
       if (score > bestScore) {
         best = candidate;
@@ -136,8 +136,8 @@ function sampleSpiralCandidate(width: number, height: number, rng: SeededRng, ar
   const swirl = radial * 5.4;
   const armNoise = rng.range(-0.28, 0.28);
   const angle = arm.angleOffset + swirl + armNoise;
-  const ellipseX = 0.47 + rng.range(-0.03, 0.04);
-  const ellipseY = 0.39 + rng.range(-0.02, 0.03);
+  const ellipseX = 0.5 + rng.range(-0.03, 0.04);
+  const ellipseY = 0.43 + rng.range(-0.02, 0.03);
 
   const xNorm = 0.5 + Math.cos(angle) * radial * ellipseX;
   const yNorm = 0.5 + Math.sin(angle) * radial * ellipseY;
@@ -194,8 +194,8 @@ function relaxPlacements(
       const offsetX = (point.x - centerX) / (width * 0.5);
       const offsetY = (point.y - centerY) / (height * 0.5);
       const normRadius = Math.hypot(offsetX, offsetY);
-      if (normRadius < 0.34 && normRadius > 0.001) {
-        const outward = (0.34 - normRadius) * 0.9;
+      if (normRadius < 0.38 && normRadius > 0.001) {
+        const outward = (0.38 - normRadius) * 0.82;
         pushX += (offsetX / normRadius) * outward;
         pushY += (offsetY / normRadius) * outward;
       } else if (normRadius > 0.94) {

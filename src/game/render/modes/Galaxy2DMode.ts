@@ -3,6 +3,10 @@ import type { ModeContext, RenderModeController } from '@/game/render/modes/Rend
 import type { SelectedPlanetRef } from '@/game/render/types';
 import { generateSeededStarfield } from '@/game/render/starfield';
 import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
+import * as THREE from 'three';
+import { createPlanetGenerationConfig } from '@/game/planet/presets/archetypes';
+import { PlanetGenerator } from '@/game/planet/generation/PlanetGenerator';
+import { generateSettlementSlots } from '@/game/planet/runtime/SettlementSlots';
 
 interface ViewTransform {
   x: number;
@@ -58,6 +62,10 @@ export class Galaxy2DMode implements RenderModeController {
   private infoMeta: HTMLParagraphElement | null = null;
   private infoSlotSummary: HTMLParagraphElement | null = null;
   private infoSlotList: HTMLUListElement | null = null;
+  private readonly settlementCache = new Map<string, { total: number; occupied: number; slots: Array<{ id: string; state: 'Free' | 'Occupied' }> }>();
+  private readonly settlementLoading = new Set<string>();
+  private inspectorRenderer: THREE.WebGLRenderer | null = null;
+  private inspectorGenerator: PlanetGenerator | null = null;
 
   constructor(
     private readonly galaxy: GalaxyData,
@@ -139,6 +147,9 @@ export class Galaxy2DMode implements RenderModeController {
     this.canvas.removeEventListener('wheel', this.onWheel);
     this.canvas.remove();
     this.infoPanel?.remove();
+    this.inspectorGenerator = null;
+    this.inspectorRenderer?.dispose();
+    this.inspectorRenderer = null;
     this.context.host.style.cursor = 'default';
   }
 
@@ -428,10 +439,24 @@ export class Galaxy2DMode implements RenderModeController {
     this.infoSlotSummary.textContent = 'Cities: settlement slot data available in Planet View';
 
     this.infoSlotList.innerHTML = '';
-    const entry = document.createElement('li');
-    entry.className = 'galaxy-inspect-slot';
-    entry.textContent = 'Open Planet View for exact city slot occupancy and owner data.';
-    this.infoSlotList.appendChild(entry);
+    const cached = this.settlementCache.get(focusNode.id);
+    if (!cached) {
+      this.infoSlotSummary.textContent = 'Cities: loading real slot data...';
+      this.ensureSettlementData(focusNode);
+      const entry = document.createElement('li');
+      entry.className = 'galaxy-inspect-slot';
+      entry.textContent = 'Computing city slot map from planet data source.';
+      this.infoSlotList.appendChild(entry);
+      return;
+    }
+
+    this.infoSlotSummary.textContent = `Cities: ${cached.total} total — ${cached.occupied} occupied — ${cached.total - cached.occupied} free`;
+    for (const slot of cached.slots) {
+      const entry = document.createElement('li');
+      entry.className = 'galaxy-inspect-slot';
+      entry.textContent = `${slot.id.toUpperCase()} — ${slot.state}`;
+      this.infoSlotList.appendChild(entry);
+    }
   }
 
   private getOrCreatePlanetSprite(archetype: ReturnType<typeof planetProfileFromSeed>['archetype']) {
@@ -460,6 +485,7 @@ export class Galaxy2DMode implements RenderModeController {
     ctx.fillRect(0, 0, 96, 96);
 
     drawBiomePattern(ctx, archetype, style);
+    drawBiomeClouds(ctx, archetype);
 
     const terminator = ctx.createLinearGradient(cx + 6, cy - r, cx + r, cy + r * 0.55);
     terminator.addColorStop(0, 'rgba(4, 8, 14, 0)');
@@ -478,6 +504,50 @@ export class Galaxy2DMode implements RenderModeController {
 
     this.spriteCache.set(archetype, canvas);
     return canvas;
+  }
+
+  private ensureSettlementData(node: GalaxyNode) {
+    if (this.settlementCache.has(node.id) || this.settlementLoading.has(node.id)) return;
+    this.settlementLoading.add(node.id);
+
+    setTimeout(() => {
+      try {
+        const profile = planetProfileFromSeed(node.seed);
+        const config = createPlanetGenerationConfig(node.seed, profile);
+        if (!this.inspectorRenderer) {
+          this.inspectorRenderer = new THREE.WebGLRenderer({
+            antialias: false,
+            alpha: true,
+            powerPreference: 'low-power',
+          });
+        }
+        if (!this.inspectorGenerator) {
+          this.inspectorGenerator = new PlanetGenerator(this.inspectorRenderer);
+        }
+
+        const generated = this.inspectorGenerator.generate(config);
+        const slots = generateSettlementSlots(generated.surfaceGeometry, config);
+        this.settlementCache.set(node.id, {
+          total: slots.length,
+          occupied: slots.filter((slot) => slot.state !== 'empty').length,
+          slots: slots.map((slot) => ({
+            id: slot.id.replace('slot', 'City'),
+            state: slot.state === 'empty' ? 'Free' : 'Occupied',
+          })),
+        });
+        disposeGeneratedRoot(generated.root);
+      } catch {
+        this.settlementCache.set(node.id, {
+          total: 0,
+          occupied: 0,
+          slots: [],
+        });
+      } finally {
+        this.settlementLoading.delete(node.id);
+        this.refreshInfoPanel();
+        this.invalidate();
+      }
+    }, 0);
   }
 }
 
@@ -544,4 +614,35 @@ function drawBiomePattern(
     ctx.fill();
   }
   ctx.globalAlpha = 1;
+}
+
+function drawBiomeClouds(ctx: CanvasRenderingContext2D, archetype: ReturnType<typeof planetProfileFromSeed>['archetype']) {
+  if (archetype !== 'oceanic' && archetype !== 'terrestrial' && archetype !== 'frozen') return;
+  ctx.fillStyle = 'rgba(236, 246, 255, 0.22)';
+  for (let i = 0; i < 4; i += 1) {
+    ctx.beginPath();
+    ctx.ellipse(26 + i * 12, 56 + (i % 2) * 7, 7, 3.6, i * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function disposeGeneratedRoot(root: THREE.Object3D) {
+  const disposedMaterials = new Set<THREE.Material>();
+  root.traverse((object) => {
+    if (!(object as THREE.Mesh).isMesh) return;
+    const mesh = object as THREE.Mesh;
+    mesh.geometry?.dispose();
+    if (Array.isArray(mesh.material)) {
+      for (const material of mesh.material) {
+        if (disposedMaterials.has(material)) continue;
+        disposedMaterials.add(material);
+        material.dispose();
+      }
+      return;
+    }
+    if (mesh.material && !disposedMaterials.has(mesh.material)) {
+      disposedMaterials.add(mesh.material);
+      mesh.material.dispose();
+    }
+  });
 }
