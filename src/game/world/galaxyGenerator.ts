@@ -1,4 +1,11 @@
-import type { GalaxyData, GalaxyNode, PlanetArchetype, PlanetSeed, PlanetVisualProfile, SelectedPlanetRef } from '@/game/render/types';
+import type {
+  GalaxyData,
+  GalaxyNode,
+  PlanetArchetype,
+  PlanetSeed,
+  PlanetVisualProfile,
+  SelectedPlanetRef,
+} from '@/game/render/types';
 import { SeededRng } from '@/game/world/rng';
 
 interface GalaxyGeneratorConfig {
@@ -8,9 +15,9 @@ interface GalaxyGeneratorConfig {
   nodeCount?: number;
 }
 
-interface SpiralArm {
-  angleOffset: number;
-  weight: number;
+interface PlacementPoint {
+  x: number;
+  y: number;
 }
 
 export function generateGalaxyData({
@@ -20,30 +27,23 @@ export function generateGalaxyData({
   nodeCount = 520,
 }: GalaxyGeneratorConfig): GalaxyData {
   const rng = new SeededRng(seed);
-  const arms = buildArms(rng);
-  const nodes: GalaxyNode[] = [];
   const totalNodes = Math.max(1, Math.floor(nodeCount));
+  const placements = generateBlueNoisePlacements({ width, height, count: totalNodes, rng });
+  const nodes: GalaxyNode[] = [];
 
   for (let i = 0; i < totalNodes; i += 1) {
-    const arm = weightedPick(arms, rng);
-    const radial = Math.pow(rng.next(), 0.62);
-    const swirl = radial * 4.6;
-    const armNoise = rng.range(-0.34, 0.34);
-    const angle = arm.angleOffset + swirl + armNoise;
-
-    const spread = (1 - radial) * 0.08 + 0.02;
-    const xNorm = 0.5 + Math.cos(angle) * radial * (0.42 + rng.range(-spread, spread));
-    const yNorm = 0.5 + Math.sin(angle) * radial * (0.34 + rng.range(-spread, spread));
-
+    const placement = placements[i];
     const nodeSeed = hashPlanetSeed(seed, i);
+    const centerDx = (placement.x - width * 0.5) / (width * 0.5);
+    const centerDy = (placement.y - height * 0.5) / (height * 0.5);
+    const radial = Math.min(1, Math.hypot(centerDx, centerDy));
     const coreBias = 1 - radial;
-
     nodes.push({
       id: `p-${i + 1}`,
       name: `Planet ${String(i + 1).padStart(3, '0')}`,
-      x: clamp(xNorm * width, 48, width - 48),
-      y: clamp(yNorm * height, 48, height - 48),
-      radius: 2.1 + rng.range(0, 2.4) + coreBias * 1.8,
+      x: placement.x,
+      y: placement.y,
+      radius: 2.8 + rng.range(0, 2.5) + coreBias * 1.45,
       seed: nodeSeed,
       populationBand: pickPopulationBand(rng, coreBias),
     });
@@ -86,31 +86,153 @@ export function selectPrimaryPlanet(galaxy: GalaxyData): SelectedPlanetRef {
   return { id: byId.id, seed: byId.seed };
 }
 
+function generateBlueNoisePlacements({
+  width,
+  height,
+  count,
+  rng,
+}: {
+  width: number;
+  height: number;
+  count: number;
+  rng: SeededRng;
+}): PlacementPoint[] {
+  const margin = 54;
+  const active = {
+    minX: margin,
+    minY: margin,
+    maxX: width - margin,
+    maxY: height - margin,
+  };
+  const activeWidth = active.maxX - active.minX;
+  const activeHeight = active.maxY - active.minY;
+  let minDistance = Math.sqrt((activeWidth * activeHeight) / Math.max(1, count)) * 0.77;
+  let selected: PlacementPoint[] = [];
+  for (let pass = 0; pass < 4; pass += 1) {
+    selected = samplePoissonLike(active, count, minDistance, rng);
+    if (selected.length >= count) break;
+    minDistance *= 0.92;
+  }
+  if (selected.length < count) {
+    while (selected.length < count) {
+      selected.push({
+        x: rng.range(active.minX, active.maxX),
+        y: rng.range(active.minY, active.maxY),
+      });
+    }
+  }
+  relaxPlacements(selected, active, minDistance, rng);
+  return selected;
+}
+
+function samplePoissonLike(
+  active: { minX: number; minY: number; maxX: number; maxY: number },
+  count: number,
+  minDistance: number,
+  rng: SeededRng,
+) {
+  const cellSize = minDistance / Math.SQRT2;
+  const cols = Math.ceil((active.maxX - active.minX) / cellSize);
+  const rows = Math.ceil((active.maxY - active.minY) / cellSize);
+  const grid = new Int32Array(cols * rows).fill(-1);
+  const points: PlacementPoint[] = [];
+  const maxAttempts = count * 240;
+  let attempts = 0;
+
+  while (points.length < count && attempts < maxAttempts) {
+    attempts += 1;
+    const candidate = {
+      x: rng.range(active.minX, active.maxX),
+      y: rng.range(active.minY, active.maxY),
+    };
+    const gx = Math.floor((candidate.x - active.minX) / cellSize);
+    const gy = Math.floor((candidate.y - active.minY) / cellSize);
+    let valid = true;
+
+    for (let oy = -2; oy <= 2 && valid; oy += 1) {
+      for (let ox = -2; ox <= 2; ox += 1) {
+        const nx = gx + ox;
+        const ny = gy + oy;
+        if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+        const pointIndex = grid[ny * cols + nx];
+        if (pointIndex < 0) continue;
+        const other = points[pointIndex];
+        if (Math.hypot(candidate.x - other.x, candidate.y - other.y) < minDistance) {
+          valid = false;
+          break;
+        }
+      }
+    }
+
+    if (!valid) continue;
+    grid[gy * cols + gx] = points.length;
+    points.push(candidate);
+  }
+
+  return points;
+}
+
+function nearestDistance(candidate: PlacementPoint, points: PlacementPoint[]) {
+  if (points.length === 0) return Number.POSITIVE_INFINITY;
+  let best = Number.POSITIVE_INFINITY;
+  for (const point of points) {
+    const distance = Math.hypot(candidate.x - point.x, candidate.y - point.y);
+    if (distance < best) best = distance;
+  }
+  return best;
+}
+
+function relaxPlacements(
+  points: PlacementPoint[],
+  active: { minX: number; minY: number; maxX: number; maxY: number },
+  targetDistance: number,
+  rng: SeededRng,
+) {
+  const centerX = (active.minX + active.maxX) * 0.5;
+  const centerY = (active.minY + active.maxY) * 0.5;
+  const spanX = active.maxX - active.minX;
+  const spanY = active.maxY - active.minY;
+
+  for (let iteration = 0; iteration < 16; iteration += 1) {
+    for (let i = 0; i < points.length; i += 1) {
+      const point = points[i];
+      let pushX = 0;
+      let pushY = 0;
+
+      for (let j = 0; j < points.length; j += 1) {
+        if (i === j) continue;
+        const other = points[j];
+        const dx = point.x - other.x;
+        const dy = point.y - other.y;
+        const distance = Math.hypot(dx, dy);
+        const minDistance = targetDistance;
+
+        if (distance < minDistance && distance > 0.0001) {
+          const strength = ((minDistance - distance) / minDistance) * 1.12;
+          pushX += (dx / distance) * strength;
+          pushY += (dy / distance) * strength;
+        }
+      }
+
+      const offsetX = (point.x - centerX) / Math.max(1, spanX * 0.5);
+      const offsetY = (point.y - centerY) / Math.max(1, spanY * 0.5);
+      const radius = Math.hypot(offsetX, offsetY);
+      if (radius < 0.22 && radius > 0.001) {
+        pushX += (offsetX / radius) * (0.22 - radius) * 0.9;
+        pushY += (offsetY / radius) * (0.22 - radius) * 0.9;
+      }
+
+      point.x = clamp(point.x + pushX + rng.range(-0.08, 0.08), active.minX, active.maxX);
+      point.y = clamp(point.y + pushY + rng.range(-0.08, 0.08), active.minY, active.maxY);
+    }
+  }
+}
+
 function pickPopulationBand(rng: SeededRng, coreBias: number): GalaxyNode['populationBand'] {
   const roll = rng.next() + coreBias * 0.25;
   if (roll > 0.95) return 'dense';
   if (roll > 0.45) return 'settled';
   return 'sparse';
-}
-
-function buildArms(rng: SeededRng): SpiralArm[] {
-  const armCount = 4;
-  return Array.from({ length: armCount }, (_, i) => ({
-    angleOffset: (Math.PI * 2 * i) / armCount + rng.range(-0.2, 0.2),
-    weight: rng.range(0.85, 1.25),
-  }));
-}
-
-function weightedPick<T extends { weight: number }>(values: T[], rng: SeededRng): T {
-  const totalWeight = values.reduce((sum, item) => sum + item.weight, 0);
-  let marker = rng.range(0, totalWeight);
-
-  for (const value of values) {
-    marker -= value.weight;
-    if (marker <= 0) return value;
-  }
-
-  return values[values.length - 1];
 }
 
 function hashPlanetSeed(seed: number, index: number): number {

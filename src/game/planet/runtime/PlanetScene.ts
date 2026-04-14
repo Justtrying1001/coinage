@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { SeededRng } from '@/game/world/rng';
+import { SeededStarBackground } from '@/game/render/SeededStarBackground';
 
 export class PlanetScene {
   readonly scene = new THREE.Scene();
   readonly root = new THREE.Group();
   readonly camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
   private stars: THREE.Points | null = null;
+  private readonly starBackground = new SeededStarBackground({
+    seed: 0xdecafbad,
+    count: 1800,
+    radiusRange: { min: 8, max: 18 },
+  });
 
   constructor() {
     this.scene.background = new THREE.Color(0x02050d);
@@ -35,31 +40,7 @@ export class PlanetScene {
   }
 
   private createStarfield() {
-    const rng = new SeededRng(0xdecafbad);
-    const starCount = 1800;
-    const positions = new Float32Array(starCount * 3);
-
-    for (let i = 0; i < starCount; i += 1) {
-      const theta = rng.range(0, Math.PI * 2);
-      const phi = Math.acos(rng.range(-1, 1));
-      const radius = rng.range(8, 18);
-      positions[i * 3] = Math.sin(phi) * Math.cos(theta) * radius;
-      positions[i * 3 + 1] = Math.cos(phi) * radius;
-      positions[i * 3 + 2] = Math.sin(phi) * Math.sin(theta) * radius;
-    }
-
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const material = new THREE.PointsMaterial({
-      color: 0xbfd8ff,
-      size: 0.03,
-      sizeAttenuation: true,
-      transparent: true,
-      opacity: 0.8,
-      depthWrite: false,
-    });
-
-    this.stars = new THREE.Points(geometry, material);
+    this.stars = this.starBackground.createThreePoints();
     this.scene.add(this.stars);
   }
 }
