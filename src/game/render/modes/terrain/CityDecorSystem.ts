@@ -3,14 +3,123 @@ import type { CityTerrainInput, TerrainGeometryConfig } from '@/game/render/mode
 import type { CityLayoutSnapshot } from '@/game/city/layout/cityLayout';
 
 export function buildCityDecor(
-  _input: CityTerrainInput,
+  input: CityTerrainInput,
   _layout: Pick<CityLayoutSnapshot, 'blocked' | 'expansion'>,
-  _config: TerrainGeometryConfig,
+  config: TerrainGeometryConfig,
+  nearTerrain?: THREE.Mesh,
 ) {
-  void _input;
-  void _layout;
-  void _config;
-  // Deliberately empty in normal City View until production-grade assets are integrated.
-  // This removes low-poly placeholder props from the runtime view.
-  return new THREE.Group();
+  const group = new THREE.Group();
+  if (!nearTerrain) return group;
+
+  const position = nearTerrain.geometry.getAttribute('position');
+  const buildMask = nearTerrain.geometry.getAttribute('aBuildMask');
+  const transitionMask = nearTerrain.geometry.getAttribute('aTransitionMask');
+  const backgroundMask = nearTerrain.geometry.getAttribute('aBackgroundMask');
+
+  if (!position || !buildMask || !transitionMask || !backgroundMask) return group;
+
+  const rng = seededRandom(input.seed ^ 0x5f3759df);
+  const decorColor = input.palettes.accent.clone().multiplyScalar(0.72);
+
+  const rock = createScatterLayer({
+    source: position,
+    exclusionMask: buildMask,
+    primaryMask: backgroundMask,
+    density: input.archetype === 'volcanic' ? 0.028 : 0.018,
+    rng,
+    scale: [1.4, 5.2],
+    clusterSeed: input.seed ^ 0x9e3779b9,
+    geometry: new THREE.DodecahedronGeometry(1, 0),
+    material: new THREE.MeshStandardMaterial({ color: input.palettes.cliff.clone().lerp(decorColor, 0.2), roughness: 0.9, metalness: 0.05 }),
+  });
+  group.add(rock);
+
+  if (input.archetype !== 'volcanic' && input.archetype !== 'barren') {
+    const flora = createScatterLayer({
+      source: position,
+      exclusionMask: buildMask,
+      primaryMask: transitionMask,
+      density: input.archetype === 'jungle' ? 0.05 : 0.028,
+      rng,
+      scale: [1.2, 3.4],
+      clusterSeed: input.seed ^ 0x85ebca6b,
+      geometry: new THREE.ConeGeometry(0.85, 2.8, 6),
+      material: new THREE.MeshStandardMaterial({ color: input.palettes.accent.clone().lerp(input.palettes.low, 0.45), roughness: 0.86, metalness: 0.02 }),
+      yOffset: 0.6,
+    });
+    group.add(flora);
+  }
+
+  group.position.z = -config.terrainDepth * 0.02;
+  return group;
+}
+
+function createScatterLayer(params: {
+  source: THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
+  exclusionMask: THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
+  primaryMask: THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
+  density: number;
+  rng: () => number;
+  scale: [number, number];
+  clusterSeed: number;
+  geometry: THREE.BufferGeometry;
+  material: THREE.MeshStandardMaterial;
+  yOffset?: number;
+}) {
+  const candidates: number[] = [];
+
+  for (let i = 0; i < params.source.count; i += 1) {
+    const excluded = params.exclusionMask.getX(i);
+    const priority = params.primaryMask.getX(i);
+    if (excluded > 0.16 || priority < 0.24) continue;
+
+    const x = params.source.getX(i);
+    const z = params.source.getZ(i);
+    const cluster = clusterFactor(x, z, params.clusterSeed);
+    const chance = params.density * priority * cluster;
+    if (params.rng() > chance) continue;
+
+    candidates.push(i);
+  }
+
+  const mesh = new THREE.InstancedMesh(params.geometry, params.material, candidates.length);
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
+
+  const matrix = new THREE.Matrix4();
+  const quat = new THREE.Quaternion();
+  const pos = new THREE.Vector3();
+  const scale = new THREE.Vector3();
+
+  for (let i = 0; i < candidates.length; i += 1) {
+    const idx = candidates[i];
+    const x = params.source.getX(idx);
+    const y = params.source.getY(idx) + (params.yOffset ?? 0);
+    const z = params.source.getZ(idx);
+
+    pos.set(x, y, z);
+    quat.setFromEuler(new THREE.Euler(0, params.rng() * Math.PI * 2, 0));
+    const s = THREE.MathUtils.lerp(params.scale[0], params.scale[1], params.rng());
+    scale.set(s, s * THREE.MathUtils.lerp(0.8, 1.35, params.rng()), s);
+    matrix.compose(pos, quat, scale);
+    mesh.setMatrixAt(i, matrix);
+  }
+
+  mesh.instanceMatrix.needsUpdate = true;
+  return mesh;
+}
+
+function clusterFactor(x: number, z: number, seed: number) {
+  const s1 = Math.sin((x + seed * 0.0013) * 0.026) * Math.cos((z - seed * 0.0017) * 0.021);
+  const s2 = Math.cos((x - seed * 0.0009) * 0.012 + (z + seed * 0.0004) * 0.017);
+  const n = (s1 * 0.65 + s2 * 0.35) * 0.5 + 0.5;
+  return THREE.MathUtils.smoothstep(n, 0.38, 0.92);
+}
+
+function seededRandom(seed: number) {
+  let state = seed >>> 0;
+  return () => {
+    state = (1664525 * state + 1013904223) >>> 0;
+    return state / 0xffffffff;
+  };
 }

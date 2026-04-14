@@ -5,8 +5,8 @@ import type { CityTerrainMaterialMode } from '@/game/render/modes/terrain/CityTe
 export function createCityTerrainMaterial(input: CityTerrainInput, farField = false, materialMode: CityTerrainMaterialMode = 'heightBlend') {
   const mat = new THREE.MeshStandardMaterial({
     color: input.palettes.low,
-    roughness: THREE.MathUtils.clamp(input.material.roughness + (farField ? 0.08 : 0), 0.08, 1),
-    metalness: THREE.MathUtils.clamp(input.material.metalness * (farField ? 0.5 : 1), 0, 0.6),
+    roughness: THREE.MathUtils.clamp(input.material.roughness + (farField ? 0.1 : 0), 0.08, 1),
+    metalness: THREE.MathUtils.clamp(input.material.metalness * (farField ? 0.4 : 1), 0, 0.7),
   });
 
   mat.onBeforeCompile = (shader) => {
@@ -30,6 +30,10 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
         attribute float aThermal;
         attribute float aMineralized;
         attribute float aVegetation;
+        attribute float aBuildMask;
+        attribute float aTransitionMask;
+        attribute float aBackgroundMask;
+        attribute float aDepthMask;
         varying float vHeight01;
         varying float vSlope;
         varying float vCliff;
@@ -39,6 +43,11 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
         varying float vThermal;
         varying float vMineralized;
         varying float vVegetation;
+        varying float vBuildMask;
+        varying float vTransitionMask;
+        varying float vBackgroundMask;
+        varying float vDepthMask;
+        varying vec2 vWorldXZ;
       `,
       )
       .replace(
@@ -53,6 +62,11 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
         vThermal = aThermal;
         vMineralized = aMineralized;
         vVegetation = aVegetation;
+        vBuildMask = aBuildMask;
+        vTransitionMask = aTransitionMask;
+        vBackgroundMask = aBackgroundMask;
+        vDepthMask = aDepthMask;
+        vWorldXZ = transformed.xz;
       `,
       );
 
@@ -75,44 +89,52 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
         varying float vThermal;
         varying float vMineralized;
         varying float vVegetation;
+        varying float vBuildMask;
+        varying float vTransitionMask;
+        varying float vBackgroundMask;
+        varying float vDepthMask;
+        varying vec2 vWorldXZ;
       `,
       )
       .replace(
         '#include <color_fragment>',
         `#include <color_fragment>
-        vec3 baseColor = mix(uLow, uHigh, smoothstep(0.16, 0.88, vHeight01));
-        if (${materialMode === 'standard' ? 1 : 0} == 1) {
-          diffuseColor.rgb = baseColor;
-          return;
+        float breakup = sin(vWorldXZ.x * 0.043 + vWorldXZ.y * 0.027) * 0.5 + cos(vWorldXZ.x * 0.018 - vWorldXZ.y * 0.051) * 0.5;
+        breakup = breakup * 0.5 + 0.5;
+
+        vec3 baseColor = mix(uLow, uHigh, smoothstep(0.14, 0.9, vHeight01 + (breakup - 0.5) * 0.04));
+
+        if (${materialMode === 'standard' ? 1 : 0} == 0) {
+          baseColor = mix(baseColor, uCliff, vCliff * 0.64);
+          baseColor = mix(baseColor, uAccent, vVegetation * 0.28 + vMineralized * 0.2);
+          baseColor *= mix(vec3(1.0), vec3(0.9, 0.95, 1.02), vWetness * 0.17);
+          baseColor *= mix(vec3(1.0), vec3(0.86, 0.93, 1.04), vFrozen * 0.24);
+          baseColor *= mix(vec3(1.0), vec3(1.08, 0.89, 0.74), vThermal * 0.17);
+          baseColor = mix(baseColor, baseColor * vec3(1.08, 1.05, 0.95), vShoreline * 0.18);
         }
-        baseColor = mix(baseColor, uCliff, vCliff * 0.72);
-        baseColor = mix(baseColor, uAccent, vVegetation * 0.34 + vMineralized * 0.28);
 
-        vec3 wetTint = vec3(0.88, 0.94, 1.02);
-        vec3 frostTint = vec3(0.86, 0.93, 1.04);
-        vec3 heatTint = vec3(1.06, 0.88, 0.74);
-
-        baseColor *= mix(vec3(1.0), wetTint, vWetness * 0.18);
-        baseColor *= mix(vec3(1.0), frostTint, vFrozen * 0.25);
-        baseColor *= mix(vec3(1.0), heatTint, vThermal * 0.2);
-        baseColor = mix(baseColor, baseColor * vec3(1.08, 1.04, 0.92), vShoreline * 0.26);
+        vec3 zoned = baseColor;
+        zoned = mix(zoned, zoned * vec3(1.03, 1.03, 1.02), vBuildMask * 0.45);
+        zoned = mix(zoned, zoned * vec3(0.985, 0.985, 0.97), vTransitionMask * 0.18);
+        zoned = mix(zoned, zoned * vec3(0.95, 0.96, 1.02), vBackgroundMask * 0.26);
+        zoned = mix(zoned, zoned * vec3(0.98, 1.0, 1.04), smoothstep(0.65, 1.0, vDepthMask) * 0.12);
 
         if (uFarField == 1) {
-          baseColor = mix(baseColor, uFogTint, 0.4);
+          zoned = mix(zoned, uFogTint, 0.2);
         }
 
-        diffuseColor.rgb = baseColor;
+        diffuseColor.rgb = zoned;
       `,
       )
       .replace(
         'float roughnessFactor = roughness;',
         `float roughnessFactor = roughness;
-        roughnessFactor = clamp(roughnessFactor + vCliff * 0.18 + vMineralized * 0.06 - vWetness * 0.12, 0.05, 1.0);`,
+        roughnessFactor = clamp(roughnessFactor + vCliff * 0.22 + vBackgroundMask * 0.06 - vBuildMask * 0.08, 0.07, 1.0);`,
       )
       .replace(
         'float metalnessFactor = metalness;',
         `float metalnessFactor = metalness;
-        metalnessFactor = clamp(metalnessFactor + vMineralized * 0.24 - vWetness * 0.03, 0.0, 0.8);`,
+        metalnessFactor = clamp(metalnessFactor + vMineralized * 0.22 - vBuildMask * 0.05, 0.0, 0.8);`,
       );
   };
 
