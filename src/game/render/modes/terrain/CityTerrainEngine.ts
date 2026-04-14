@@ -11,8 +11,12 @@ export interface CityTerrainBuildResult {
   nearGeometry: THREE.PlaneGeometry;
   farGeometry: THREE.PlaneGeometry;
   buildSurface: {
+    center: { x: number; z: number };
     width: number;
     depth: number;
+    plateauHeight: number;
+    transitionFalloff: number;
+    maxSlope: number;
     stableMask: Float32Array;
     slopes: Float32Array;
   };
@@ -52,8 +56,12 @@ export function buildCityTerrainEngine(
     nearGeometry: near.geometry,
     farGeometry: far.geometry,
     buildSurface: {
+      center: near.buildCenter,
       width: config.terrainWidth,
       depth: config.terrainDepth,
+      plateauHeight: spec.buildArea.plateauHeight,
+      transitionFalloff: spec.buildArea.transitionFalloff,
+      maxSlope: spec.buildArea.maxSlope,
       stableMask: near.stableMask,
       slopes: near.slopeMask,
     },
@@ -133,7 +141,7 @@ function buildField(
   geometry.setAttribute('aBackgroundMask', new THREE.BufferAttribute(composition.backgroundMask, 1));
   geometry.setAttribute('aDepthMask', new THREE.BufferAttribute(composition.depthMask, 1));
 
-  return { geometry, slopeMask, stableMask };
+  return { geometry, slopeMask, stableMask, buildCenter: composition.buildCenter };
 }
 
 function estimateSlopeMask(heights: Float32Array, widthVertices: number, depthVertices: number, width: number, depth: number) {

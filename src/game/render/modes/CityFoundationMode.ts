@@ -3,7 +3,7 @@ import type { ModeContext, RenderModeController } from '@/game/render/modes/Rend
 import type { SelectedPlanetRef } from '@/game/render/types';
 import { CityLayoutStore } from '@/game/city/layout/cityLayout';
 import { createCityTerrainInput } from '@/game/render/modes/terrain/CityTerrainInput';
-import { buildCityTerrainEngine, type CityTerrainViewMode } from '@/game/render/modes/terrain/CityTerrainEngine';
+import { buildCityTerrainEngine } from '@/game/render/modes/terrain/CityTerrainEngine';
 import { createCityTerrainMaterial } from '@/game/render/modes/terrain/CityTerrainMaterial';
 import { createCityFluidLayer } from '@/game/render/modes/terrain/CityWaterLayer';
 import { buildCityDecor } from '@/game/render/modes/terrain/CityDecorSystem';
@@ -11,21 +11,20 @@ import { applyCityAtmosphere, createCityLighting } from '@/game/render/modes/ter
 import { applyCityCameraRig, getCityCameraPreset } from '@/game/render/modes/terrain/CityCameraRig';
 import { CityOrbitCameraController } from '@/game/render/modes/terrain/CityOrbitCameraController';
 import type { TerrainGeometryConfig } from '@/game/render/modes/terrain/CityTerrainTypes';
+import { summarizeBuildSurface, validateBuildSurface } from '@/game/render/modes/terrain/CityBuildSurface';
 
 const GRID_WIDTH = 20;
 const GRID_HEIGHT = 14;
 
-type CityCameraMode = 'presentation' | 'free';
-
 const DEFAULT_TERRAIN_GEOMETRY: TerrainGeometryConfig = {
-  terrainWidth: 360,
-  terrainDepth: 280,
-  farWidth: 880,
-  farDepth: 760,
-  nearSegmentsX: 360,
-  nearSegmentsZ: 280,
-  farSegmentsX: 170,
-  farSegmentsZ: 140,
+  terrainWidth: 320,
+  terrainDepth: 240,
+  farWidth: 1480,
+  farDepth: 1260,
+  nearSegmentsX: 320,
+  nearSegmentsZ: 240,
+  farSegmentsX: 220,
+  farSegmentsZ: 188,
 };
 
 export class CityFoundationMode implements RenderModeController {
@@ -35,20 +34,17 @@ export class CityFoundationMode implements RenderModeController {
   private root: HTMLElement | null = null;
   private canvasWrap: HTMLDivElement | null = null;
   private hudMeta: HTMLParagraphElement | null = null;
-  private cameraToggle: HTMLButtonElement | null = null;
 
   private renderer: THREE.WebGLRenderer | null = null;
   private scene: THREE.Scene | null = null;
   private camera: THREE.PerspectiveCamera | null = null;
   private orbitCamera: CityOrbitCameraController | null = null;
-  private cityCameraMode: CityCameraMode = 'presentation';
 
   private terrain: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null = null;
   private farField: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null = null;
   private water: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null = null;
   private decorGroup: THREE.Group | null = null;
   private atmosphereGroup: THREE.Group | null = null;
-  private cityViewMode: CityTerrainViewMode = 'normal';
   private currentArchetype = 'terrestrial';
 
   constructor(
@@ -70,20 +66,13 @@ export class CityFoundationMode implements RenderModeController {
     meta.className = 'city-view-hud__meta';
     this.hudMeta = meta;
 
-    const cameraToggle = document.createElement('button');
-    cameraToggle.type = 'button';
-    cameraToggle.className = 'city-view-hud__camera';
-    cameraToggle.textContent = 'Free Cam';
-    cameraToggle.addEventListener('click', () => this.toggleCameraMode());
-    this.cameraToggle = cameraToggle;
-
     const back = document.createElement('button');
     back.type = 'button';
     back.className = 'city-view-hud__back';
     back.textContent = 'Back';
     back.addEventListener('click', () => this.context.onRequestMode('planet3d'));
 
-    hud.append(meta, cameraToggle, back);
+    hud.append(meta, back);
     root.append(canvasWrap, hud);
     this.context.host.appendChild(root);
 
@@ -91,7 +80,6 @@ export class CityFoundationMode implements RenderModeController {
     this.canvasWrap = canvasWrap;
 
     this.initScene();
-    window.addEventListener('keydown', this.onKeyModeCycle);
     this.rebuildCityTerrain();
     this.syncHud();
   }
@@ -121,13 +109,11 @@ export class CityFoundationMode implements RenderModeController {
     this.disposeCurrentMeshes();
     this.orbitCamera?.dispose();
     this.renderer?.dispose();
-    window.removeEventListener('keydown', this.onKeyModeCycle);
     this.root?.remove();
 
     this.root = null;
     this.canvasWrap = null;
     this.hudMeta = null;
-    this.cameraToggle = null;
     this.scene = null;
     this.camera = null;
     this.renderer = null;
@@ -150,18 +136,18 @@ export class CityFoundationMode implements RenderModeController {
     const scene = new THREE.Scene();
 
     const camera = new THREE.PerspectiveCamera(44, 1, 0.5, 1800);
-    applyCityCameraRig(camera, this.cityViewMode, DEFAULT_TERRAIN_GEOMETRY);
+    applyCityCameraRig(camera, DEFAULT_TERRAIN_GEOMETRY);
 
     this.renderer = renderer;
     this.scene = scene;
     this.camera = camera;
 
     this.orbitCamera = new CityOrbitCameraController(camera, renderer.domElement, {
-      minDistance: 110,
-      maxDistance: 620,
-      minPolar: 0.34,
-      maxPolar: 1.46,
-      maxPan: DEFAULT_TERRAIN_GEOMETRY.terrainWidth * 0.26,
+      minDistance: 96,
+      maxDistance: 360,
+      minPolar: 0.48,
+      maxPolar: 1.34,
+      maxPan: DEFAULT_TERRAIN_GEOMETRY.terrainWidth * 0.18,
     });
   }
 
@@ -216,7 +202,7 @@ export class CityFoundationMode implements RenderModeController {
     this.scene.add(atmosphereRig);
     this.atmosphereGroup = atmosphereRig;
 
-    const built = buildCityTerrainEngine(input, DEFAULT_TERRAIN_GEOMETRY, this.cityViewMode);
+    const built = buildCityTerrainEngine(input, DEFAULT_TERRAIN_GEOMETRY, 'normal');
 
     const farMat = createCityTerrainMaterial(input, true, built.materialMode);
     const farField = new THREE.Mesh(built.farGeometry, farMat);
@@ -231,8 +217,9 @@ export class CityFoundationMode implements RenderModeController {
     this.terrain = terrain;
 
     if (this.camera) {
-      const preset = getCityCameraPreset(this.cityViewMode, DEFAULT_TERRAIN_GEOMETRY);
-      applyCityCameraRig(this.camera, this.cityViewMode, DEFAULT_TERRAIN_GEOMETRY);
+      const focus = { x: built.buildSurface.center.x, y: built.buildSurface.plateauHeight + 2, z: built.buildSurface.center.z };
+      const preset = getCityCameraPreset(DEFAULT_TERRAIN_GEOMETRY, focus);
+      applyCityCameraRig(this.camera, DEFAULT_TERRAIN_GEOMETRY, focus);
       this.orbitCamera?.setFromPreset(preset);
     }
 
@@ -246,41 +233,20 @@ export class CityFoundationMode implements RenderModeController {
     this.scene.add(decor);
     this.decorGroup = decor;
 
-    this.syncHud(input.archetype);
+    const buildSummary = summarizeBuildSurface(built.buildSurface);
+    const buildValidation = validateBuildSurface(built.buildSurface);
+    if (!buildValidation.isValid) {
+      console.warn('[city] build surface validation failed', buildValidation);
+    }
+
+    this.syncHud(input.archetype, buildSummary.stableRatio);
   }
 
-  private syncHud(archetype?: string) {
+  private syncHud(archetype?: string, stableRatio?: number) {
     if (this.hudMeta) {
       const biome = archetype ?? this.currentArchetype;
-      this.hudMeta.textContent = `${this.selectedPlanet.id.toUpperCase()} · ${biome} · ${this.cityViewMode} · ${this.cityCameraMode}`;
-    }
-    if (this.cameraToggle) {
-      this.cameraToggle.textContent = this.cityCameraMode === 'free' ? 'Present Cam' : 'Free Cam';
+      const stablePct = stableRatio === undefined ? '' : ` · build ${Math.round(stableRatio * 100)}%`;
+      this.hudMeta.textContent = `${this.selectedPlanet.id.toUpperCase()} · ${biome}${stablePct}`;
     }
   }
-
-  private toggleCameraMode() {
-    this.cityCameraMode = this.cityCameraMode === 'presentation' ? 'free' : 'presentation';
-    if (this.orbitCamera) this.orbitCamera.enabled = this.cityCameraMode === 'free';
-    if (this.cityCameraMode === 'presentation' && this.camera) {
-      applyCityCameraRig(this.camera, this.cityViewMode, DEFAULT_TERRAIN_GEOMETRY);
-    }
-    this.syncHud();
-  }
-
-  private readonly onKeyModeCycle = (event: KeyboardEvent) => {
-    const key = event.key.toLowerCase();
-    if (key === 'c') {
-      this.toggleCameraMode();
-      return;
-    }
-    if (key !== 'm') return;
-    const nextMode: Record<CityTerrainViewMode, CityTerrainViewMode> = {
-      normal: 'build',
-      build: 'flat',
-      flat: 'normal',
-    };
-    this.cityViewMode = nextMode[this.cityViewMode];
-    this.rebuildCityTerrain();
-  };
 }

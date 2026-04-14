@@ -53,8 +53,12 @@ export interface CityLayoutMaskSource {
 }
 
 export interface BuildSurfaceSnapshot {
+  center: { x: number; z: number };
   width: number;
   depth: number;
+  plateauHeight: number;
+  transitionFalloff: number;
+  maxSlope: number;
   slopes: Float32Array;
   stableMask: Float32Array;
 }

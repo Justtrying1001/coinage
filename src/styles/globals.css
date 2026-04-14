@@ -304,22 +304,6 @@ canvas {
 }
 
 
-.city-view-hud__camera {
-  border: 1px solid rgba(154, 195, 216, 0.46);
-  background: rgba(11, 24, 36, 0.72);
-  color: #dceefe;
-  border-radius: 999px;
-  padding: 0.25rem 0.58rem;
-  font-size: 0.56rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.city-view-hud__camera:hover {
-  border-color: rgba(187, 220, 238, 0.9);
-}
-
 .city-view-hud__back {
   border: 1px solid rgba(154, 195, 216, 0.46);
   background: rgba(11, 24, 36, 0.72);

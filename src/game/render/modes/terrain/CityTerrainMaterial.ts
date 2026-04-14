@@ -16,7 +16,7 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
     shader.uniforms.uAccent = { value: input.palettes.accent };
     shader.uniforms.uFogTint = { value: input.palettes.fog };
     shader.uniforms.uFarField = { value: farField ? 1 : 0 };
-    shader.uniforms.uSaturationBoost = { value: farField ? 1.02 : 1.12 };
+    shader.uniforms.uSaturationBoost = { value: farField ? 1.03 : 1.16 };
 
     shader.vertexShader = shader.vertexShader
       .replace(
@@ -102,31 +102,33 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
         '#include <color_fragment>',
         `#include <color_fragment>
         float breakup = sin(vWorldXZ.x * 0.039 + vWorldXZ.y * 0.024) * 0.5 + cos(vWorldXZ.x * 0.017 - vWorldXZ.y * 0.048) * 0.5;
+        float detailNoise = sin(vWorldXZ.x * 0.11) * cos(vWorldXZ.y * 0.09) * 0.5 + 0.5;
         breakup = breakup * 0.5 + 0.5;
 
-        float heightMix = smoothstep(0.08, 0.92, vHeight01 + (breakup - 0.5) * 0.06);
+        float heightMix = smoothstep(0.08, 0.92, vHeight01 + (breakup - 0.5) * 0.06 + (detailNoise - 0.5) * 0.05);
         vec3 baseColor = mix(uLow, uHigh, heightMix);
 
         if (${materialMode === 'standard' ? 1 : 0} == 0) {
           baseColor = mix(baseColor, uCliff, smoothstep(0.24, 0.88, vCliff) * 0.72);
-          baseColor = mix(baseColor, uAccent, clamp(vVegetation * 0.42 + vMineralized * 0.24, 0.0, 0.56));
+          baseColor = mix(baseColor, uAccent, clamp(vVegetation * 0.48 + vMineralized * 0.24, 0.0, 0.62));
           baseColor *= mix(vec3(1.0), vec3(0.86, 0.94, 1.06), vWetness * 0.24);
           baseColor *= mix(vec3(1.0), vec3(0.82, 0.9, 1.08), vFrozen * 0.34);
           baseColor *= mix(vec3(1.0), vec3(1.12, 0.86, 0.7), vThermal * 0.22);
           baseColor = mix(baseColor, baseColor * vec3(1.1, 1.08, 0.96), vShoreline * 0.22);
+          baseColor *= mix(vec3(0.96), vec3(1.05), detailNoise);
         }
 
         vec3 zoned = baseColor;
         float softBuild = smoothstep(0.3, 0.9, vBuildMask);
         zoned = mix(zoned, zoned * vec3(1.02, 1.02, 1.015), softBuild * 0.24);
-        zoned = mix(zoned, zoned * vec3(0.96, 0.97, 1.03), vBackgroundMask * 0.16);
-        zoned = mix(zoned, zoned * vec3(0.98, 0.99, 1.04), smoothstep(0.5, 1.0, vDepthMask) * 0.09);
+        zoned = mix(zoned, zoned * vec3(0.96, 0.97, 1.03), vBackgroundMask * 0.22);
+        zoned = mix(zoned, zoned * vec3(0.98, 0.99, 1.04), smoothstep(0.45, 1.0, vDepthMask) * 0.14);
 
         float luminance = dot(zoned, vec3(0.2126, 0.7152, 0.0722));
         zoned = mix(vec3(luminance), zoned, uSaturationBoost);
 
         if (uFarField == 1) {
-          zoned = mix(zoned, uFogTint, 0.28);
+          zoned = mix(zoned, uFogTint, 0.34);
         }
 
         diffuseColor.rgb = zoned;
@@ -135,7 +137,7 @@ export function createCityTerrainMaterial(input: CityTerrainInput, farField = fa
       .replace(
         'float roughnessFactor = roughness;',
         `float roughnessFactor = roughness;
-        roughnessFactor = clamp(roughnessFactor + vCliff * 0.24 + vBackgroundMask * 0.1 - vBuildMask * 0.06 - vShoreline * 0.08, 0.05, 1.0);`,
+        roughnessFactor = clamp(roughnessFactor + vCliff * 0.24 + vBackgroundMask * 0.14 - vBuildMask * 0.08 - vShoreline * 0.08, 0.05, 1.0);`,
       )
       .replace(
         'float metalnessFactor = metalness;',

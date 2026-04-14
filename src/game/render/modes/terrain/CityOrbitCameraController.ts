@@ -67,7 +67,7 @@ export class CityOrbitCameraController {
     this.surface.addEventListener('wheel', this.onWheel, { passive: false });
   }
 
-  enabled = false;
+  enabled = true;
 
   setFromPreset(preset: CityCameraPreset) {
     this.target.copy(preset.target);
@@ -93,18 +93,18 @@ export class CityOrbitCameraController {
     this.polar = THREE.MathUtils.clamp(this.polar + this.rotateVelocity.y, this.bounds.minPolar, this.bounds.maxPolar);
     this.distance = THREE.MathUtils.clamp(this.distance + this.zoomVelocity, this.bounds.minDistance, this.bounds.maxDistance);
 
-    this.rotateVelocity.multiplyScalar(0.82);
-    this.zoomVelocity *= 0.72;
+    this.rotateVelocity.multiplyScalar(0.86);
+    this.zoomVelocity *= 0.74;
 
     const panScale = this.distance * 0.0022;
     this.target.x = THREE.MathUtils.clamp(this.target.x + this.panVelocity.x * panScale, -this.bounds.maxPan, this.bounds.maxPan);
     this.target.z = THREE.MathUtils.clamp(this.target.z + this.panVelocity.y * panScale, -this.bounds.maxPan, this.bounds.maxPan);
-    this.panVelocity.multiplyScalar(0.76);
+    this.panVelocity.multiplyScalar(0.8);
 
-    this.currentAzimuth = THREE.MathUtils.lerp(this.currentAzimuth, this.azimuth, 0.14);
-    this.currentPolar = THREE.MathUtils.lerp(this.currentPolar, this.polar, 0.14);
-    this.currentDistance = THREE.MathUtils.lerp(this.currentDistance, this.distance, 0.16);
-    this.currentTarget.lerp(this.target, 0.16);
+    this.currentAzimuth = THREE.MathUtils.lerp(this.currentAzimuth, this.azimuth, 0.16);
+    this.currentPolar = THREE.MathUtils.lerp(this.currentPolar, this.polar, 0.16);
+    this.currentDistance = THREE.MathUtils.lerp(this.currentDistance, this.distance, 0.2);
+    this.currentTarget.lerp(this.target, 0.2);
 
     const sinPolar = Math.sin(this.currentPolar);
     const offset = new THREE.Vector3(

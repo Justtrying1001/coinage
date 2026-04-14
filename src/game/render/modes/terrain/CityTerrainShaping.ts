@@ -21,6 +21,7 @@ export interface HeightCompositionResult {
   transitionMask: Float32Array;
   backgroundMask: Float32Array;
   depthMask: Float32Array;
+  buildCenter: { x: number; z: number };
 }
 
 export function generateCityHeightComposition(
@@ -244,26 +245,37 @@ function computeDepthMasks(context: HeightFieldContext, spec: CityBiomeSpec, far
   const backgroundMask = new Float32Array(width * height);
   const depthMask = new Float32Array(width * height);
 
-  const buildWidth = farField ? 0.5 : spec.buildArea.widthPct;
-  const buildDepth = farField ? 0.42 : spec.buildArea.depthPct;
+  const buildWidth = farField ? 0.46 : spec.buildArea.widthPct;
+  const buildDepth = farField ? 0.38 : spec.buildArea.depthPct;
+  const centerX = farField ? 0.5 : spec.buildArea.centerXPct;
+  const centerZ = farField ? 0.54 : spec.buildArea.centerZPct;
 
   for (let x = 0; x < width; x += 1) {
     for (let z = 0; z < height; z += 1) {
       const idx = z * width + x;
       const nx = x / Math.max(width - 1, 1);
       const nz = z / Math.max(height - 1, 1);
-      const fx = (nx - 0.5) / Math.max(buildWidth * 0.5, 1e-5);
-      const fz = (nz - 0.5) / Math.max(buildDepth * 0.5, 1e-5);
+      const fx = (nx - centerX) / Math.max(buildWidth * 0.5, 1e-5);
+      const fz = (nz - centerZ) / Math.max(buildDepth * 0.5, 1e-5);
       const radial = Math.sqrt(fx * fx + fz * fz);
 
       depthMask[idx] = nz;
-      buildMask[idx] = clamp(1 - smoothstep(0.45, 1.08, radial), 0, 1);
-      transitionMask[idx] = clamp(smoothstep(0.76, 1.45, radial) * (1 - smoothstep(1.45, 2.2, radial)), 0, 1);
-      backgroundMask[idx] = clamp(smoothstep(1.04, 2.15, radial) * smoothstep(0.2, 0.95, nz), 0, 1);
+      buildMask[idx] = clamp(1 - smoothstep(0.42, 1.04, radial), 0, 1);
+      transitionMask[idx] = clamp(smoothstep(0.74, 1.38, radial) * (1 - smoothstep(1.38, 2.08, radial)), 0, 1);
+      backgroundMask[idx] = clamp(smoothstep(0.96, 2.04, radial) * smoothstep(0.14, 0.94, nz), 0, 1);
     }
   }
 
-  return { buildMask, transitionMask, backgroundMask, depthMask };
+  return {
+    buildMask,
+    transitionMask,
+    backgroundMask,
+    depthMask,
+    buildCenter: {
+      x: (centerX - 0.5) * context.width,
+      z: (centerZ - 0.5) * context.depth,
+    },
+  };
 }
 
 function applyZonedComposition(
@@ -276,11 +288,12 @@ function applyZonedComposition(
   seed: number,
 ) {
   const width = context.xSegments + 1;
-  const targetBuildHeight = viewMode === 'flat' ? spec.buildArea.height : spec.buildArea.height + 0.22;
+  const targetBuildHeight = viewMode === 'flat' ? spec.buildArea.plateauHeight : spec.buildArea.plateauHeight + 0.18;
   const flatten = viewMode === 'normal' ? spec.buildArea.flatten : 1;
   const globalRelief = viewMode === 'flat' ? 0.09 : viewMode === 'build' ? 0.38 : 1;
   const rng = new SeededRng(seed ^ 0x3141592);
   const horizonBias = farField ? 0.17 : 0.08;
+  const transitionFalloff = spec.buildArea.transitionFalloff;
 
   for (let i = 0; i < heights.length; i += 1) {
     const build = masks.buildMask[i];
@@ -289,20 +302,39 @@ function applyZonedComposition(
     const depth = masks.depthMask[i];
 
     let value = heights[i] * globalRelief;
-    const undulation = Math.sin((i % width) * 0.09 + depth * 5.4) * (spec.maxHeight - spec.minHeight) * 0.006;
-    value = THREE.MathUtils.lerp(value, targetBuildHeight + undulation, Math.pow(build, 1.25) * flatten);
+    const undulation = Math.sin((i % width) * 0.09 + depth * 5.4) * (spec.maxHeight - spec.minHeight) * 0.003;
+    const plateauWeight = Math.pow(build, 1.6) * flatten;
+    value = THREE.MathUtils.lerp(value, targetBuildHeight + undulation, plateauWeight);
+    if (!farField && build > 0.62) {
+      value = THREE.MathUtils.lerp(value, spec.buildArea.plateauHeight, smoothstep(0.62, 1, build));
+    }
 
-    value += transition * Math.sin((i % width) * 0.044 + depth * 8.1) * (spec.maxHeight - spec.minHeight) * 0.017;
+    value += transition * Math.sin((i % width) * 0.044 + depth * 8.1) * (spec.maxHeight - spec.minHeight) * (0.012 + transitionFalloff * 0.006);
     value += background * smoothstep(0.42, 0.98, depth) * (spec.maxHeight - spec.minHeight) * (horizonBias + rng.range(-0.012, 0.018));
 
     heights[i] = value;
+  }
+
+  if (!farField) {
+    flattenBuildPlateau(heights, masks.buildMask, spec.buildArea.plateauHeight, transitionFalloff);
+  }
+}
+
+function flattenBuildPlateau(heights: Float32Array, buildMask: Float32Array, plateauHeight: number, transitionFalloff: number) {
+  for (let i = 0; i < heights.length; i += 1) {
+    const build = buildMask[i];
+    if (build < 0.46) continue;
+    const inner = smoothstep(0.58, 1, build);
+    const outer = smoothstep(0.46, 0.74, build) * Math.max(0.2, 1 - transitionFalloff * 0.85);
+    const blend = Math.max(inner, outer * 0.65);
+    heights[i] = THREE.MathUtils.lerp(heights[i], plateauHeight, blend);
   }
 }
 
 function applyEdgeTreatment(heights: Float32Array, context: HeightFieldContext, farField: boolean) {
   const width = context.xSegments + 1;
   const height = context.zSegments + 1;
-  const edgeThickness = farField ? 0.1 : 0.06;
+  const edgeThickness = farField ? 0.16 : 0.08;
 
   for (let x = 0; x < width; x += 1) {
     for (let z = 0; z < height; z += 1) {
@@ -311,8 +343,8 @@ function applyEdgeTreatment(heights: Float32Array, context: HeightFieldContext, 
       const nz = z / Math.max(height - 1, 1);
       const edge = Math.max(Math.abs(nx - 0.5) / 0.5, Math.abs(nz - 0.5) / 0.5);
       const edgeBlend = smoothstep(1 - edgeThickness, 1, edge);
-      const target = farField ? context.minHeight + 5.2 : context.minHeight + 4.5;
-      heights[idx] = THREE.MathUtils.lerp(heights[idx], target, edgeBlend * 0.58);
+      const target = farField ? context.minHeight + 6 : context.minHeight + 4.8;
+      heights[idx] = THREE.MathUtils.lerp(heights[idx], target, edgeBlend * (farField ? 0.84 : 0.64));
     }
   }
 }

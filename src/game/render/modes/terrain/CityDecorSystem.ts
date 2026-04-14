@@ -26,7 +26,7 @@ export function buildCityDecor(
     exclusionMask: buildMask,
     primaryMask: backgroundMask,
     secondaryMask: transitionMask,
-    density: input.archetype === 'volcanic' ? 0.036 : 0.024,
+    density: input.archetype === 'volcanic' ? 0.04 : 0.03,
     rng,
     scale: [1.4, 5.2],
     clusterSeed: input.seed ^ 0x9e3779b9,
@@ -40,7 +40,7 @@ export function buildCityDecor(
       source: position,
       exclusionMask: buildMask,
       primaryMask: transitionMask,
-      density: input.archetype === 'jungle' ? 0.06 : 0.032,
+      density: input.archetype === 'jungle' ? 0.065 : 0.04,
       rng,
       scale: [1.2, 3.4],
       clusterSeed: input.seed ^ 0x85ebca6b,
@@ -51,7 +51,10 @@ export function buildCityDecor(
     group.add(flora);
   }
 
-  group.position.z = -config.terrainDepth * 0.02;
+  const distantSilhouette = createDistantSilhouette(input, config);
+  group.add(distantSilhouette);
+
+  group.position.z = -config.terrainDepth * 0.015;
   return group;
 }
 
@@ -74,12 +77,12 @@ function createScatterLayer(params: {
     const excluded = params.exclusionMask.getX(i);
     const priority = params.primaryMask.getX(i);
     const secondary = params.secondaryMask ? params.secondaryMask.getX(i) : 0;
-    if (excluded > 0.2 || priority + secondary * 0.4 < 0.22) continue;
+    if (excluded > 0.24 || priority + secondary * 0.4 < 0.2) continue;
 
     const x = params.source.getX(i);
     const z = params.source.getZ(i);
     const cluster = clusterFactor(x, z, params.clusterSeed);
-    const chance = params.density * (priority * 0.78 + secondary * 0.35) * cluster;
+    const chance = params.density * (priority * 0.7 + secondary * 0.42) * cluster;
     if (params.rng() > chance) continue;
 
     candidates.push(i);
@@ -109,6 +112,24 @@ function createScatterLayer(params: {
   }
 
   mesh.instanceMatrix.needsUpdate = true;
+  return mesh;
+}
+
+function createDistantSilhouette(input: CityTerrainInput, config: TerrainGeometryConfig) {
+  const geo = new THREE.RingGeometry(config.terrainWidth * 0.52, config.farWidth * 0.42, 96, 4);
+  geo.rotateX(-Math.PI / 2);
+  const mat = new THREE.MeshStandardMaterial({
+    color: input.palettes.cliff.clone().lerp(input.palettes.fog, 0.5),
+    roughness: 0.96,
+    metalness: 0.01,
+    transparent: true,
+    opacity: 0.36,
+    depthWrite: false,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.y = input.archetype === 'frozen' ? -0.2 : -0.4;
+  mesh.receiveShadow = false;
+  mesh.castShadow = false;
   return mesh;
 }
 
