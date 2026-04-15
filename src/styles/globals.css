@@ -660,7 +660,7 @@ canvas {
 .city-management__stage-frame {
   position: relative;
   display: grid;
-  grid-template-rows: 72px minmax(470px, 1fr) 104px;
+  grid-template-rows: 58px minmax(500px, 1fr) 150px;
   gap: 10px;
   min-height: 100%;
   border: 1px solid rgba(96, 138, 164, 0.28);
@@ -704,16 +704,29 @@ canvas {
 
 .city-management__reserved-zone--sky {
   align-items: center;
-  justify-content: flex-end;
-  padding-right: 20px;
-  background: linear-gradient(90deg, rgba(6, 14, 22, 0.25), rgba(9, 19, 29, 0.65));
+  justify-content: flex-start;
+  padding-left: 16px;
+  background: linear-gradient(90deg, rgba(9, 19, 29, 0.65), rgba(6, 14, 22, 0.2));
+}
+
+.city-management__reserve-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
 .city-management__reserved-zone--ground {
   align-items: center;
   justify-content: flex-start;
-  padding-left: 20px;
-  background: linear-gradient(90deg, rgba(9, 19, 29, 0.65), rgba(6, 14, 22, 0.25));
+  padding-left: 16px;
+  background: linear-gradient(90deg, rgba(9, 19, 29, 0.68), rgba(6, 14, 22, 0.22));
+}
+
+.city-management__reserved-zone--air {
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 16px;
+  background: linear-gradient(90deg, rgba(6, 14, 22, 0.22), rgba(9, 19, 29, 0.68));
 }
 
 .city-management__building-grid {
@@ -768,45 +781,45 @@ canvas {
 }
 
 .city-management__building-slot--hq {
-  left: 30%;
-  top: 11%;
-  width: 34%;
-  min-height: 350px;
+  left: 18%;
+  top: 9%;
+  width: 38%;
+  min-height: 390px;
   border-width: 2px;
   background: linear-gradient(180deg, rgba(18, 39, 55, 0.94), rgba(8, 17, 28, 0.96));
 }
 
 .city-management__building-slot--mine {
-  left: 66%;
-  top: 14%;
+  left: 61%;
+  top: 12%;
   width: 14%;
   min-height: 126px;
 }
 
 .city-management__building-slot--quarry {
-  left: 82%;
-  top: 14%;
+  left: 77%;
+  top: 12%;
   width: 14%;
   min-height: 126px;
 }
 
 .city-management__building-slot--refinery {
-  left: 66%;
-  top: 41%;
+  left: 61%;
+  top: 37%;
   width: 14%;
   min-height: 126px;
 }
 
 .city-management__building-slot--warehouse {
-  left: 82%;
-  top: 41%;
+  left: 77%;
+  top: 37%;
   width: 14%;
   min-height: 126px;
 }
 
 .city-management__building-slot--housing_complex {
-  left: 49%;
-  top: 71%;
+  left: 57%;
+  top: 62%;
   width: 16%;
   min-height: 90px;
 }
@@ -1021,36 +1034,36 @@ canvas {
 }
 
 .city-management__empty-pad--1 {
-  left: 67%;
-  top: 70%;
+  left: 14%;
+  top: 62%;
   width: 13%;
   min-height: 52px;
 }
 
 .city-management__empty-pad--2 {
-  left: 82%;
-  top: 70%;
+  left: 30%;
+  top: 62%;
   width: 13%;
   min-height: 52px;
 }
 
 .city-management__empty-pad--3 {
-  left: 12%;
-  top: 67%;
+  left: 46%;
+  top: 62%;
   width: 14%;
   min-height: 52px;
 }
 
 .city-management__empty-pad--4 {
-  left: 26%;
-  top: 67%;
+  left: 74%;
+  top: 62%;
   width: 14%;
   min-height: 52px;
 }
 
 .city-management__empty-pad--5 {
-  left: 40%;
-  top: 67%;
+  left: 89%;
+  top: 62%;
   width: 8%;
   min-height: 52px;
 }

@@ -309,17 +309,23 @@ export class CityFoundationMode implements RenderModeController {
 
     const skyline = document.createElement('div');
     skyline.className = 'city-management__reserved-zone city-management__reserved-zone--sky';
-    skyline.textContent = 'Future Air / Fleet Visual Zone';
+    skyline.textContent = 'Orbital Operations Lane';
 
+    const reserveRow = document.createElement('div');
+    reserveRow.className = 'city-management__reserve-row';
     const ground = document.createElement('div');
     ground.className = 'city-management__reserved-zone city-management__reserved-zone--ground';
     ground.textContent = 'Future Ground Unit Zone';
+    const air = document.createElement('div');
+    air.className = 'city-management__reserved-zone city-management__reserved-zone--air';
+    air.textContent = 'Future Air / Fleet Zone';
+    reserveRow.append(ground, air);
 
     const buildingGrid = document.createElement('div');
     buildingGrid.className = 'city-management__building-grid city-management__stage-map';
     this.buildingsGrid = buildingGrid;
 
-    stageFrame.append(skyline, buildingGrid, ground);
+    stageFrame.append(skyline, buildingGrid, reserveRow);
     stage.append(stageFrame);
     left.append(meta, stage);
 
