@@ -248,19 +248,23 @@ export class CityFoundationMode implements RenderModeController {
     const stage = document.createElement('div');
     stage.className = 'city-management__city-stage';
 
+    const stageFrame = document.createElement('div');
+    stageFrame.className = 'city-management__stage-frame';
+
     const skyline = document.createElement('div');
     skyline.className = 'city-management__reserved-zone city-management__reserved-zone--sky';
-    skyline.textContent = 'Air / Fleet Visual Reserve';
+    skyline.textContent = 'Future Air / Fleet Visual Zone';
 
     const ground = document.createElement('div');
     ground.className = 'city-management__reserved-zone city-management__reserved-zone--ground';
-    ground.textContent = 'Ground Visual Reserve';
+    ground.textContent = 'Future Ground Unit Zone';
 
     const buildingGrid = document.createElement('div');
-    buildingGrid.className = 'city-management__building-grid';
+    buildingGrid.className = 'city-management__building-grid city-management__stage-map';
     this.buildingsGrid = buildingGrid;
 
-    stage.append(skyline, buildingGrid, ground);
+    stageFrame.append(skyline, buildingGrid, ground);
+    stage.append(stageFrame);
     left.append(buildingTitle, stage);
 
     const right = document.createElement('aside');
@@ -370,7 +374,7 @@ export class CityFoundationMode implements RenderModeController {
       const building = getBuilding(buildingId);
       if (!building) return;
       const card = document.createElement('article');
-      card.className = 'city-management__building-card city-management__building-slot';
+      card.className = `city-management__building-card city-management__building-slot city-management__building-slot--${building.id}`;
       card.dataset.buildingId = building.id;
 
       const unlocked = this.isUnlocked(building);
@@ -397,6 +401,10 @@ export class CityFoundationMode implements RenderModeController {
       prodLine.className = 'city-management__building-production';
       prodLine.textContent = this.getBuildingEffectText(building, currentLevel);
 
+      const slotTag = document.createElement('p');
+      slotTag.className = 'city-management__building-slot-tag';
+      slotTag.textContent = building.id === 'hq' ? 'City Core' : 'Structure Module';
+
       const action = document.createElement('button');
       action.type = 'button';
       action.className = 'city-management__upgrade';
@@ -418,9 +426,23 @@ export class CityFoundationMode implements RenderModeController {
         this.renderSelectedBuilding();
       });
 
-      card.append(row, prodLine, action);
+      card.append(row, slotTag, prodLine, action);
       this.buildingsGrid!.append(card);
     });
+
+    const emptySlots = Math.max(0, this.state.citySlotTotal - BUILDINGS.length);
+    const emptyVisible = Math.min(5, emptySlots);
+    for (let i = 0; i < emptyVisible; i += 1) {
+      const pad = document.createElement('button');
+      pad.type = 'button';
+      pad.className = `city-management__empty-pad city-management__empty-pad--${i + 1}`;
+      pad.textContent = `Open Slot ${i + 1}`;
+      pad.addEventListener('click', () => {
+        this.selectedBuildingId = 'hq';
+        this.renderSelectedBuilding();
+      });
+      this.buildingsGrid!.append(pad);
+    }
   }
 
   private renderSelectedBuilding() {

@@ -440,11 +440,11 @@ canvas {
 .city-management__resource-bar {
   display: flex;
   align-items: stretch;
-  gap: 10px;
-  border: 1px solid rgba(103, 145, 176, 0.25);
-  background: linear-gradient(180deg, rgba(8, 14, 23, 0.96), rgba(5, 11, 19, 0.95));
-  border-radius: 6px;
-  padding: 8px 10px;
+  gap: 8px;
+  border: 1px solid rgba(103, 145, 176, 0.18);
+  background: linear-gradient(180deg, rgba(8, 14, 23, 0.7), rgba(5, 11, 19, 0.74));
+  border-radius: 4px;
+  padding: 6px 8px;
 }
 
 .city-management__resource-item {
@@ -452,10 +452,10 @@ canvas {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 5px 8px;
-  border: 1px solid rgba(115, 157, 184, 0.25);
+  padding: 4px 7px;
+  border: 1px solid rgba(115, 157, 184, 0.15);
   border-radius: 3px;
-  background: linear-gradient(180deg, rgba(8, 20, 31, 0.65), rgba(5, 12, 20, 0.88));
+  background: linear-gradient(180deg, rgba(8, 20, 31, 0.45), rgba(5, 12, 20, 0.62));
 }
 
 .city-management__resource-top {
@@ -508,14 +508,14 @@ canvas {
   display: grid;
   grid-template-columns: minmax(0, 8fr) minmax(320px, 3fr);
   gap: 12px;
-  min-height: min(74vh, 880px);
+  min-height: min(79vh, 920px);
 }
 
 .city-management__left,
 .city-management__right {
-  border: 1px solid rgba(98, 140, 168, 0.28);
+  border: 1px solid rgba(98, 140, 168, 0.2);
   border-radius: 6px;
-  background: rgba(6, 12, 20, 0.9);
+  background: rgba(6, 12, 20, 0.72);
   padding: 12px;
 }
 
@@ -529,33 +529,53 @@ canvas {
 
 .city-management__city-stage {
   position: relative;
-  display: grid;
-  grid-template-rows: 68px minmax(300px, 1fr) 86px;
-  gap: 8px;
-  min-height: 100%;
-  border: 1px solid rgba(103, 147, 176, 0.23);
-  border-radius: 5px;
-  background:
-    linear-gradient(rgba(116, 176, 219, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(116, 176, 219, 0.08) 1px, transparent 1px),
-    radial-gradient(circle at 50% 20%, rgba(78, 190, 242, 0.12), transparent 56%),
-    rgba(4, 10, 17, 0.96);
-  background-size:
-    26px 26px,
-    26px 26px,
-    auto,
-    auto;
+  min-height: min(76vh, 860px);
+  border: 1px solid rgba(106, 147, 173, 0.24);
+  border-radius: 7px;
+  background: linear-gradient(145deg, rgba(5, 13, 21, 0.96), rgba(3, 8, 14, 0.98));
   overflow: hidden;
   padding: 10px;
 }
 
+.city-management__stage-frame {
+  position: relative;
+  display: grid;
+  grid-template-rows: 76px minmax(420px, 1fr) 108px;
+  gap: 10px;
+  min-height: 100%;
+  border: 1px solid rgba(96, 138, 164, 0.28);
+  border-radius: 6px;
+  background:
+    linear-gradient(rgba(116, 176, 219, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(116, 176, 219, 0.08) 1px, transparent 1px),
+    radial-gradient(circle at 50% 36%, rgba(78, 190, 242, 0.16), transparent 56%),
+    radial-gradient(circle at 80% 68%, rgba(115, 157, 183, 0.09), transparent 40%),
+    rgba(4, 10, 17, 0.98);
+  background-size:
+    26px 26px,
+    26px 26px,
+    auto,
+    auto,
+    auto;
+  padding: 12px;
+}
+
+.city-management__stage-frame::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(132, 186, 224, 0.1);
+  clip-path: polygon(0 10px, 10px 0, calc(100% - 18px) 0, 100% 18px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 18px 100%, 0 calc(100% - 18px));
+  pointer-events: none;
+}
+
 .city-management__reserved-zone {
-  border: 1px dashed rgba(110, 146, 170, 0.3);
+  border: 1px dashed rgba(110, 146, 170, 0.22);
   border-radius: 4px;
-  color: rgba(171, 201, 223, 0.75);
+  color: rgba(171, 201, 223, 0.66);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.54rem;
+  letter-spacing: 0.11em;
+  font-size: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -563,47 +583,98 @@ canvas {
 }
 
 .city-management__reserved-zone--sky {
-  align-items: flex-end;
-  padding-bottom: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 20px;
+  background: linear-gradient(90deg, rgba(6, 14, 22, 0.25), rgba(9, 19, 29, 0.65));
 }
 
 .city-management__reserved-zone--ground {
-  align-items: flex-start;
-  padding-top: 8px;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 20px;
+  background: linear-gradient(90deg, rgba(9, 19, 29, 0.65), rgba(6, 14, 22, 0.25));
 }
 
 .city-management__building-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  align-content: center;
-  padding: 10px;
+  position: relative;
+  min-height: 100%;
+  padding: 8px;
 }
 
 .city-management__building-card {
-  border: 1px solid rgba(104, 147, 176, 0.32);
+  position: absolute;
+  border: 1px solid rgba(104, 147, 176, 0.28);
   border-radius: 4px;
-  background: linear-gradient(180deg, rgba(7, 16, 27, 0.9), rgba(4, 11, 18, 0.94));
-  padding: 10px;
+  background: linear-gradient(180deg, rgba(7, 16, 27, 0.84), rgba(4, 11, 18, 0.92));
+  padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
 .city-management__building-slot {
-  min-height: 130px;
+  min-height: 110px;
   justify-content: space-between;
   cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(74, 111, 138, 0.18) inset;
 }
 
 .city-management__building-slot.is-selected {
   border-color: rgba(142, 220, 255, 0.75);
-  box-shadow: inset 0 0 0 1px rgba(129, 211, 250, 0.22), 0 0 24px rgba(94, 181, 235, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(129, 211, 250, 0.3), 0 0 20px rgba(94, 181, 235, 0.16);
 }
 
 .city-management__building-card.is-locked {
-  opacity: 0.66;
+  opacity: 0.6;
   border-color: rgba(117, 129, 138, 0.34);
+}
+
+.city-management__building-slot--hq {
+  left: 36%;
+  top: 26%;
+  width: 30%;
+  min-height: 165px;
+  border-width: 2px;
+  background: linear-gradient(180deg, rgba(16, 35, 50, 0.9), rgba(8, 17, 28, 0.95));
+}
+
+.city-management__building-slot--mine {
+  left: 13%;
+  top: 20%;
+  width: 21%;
+}
+
+.city-management__building-slot--quarry {
+  left: 14%;
+  top: 56%;
+  width: 20%;
+}
+
+.city-management__building-slot--refinery {
+  right: 14%;
+  top: 24%;
+  width: 21%;
+}
+
+.city-management__building-slot--warehouse {
+  right: 11%;
+  top: 58%;
+  width: 24%;
+}
+
+.city-management__building-slot--housing_complex {
+  left: 38%;
+  bottom: 8%;
+  width: 25%;
+}
+
+.city-management__building-slot-tag {
+  margin: 0;
+  font-size: 0.52rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(175, 205, 226, 0.75);
 }
 
 .city-management__building-row {
@@ -614,7 +685,7 @@ canvas {
 
 .city-management__building-name {
   margin: 0;
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: #e8f4ff;
@@ -624,7 +695,7 @@ canvas {
   border: 1px solid rgba(95, 143, 179, 0.45);
   border-radius: 4px;
   padding: 2px 6px;
-  font-size: 0.56rem;
+  font-size: 0.52rem;
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: #cce8fd;
@@ -632,7 +703,7 @@ canvas {
 
 .city-management__building-production {
   margin: 0;
-  font-size: 0.64rem;
+  font-size: 0.58rem;
   color: rgba(165, 229, 189, 0.95);
 }
 
@@ -646,10 +717,10 @@ canvas {
 .city-management__upgrade {
   margin-top: 2px;
   width: 100%;
-  border: 1px solid rgba(114, 206, 160, 0.55);
+  border: 1px solid rgba(118, 170, 202, 0.48);
   border-radius: 3px;
-  background: linear-gradient(180deg, rgba(18, 72, 51, 0.72), rgba(10, 47, 35, 0.72));
-  color: #d9feec;
+  background: linear-gradient(180deg, rgba(15, 44, 66, 0.78), rgba(10, 29, 45, 0.8));
+  color: #d8efff;
   font-size: 0.56rem;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -668,10 +739,65 @@ canvas {
   cursor: not-allowed;
 }
 
+.city-management__empty-pad {
+  position: absolute;
+  border: 1px dashed rgba(120, 158, 184, 0.3);
+  background: linear-gradient(180deg, rgba(8, 18, 30, 0.3), rgba(5, 10, 17, 0.48));
+  color: rgba(164, 193, 216, 0.6);
+  font-size: 0.52rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-radius: 4px;
+  padding: 6px;
+  cursor: pointer;
+}
+
+.city-management__empty-pad:hover {
+  border-color: rgba(149, 209, 245, 0.5);
+  color: rgba(201, 226, 245, 0.9);
+}
+
+.city-management__empty-pad--1 {
+  left: 3%;
+  top: 40%;
+  width: 14%;
+  min-height: 70px;
+}
+
+.city-management__empty-pad--2 {
+  right: 3%;
+  top: 43%;
+  width: 14%;
+  min-height: 70px;
+}
+
+.city-management__empty-pad--3 {
+  left: 30%;
+  top: 8%;
+  width: 14%;
+  min-height: 65px;
+}
+
+.city-management__empty-pad--4 {
+  right: 30%;
+  top: 8%;
+  width: 14%;
+  min-height: 65px;
+}
+
+.city-management__empty-pad--5 {
+  left: 44%;
+  bottom: 2%;
+  width: 12%;
+  min-height: 60px;
+}
+
 .city-management__right {
   display: flex;
   flex-direction: column;
   min-height: 100%;
+  background: linear-gradient(180deg, rgba(7, 15, 25, 0.94), rgba(4, 10, 16, 0.9));
+  border-left: 1px solid rgba(116, 155, 181, 0.25);
 }
 
 .city-management__selected-panel,
@@ -681,10 +807,10 @@ canvas {
   flex-direction: column;
   gap: 8px;
   margin-bottom: 12px;
-  border: 1px solid rgba(97, 140, 170, 0.26);
+  border: 1px solid rgba(97, 140, 170, 0.22);
   border-radius: 4px;
   padding: 8px;
-  background: rgba(5, 11, 19, 0.78);
+  background: linear-gradient(180deg, rgba(6, 15, 24, 0.74), rgba(5, 11, 19, 0.84));
 }
 
 .city-management__selected-name {
@@ -772,12 +898,26 @@ canvas {
   }
 
   .city-management__building-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-height: 520px;
+  }
+
+  .city-management__building-card {
+    position: static;
+    width: 100%;
+    min-height: 110px;
+    margin-bottom: 8px;
+  }
+
+  .city-management__empty-pad {
+    position: static;
+    width: 100%;
+    min-height: 64px;
+    margin-bottom: 8px;
   }
 }
 
 @media (max-width: 760px) {
-  .city-management__building-grid {
-    grid-template-columns: 1fr;
+  .city-management__city-stage {
+    min-height: 640px;
   }
 }
