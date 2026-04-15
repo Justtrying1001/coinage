@@ -406,48 +406,12 @@ export class CityFoundationMode implements RenderModeController {
 
       const currentLevel = this.getBuildingLevel(building.id);
       const nextLevel = currentLevel + 1;
-
-      const row = document.createElement('div');
-      row.className = 'city-management__building-row';
-
-      const name = document.createElement('p');
-      name.className = 'city-management__building-name';
-      name.textContent = building.name;
-
-      const levelTag = document.createElement('span');
-      levelTag.className = 'city-management__building-level';
-      levelTag.textContent = unlocked ? `LVL ${currentLevel}` : 'LOCKED';
-
-      row.append(name, levelTag);
-
-      const prodLine = document.createElement('p');
-      prodLine.className = 'city-management__building-production';
-      prodLine.textContent = this.getBuildingEffectText(building, currentLevel);
-
-      const slotTag = document.createElement('p');
-      slotTag.className = 'city-management__building-slot-tag';
-      slotTag.textContent = building.id === 'hq' ? 'City Core' : 'Structure Module';
       const glyph = document.createElement('div');
       glyph.className = 'city-management__building-glyph';
       glyph.textContent = getBuildingGlyph(building.id);
 
       const blockedReason = this.getBlockedReason(building, nextLevel);
-      const status = document.createElement('p');
-      status.className = 'city-management__building-status';
-      status.textContent = blockedReason && blockedReason !== 'Max level' ? blockedReason : 'Operational';
-
-      const action = document.createElement('button');
-      action.type = 'button';
-      action.className = 'city-management__upgrade city-management__slot-action';
-      action.dataset.buildingId = building.id;
-      action.disabled = blockedReason !== null;
-      action.textContent = blockedReason ? 'Locked' : 'Upgrade';
-      action.addEventListener('click', (event) => {
-        event.stopPropagation();
-        this.applyClaimOnAccess();
-        this.startConstruction(building, nextLevel);
-        this.renderAll();
-      });
+      const upgradeHook = this.createHiddenUpgradeTrigger(building, nextLevel, blockedReason);
 
       card.addEventListener('click', () => {
         this.selectedBuildingId = building.id;
@@ -456,15 +420,9 @@ export class CityFoundationMode implements RenderModeController {
       });
 
       if (building.id === 'hq') {
-        const core = document.createElement('div');
-        core.className = 'city-management__hq-core';
-        const coreLevel = document.createElement('p');
-        coreLevel.className = 'city-management__hq-level';
-        coreLevel.textContent = `HQ LEVEL ${currentLevel}`;
-        core.append(glyph, coreLevel);
-        card.append(row, slotTag, core, status, action);
+        card.append(this.createHqCoreModule(building.name, currentLevel, glyph), upgradeHook);
       } else {
-        card.append(row, glyph, slotTag, prodLine, status, action);
+        card.append(this.createStructureMarker(building.name, currentLevel, blockedReason, glyph), upgradeHook);
       }
       this.buildingsGrid!.append(card);
     });
@@ -482,6 +440,77 @@ export class CityFoundationMode implements RenderModeController {
       });
       this.buildingsGrid!.append(pad);
     }
+  }
+
+  private createHqCoreModule(name: string, level: number, glyph: HTMLDivElement) {
+    const title = document.createElement('p');
+    title.className = 'city-management__building-name city-management__building-name--hq';
+    title.textContent = name;
+
+    const levelBadge = document.createElement('span');
+    levelBadge.className = 'city-management__building-level city-management__building-level--hq';
+    levelBadge.textContent = `LVL ${level}`;
+
+    const core = document.createElement('div');
+    core.className = 'city-management__hq-core';
+    const coreLevel = document.createElement('p');
+    coreLevel.className = 'city-management__hq-level';
+    coreLevel.textContent = `HQ LEVEL ${level}`;
+    core.append(glyph, coreLevel);
+
+    const status = document.createElement('p');
+    status.className = 'city-management__building-status';
+    status.textContent = 'City Core Online';
+
+    const header = document.createElement('div');
+    header.className = 'city-management__building-row';
+    header.append(title, levelBadge);
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'city-management__hq-module';
+    wrapper.append(header, core, status);
+    return wrapper;
+  }
+
+  private createStructureMarker(name: string, level: number, blockedReason: string | null, glyph: HTMLDivElement) {
+    const title = document.createElement('p');
+    title.className = 'city-management__building-name';
+    title.textContent = name;
+
+    const levelBadge = document.createElement('span');
+    levelBadge.className = 'city-management__building-level';
+    levelBadge.textContent = `LVL ${level}`;
+
+    const status = document.createElement('p');
+    status.className = 'city-management__building-status';
+    status.textContent = blockedReason && blockedReason !== 'Max level' ? blockedReason : 'Operational';
+
+    const header = document.createElement('div');
+    header.className = 'city-management__building-row';
+    header.append(title, levelBadge);
+
+    const marker = document.createElement('div');
+    marker.className = 'city-management__structure-marker';
+    marker.append(glyph, header, status);
+    return marker;
+  }
+
+  private createHiddenUpgradeTrigger(building: BuildingDefinition, nextLevel: number, blockedReason: string | null) {
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.className = 'city-management__upgrade city-management__stage-test-hook';
+    action.dataset.buildingId = building.id;
+    action.disabled = blockedReason !== null;
+    action.textContent = blockedReason ? 'Locked' : 'Upgrade';
+    action.tabIndex = -1;
+    action.setAttribute('aria-hidden', 'true');
+    action.addEventListener('click', (event) => {
+      event.stopPropagation();
+      this.applyClaimOnAccess();
+      this.startConstruction(building, nextLevel);
+      this.renderAll();
+    });
+    return action;
   }
 
   private renderSelectedBuilding() {
