@@ -756,33 +756,38 @@ canvas {
 }
 
 .city-management__building-slot--mine {
-  left: 12%;
+  left: 66%;
   top: 14%;
-  width: 16%;
+  width: 14%;
+  min-height: 126px;
 }
 
 .city-management__building-slot--quarry {
-  left: 12%;
-  top: 34%;
-  width: 16%;
+  left: 82%;
+  top: 14%;
+  width: 14%;
+  min-height: 126px;
 }
 
 .city-management__building-slot--refinery {
-  right: 13%;
-  top: 16%;
-  width: 16%;
+  left: 66%;
+  top: 41%;
+  width: 14%;
+  min-height: 126px;
 }
 
 .city-management__building-slot--warehouse {
-  right: 13%;
-  top: 37%;
-  width: 16%;
+  left: 82%;
+  top: 41%;
+  width: 14%;
+  min-height: 126px;
 }
 
 .city-management__building-slot--housing_complex {
-  left: 66%;
-  top: 58%;
-  width: 20%;
+  left: 49%;
+  top: 71%;
+  width: 16%;
+  min-height: 90px;
 }
 
 .city-management__building-slot-tag {
@@ -808,19 +813,45 @@ canvas {
 .city-management__structure-marker {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
   align-items: center;
   justify-content: center;
-  min-height: 74px;
+  min-height: 100%;
+  border: 1px solid rgba(111, 153, 180, 0.33);
+  background: linear-gradient(180deg, rgba(6, 15, 24, 0.56), rgba(6, 13, 21, 0.78));
+  padding: 8px 6px;
+  position: relative;
 }
 
 .city-management__structure-marker .city-management__building-glyph {
-  font-size: 1.3rem;
+  font-size: 1.4rem;
 }
 
 .city-management__structure-marker .city-management__building-name {
-  font-size: 0.52rem;
-  text-align: center;
+  font-size: 0.5rem;
+  text-align: left;
+}
+
+.city-management__structure-marker::before,
+.city-management__structure-marker::after {
+  content: '';
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-color: rgba(136, 220, 255, 0.35);
+  border-style: solid;
+}
+
+.city-management__structure-marker::before {
+  top: 4px;
+  left: 4px;
+  border-width: 1px 0 0 1px;
+}
+
+.city-management__structure-marker::after {
+  right: 4px;
+  bottom: 4px;
+  border-width: 0 1px 1px 0;
 }
 
 .city-management__hq-core {
@@ -849,7 +880,7 @@ canvas {
 }
 
 .city-management__building-status {
-  margin: auto 0 0;
+  margin: 0;
   font-size: 0.48rem;
   text-transform: uppercase;
   letter-spacing: 0.09em;
@@ -873,6 +904,11 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.city-management__building-row--marker {
+  width: 100%;
+  gap: 4px;
 }
 
 .city-management__building-name {
@@ -900,6 +936,11 @@ canvas {
 .city-management__building-level--hq {
   border-color: rgba(236, 206, 145, 0.45);
   color: rgba(242, 216, 167, 0.94);
+}
+
+.city-management__building-level--marker {
+  font-size: 0.46rem;
+  padding: 1px 4px;
 }
 
 .city-management__building-production {
@@ -959,36 +1000,36 @@ canvas {
 }
 
 .city-management__empty-pad--1 {
-  left: 36%;
-  top: 64%;
-  width: 24%;
+  left: 67%;
+  top: 70%;
+  width: 13%;
   min-height: 52px;
 }
 
 .city-management__empty-pad--2 {
-  left: 10%;
-  top: 55%;
-  width: 16%;
+  left: 82%;
+  top: 70%;
+  width: 13%;
   min-height: 52px;
 }
 
 .city-management__empty-pad--3 {
-  right: 11%;
-  top: 56%;
-  width: 16%;
+  left: 12%;
+  top: 67%;
+  width: 14%;
   min-height: 52px;
 }
 
 .city-management__empty-pad--4 {
-  left: 56%;
-  top: 58%;
-  width: 8%;
+  left: 26%;
+  top: 67%;
+  width: 14%;
   min-height: 52px;
 }
 
 .city-management__empty-pad--5 {
-  right: 36%;
-  top: 58%;
+  left: 40%;
+  top: 67%;
   width: 8%;
   min-height: 52px;
 }

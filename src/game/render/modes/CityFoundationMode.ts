@@ -521,16 +521,20 @@ export class CityFoundationMode implements RenderModeController {
     title.textContent = name;
 
     const levelBadge = document.createElement('span');
-    levelBadge.className = 'city-management__building-level';
+    levelBadge.className = 'city-management__building-level city-management__building-level--marker';
     levelBadge.textContent = `LVL ${level}`;
 
     const status = document.createElement('p');
     status.className = 'city-management__building-status';
     status.textContent = blockedReason && blockedReason !== 'Max level' ? 'LOCKED' : 'OPERATIONAL';
 
+    const footer = document.createElement('div');
+    footer.className = 'city-management__building-row city-management__building-row--marker';
+    footer.append(title, levelBadge);
+
     const marker = document.createElement('div');
     marker.className = 'city-management__structure-marker';
-    marker.append(glyph, title, levelBadge, status);
+    marker.append(glyph, footer, status);
     return marker;
   }
 
