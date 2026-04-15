@@ -120,6 +120,7 @@ export class CityFoundationMode implements RenderModeController {
   private headerIdentity: HTMLDivElement | null = null;
   private resourceStrip: HTMLElement | null = null;
   private buildingsGrid: HTMLDivElement | null = null;
+  private cityMetaStrip: HTMLDivElement | null = null;
   private selectedPanel: HTMLDivElement | null = null;
   private queuePanel: HTMLDivElement | null = null;
   private summaryPanel: HTMLDivElement | null = null;
@@ -160,6 +161,7 @@ export class CityFoundationMode implements RenderModeController {
     this.renderResourceBar();
     this.renderQueue();
     this.renderSelectedBuilding();
+    this.renderCityMeta();
     if (completed) {
       this.renderBuildings();
       this.renderSummary();
@@ -182,6 +184,7 @@ export class CityFoundationMode implements RenderModeController {
     this.headerIdentity = null;
     this.resourceStrip = null;
     this.buildingsGrid = null;
+    this.cityMetaStrip = null;
     this.selectedPanel = null;
     this.queuePanel = null;
     this.summaryPanel = null;
@@ -241,26 +244,45 @@ export class CityFoundationMode implements RenderModeController {
     const rail = document.createElement('aside');
     rail.className = 'city-management__rail';
 
+    const railContext = document.createElement('div');
+    railContext.className = 'city-management__rail-context';
+
     const railTitle = document.createElement('p');
     railTitle.className = 'city-management__rail-title';
-    railTitle.textContent = 'City Ops';
+    railTitle.textContent = 'Coinage City';
+    const railSub = document.createElement('p');
+    railSub.className = 'city-management__rail-subtitle';
+    railSub.textContent = this.state.owner;
+    railContext.append(railTitle, railSub);
 
     const railItems = ['City', 'Build', 'Queue', 'Overview'];
+    const railNav = document.createElement('div');
+    railNav.className = 'city-management__rail-nav';
     railItems.forEach((item, index) => {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = `city-management__rail-btn${index === 0 ? ' is-active' : ''}`;
       button.textContent = item;
-      rail.append(button);
+      railNav.append(button);
     });
-    rail.prepend(railTitle);
+
+    const railCta = document.createElement('button');
+    railCta.type = 'button';
+    railCta.className = 'city-management__rail-cta';
+    railCta.textContent = 'Deploy Assets';
+
+    const railFooter = document.createElement('div');
+    railFooter.className = 'city-management__rail-footer';
+    railFooter.textContent = 'Alerts · Help';
+
+    rail.append(railContext, railNav, railCta, railFooter);
 
     const left = document.createElement('section');
     left.className = 'city-management__left';
 
-    const buildingTitle = document.createElement('h3');
-    buildingTitle.className = 'city-management__section-title';
-    buildingTitle.textContent = 'City';
+    const meta = document.createElement('div');
+    meta.className = 'city-management__city-meta';
+    this.cityMetaStrip = meta;
 
     const stage = document.createElement('div');
     stage.className = 'city-management__city-stage';
@@ -282,7 +304,7 @@ export class CityFoundationMode implements RenderModeController {
 
     stageFrame.append(skyline, buildingGrid, ground);
     stage.append(stageFrame);
-    left.append(buildingTitle, stage);
+    left.append(meta, stage);
 
     const right = document.createElement('aside');
     right.className = 'city-management__right';
@@ -317,7 +339,7 @@ export class CityFoundationMode implements RenderModeController {
     summary.className = 'city-management__summary-panel';
     this.summaryPanel = summary;
 
-    right.append(resourceTitle, resource, selectedTitle, selected, queueTitle, queue, summaryTitle, summary);
+    right.append(resourceTitle, resource, summaryTitle, summary, selectedTitle, selected, queueTitle, queue);
     layout.append(rail, left, right);
 
     return layout;
@@ -326,11 +348,31 @@ export class CityFoundationMode implements RenderModeController {
   private renderAll() {
     this.applyClaimOnAccess();
     this.renderHeader();
+    this.renderCityMeta();
     this.renderResourceBar();
     this.renderBuildings();
     this.renderSelectedBuilding();
     this.renderQueue();
     this.renderSummary();
+  }
+
+  private renderCityMeta() {
+    if (!this.cityMetaStrip) return;
+    this.cityMetaStrip.innerHTML = '';
+    const pop = this.getPopulationSnapshot();
+    const rows = [
+      `City ${this.state.planetId.toUpperCase()}`,
+      `Planet ${this.state.archetype.toUpperCase()}`,
+      `Slots ${this.getUsedSlots()}/${this.state.citySlotTotal}`,
+      `Population ${pop.used}/${pop.cap}`,
+      `Queue ${this.state.queue.length}/${QUEUE_CAP}`,
+    ];
+    rows.forEach((text, index) => {
+      const chip = document.createElement('p');
+      chip.className = `city-management__meta-chip${index === 0 ? ' is-main' : ''}`;
+      chip.textContent = text;
+      this.cityMetaStrip!.append(chip);
+    });
   }
 
   private renderHeader() {

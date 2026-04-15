@@ -526,19 +526,38 @@ canvas {
 .city-management__rail {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   background: linear-gradient(180deg, rgba(10, 17, 28, 0.95), rgba(8, 14, 22, 0.96));
   border-right: 1px solid rgba(127, 161, 186, 0.24);
-  padding: 10px 8px;
+  padding: 10px 8px 12px;
+}
+
+.city-management__rail-context {
+  border: 1px solid rgba(118, 154, 180, 0.22);
+  background: rgba(8, 18, 29, 0.75);
+  padding: 8px 6px;
 }
 
 .city-management__rail-title {
-  margin: 0 0 4px;
-  font-size: 0.55rem;
+  margin: 0;
+  font-size: 0.62rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: rgba(189, 215, 234, 0.8);
-  text-align: center;
+  color: rgba(232, 209, 161, 0.9);
+}
+
+.city-management__rail-subtitle {
+  margin: 5px 0 0;
+  font-size: 0.5rem;
+  letter-spacing: 0.07em;
+  color: rgba(118, 210, 241, 0.88);
+  text-transform: uppercase;
+}
+
+.city-management__rail-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .city-management__rail-btn {
@@ -557,12 +576,54 @@ canvas {
   color: #f3d8a5;
 }
 
+.city-management__rail-cta {
+  margin-top: auto;
+  border: 1px solid rgba(235, 208, 151, 0.65);
+  background: rgba(232, 197, 131, 0.93);
+  color: #21180d;
+  font-size: 0.6rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 9px 6px;
+}
+
+.city-management__rail-footer {
+  font-size: 0.48rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(118, 210, 241, 0.72);
+}
+
 .city-management__section-title {
   margin: 0 0 10px;
   font-size: 0.66rem;
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: rgba(183, 214, 239, 0.9);
+}
+
+.city-management__city-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.city-management__meta-chip {
+  margin: 0;
+  border: 1px solid rgba(114, 153, 180, 0.26);
+  background: rgba(7, 17, 27, 0.78);
+  padding: 5px 7px;
+  font-size: 0.56rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(188, 218, 241, 0.88);
+}
+
+.city-management__meta-chip.is-main {
+  grid-column: span 2;
+  border-color: rgba(230, 201, 141, 0.34);
+  color: rgba(242, 217, 166, 0.93);
 }
 
 .city-management__city-stage {
@@ -1040,12 +1101,24 @@ canvas {
 
   .city-management__rail {
     flex-direction: row;
-    align-items: center;
+    align-items: stretch;
     gap: 6px;
   }
 
-  .city-management__rail-title {
+  .city-management__rail-context {
+    min-width: 180px;
+  }
+
+  .city-management__rail-nav {
+    flex-direction: row;
+  }
+
+  .city-management__rail-footer {
     margin: 0;
+  }
+
+  .city-management__city-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .city-management__building-card {
