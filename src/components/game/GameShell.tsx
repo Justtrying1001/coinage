@@ -29,7 +29,7 @@ export function GameShell() {
             Planet 3D
           </button>
           <button type="button" className={mode === 'city3d' ? 'is-active' : ''} onClick={() => setMode('city3d')}>
-            City Foundation
+            City Management
           </button>
         </div>
       </header>
