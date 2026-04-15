@@ -138,7 +138,7 @@ export class CityFoundationMode implements RenderModeController {
   mount() {
     const root = document.createElement('section');
     root.className = 'city-management';
-    root.append(this.createHeader(), this.createResourceBar(), this.createBodyLayout());
+    root.append(this.createHeader(), this.createBodyLayout());
 
     this.context.host.appendChild(root);
     this.root = root;
@@ -238,6 +238,23 @@ export class CityFoundationMode implements RenderModeController {
     const layout = document.createElement('div');
     layout.className = 'city-management__layout';
 
+    const rail = document.createElement('aside');
+    rail.className = 'city-management__rail';
+
+    const railTitle = document.createElement('p');
+    railTitle.className = 'city-management__rail-title';
+    railTitle.textContent = 'City Ops';
+
+    const railItems = ['City', 'Build', 'Queue', 'Overview'];
+    railItems.forEach((item, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `city-management__rail-btn${index === 0 ? ' is-active' : ''}`;
+      button.textContent = item;
+      rail.append(button);
+    });
+    rail.prepend(railTitle);
+
     const left = document.createElement('section');
     left.className = 'city-management__left';
 
@@ -270,6 +287,12 @@ export class CityFoundationMode implements RenderModeController {
     const right = document.createElement('aside');
     right.className = 'city-management__right';
 
+    const resourceTitle = document.createElement('h3');
+    resourceTitle.className = 'city-management__section-title';
+    resourceTitle.textContent = 'Resources';
+
+    const resource = this.createResourceBar();
+
     const selectedTitle = document.createElement('h3');
     selectedTitle.className = 'city-management__section-title';
     selectedTitle.textContent = 'Selected Building';
@@ -294,8 +317,8 @@ export class CityFoundationMode implements RenderModeController {
     summary.className = 'city-management__summary-panel';
     this.summaryPanel = summary;
 
-    right.append(selectedTitle, selected, queueTitle, queue, summaryTitle, summary);
-    layout.append(left, right);
+    right.append(resourceTitle, resource, selectedTitle, selected, queueTitle, queue, summaryTitle, summary);
+    layout.append(rail, left, right);
 
     return layout;
   }
@@ -404,15 +427,21 @@ export class CityFoundationMode implements RenderModeController {
       const slotTag = document.createElement('p');
       slotTag.className = 'city-management__building-slot-tag';
       slotTag.textContent = building.id === 'hq' ? 'City Core' : 'Structure Module';
+      const glyph = document.createElement('div');
+      glyph.className = 'city-management__building-glyph';
+      glyph.textContent = getBuildingGlyph(building.id);
+
+      const blockedReason = this.getBlockedReason(building, nextLevel);
+      const status = document.createElement('p');
+      status.className = 'city-management__building-status';
+      status.textContent = blockedReason && blockedReason !== 'Max level' ? blockedReason : 'Operational';
 
       const action = document.createElement('button');
       action.type = 'button';
-      action.className = 'city-management__upgrade';
+      action.className = 'city-management__upgrade city-management__slot-action';
       action.dataset.buildingId = building.id;
-
-      const blockedReason = this.getBlockedReason(building, nextLevel);
       action.disabled = blockedReason !== null;
-      action.textContent = blockedReason ?? 'Upgrade';
+      action.textContent = blockedReason ? 'Locked' : 'Upgrade';
       action.addEventListener('click', (event) => {
         event.stopPropagation();
         this.applyClaimOnAccess();
@@ -426,7 +455,17 @@ export class CityFoundationMode implements RenderModeController {
         this.renderSelectedBuilding();
       });
 
-      card.append(row, slotTag, prodLine, action);
+      if (building.id === 'hq') {
+        const core = document.createElement('div');
+        core.className = 'city-management__hq-core';
+        const coreLevel = document.createElement('p');
+        coreLevel.className = 'city-management__hq-level';
+        coreLevel.textContent = `HQ LEVEL ${currentLevel}`;
+        core.append(glyph, coreLevel);
+        card.append(row, slotTag, core, status, action);
+      } else {
+        card.append(row, glyph, slotTag, prodLine, status, action);
+      }
       this.buildingsGrid!.append(card);
     });
 
@@ -741,4 +780,13 @@ function formatDuration(durationMs: number) {
   const remainder = seconds % 60;
   if (minutes <= 0) return `${remainder}s`;
   return `${minutes}m ${remainder.toString().padStart(2, '0')}s`;
+}
+
+function getBuildingGlyph(buildingId: BuildingId) {
+  if (buildingId === 'hq') return '▦';
+  if (buildingId === 'mine') return '◫';
+  if (buildingId === 'quarry') return '◧';
+  if (buildingId === 'refinery') return '⛭';
+  if (buildingId === 'warehouse') return '▣';
+  return '⌂';
 }
