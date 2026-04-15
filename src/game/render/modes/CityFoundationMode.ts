@@ -422,6 +422,7 @@ export class CityFoundationMode implements RenderModeController {
       if (building.id === 'hq') {
         card.append(this.createHqCoreModule(building.name, currentLevel, glyph), upgradeHook);
       } else {
+        card.classList.add('city-management__building-marker-shell');
         card.append(this.createStructureMarker(building.name, currentLevel, blockedReason, glyph), upgradeHook);
       }
       this.buildingsGrid!.append(card);
@@ -483,15 +484,11 @@ export class CityFoundationMode implements RenderModeController {
 
     const status = document.createElement('p');
     status.className = 'city-management__building-status';
-    status.textContent = blockedReason && blockedReason !== 'Max level' ? blockedReason : 'Operational';
-
-    const header = document.createElement('div');
-    header.className = 'city-management__building-row';
-    header.append(title, levelBadge);
+    status.textContent = blockedReason && blockedReason !== 'Max level' ? 'LOCKED' : 'OPERATIONAL';
 
     const marker = document.createElement('div');
     marker.className = 'city-management__structure-marker';
-    marker.append(glyph, header, status);
+    marker.append(glyph, title, levelBadge, status);
     return marker;
   }
 
@@ -501,7 +498,7 @@ export class CityFoundationMode implements RenderModeController {
     action.className = 'city-management__upgrade city-management__stage-test-hook';
     action.dataset.buildingId = building.id;
     action.disabled = blockedReason !== null;
-    action.textContent = blockedReason ? 'Locked' : 'Upgrade';
+    action.textContent = blockedReason ?? 'Upgrade';
     action.tabIndex = -1;
     action.setAttribute('aria-hidden', 'true');
     action.addEventListener('click', (event) => {
