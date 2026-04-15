@@ -120,8 +120,10 @@ export class CityFoundationMode implements RenderModeController {
   private headerIdentity: HTMLDivElement | null = null;
   private resourceStrip: HTMLElement | null = null;
   private buildingsGrid: HTMLDivElement | null = null;
+  private selectedPanel: HTMLDivElement | null = null;
   private queuePanel: HTMLDivElement | null = null;
   private summaryPanel: HTMLDivElement | null = null;
+  private selectedBuildingId: BuildingId = 'hq';
 
   private uiAccumulatorMs = 0;
   private state: CityState;
@@ -157,6 +159,7 @@ export class CityFoundationMode implements RenderModeController {
 
     this.renderResourceBar();
     this.renderQueue();
+    this.renderSelectedBuilding();
     if (completed) {
       this.renderBuildings();
       this.renderSummary();
@@ -179,6 +182,7 @@ export class CityFoundationMode implements RenderModeController {
     this.headerIdentity = null;
     this.resourceStrip = null;
     this.buildingsGrid = null;
+    this.selectedPanel = null;
     this.queuePanel = null;
     this.summaryPanel = null;
   }
@@ -239,16 +243,36 @@ export class CityFoundationMode implements RenderModeController {
 
     const buildingTitle = document.createElement('h3');
     buildingTitle.className = 'city-management__section-title';
-    buildingTitle.textContent = 'Buildings';
+    buildingTitle.textContent = 'City';
+
+    const stage = document.createElement('div');
+    stage.className = 'city-management__city-stage';
+
+    const skyline = document.createElement('div');
+    skyline.className = 'city-management__reserved-zone city-management__reserved-zone--sky';
+    skyline.textContent = 'Air / Fleet Visual Reserve';
+
+    const ground = document.createElement('div');
+    ground.className = 'city-management__reserved-zone city-management__reserved-zone--ground';
+    ground.textContent = 'Ground Visual Reserve';
 
     const buildingGrid = document.createElement('div');
     buildingGrid.className = 'city-management__building-grid';
     this.buildingsGrid = buildingGrid;
 
-    left.append(buildingTitle, buildingGrid);
+    stage.append(skyline, buildingGrid, ground);
+    left.append(buildingTitle, stage);
 
     const right = document.createElement('aside');
     right.className = 'city-management__right';
+
+    const selectedTitle = document.createElement('h3');
+    selectedTitle.className = 'city-management__section-title';
+    selectedTitle.textContent = 'Selected Building';
+
+    const selected = document.createElement('div');
+    selected.className = 'city-management__selected-panel';
+    this.selectedPanel = selected;
 
     const queueTitle = document.createElement('h3');
     queueTitle.className = 'city-management__section-title';
@@ -266,7 +290,7 @@ export class CityFoundationMode implements RenderModeController {
     summary.className = 'city-management__summary-panel';
     this.summaryPanel = summary;
 
-    right.append(queueTitle, queue, summaryTitle, summary);
+    right.append(selectedTitle, selected, queueTitle, queue, summaryTitle, summary);
     layout.append(left, right);
 
     return layout;
@@ -277,6 +301,7 @@ export class CityFoundationMode implements RenderModeController {
     this.renderHeader();
     this.renderResourceBar();
     this.renderBuildings();
+    this.renderSelectedBuilding();
     this.renderQueue();
     this.renderSummary();
   }
@@ -340,12 +365,17 @@ export class CityFoundationMode implements RenderModeController {
     if (!this.buildingsGrid) return;
     this.buildingsGrid.innerHTML = '';
 
-    BUILDINGS.forEach((building) => {
+    const slotOrder: BuildingId[] = ['hq', 'mine', 'quarry', 'refinery', 'warehouse', 'housing_complex'];
+    slotOrder.forEach((buildingId) => {
+      const building = getBuilding(buildingId);
+      if (!building) return;
       const card = document.createElement('article');
-      card.className = 'city-management__building-card';
+      card.className = 'city-management__building-card city-management__building-slot';
+      card.dataset.buildingId = building.id;
 
       const unlocked = this.isUnlocked(building);
       if (!unlocked) card.classList.add('is-locked');
+      if (this.selectedBuildingId === building.id) card.classList.add('is-selected');
 
       const currentLevel = this.getBuildingLevel(building.id);
       const nextLevel = currentLevel + 1;
@@ -367,15 +397,6 @@ export class CityFoundationMode implements RenderModeController {
       prodLine.className = 'city-management__building-production';
       prodLine.textContent = this.getBuildingEffectText(building, currentLevel);
 
-      const cost = this.getUpgradeCost(building, nextLevel);
-      const costLine = document.createElement('p');
-      costLine.className = 'city-management__building-meta';
-      costLine.textContent = `Cost: Ore ${cost.ore} · Stone ${cost.stone} · Iron ${cost.iron}`;
-
-      const duration = document.createElement('p');
-      duration.className = 'city-management__building-meta';
-      duration.textContent = `Build time: ${formatDuration(this.getBuildDurationMs(building, nextLevel))}`;
-
       const action = document.createElement('button');
       action.type = 'button';
       action.className = 'city-management__upgrade';
@@ -384,15 +405,68 @@ export class CityFoundationMode implements RenderModeController {
       const blockedReason = this.getBlockedReason(building, nextLevel);
       action.disabled = blockedReason !== null;
       action.textContent = blockedReason ?? 'Upgrade';
-      action.addEventListener('click', () => {
+      action.addEventListener('click', (event) => {
+        event.stopPropagation();
         this.applyClaimOnAccess();
         this.startConstruction(building, nextLevel);
         this.renderAll();
       });
 
-      card.append(row, prodLine, costLine, duration, action);
+      card.addEventListener('click', () => {
+        this.selectedBuildingId = building.id;
+        this.renderBuildings();
+        this.renderSelectedBuilding();
+      });
+
+      card.append(row, prodLine, action);
       this.buildingsGrid!.append(card);
     });
+  }
+
+  private renderSelectedBuilding() {
+    if (!this.selectedPanel) return;
+    this.selectedPanel.innerHTML = '';
+    const building = getBuilding(this.selectedBuildingId);
+    if (!building) return;
+
+    const unlocked = this.isUnlocked(building);
+    const currentLevel = this.getBuildingLevel(building.id);
+    const nextLevel = currentLevel + 1;
+    const cost = this.getUpgradeCost(building, nextLevel);
+    const blockedReason = this.getBlockedReason(building, nextLevel);
+
+    const title = document.createElement('h4');
+    title.className = 'city-management__selected-name';
+    title.textContent = building.name;
+
+    const level = document.createElement('p');
+    level.className = 'city-management__selected-level';
+    level.textContent = unlocked ? `Level ${currentLevel}` : `Locked · Requires HQ ${building.unlockAtHq}`;
+
+    const effect = document.createElement('p');
+    effect.className = 'city-management__selected-effect';
+    effect.textContent = this.getBuildingEffectText(building, currentLevel);
+
+    const costLine = document.createElement('p');
+    costLine.className = 'city-management__building-meta';
+    costLine.textContent = `Upgrade Cost: Ore ${cost.ore} · Stone ${cost.stone} · Iron ${cost.iron}`;
+
+    const duration = document.createElement('p');
+    duration.className = 'city-management__building-meta';
+    duration.textContent = `Build time: ${formatDuration(this.getBuildDurationMs(building, nextLevel))}`;
+
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.className = 'city-management__upgrade city-management__upgrade--selected';
+    action.disabled = blockedReason !== null;
+    action.textContent = blockedReason ?? `Upgrade to Level ${nextLevel}`;
+    action.addEventListener('click', () => {
+      this.applyClaimOnAccess();
+      this.startConstruction(building, nextLevel);
+      this.renderAll();
+    });
+
+    this.selectedPanel.append(title, level, effect, costLine, duration, action);
   }
 
   private renderQueue() {
