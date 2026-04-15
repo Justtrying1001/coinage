@@ -147,7 +147,15 @@ export class Planet3DMode implements RenderModeController {
 
     const helpText = document.createElement('p');
     helpText.className = 'planet-inspect-line';
-    helpText.textContent = 'Settlement inspection only. City View is temporarily offline.';
+    helpText.textContent = 'Ready for colony operations. Open management for upgrades and build queue.';
+
+    const openManagement = document.createElement('button');
+    openManagement.type = 'button';
+    openManagement.className = 'planet-back-button';
+    openManagement.textContent = 'Open Management';
+    openManagement.addEventListener('click', () => {
+      this.context.onRequestMode('city3d');
+    });
 
     const button = document.createElement('button');
     button.type = 'button';
@@ -163,6 +171,7 @@ export class Planet3DMode implements RenderModeController {
     panel.appendChild(settlements);
     panel.appendChild(selection);
     panel.appendChild(helpText);
+    panel.appendChild(openManagement);
     panel.appendChild(button);
 
     this.context.host.appendChild(panel);
