@@ -196,7 +196,24 @@ export class CityFoundationMode implements RenderModeController {
 
     const left = document.createElement('div');
     left.className = 'city-management__header-left';
-    this.headerIdentity = left;
+
+    const brand = document.createElement('span');
+    brand.className = 'city-management__brand';
+    brand.textContent = 'Coinage Command';
+
+    const nav = document.createElement('nav');
+    nav.className = 'city-management__top-nav';
+    ['City', 'Build', 'Resources'].forEach((item, index) => {
+      const tab = document.createElement('span');
+      tab.className = `city-management__top-nav-item${index === 0 ? ' is-active' : ''}`;
+      tab.textContent = item;
+      nav.append(tab);
+    });
+
+    const identity = document.createElement('div');
+    identity.className = 'city-management__header-identity';
+    this.headerIdentity = identity;
+    left.append(brand, nav, identity);
 
     const right = document.createElement('div');
     right.className = 'city-management__header-right';
@@ -224,7 +241,7 @@ export class CityFoundationMode implements RenderModeController {
     backGalaxy.textContent = 'Galaxy';
     backGalaxy.addEventListener('click', () => this.context.onRequestMode('galaxy2d'));
 
-    right.append(switcher, backPlanet, backGalaxy);
+    right.append(backGalaxy, backPlanet, switcher);
     header.append(left, right);
 
     return header;
@@ -377,20 +394,7 @@ export class CityFoundationMode implements RenderModeController {
 
   private renderHeader() {
     if (!this.headerIdentity) return;
-    this.headerIdentity.innerHTML = '';
-
-    const items = [
-      `City ${this.state.planetId.toUpperCase()}`,
-      `Planet: ${this.state.archetype.toUpperCase()}`,
-      `Owner: ${this.state.owner}`,
-    ];
-
-    items.forEach((text) => {
-      const chip = document.createElement('span');
-      chip.className = 'city-management__header-chip';
-      chip.textContent = text;
-      this.headerIdentity!.append(chip);
-    });
+    this.headerIdentity.textContent = `CITY ${this.state.planetId.toUpperCase()} · ${this.state.archetype.toUpperCase()} · ${this.state.owner}`;
   }
 
   private renderResourceBar() {

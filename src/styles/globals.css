@@ -362,7 +362,7 @@ canvas {
   position: absolute;
   inset: 4.1rem 0 0 0;
   z-index: 11;
-  padding: 14px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -379,36 +379,57 @@ canvas {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  border: 1px solid rgba(132, 166, 189, 0.2);
+  gap: 8px;
+  border: 1px solid rgba(132, 166, 189, 0.16);
   border-radius: 4px;
   background: linear-gradient(180deg, rgba(10, 16, 25, 0.96), rgba(6, 10, 16, 0.98));
-  padding: 8px 10px;
+  padding: 6px 10px;
 }
 
 .city-management__header-left {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
 }
 
-.city-management__header-chip {
-  border: 1px solid rgba(122, 157, 182, 0.38);
-  background: rgba(6, 15, 23, 0.9);
-  color: #dcecf8;
-  border-radius: 3px;
-  font-size: 0.6rem;
+.city-management__brand {
+  font-size: 1rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: rgba(244, 213, 153, 0.95);
+  font-weight: 700;
+}
+
+.city-management__top-nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.city-management__top-nav-item {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(165, 191, 212, 0.82);
+}
+
+.city-management__top-nav-item.is-active {
+  color: rgba(244, 213, 153, 0.95);
+  border-bottom: 1px solid rgba(244, 213, 153, 0.7);
+  padding-bottom: 3px;
+}
+
+.city-management__header-identity {
+  font-size: 0.54rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 6px 8px;
-  line-height: 1;
+  color: rgba(150, 189, 215, 0.82);
 }
 
 .city-management__header-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .city-management__switch,
@@ -425,7 +446,7 @@ canvas {
 }
 
 .city-management__switch {
-  min-width: 152px;
+  min-width: 132px;
 }
 
 .city-management__btn {
@@ -509,8 +530,8 @@ canvas {
 
 .city-management__layout {
   display: grid;
-  grid-template-columns: 86px minmax(0, 8fr) minmax(320px, 3fr);
-  gap: 8px;
+  grid-template-columns: 250px minmax(0, 8fr) 360px;
+  gap: 0;
   min-height: min(79vh, 920px);
 }
 
@@ -518,9 +539,9 @@ canvas {
 .city-management__left,
 .city-management__right {
   border: 1px solid rgba(98, 140, 168, 0.2);
-  border-radius: 6px;
-  background: rgba(6, 12, 20, 0.72);
-  padding: 12px;
+  border-radius: 0;
+  background: rgba(6, 12, 20, 0.86);
+  padding: 12px 14px;
 }
 
 .city-management__rail {
@@ -528,8 +549,8 @@ canvas {
   flex-direction: column;
   gap: 10px;
   background: linear-gradient(180deg, rgba(10, 17, 28, 0.95), rgba(8, 14, 22, 0.96));
-  border-right: 1px solid rgba(127, 161, 186, 0.24);
-  padding: 10px 8px 12px;
+  border-right: 1px solid rgba(127, 161, 186, 0.34);
+  padding: 14px 14px 16px;
 }
 
 .city-management__rail-context {
@@ -606,7 +627,7 @@ canvas {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .city-management__meta-chip {
@@ -628,7 +649,7 @@ canvas {
 
 .city-management__city-stage {
   position: relative;
-  min-height: min(80vh, 900px);
+  min-height: min(82vh, 920px);
   border: 1px solid rgba(106, 147, 173, 0.24);
   border-radius: 7px;
   background: linear-gradient(145deg, rgba(5, 13, 21, 0.96), rgba(3, 8, 14, 0.98));
@@ -1039,7 +1060,8 @@ canvas {
   flex-direction: column;
   min-height: 100%;
   background: linear-gradient(180deg, rgba(7, 15, 25, 0.94), rgba(4, 10, 16, 0.9));
-  border-left: 1px solid rgba(116, 155, 181, 0.38);
+  border-left: 1px solid rgba(116, 155, 181, 0.42);
+  padding-top: 12px;
 }
 
 .city-management__selected-panel,
@@ -1048,11 +1070,11 @@ canvas {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   border: 1px solid rgba(97, 140, 170, 0.22);
-  border-radius: 4px;
-  padding: 8px;
-  background: linear-gradient(180deg, rgba(6, 15, 24, 0.74), rgba(5, 11, 19, 0.84));
+  border-radius: 2px;
+  padding: 8px 9px;
+  background: linear-gradient(180deg, rgba(8, 17, 28, 0.82), rgba(5, 11, 19, 0.9));
 }
 
 .city-management__selected-name {
