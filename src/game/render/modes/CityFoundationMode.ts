@@ -3,17 +3,19 @@ import type { PlanetArchetype, SelectedPlanetRef } from '@/game/render/types';
 import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
 
 type CoinageResource = 'ore' | 'stone' | 'iron';
-type ResourceBundle = Record<CoinageResource, number>;
 type BuildingId = 'hq' | 'mine' | 'quarry' | 'refinery' | 'warehouse' | 'housing_complex';
+
+type ResourceBundle = Record<CoinageResource, number>;
+type BuildingLevels = Partial<Record<BuildingId, number>>;
 
 interface BuildingDefinition {
   id: BuildingId;
   name: string;
-  effect: string;
-  hqRequired: number;
+  unlockAtHq: number;
   maxLevel: number;
   baseCost: ResourceBundle;
   baseBuildSeconds: number;
+  production: Partial<ResourceBundle>;
   populationPerLevel: number;
 }
 
@@ -25,82 +27,20 @@ interface ConstructionEntry {
   costPaid: ResourceBundle;
 }
 
-interface CityMvpState {
+interface CityState {
+  planetId: string;
   owner: string;
   archetype: PlanetArchetype;
-  citySlotTotal: number;
-  buildings: Record<BuildingId, number>;
+  levels: BuildingLevels;
   resources: ResourceBundle;
   queue: ConstructionEntry[];
-  lastUpdatedAtMs: number;
+  citySlotTotal: number;
   baseStorage: ResourceBundle;
   basePopulationCap: number;
+  lastUpdatedAtMs: number;
 }
 
-const MVP_QUEUE_CAP = 2;
-
-const BUILDINGS: BuildingDefinition[] = [
-  {
-    id: 'hq',
-    name: 'HQ',
-    effect: 'Controls unlocks and core city progression.',
-    hqRequired: 0,
-    maxLevel: 20,
-    baseCost: { ore: 220, stone: 160, iron: 40 },
-    baseBuildSeconds: 80,
-    populationPerLevel: 1,
-  },
-  {
-    id: 'mine',
-    name: 'Mine',
-    effect: 'Produces Ore continuously over time.',
-    hqRequired: 1,
-    maxLevel: 20,
-    baseCost: { ore: 90, stone: 50, iron: 0 },
-    baseBuildSeconds: 55,
-    populationPerLevel: 1,
-  },
-  {
-    id: 'quarry',
-    name: 'Quarry',
-    effect: 'Produces Stone continuously over time.',
-    hqRequired: 1,
-    maxLevel: 20,
-    baseCost: { ore: 70, stone: 85, iron: 0 },
-    baseBuildSeconds: 58,
-    populationPerLevel: 1,
-  },
-  {
-    id: 'refinery',
-    name: 'Refinery',
-    effect: 'Produces Iron continuously over time.',
-    hqRequired: 3,
-    maxLevel: 20,
-    baseCost: { ore: 130, stone: 120, iron: 35 },
-    baseBuildSeconds: 74,
-    populationPerLevel: 1,
-  },
-  {
-    id: 'warehouse',
-    name: 'Warehouse',
-    effect: 'Increases storage caps for Ore, Stone, and Iron.',
-    hqRequired: 1,
-    maxLevel: 20,
-    baseCost: { ore: 115, stone: 115, iron: 25 },
-    baseBuildSeconds: 70,
-    populationPerLevel: 0,
-  },
-  {
-    id: 'housing_complex',
-    name: 'Housing Complex',
-    effect: 'Increases population cap for city growth.',
-    hqRequired: 1,
-    maxLevel: 20,
-    baseCost: { ore: 95, stone: 100, iron: 15 },
-    baseBuildSeconds: 62,
-    populationPerLevel: 0,
-  },
-];
+const QUEUE_CAP = 2;
 
 const RESOURCE_LABELS: Record<CoinageResource, string> = {
   ore: 'Ore',
@@ -108,31 +48,95 @@ const RESOURCE_LABELS: Record<CoinageResource, string> = {
   iron: 'Iron',
 };
 
+const BUILDINGS: BuildingDefinition[] = [
+  {
+    id: 'hq',
+    name: 'HQ',
+    unlockAtHq: 1,
+    maxLevel: 20,
+    baseCost: { ore: 240, stone: 200, iron: 60 },
+    baseBuildSeconds: 95,
+    production: {},
+    populationPerLevel: 1,
+  },
+  {
+    id: 'mine',
+    name: 'Mine',
+    unlockAtHq: 1,
+    maxLevel: 20,
+    baseCost: { ore: 110, stone: 70, iron: 0 },
+    baseBuildSeconds: 65,
+    production: { ore: 42 },
+    populationPerLevel: 1,
+  },
+  {
+    id: 'quarry',
+    name: 'Quarry',
+    unlockAtHq: 1,
+    maxLevel: 20,
+    baseCost: { ore: 80, stone: 105, iron: 0 },
+    baseBuildSeconds: 68,
+    production: { stone: 34 },
+    populationPerLevel: 1,
+  },
+  {
+    id: 'refinery',
+    name: 'Refinery',
+    unlockAtHq: 3,
+    maxLevel: 20,
+    baseCost: { ore: 180, stone: 150, iron: 50 },
+    baseBuildSeconds: 78,
+    production: { iron: 21 },
+    populationPerLevel: 1,
+  },
+  {
+    id: 'warehouse',
+    name: 'Warehouse',
+    unlockAtHq: 1,
+    maxLevel: 20,
+    baseCost: { ore: 130, stone: 120, iron: 25 },
+    baseBuildSeconds: 72,
+    production: {},
+    populationPerLevel: 0,
+  },
+  {
+    id: 'housing_complex',
+    name: 'Housing Complex',
+    unlockAtHq: 1,
+    maxLevel: 20,
+    baseCost: { ore: 125, stone: 118, iron: 22 },
+    baseBuildSeconds: 70,
+    production: {},
+    populationPerLevel: 0,
+  },
+];
+
+const CITY_STATE_CACHE = new Map<string, CityState>();
+
 export class CityFoundationMode implements RenderModeController {
   readonly id = 'city3d' as const;
 
   private root: HTMLElement | null = null;
-  private headerTitle: HTMLHeadingElement | null = null;
+  private headerIdentity: HTMLDivElement | null = null;
   private resourceStrip: HTMLElement | null = null;
-  private buildingsRoot: HTMLDivElement | null = null;
-  private queueRoot: HTMLDivElement | null = null;
-  private summaryRoot: HTMLDivElement | null = null;
+  private buildingsGrid: HTMLDivElement | null = null;
+  private queuePanel: HTMLDivElement | null = null;
+  private summaryPanel: HTMLDivElement | null = null;
 
-  private uiTickMs = 0;
-  private state: CityMvpState;
+  private uiAccumulatorMs = 0;
+  private state: CityState;
 
   constructor(
     private selectedPlanet: SelectedPlanetRef,
     private readonly context: ModeContext,
   ) {
-    this.state = createFallbackMvpCityState(selectedPlanet);
+    this.state = getCityState(selectedPlanet, planetProfileFromSeed(selectedPlanet.seed).archetype);
   }
 
   mount() {
     const root = document.createElement('section');
     root.className = 'city-management';
-
-    root.append(this.createHeaderSection(), this.createResourceSection(), this.createMainLayout());
+    root.append(this.createHeader(), this.createResourceBar(), this.createBodyLayout());
 
     this.context.host.appendChild(root);
     this.root = root;
@@ -144,14 +148,14 @@ export class CityFoundationMode implements RenderModeController {
   resize() {}
 
   update(deltaMs: number) {
-    this.uiTickMs += deltaMs;
-    if (this.uiTickMs < 1000) return;
-    this.uiTickMs = 0;
+    this.uiAccumulatorMs += deltaMs;
+    if (this.uiAccumulatorMs < 1000) return;
+    this.uiAccumulatorMs = 0;
 
     this.applyClaimOnAccess();
     const completed = this.resolveCompletedConstruction();
 
-    this.renderResources();
+    this.renderResourceBar();
     this.renderQueue();
     if (completed) {
       this.renderBuildings();
@@ -163,102 +167,107 @@ export class CityFoundationMode implements RenderModeController {
   setSelectedPlanet(nextPlanet: SelectedPlanetRef) {
     if (nextPlanet.id === this.selectedPlanet.id && nextPlanet.seed === this.selectedPlanet.seed) return;
     this.selectedPlanet = nextPlanet;
-    this.state = createFallbackMvpCityState(nextPlanet);
-    this.uiTickMs = 0;
+    const archetype = planetProfileFromSeed(nextPlanet.seed).archetype;
+    this.state = getCityState(nextPlanet, archetype);
+    this.uiAccumulatorMs = 0;
     this.renderAll();
   }
 
   destroy() {
     this.root?.remove();
     this.root = null;
-    this.headerTitle = null;
+    this.headerIdentity = null;
     this.resourceStrip = null;
-    this.buildingsRoot = null;
-    this.queueRoot = null;
-    this.summaryRoot = null;
+    this.buildingsGrid = null;
+    this.queuePanel = null;
+    this.summaryPanel = null;
   }
 
-  private createHeaderSection() {
+  private createHeader() {
     const header = document.createElement('header');
     header.className = 'city-management__header';
 
-    const identity = document.createElement('div');
-    const title = document.createElement('h2');
-    title.className = 'city-management__title';
-    this.headerTitle = title;
+    const left = document.createElement('div');
+    left.className = 'city-management__header-left';
+    this.headerIdentity = left;
 
-    const subtitle = document.createElement('p');
-    subtitle.className = 'city-management__subtitle';
-    subtitle.textContent = 'City management · MVP economy loop · claim-on-access production';
+    const right = document.createElement('div');
+    right.className = 'city-management__header-right';
 
-    identity.append(title, subtitle);
+    const switcher = document.createElement('select');
+    switcher.className = 'city-management__switch';
+    const current = document.createElement('option');
+    current.value = this.selectedPlanet.id;
+    current.textContent = `Switch planet: ${this.selectedPlanet.id.toUpperCase()}`;
+    switcher.append(current);
+    switcher.addEventListener('change', () => {
+      if (switcher.value === this.selectedPlanet.id) return;
+      this.context.onSelectPlanet({ id: switcher.value, seed: this.selectedPlanet.seed });
+    });
 
-    const actions = document.createElement('div');
-    actions.className = 'city-management__actions';
+    const backPlanet = document.createElement('button');
+    backPlanet.type = 'button';
+    backPlanet.className = 'city-management__btn';
+    backPlanet.textContent = 'Back to planet';
+    backPlanet.addEventListener('click', () => this.context.onRequestMode('planet3d'));
 
-    const backToPlanet = document.createElement('button');
-    backToPlanet.type = 'button';
-    backToPlanet.className = 'city-management__btn';
-    backToPlanet.textContent = 'Back to Planet';
-    backToPlanet.addEventListener('click', () => this.context.onRequestMode('planet3d'));
+    const backGalaxy = document.createElement('button');
+    backGalaxy.type = 'button';
+    backGalaxy.className = 'city-management__btn';
+    backGalaxy.textContent = 'Galaxy';
+    backGalaxy.addEventListener('click', () => this.context.onRequestMode('galaxy2d'));
 
-    const backToGalaxy = document.createElement('button');
-    backToGalaxy.type = 'button';
-    backToGalaxy.className = 'city-management__btn city-management__btn--ghost';
-    backToGalaxy.textContent = 'Back to Galaxy';
-    backToGalaxy.addEventListener('click', () => this.context.onRequestMode('galaxy2d'));
-
-    actions.append(backToPlanet, backToGalaxy);
-    header.append(identity, actions);
+    right.append(switcher, backPlanet, backGalaxy);
+    header.append(left, right);
 
     return header;
   }
 
-  private createResourceSection() {
-    const section = document.createElement('section');
-    section.className = 'city-management__resources';
-    this.resourceStrip = section;
-    return section;
+  private createResourceBar() {
+    const resourceBar = document.createElement('section');
+    resourceBar.className = 'city-management__resource-bar';
+    this.resourceStrip = resourceBar;
+    return resourceBar;
   }
 
-  private createMainLayout() {
+  private createBodyLayout() {
     const layout = document.createElement('div');
     layout.className = 'city-management__layout';
 
-    const buildingsPanel = document.createElement('section');
-    buildingsPanel.className = 'city-management__buildings';
+    const left = document.createElement('section');
+    left.className = 'city-management__left';
 
-    const buildingsTitle = document.createElement('h3');
-    buildingsTitle.className = 'city-management__section-title';
-    buildingsTitle.textContent = 'MVP Buildings';
+    const buildingTitle = document.createElement('h3');
+    buildingTitle.className = 'city-management__section-title';
+    buildingTitle.textContent = 'Buildings';
 
-    const buildings = document.createElement('div');
-    buildings.className = 'city-management__building-list';
-    this.buildingsRoot = buildings;
+    const buildingGrid = document.createElement('div');
+    buildingGrid.className = 'city-management__building-grid';
+    this.buildingsGrid = buildingGrid;
 
-    buildingsPanel.append(buildingsTitle, buildings);
+    left.append(buildingTitle, buildingGrid);
 
-    const sidePanel = document.createElement('aside');
-    sidePanel.className = 'city-management__side';
+    const right = document.createElement('aside');
+    right.className = 'city-management__right';
 
     const queueTitle = document.createElement('h3');
     queueTitle.className = 'city-management__section-title';
     queueTitle.textContent = 'Construction Queue';
 
     const queue = document.createElement('div');
-    queue.className = 'city-management__queue';
-    this.queueRoot = queue;
+    queue.className = 'city-management__queue-panel';
+    this.queuePanel = queue;
 
     const summaryTitle = document.createElement('h3');
     summaryTitle.className = 'city-management__section-title';
-    summaryTitle.textContent = 'City Summary';
+    summaryTitle.textContent = 'City Stats';
 
     const summary = document.createElement('div');
-    summary.className = 'city-management__capacity';
-    this.summaryRoot = summary;
+    summary.className = 'city-management__summary-panel';
+    this.summaryPanel = summary;
 
-    sidePanel.append(queueTitle, queue, summaryTitle, summary);
-    layout.append(buildingsPanel, sidePanel);
+    right.append(queueTitle, queue, summaryTitle, summary);
+    layout.append(left, right);
 
     return layout;
   }
@@ -266,179 +275,220 @@ export class CityFoundationMode implements RenderModeController {
   private renderAll() {
     this.applyClaimOnAccess();
     this.renderHeader();
-    this.renderResources();
+    this.renderResourceBar();
     this.renderBuildings();
     this.renderQueue();
     this.renderSummary();
   }
 
   private renderHeader() {
-    if (!this.headerTitle) return;
-    this.headerTitle.textContent = `City ${this.selectedPlanet.id.toUpperCase()} · Planet ${this.state.archetype} · Owner ${this.state.owner}`;
+    if (!this.headerIdentity) return;
+    this.headerIdentity.innerHTML = '';
+
+    const items = [
+      `City ${this.state.planetId.toUpperCase()}`,
+      `Planet: ${this.state.archetype.toUpperCase()}`,
+      `Owner: ${this.state.owner}`,
+    ];
+
+    items.forEach((text) => {
+      const chip = document.createElement('span');
+      chip.className = 'city-management__header-chip';
+      chip.textContent = text;
+      this.headerIdentity!.append(chip);
+    });
   }
 
-  private renderResources() {
+  private renderResourceBar() {
     if (!this.resourceStrip) return;
     this.resourceStrip.innerHTML = '';
 
     const production = this.getProductionPerHour();
-    const caps = this.getStorageCaps();
+    const storage = this.getStorageCaps();
 
-    (Object.keys(RESOURCE_LABELS) as CoinageResource[]).forEach((resourceKey) => {
-      const card = document.createElement('article');
-      card.className = 'city-management__resource-card';
+    (Object.keys(RESOURCE_LABELS) as CoinageResource[]).forEach((resource) => {
+      const item = document.createElement('div');
+      item.className = 'city-management__resource-item';
 
-      const title = document.createElement('p');
-      title.className = 'city-management__resource-title';
-      title.textContent = RESOURCE_LABELS[resourceKey];
+      const top = document.createElement('div');
+      top.className = 'city-management__resource-top';
+
+      const icon = document.createElement('span');
+      icon.className = `city-management__resource-icon city-management__resource-icon--${resource}`;
+      icon.textContent = resource === 'ore' ? '●' : resource === 'stone' ? '◆' : '■';
+
+      const name = document.createElement('span');
+      name.className = 'city-management__resource-name';
+      name.textContent = RESOURCE_LABELS[resource];
+
+      top.append(icon, name);
 
       const stock = document.createElement('p');
-      stock.className = 'city-management__resource-value';
-      stock.textContent = `${Math.floor(this.state.resources[resourceKey]).toLocaleString()} / ${caps[resourceKey].toLocaleString()}`;
+      stock.className = 'city-management__resource-stock';
+      stock.textContent = `${Math.floor(this.state.resources[resource]).toLocaleString()} / ${storage[resource].toLocaleString()}`;
 
       const rate = document.createElement('p');
       rate.className = 'city-management__resource-rate';
-      rate.textContent = `+${Math.round(production[resourceKey]).toLocaleString()} /h`;
+      rate.textContent = `+${Math.round(production[resource]).toLocaleString()}/h`;
 
-      card.append(title, stock, rate);
-      this.resourceStrip!.append(card);
+      item.append(top, stock, rate);
+      this.resourceStrip!.append(item);
     });
   }
 
   private renderBuildings() {
-    if (!this.buildingsRoot) return;
-    this.buildingsRoot.innerHTML = '';
+    if (!this.buildingsGrid) return;
+    this.buildingsGrid.innerHTML = '';
 
     BUILDINGS.forEach((building) => {
       const card = document.createElement('article');
       card.className = 'city-management__building-card';
 
-      const level = this.getBuildingLevel(building.id);
-      const nextLevel = level + 1;
-      const cost = this.getUpgradeCost(building, nextLevel);
-      const durationMs = this.getBuildDurationMs(building, nextLevel);
-      const blockedReason = this.getUpgradeBlockedReason(building, nextLevel);
+      const unlocked = this.isUnlocked(building);
+      if (!unlocked) card.classList.add('is-locked');
+
+      const currentLevel = this.getBuildingLevel(building.id);
+      const nextLevel = currentLevel + 1;
+
+      const row = document.createElement('div');
+      row.className = 'city-management__building-row';
 
       const name = document.createElement('p');
       name.className = 'city-management__building-name';
-      name.textContent = `${building.name} · Lv ${level}`;
+      name.textContent = building.name;
 
-      const effect = document.createElement('p');
-      effect.className = 'city-management__building-effect';
-      effect.textContent = building.effect;
+      const levelTag = document.createElement('span');
+      levelTag.className = 'city-management__building-level';
+      levelTag.textContent = unlocked ? `LVL ${currentLevel}` : 'LOCKED';
 
-      const unlockLine = document.createElement('p');
-      unlockLine.className = 'city-management__meta';
-      unlockLine.textContent = `Unlock: HQ ${building.hqRequired}`;
+      row.append(name, levelTag);
 
+      const prodLine = document.createElement('p');
+      prodLine.className = 'city-management__building-production';
+      prodLine.textContent = this.getBuildingEffectText(building, currentLevel);
+
+      const cost = this.getUpgradeCost(building, nextLevel);
       const costLine = document.createElement('p');
-      costLine.className = 'city-management__meta';
+      costLine.className = 'city-management__building-meta';
       costLine.textContent = `Cost: Ore ${cost.ore} · Stone ${cost.stone} · Iron ${cost.iron}`;
 
-      const timeLine = document.createElement('p');
-      timeLine.className = 'city-management__meta';
-      timeLine.textContent = `Build time: ${formatDuration(durationMs)}`;
+      const duration = document.createElement('p');
+      duration.className = 'city-management__building-meta';
+      duration.textContent = `Build time: ${formatDuration(this.getBuildDurationMs(building, nextLevel))}`;
 
       const action = document.createElement('button');
       action.type = 'button';
       action.className = 'city-management__upgrade';
+      action.dataset.buildingId = building.id;
+
+      const blockedReason = this.getBlockedReason(building, nextLevel);
       action.disabled = blockedReason !== null;
-      action.textContent = blockedReason ?? `Upgrade to Lv ${nextLevel}`;
+      action.textContent = blockedReason ?? 'Upgrade';
       action.addEventListener('click', () => {
         this.applyClaimOnAccess();
         this.startConstruction(building, nextLevel);
         this.renderAll();
       });
 
-      card.append(name, effect, unlockLine, costLine, timeLine, action);
-      this.buildingsRoot!.append(card);
+      card.append(row, prodLine, costLine, duration, action);
+      this.buildingsGrid!.append(card);
     });
   }
 
   private renderQueue() {
-    if (!this.queueRoot) return;
-    this.queueRoot.innerHTML = '';
+    if (!this.queuePanel) return;
+    this.queuePanel.innerHTML = '';
 
-    if (!this.state.queue.length) {
-      const empty = document.createElement('p');
-      empty.className = 'city-management__empty';
-      empty.textContent = `Queue empty · ${MVP_QUEUE_CAP} concurrent slots available (F2P MVP).`;
-      this.queueRoot.append(empty);
-      return;
+    const sorted = this.state.queue.slice().sort((a, b) => a.endsAtMs - b.endsAtMs);
+
+    for (let i = 0; i < QUEUE_CAP; i += 1) {
+      const slot = document.createElement('div');
+      slot.className = 'city-management__queue-slot';
+
+      const slotTitle = document.createElement('p');
+      slotTitle.className = 'city-management__queue-slot-title';
+      slotTitle.textContent = `Slot ${i + 1}`;
+
+      const entry = sorted[i];
+      if (!entry) {
+        const empty = document.createElement('p');
+        empty.className = 'city-management__queue-empty';
+        empty.textContent = 'Queue empty';
+        slot.append(slotTitle, empty);
+        this.queuePanel.append(slot);
+        continue;
+      }
+
+      const definition = getBuilding(entry.buildingId);
+      const remainingMs = Math.max(0, entry.endsAtMs - Date.now());
+      const totalMs = Math.max(1, entry.endsAtMs - entry.startedAtMs);
+      const progress = Math.min(100, Math.max(0, ((totalMs - remainingMs) / totalMs) * 100));
+
+      const label = document.createElement('p');
+      label.className = 'city-management__queue-name';
+      label.textContent = `${definition?.name ?? entry.buildingId} → lvl ${entry.targetLevel}`;
+
+      const timer = document.createElement('p');
+      timer.className = 'city-management__queue-time';
+      timer.textContent = `⏳ ${formatDuration(remainingMs)} remaining`;
+
+      const bar = document.createElement('div');
+      bar.className = 'city-management__progress';
+      const fill = document.createElement('span');
+      fill.className = 'city-management__progress-fill';
+      fill.style.width = `${progress}%`;
+      bar.append(fill);
+
+      slot.append(slotTitle, label, timer, bar);
+      this.queuePanel.append(slot);
     }
-
-    this.state.queue
-      .slice()
-      .sort((a, b) => a.endsAtMs - b.endsAtMs)
-      .forEach((entry, index) => {
-        const definition = getBuildingDefinition(entry.buildingId);
-        if (!definition) return;
-
-        const row = document.createElement('div');
-        row.className = index === 0 ? 'city-management__queue-item is-active' : 'city-management__queue-item';
-
-        const name = document.createElement('p');
-        name.className = 'city-management__queue-name';
-        name.textContent = `${definition.name} → Lv ${entry.targetLevel}`;
-
-        const timer = document.createElement('p');
-        timer.className = 'city-management__queue-time';
-        timer.textContent = `Remaining: ${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))}`;
-
-        row.append(name, timer);
-        this.queueRoot!.append(row);
-      });
   }
 
   private renderSummary() {
-    if (!this.summaryRoot) return;
-    this.summaryRoot.innerHTML = '';
+    if (!this.summaryPanel) return;
+    this.summaryPanel.innerHTML = '';
 
-    const caps = this.getStorageCaps();
-    const population = this.getPopulationUsage();
-    const usedSlots = this.getUsedBuildingSlots();
-
-    const lines = [
-      `Building slots: ${usedSlots}/${this.state.citySlotTotal}`,
-      `Population: ${population.used}/${population.cap}`,
-      `Storage caps: Ore ${caps.ore} · Stone ${caps.stone} · Iron ${caps.iron}`,
-      `Queue occupancy: ${this.state.queue.length}/${MVP_QUEUE_CAP}`,
-      'Construction is non-cancelable once started.',
+    const storage = this.getStorageCaps();
+    const pop = this.getPopulationSnapshot();
+    const rows = [
+      `Slots: ${this.getUsedSlots()}/${this.state.citySlotTotal}`,
+      `Population: ${pop.used}/${pop.cap}`,
+      `Storage · Ore: ${storage.ore}`,
+      `Storage · Stone: ${storage.stone}`,
+      `Storage · Iron: ${storage.iron}`,
+      `Queue: ${this.state.queue.length}/${QUEUE_CAP}`,
     ];
 
-    lines.forEach((line) => {
-      const item = document.createElement('p');
-      item.className = 'city-management__capacity-line';
-      item.textContent = line;
-      this.summaryRoot!.append(item);
+    rows.forEach((text) => {
+      const row = document.createElement('p');
+      row.className = 'city-management__summary-row';
+      row.textContent = text;
+      this.summaryPanel!.append(row);
     });
   }
 
   private getBuildingLevel(buildingId: BuildingId) {
-    return this.state.buildings[buildingId] ?? 0;
+    return this.state.levels[buildingId] ?? 0;
   }
 
-  private getUpgradeBlockedReason(building: BuildingDefinition, targetLevel: number): string | null {
-    if (targetLevel > building.maxLevel) return 'Max level reached';
+  private isUnlocked(building: BuildingDefinition) {
+    if (building.id === 'hq') return true;
+    return this.getBuildingLevel('hq') >= building.unlockAtHq;
+  }
 
-    if (building.id !== 'hq' && this.getBuildingLevel('hq') < building.hqRequired) {
-      return `Requires HQ ${building.hqRequired}`;
-    }
-
-    if (this.state.queue.length >= MVP_QUEUE_CAP) return `Queue full (${MVP_QUEUE_CAP}/${MVP_QUEUE_CAP})`;
-
-    if (this.state.queue.some((entry) => entry.buildingId === building.id)) {
-      return 'Already in queue';
-    }
+  private getBlockedReason(building: BuildingDefinition, targetLevel: number): string | null {
+    if (!this.isUnlocked(building)) return `Requires HQ ${building.unlockAtHq}`;
+    if (targetLevel > building.maxLevel) return 'Max level';
+    if (this.state.queue.length >= QUEUE_CAP) return `Queue full (${QUEUE_CAP}/${QUEUE_CAP})`;
+    if (this.state.queue.some((entry) => entry.buildingId === building.id)) return 'Already queued';
 
     const cost = this.getUpgradeCost(building, targetLevel);
     if (!this.canAfford(cost)) return 'Not enough resources';
-
     return null;
   }
 
   private startConstruction(building: BuildingDefinition, targetLevel: number) {
-    const blockedReason = this.getUpgradeBlockedReason(building, targetLevel);
+    const blockedReason = this.getBlockedReason(building, targetLevel);
     if (blockedReason) return;
 
     const cost = this.getUpgradeCost(building, targetLevel);
@@ -447,84 +497,82 @@ export class CityFoundationMode implements RenderModeController {
     this.state.resources.iron -= cost.iron;
 
     const startedAtMs = Date.now();
-    const endsAtMs = startedAtMs + this.getBuildDurationMs(building, targetLevel);
-
     this.state.queue.push({
       buildingId: building.id,
       targetLevel,
       startedAtMs,
-      endsAtMs,
+      endsAtMs: startedAtMs + this.getBuildDurationMs(building, targetLevel),
       costPaid: cost,
     });
   }
 
   private resolveCompletedConstruction() {
     const now = Date.now();
-    const completed = this.state.queue.filter((entry) => entry.endsAtMs <= now);
-    if (!completed.length) return false;
+    const complete = this.state.queue.filter((entry) => entry.endsAtMs <= now);
+    if (!complete.length) return false;
 
-    completed.forEach((entry) => {
-      this.state.buildings[entry.buildingId] = Math.max(this.state.buildings[entry.buildingId], entry.targetLevel);
+    complete.forEach((entry) => {
+      this.state.levels[entry.buildingId] = entry.targetLevel;
     });
-
     this.state.queue = this.state.queue.filter((entry) => entry.endsAtMs > now);
+
     return true;
   }
 
-  private canAfford(cost: ResourceBundle) {
-    return this.state.resources.ore >= cost.ore && this.state.resources.stone >= cost.stone && this.state.resources.iron >= cost.iron;
-  }
-
   private getUpgradeCost(building: BuildingDefinition, targetLevel: number): ResourceBundle {
-    const scale = Math.pow(1.32, Math.max(0, targetLevel - 1));
+    const multiplier = Math.pow(1.34, Math.max(0, targetLevel - 1));
     return {
-      ore: Math.round(building.baseCost.ore * scale),
-      stone: Math.round(building.baseCost.stone * scale),
-      iron: Math.round(building.baseCost.iron * scale),
+      ore: Math.round(building.baseCost.ore * multiplier),
+      stone: Math.round(building.baseCost.stone * multiplier),
+      iron: Math.round(building.baseCost.iron * multiplier),
     };
   }
 
   private getBuildDurationMs(building: BuildingDefinition, targetLevel: number) {
-    const scale = Math.pow(1.2, Math.max(0, targetLevel - 1));
-    return Math.round(building.baseBuildSeconds * scale * 1000);
+    const multiplier = Math.pow(1.2, Math.max(0, targetLevel - 1));
+    return Math.round(building.baseBuildSeconds * multiplier * 1000);
   }
 
   private getProductionPerHour(): ResourceBundle {
-    const hqLevel = this.getBuildingLevel('hq');
-    const mineLevel = this.getBuildingLevel('mine');
-    const quarryLevel = this.getBuildingLevel('quarry');
-    const refineryLevel = this.getBuildingLevel('refinery');
-
     return {
-      ore: 35 + mineLevel * 24 + hqLevel * 3,
-      stone: 22 + quarryLevel * 20 + hqLevel * 2,
-      iron: refineryLevel > 0 ? 8 + refineryLevel * 15 : 0,
+      ore: this.getBuildingLevel('mine') * (BUILDINGS.find((building) => building.id === 'mine')?.production.ore ?? 0),
+      stone: this.getBuildingLevel('quarry') * (BUILDINGS.find((building) => building.id === 'quarry')?.production.stone ?? 0),
+      iron: this.getBuildingLevel('refinery') * (BUILDINGS.find((building) => building.id === 'refinery')?.production.iron ?? 0),
     };
   }
 
   private getStorageCaps(): ResourceBundle {
     const warehouseLevel = this.getBuildingLevel('warehouse');
-    const factor = 1 + warehouseLevel * 0.24;
+    const storageScale = 1 + warehouseLevel * 0.48;
     return {
-      ore: Math.round(this.state.baseStorage.ore * factor),
-      stone: Math.round(this.state.baseStorage.stone * factor),
-      iron: Math.round(this.state.baseStorage.iron * factor),
+      ore: Math.round(this.state.baseStorage.ore * storageScale),
+      stone: Math.round(this.state.baseStorage.stone * storageScale),
+      iron: Math.round(this.state.baseStorage.iron * storageScale),
     };
   }
 
-  private getPopulationUsage() {
+  private getPopulationSnapshot() {
     const housingLevel = this.getBuildingLevel('housing_complex');
     const cap = this.state.basePopulationCap + housingLevel * 120;
-
-    const used = BUILDINGS.reduce((sum, building) => {
-      return sum + this.getBuildingLevel(building.id) * building.populationPerLevel;
-    }, 0);
-
+    const used = BUILDINGS.reduce((sum, building) => sum + this.getBuildingLevel(building.id) * building.populationPerLevel, 0);
     return { used, cap };
   }
 
-  private getUsedBuildingSlots() {
-    return BUILDINGS.filter((building) => this.getBuildingLevel(building.id) > 0).length;
+  private getUsedSlots() {
+    return BUILDINGS.reduce((sum, building) => (this.getBuildingLevel(building.id) > 0 ? sum + 1 : sum), 0);
+  }
+
+  private getBuildingEffectText(building: BuildingDefinition, currentLevel: number) {
+    if (building.id === 'mine') return `+${currentLevel * (building.production.ore ?? 0)} Ore / h`;
+    if (building.id === 'quarry') return `+${currentLevel * (building.production.stone ?? 0)} Stone / h`;
+    if (building.id === 'refinery') return `+${currentLevel * (building.production.iron ?? 0)} Iron / h`;
+    if (building.id === 'warehouse') return `Storage boost x${(1 + currentLevel * 0.48).toFixed(2)}`;
+    if (building.id === 'housing_complex') return `Population cap +${currentLevel * 120}`;
+    return `Unlocks city progression (HQ ${currentLevel})`;
+  }
+
+  private canAfford(cost: ResourceBundle) {
+    return this.state.resources.ore >= cost.ore && this.state.resources.stone >= cost.stone && this.state.resources.iron >= cost.iron;
   }
 
   private applyClaimOnAccess() {
@@ -532,62 +580,69 @@ export class CityFoundationMode implements RenderModeController {
     const elapsedMs = Math.max(0, now - this.state.lastUpdatedAtMs);
     if (elapsedMs <= 0) return;
 
-    const production = this.getProductionPerHour();
-    const caps = this.getStorageCaps();
     const elapsedHours = elapsedMs / (1000 * 60 * 60);
+    const production = this.getProductionPerHour();
+    const storage = this.getStorageCaps();
 
-    this.state.resources.ore = Math.min(caps.ore, this.state.resources.ore + production.ore * elapsedHours);
-    this.state.resources.stone = Math.min(caps.stone, this.state.resources.stone + production.stone * elapsedHours);
-    this.state.resources.iron = Math.min(caps.iron, this.state.resources.iron + production.iron * elapsedHours);
-
+    this.state.resources.ore = Math.min(storage.ore, this.state.resources.ore + production.ore * elapsedHours);
+    this.state.resources.stone = Math.min(storage.stone, this.state.resources.stone + production.stone * elapsedHours);
+    this.state.resources.iron = Math.min(storage.iron, this.state.resources.iron + production.iron * elapsedHours);
     this.state.lastUpdatedAtMs = now;
   }
 }
 
-function getBuildingDefinition(buildingId: BuildingId) {
+function getBuilding(buildingId: BuildingId) {
   return BUILDINGS.find((building) => building.id === buildingId) ?? null;
 }
 
 /**
- * TODO(coinage-data): replace this seeded fallback with real city/account payload once backend city endpoints are connected.
- * This adapter intentionally mirrors MVP-only Coinage systems (Ore/Stone/Iron, HQ gating, fixed slots, F2P queue=2).
+ * Single source of truth adapter for city mode while backend city payload is not wired.
+ * TODO(coinage-data): replace this adapter with real getCityState(planetId) API payload.
  */
-function createFallbackMvpCityState(planet: SelectedPlanetRef): CityMvpState {
-  const profile = planetProfileFromSeed(planet.seed);
-  const seed = planet.seed >>> 0;
-  const hqLevel = 1 + (seed % 2);
+function getCityState(planet: SelectedPlanetRef, archetype: PlanetArchetype): CityState {
+  const cached = CITY_STATE_CACHE.get(planet.id);
+  if (cached) return cached;
 
-  return {
-    owner: `Cmdr-${((seed % 9000) + 100).toString(36).toUpperCase()}`,
-    archetype: profile.archetype,
-    citySlotTotal: 10 + (seed % 6),
-    buildings: {
-      hq: hqLevel,
-      mine: 1 + ((seed >> 4) % 2),
-      quarry: 1 + ((seed >> 6) % 2),
-      refinery: hqLevel >= 3 ? 1 : 0,
-      warehouse: 1 + ((seed >> 8) % 2),
-      housing_complex: 1 + ((seed >> 10) % 2),
+  const state: CityState = {
+    planetId: planet.id,
+    owner: buildOwnerLabel(planet.id),
+    archetype,
+    levels: {
+      hq: 1,
+      mine: 1,
+      quarry: 1,
+      warehouse: 1,
+      housing_complex: 1,
     },
     resources: {
-      ore: 260 + (seed % 180),
-      stone: 190 + ((seed >> 4) % 140),
-      iron: 90 + ((seed >> 8) % 90),
+      ore: 520,
+      stone: 340,
+      iron: 180,
     },
     queue: [],
-    lastUpdatedAtMs: Date.now(),
-    baseStorage: { ore: 500, stone: 300, iron: 200 },
+    citySlotTotal: 15,
+    baseStorage: {
+      ore: 500,
+      stone: 300,
+      iron: 200,
+    },
     basePopulationCap: 260,
+    lastUpdatedAtMs: Date.now(),
   };
+
+  CITY_STATE_CACHE.set(planet.id, state);
+  return state;
+}
+
+function buildOwnerLabel(planetId: string) {
+  const compact = planetId.replace(/[^a-z0-9]/gi, '').toUpperCase();
+  return `CMDR-${(compact || '001').slice(0, 4).padEnd(3, '0')}`;
 }
 
 function formatDuration(durationMs: number) {
-  const totalSeconds = Math.max(0, Math.ceil(durationMs / 1000));
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (hours > 0) return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
-  if (minutes > 0) return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
-  return `${seconds}s`;
+  const seconds = Math.max(0, Math.ceil(durationMs / 1000));
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  if (minutes <= 0) return `${remainder}s`;
+  return `${minutes}m ${remainder.toString().padStart(2, '0')}s`;
 }

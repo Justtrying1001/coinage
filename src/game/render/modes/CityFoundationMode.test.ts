@@ -22,6 +22,23 @@ function mountMode() {
 }
 
 describe('CityFoundationMode MVP alignment', () => {
+  it('uses deterministic MVP start state with refinery locked behind HQ 3', () => {
+    const { host, mode } = mountMode();
+
+    const text = host.textContent ?? '';
+    expect(text).toContain('HQ');
+    expect(text).toContain('Mine');
+    expect(text).toContain('Quarry');
+    expect(text).toContain('Warehouse');
+    expect(text).toContain('Housing Complex');
+    expect(text).toContain('Requires HQ 3');
+    expect(text).toContain('LVL 1');
+    expect(text).not.toContain('LVL 2');
+
+    mode.destroy();
+    host.remove();
+  });
+
   it('renders only Ore/Stone/Iron resources in city strip', () => {
     const { host, mode } = mountMode();
 
@@ -41,19 +58,16 @@ describe('CityFoundationMode MVP alignment', () => {
   it('enforces MVP queue cap of 2 concurrent constructions', () => {
     const { host, mode } = mountMode();
 
-    for (let attempt = 0; attempt < 12; attempt += 1) {
-      const queueText = host.textContent ?? '';
-      if (queueText.includes('Queue occupancy: 2/2')) break;
-      const nextButton = [...host.querySelectorAll<HTMLButtonElement>('.city-management__upgrade')].find((button) => !button.disabled);
-      if (!nextButton) break;
-      nextButton.click();
-    }
+    const mineButton = host.querySelector<HTMLButtonElement>('.city-management__upgrade[data-building-id=\"mine\"]');
+    const quarryButton = host.querySelector<HTMLButtonElement>('.city-management__upgrade[data-building-id=\"quarry\"]');
+    expect(mineButton).not.toBeNull();
+    expect(quarryButton).not.toBeNull();
 
-    const queueCountAfterTwo = host.querySelectorAll('.city-management__queue-item').length;
-    expect(queueCountAfterTwo).toBe(2);
+    mineButton!.click();
+    quarryButton!.click();
 
     const queueText = host.textContent ?? '';
-    expect(queueText).toContain('Queue occupancy: 2/2');
+    expect(queueText).toContain('Queue: 2/2');
     expect(queueText).toContain('Queue full (2/2)');
 
     mode.destroy();
