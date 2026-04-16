@@ -336,3 +336,77 @@
 - Tous les bâtiments atteignent >=24h au niveau 20.
 - Timers: toutes les valeurs finissent par 0/5.
 - À playtester encore: ressenti exact de friction entre L11-L15 pour les profils militaires agressifs.
+
+## 6. Inventaire complet du contenu bâtiment (MVP + V0 + later)
+
+> Cette section est la vue **full-content** canonique pour la progression bâtiment.  
+> Le runtime actif reste `src/game/city/economy/cityEconomyConfig.ts` (subset implémenté), et la source de vérité full-content est `src/game/city/economy/cityContentCatalog.ts`.
+
+| Building ID | Nom | Catégorie | Scope phase | Statut définition | Runtime implémenté | Notes de complétude |
+| --- | --- | --- | --- | --- | --- | --- |
+| hq | HQ | economy | MVP | fully_defined | Oui | Table 1→20 complète active |
+| mine | Mine | economy | MVP | fully_defined | Oui | Table 1→20 complète active |
+| quarry | Quarry | economy | MVP | fully_defined | Oui | Table 1→20 complète active |
+| refinery | Refinery | economy | MVP | fully_defined | Oui | Table 1→20 complète active |
+| warehouse | Warehouse | support_logistics | MVP | fully_defined | Oui | Caps absolus 1→20 complets |
+| housing_complex | Housing Complex | support_logistics | MVP | fully_defined | Oui | Bonus pop 1→20 complet |
+| barracks | Barracks | military | V0 | fully_defined | Oui | Coûts/temps/pop complets, effets de niveau encore minimalistes |
+| combat_forge | Combat Forge | military | V0 | fully_defined | Oui | Coûts/temps/pop complets, effets de niveau encore minimalistes |
+| space_dock | Space Dock (Hub de déploiement) | military | V0 | fully_defined | Oui | Coûts/temps/pop complets, unités projection partielles |
+| defensive_wall | Mur défensif | defense | later | partially_defined | Non | Rôle défini, tables valeurs manquantes |
+| watch_tower | Tour de guet | defense | later | partially_defined | Non | Rôle macro défensif/intel défini, valeurs manquantes |
+| military_academy | Académie militaire | military | later | partially_defined | Non | Branche intentionnelle, design détaillé manquant |
+| armament_factory | Usine d’armement | military | later | partially_defined | Non | Branche intentionnelle, design détaillé manquant |
+| intelligence_center | Centre d’espionnage | intelligence | later | partially_defined | Non | Paliers missions définis (1/5/10/15/20), tables coûts/temps manquantes |
+| research_lab | Laboratoire de recherche | research | later | partially_defined | Non | RC formula connue, tables bâtiment manquantes |
+| market | Marché | support_logistics | later | partially_defined | Non | Fonction trading définie, tables et limites manquantes |
+| council_chamber | Council Chamber | governance | later | partially_defined | Non | Rôle gouvernance connu, effets bâtiment non spécifiés |
+
+## 7. Graphe de prérequis étendu (full-content)
+
+### 7.1 Tronc principal (actif)
+- `HQ` est la spine centrale.
+- `HQ 1` → Mine, Quarry, Warehouse, Housing Complex.
+- `HQ 3 + Mine 4 + Quarry 4` → Refinery.
+- `HQ 2 + Housing 2` → Barracks.
+- `HQ 6 + Barracks 8 + Refinery 5` → Combat Forge.
+- `HQ 10 + Combat Forge 5 + Refinery 6` → Space Dock.
+
+### 7.2 Branches full-game (intégrées au catalogue, non implémentées runtime)
+- Défense: `HQ 4+` → Defensive Wall ; `HQ 5+` → Watch Tower.
+- Intelligence: `HQ 4+` → Intelligence Center.
+- Recherche: `HQ 4+` → Research Lab.
+- Trading: `HQ 5+` → Market.
+- Gouvernance locale: `HQ 8+` → Council Chamber.
+- Militaire avancé later: `HQ 12+` → Military Academy + Armament Factory.
+
+### 7.3 Intentions gameplay des branches (sans fake-finalisation)
+- Défense: amplifier la résilience locale et l’anti-snowball de siège.
+- Intelligence: brancher vault d’Iron + missions d’espionnage.
+- Recherche: structurer la capacité RC et les 6 branches techno.
+- Trading: flux logistiques inter-villes et spécialisation économique.
+- Gouvernance: interface locale vers le système Conseil/faction.
+
+## 8. Statut de complétude valeurs (bâtiments)
+
+| Domaine valeur | Actif (MVP/V0 runtime) | Later (catalogue full-content) |
+| --- | --- | --- |
+| Coûts ressources | Confirmés | Majoritairement manquants / placeholders requis |
+| Temps construction | Confirmés | Majoritairement manquants / placeholders requis |
+| Coût population | Confirmés pour subset actif | Majoritairement manquants / questions design ouvertes |
+| Effets | Confirmés sur économie/stockage/pop | Partiels (rôle défini, quantification manquante) |
+| Paliers/prérequis | Confirmés sur subset actif | Partiels mais explicités dans le catalogue |
+
+## 9. Référence unités / troupes
+
+- Le catalogue unités full-content est détaillé dans `docs/06-Troupes-Formation.md`.
+- Les unités runtime actives restent documentées en section 4 ci-dessus (subset implémenté).
+
+## 10. Contenu différé (hors périmètre de balance actuel)
+
+Les branches prestige/premium/special sont **retirées du périmètre actif de balancing** pour stabiliser d’abord le coeur économie + militaire:
+
+- `training_grounds` (prestige)
+- `shard_vault` (premium)
+
+Elles sont conservées dans le code via un catalogue différé dédié (`DEFERRED_BUILDING_CATALOG`) pour réintégration ultérieure après stabilisation du core-game.
