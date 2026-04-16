@@ -267,7 +267,9 @@ export class CityFoundationMode implements RenderModeController {
     });
   }
 
-    const items = [`City ${this.state.planetId.toUpperCase()}`, `Planet: ${this.state.archetype.toUpperCase()}`, `Owner: ${this.state.owner}`];
+  private getIdentityItems() {
+    return [`City ${this.state.planetId.toUpperCase()}`, `Planet: ${this.state.archetype.toUpperCase()}`, `Owner: ${this.state.owner}`];
+  }
 
   private getVisibleCatalog() {
     return BUILDING_CATALOG.filter((building) => {
@@ -374,9 +376,7 @@ export class CityFoundationMode implements RenderModeController {
         this.state.economy = result.state.economy;
         this.renderAll();
       });
-    }
-
-    this.selectedPanel.append(header, currentState, nextUpgrade, requirements, specialized, costTime, relatedQueue, action);
+    });
   }
 
   private getRequirementsUnlockBlock(catalog: CatalogBuilding, operation: BuildingDefinition | null): BuildingOpsSpecializedBlock {
