@@ -196,24 +196,13 @@ export class CityFoundationMode implements RenderModeController {
 
     const left = document.createElement('div');
     left.className = 'city-management__header-left';
-
-    const brand = document.createElement('span');
-    brand.className = 'city-management__brand';
-    brand.textContent = 'Coinage Command';
-
-    const nav = document.createElement('nav');
-    nav.className = 'city-management__top-nav';
-    ['City', 'Build', 'Resources'].forEach((item, index) => {
-      const tab = document.createElement('span');
-      tab.className = `city-management__top-nav-item${index === 0 ? ' is-active' : ''}`;
-      tab.textContent = item;
-      nav.append(tab);
-    });
-
+    const title = document.createElement('h2');
+    title.className = 'city-management__header-title';
+    title.textContent = 'City Operations';
     const identity = document.createElement('div');
     identity.className = 'city-management__header-identity';
     this.headerIdentity = identity;
-    left.append(brand, nav, identity);
+    left.append(title, identity);
 
     const right = document.createElement('div');
     right.className = 'city-management__header-right';
@@ -241,7 +230,9 @@ export class CityFoundationMode implements RenderModeController {
     backGalaxy.textContent = 'Galaxy';
     backGalaxy.addEventListener('click', () => this.context.onRequestMode('galaxy2d'));
 
-    right.append(backGalaxy, backPlanet, switcher);
+    const resource = this.createResourceBar();
+    resource.classList.add('city-management__resource-bar--header');
+    right.append(resource, switcher, backPlanet, backGalaxy);
     header.append(left, right);
 
     return header;
@@ -256,87 +247,28 @@ export class CityFoundationMode implements RenderModeController {
 
   private createBodyLayout() {
     const layout = document.createElement('div');
-    layout.className = 'city-management__layout';
-
-    const rail = document.createElement('aside');
-    rail.className = 'city-management__rail';
-
-    const railContext = document.createElement('div');
-    railContext.className = 'city-management__rail-context';
-
-    const railTitle = document.createElement('p');
-    railTitle.className = 'city-management__rail-title';
-    railTitle.textContent = 'Coinage City';
-    const railSub = document.createElement('p');
-    railSub.className = 'city-management__rail-subtitle';
-    railSub.textContent = this.state.owner;
-    railContext.append(railTitle, railSub);
-
-    const railItems = ['City', 'Build', 'Queue', 'Overview'];
-    const railNav = document.createElement('div');
-    railNav.className = 'city-management__rail-nav';
-    railItems.forEach((item, index) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = `city-management__rail-btn${index === 0 ? ' is-active' : ''}`;
-      button.textContent = item;
-      railNav.append(button);
-    });
-
-    const railCta = document.createElement('button');
-    railCta.type = 'button';
-    railCta.className = 'city-management__rail-cta';
-    railCta.textContent = 'Deploy Assets';
-
-    const railFooter = document.createElement('div');
-    railFooter.className = 'city-management__rail-footer';
-    railFooter.textContent = 'Alerts · Help';
-
-    rail.append(railContext, railNav, railCta, railFooter);
+    layout.className = 'city-management__ops-layout';
 
     const left = document.createElement('section');
-    left.className = 'city-management__left';
+    left.className = 'city-management__ops-left';
 
+    const overviewTitle = document.createElement('h3');
+    overviewTitle.className = 'city-management__section-title';
+    overviewTitle.textContent = 'City Overview';
     const meta = document.createElement('div');
-    meta.className = 'city-management__city-meta';
-    this.cityMetaStrip = meta;
+    meta.className = 'city-management__summary-panel';
+    this.summaryPanel = meta;
 
-    const stage = document.createElement('div');
-    stage.className = 'city-management__city-stage';
-
-    const stageFrame = document.createElement('div');
-    stageFrame.className = 'city-management__stage-frame';
-
-    const skyline = document.createElement('div');
-    skyline.className = 'city-management__reserved-zone city-management__reserved-zone--sky';
-    skyline.textContent = 'Orbital Operations Lane';
-
-    const reserveRow = document.createElement('div');
-    reserveRow.className = 'city-management__reserve-row';
-    const ground = document.createElement('div');
-    ground.className = 'city-management__reserved-zone city-management__reserved-zone--ground';
-    ground.textContent = 'Future Ground Unit Zone';
-    const air = document.createElement('div');
-    air.className = 'city-management__reserved-zone city-management__reserved-zone--air';
-    air.textContent = 'Future Air / Fleet Zone';
-    reserveRow.append(ground, air);
-
+    const buildingTitle = document.createElement('h3');
+    buildingTitle.className = 'city-management__section-title';
+    buildingTitle.textContent = 'Buildings';
     const buildingGrid = document.createElement('div');
-    buildingGrid.className = 'city-management__building-grid city-management__stage-map';
+    buildingGrid.className = 'city-management__ops-grid';
     this.buildingsGrid = buildingGrid;
-
-    stageFrame.append(skyline, buildingGrid, reserveRow);
-    stage.append(stageFrame);
-    left.append(meta, stage);
+    left.append(overviewTitle, meta, buildingTitle, buildingGrid);
 
     const right = document.createElement('aside');
-    right.className = 'city-management__right';
-
-    const resourceTitle = document.createElement('h3');
-    resourceTitle.className = 'city-management__section-title';
-    resourceTitle.textContent = 'Resources';
-
-    const resource = this.createResourceBar();
+    right.className = 'city-management__ops-right';
 
     const selectedTitle = document.createElement('h3');
     selectedTitle.className = 'city-management__section-title';
@@ -354,16 +286,8 @@ export class CityFoundationMode implements RenderModeController {
     queue.className = 'city-management__queue-panel';
     this.queuePanel = queue;
 
-    const summaryTitle = document.createElement('h3');
-    summaryTitle.className = 'city-management__section-title';
-    summaryTitle.textContent = 'City Stats';
-
-    const summary = document.createElement('div');
-    summary.className = 'city-management__summary-panel';
-    this.summaryPanel = summary;
-
-    right.append(resourceTitle, resource, summaryTitle, summary, selectedTitle, selected, queueTitle, queue);
-    layout.append(rail, left, right);
+    right.append(selectedTitle, selected, queueTitle, queue);
+    layout.append(left, right);
 
     return layout;
   }
@@ -371,7 +295,6 @@ export class CityFoundationMode implements RenderModeController {
   private renderAll() {
     this.applyClaimOnAccess();
     this.renderHeader();
-    this.renderCityMeta();
     this.renderResourceBar();
     this.renderBuildings();
     this.renderSelectedBuilding();
@@ -400,7 +323,8 @@ export class CityFoundationMode implements RenderModeController {
 
   private renderHeader() {
     if (!this.headerIdentity) return;
-    this.headerIdentity.textContent = `CITY ${this.state.planetId.toUpperCase()} · ${this.state.archetype.toUpperCase()} · ${this.state.owner}`;
+    const pop = this.getPopulationSnapshot();
+    this.headerIdentity.textContent = `City ${this.state.planetId.toUpperCase()} · ${this.state.archetype.toUpperCase()} · Owner ${this.state.owner} · Slots ${this.getUsedSlots()}/${this.state.citySlotTotal} · Pop ${pop.used}/${pop.cap} · Queue ${this.state.queue.length}/${QUEUE_CAP}`;
   }
 
   private renderResourceBar() {
@@ -444,55 +368,52 @@ export class CityFoundationMode implements RenderModeController {
     if (!this.buildingsGrid) return;
     this.buildingsGrid.innerHTML = '';
 
-    const slotOrder: BuildingId[] = ['hq', 'mine', 'quarry', 'refinery', 'warehouse', 'housing_complex'];
-    slotOrder.forEach((buildingId) => {
-      const building = getBuilding(buildingId);
+    BUILDINGS.forEach((building) => {
       if (!building) return;
       const card = document.createElement('article');
-      card.className = `city-management__building-card city-management__building-slot city-management__building-slot--${building.id}`;
+      card.className = 'city-management__building-op-card';
       card.dataset.buildingId = building.id;
-
-      const unlocked = this.isUnlocked(building);
-      if (!unlocked) card.classList.add('is-locked');
       if (this.selectedBuildingId === building.id) card.classList.add('is-selected');
 
       const currentLevel = this.getBuildingLevel(building.id);
       const nextLevel = currentLevel + 1;
-      const glyph = document.createElement('div');
+      const unlocked = this.isUnlocked(building);
+      const glyph = document.createElement('span');
       glyph.className = 'city-management__building-glyph';
       glyph.textContent = getBuildingGlyph(building.id);
+      const name = document.createElement('p');
+      name.className = 'city-management__building-name';
+      name.textContent = building.name;
+      const level = document.createElement('span');
+      level.className = 'city-management__building-level';
+      level.textContent = unlocked ? `LVL ${currentLevel}` : 'LOCKED';
 
       const blockedReason = this.getBlockedReason(building, nextLevel);
-      const upgradeHook = this.createHiddenUpgradeTrigger(building, nextLevel, blockedReason);
+      const info = document.createElement('p');
+      info.className = 'city-management__building-status';
+      info.textContent = this.getBuildingQuickInfo(building, currentLevel);
+
+      const action = document.createElement('button');
+      action.type = 'button';
+      action.className = 'city-management__upgrade';
+      action.dataset.buildingId = building.id;
+      action.disabled = blockedReason !== null;
+      action.textContent = blockedReason ?? 'Upgrade';
+      action.addEventListener('click', (event) => {
+        event.stopPropagation();
+        this.applyClaimOnAccess();
+        this.startConstruction(building, nextLevel);
+        this.renderAll();
+      });
 
       card.addEventListener('click', () => {
         this.selectedBuildingId = building.id;
-        this.renderBuildings();
         this.renderSelectedBuilding();
+        this.renderBuildings();
       });
-
-      if (building.id === 'hq') {
-        card.append(this.createHqCoreModule(building.name, currentLevel, glyph), upgradeHook);
-      } else {
-        card.classList.add('city-management__building-marker-shell');
-        card.append(this.createStructureMarker(building.name, currentLevel, blockedReason, glyph), upgradeHook);
-      }
+      card.append(glyph, name, level, info, action);
       this.buildingsGrid!.append(card);
     });
-
-    const emptySlots = Math.max(0, this.state.citySlotTotal - BUILDINGS.length);
-    const emptyVisible = Math.min(5, emptySlots);
-    for (let i = 0; i < emptyVisible; i += 1) {
-      const pad = document.createElement('button');
-      pad.type = 'button';
-      pad.className = `city-management__empty-pad city-management__empty-pad--${i + 1}`;
-      pad.textContent = `Open Slot ${i + 1}`;
-      pad.addEventListener('click', () => {
-        this.selectedBuildingId = 'hq';
-        this.renderSelectedBuilding();
-      });
-      this.buildingsGrid!.append(pad);
-    }
   }
 
   private createHqCoreModule(name: string, level: number, glyph: HTMLDivElement) {
@@ -566,6 +487,15 @@ export class CityFoundationMode implements RenderModeController {
     return action;
   }
 
+  private getBuildingQuickInfo(building: BuildingDefinition, currentLevel: number) {
+    if (building.id === 'mine') return `Production ${currentLevel * (building.production.ore ?? 0)} Ore/h`;
+    if (building.id === 'quarry') return `Production ${currentLevel * (building.production.stone ?? 0)} Stone/h`;
+    if (building.id === 'refinery') return `Production ${currentLevel * (building.production.iron ?? 0)} Iron/h`;
+    if (building.id === 'warehouse') return `Storage x${(1 + currentLevel * 0.48).toFixed(2)}`;
+    if (building.id === 'housing_complex') return `Population +${currentLevel * 120}`;
+    return `City progression anchor`;
+  }
+
   private renderSelectedBuilding() {
     if (!this.selectedPanel) return;
     this.selectedPanel.innerHTML = '';
@@ -590,6 +520,10 @@ export class CityFoundationMode implements RenderModeController {
     effect.className = 'city-management__selected-effect';
     effect.textContent = this.getBuildingEffectText(building, currentLevel);
 
+    const specialized = document.createElement('div');
+    specialized.className = 'city-management__selected-specialized';
+    specialized.textContent = this.getSpecializedOperationsText(building, currentLevel);
+
     const costLine = document.createElement('p');
     costLine.className = 'city-management__building-meta';
     costLine.textContent = `Upgrade Cost: Ore ${cost.ore} · Stone ${cost.stone} · Iron ${cost.iron}`;
@@ -609,7 +543,26 @@ export class CityFoundationMode implements RenderModeController {
       this.renderAll();
     });
 
-    this.selectedPanel.append(title, level, effect, costLine, duration, action);
+    this.selectedPanel.append(title, level, effect, specialized, costLine, duration, action);
+  }
+
+  private getSpecializedOperationsText(building: BuildingDefinition, currentLevel: number) {
+    if (building.id === 'hq') {
+      const nextUnlock = BUILDINGS.find((item) => this.getBuildingLevel(item.id) === 0 && this.getBuildingLevel('hq') + 1 >= item.unlockAtHq);
+      return `Progression: HQ controls unlock tiers. Next unlock target: ${nextUnlock?.name ?? 'No pending unlock'}.`;
+    }
+    if (building.id === 'mine' || building.id === 'quarry' || building.id === 'refinery') {
+      const current = this.getBuildingEffectText(building, currentLevel);
+      const next = this.getBuildingEffectText(building, currentLevel + 1);
+      return `Production Ops: Current ${current}. Next level ${next}.`;
+    }
+    if (building.id === 'warehouse') {
+      const currentBoost = (1 + currentLevel * 0.48).toFixed(2);
+      const nextBoost = (1 + (currentLevel + 1) * 0.48).toFixed(2);
+      return `Storage Ops: current boost x${currentBoost}, next boost x${nextBoost}.`;
+    }
+    const pop = this.getPopulationSnapshot();
+    return `Population Ops: cap ${pop.cap}, used ${pop.used}, next level adds +120 cap.`;
   }
 
   private renderQueue() {
