@@ -1,189 +1,38 @@
+import {
+  canStartConstruction,
+  getBuildingConfig,
+  getBuildingLevel,
+  getConstructionQueueSlots,
+  getEconomyBuildingOrder,
+  getPopulationSnapshot,
+  getProductionPerHour,
+  getStorageCaps,
+  isBuildingUnlocked,
+  type CityEconomyState,
+} from '@/game/city/economy/cityEconomySystem';
+import {
+  loadCityEconomyState,
+  startCityBuildingUpgrade,
+  type CityPersistenceContext,
+} from '@/game/city/economy/cityEconomyPersistence';
+import type { EconomyBuildingId, EconomyResource } from '@/game/city/economy/cityEconomyConfig';
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
 import type { PlanetArchetype, SelectedPlanetRef } from '@/game/render/types';
 import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
-
-type CoinageResource = 'ore' | 'stone' | 'iron';
-type BuildingId = 'hq' | 'mine' | 'quarry' | 'refinery' | 'warehouse' | 'housing_complex';
-type CatalogBuildingId =
-  | BuildingId
-  | 'barracks'
-  | 'research_lab'
-  | 'market'
-  | 'spy_center'
-  | 'dock'
-  | 'academy'
-  | 'shipyard'
-  | 'wall'
-  | 'senate';
-type LocalCitySection = 'city' | 'buildings' | 'military' | 'research' | 'espionage' | 'trade' | 'governance';
-type BuildingCategory = 'economy' | 'military' | 'research' | 'espionage' | 'governance' | 'special';
-
-type ResourceBundle = Record<CoinageResource, number>;
-type BuildingLevels = Partial<Record<BuildingId, number>>;
-
-interface BuildingDefinition {
-  id: BuildingId;
-  name: string;
-  unlockAtHq: number;
-  maxLevel: number;
-  baseCost: ResourceBundle;
-  baseBuildSeconds: number;
-  production: Partial<ResourceBundle>;
-  populationPerLevel: number;
-}
-
-interface BuildingOpsSpecializedBlock {
-  title: string;
-  rows: string[];
-}
-
-interface CitySectionItem {
-  id: LocalCitySection;
-  label: string;
-  implemented: boolean;
-}
-
-interface CatalogBuilding {
-  id: CatalogBuildingId;
-  name: string;
-  category: BuildingCategory;
-  section: LocalCitySection;
-  unlockAtHq: number;
-  operationalId?: BuildingId;
-  notes?: string;
-}
-
-interface ConstructionEntry {
-  buildingId: BuildingId;
-  targetLevel: number;
-  startedAtMs: number;
-  endsAtMs: number;
-  costPaid: ResourceBundle;
-}
 
 interface CityState {
   planetId: string;
   owner: string;
   archetype: PlanetArchetype;
-  levels: BuildingLevels;
-  resources: ResourceBundle;
-  queue: ConstructionEntry[];
+  economy: CityEconomyState;
   citySlotTotal: number;
-  baseStorage: ResourceBundle;
-  basePopulationCap: number;
-  lastUpdatedAtMs: number;
 }
 
-const QUEUE_CAP = 2;
-
-const RESOURCE_LABELS: Record<CoinageResource, string> = {
+const RESOURCE_LABELS: Record<EconomyResource, string> = {
   ore: 'Ore',
   stone: 'Stone',
   iron: 'Iron',
 };
-
-const LOCAL_SECTIONS: CitySectionItem[] = [
-  { id: 'city', label: 'City', implemented: true },
-  { id: 'buildings', label: 'Buildings', implemented: true },
-  { id: 'military', label: 'Military', implemented: false },
-  { id: 'research', label: 'Research', implemented: false },
-  { id: 'espionage', label: 'Espionage', implemented: false },
-  { id: 'trade', label: 'Trade', implemented: false },
-  { id: 'governance', label: 'Governance', implemented: false },
-];
-
-const BUILDING_CATEGORIES: Array<{ id: BuildingCategory | 'all'; label: string }> = [
-  { id: 'all', label: 'All' },
-  { id: 'economy', label: 'Economy' },
-  { id: 'military', label: 'Military' },
-  { id: 'research', label: 'Research' },
-  { id: 'espionage', label: 'Espionage' },
-  { id: 'governance', label: 'Governance' },
-  { id: 'special', label: 'Special' },
-];
-
-const BUILDINGS: BuildingDefinition[] = [
-  {
-    id: 'hq',
-    name: 'HQ',
-    unlockAtHq: 1,
-    maxLevel: 20,
-    baseCost: { ore: 240, stone: 200, iron: 60 },
-    baseBuildSeconds: 95,
-    production: {},
-    populationPerLevel: 1,
-  },
-  {
-    id: 'mine',
-    name: 'Mine',
-    unlockAtHq: 1,
-    maxLevel: 20,
-    baseCost: { ore: 110, stone: 70, iron: 0 },
-    baseBuildSeconds: 65,
-    production: { ore: 42 },
-    populationPerLevel: 1,
-  },
-  {
-    id: 'quarry',
-    name: 'Quarry',
-    unlockAtHq: 1,
-    maxLevel: 20,
-    baseCost: { ore: 80, stone: 105, iron: 0 },
-    baseBuildSeconds: 68,
-    production: { stone: 34 },
-    populationPerLevel: 1,
-  },
-  {
-    id: 'refinery',
-    name: 'Refinery',
-    unlockAtHq: 3,
-    maxLevel: 20,
-    baseCost: { ore: 180, stone: 150, iron: 50 },
-    baseBuildSeconds: 78,
-    production: { iron: 21 },
-    populationPerLevel: 1,
-  },
-  {
-    id: 'warehouse',
-    name: 'Warehouse',
-    unlockAtHq: 1,
-    maxLevel: 20,
-    baseCost: { ore: 130, stone: 120, iron: 25 },
-    baseBuildSeconds: 72,
-    production: {},
-    populationPerLevel: 0,
-  },
-  {
-    id: 'housing_complex',
-    name: 'Housing Complex',
-    unlockAtHq: 1,
-    maxLevel: 20,
-    baseCost: { ore: 125, stone: 118, iron: 22 },
-    baseBuildSeconds: 70,
-    production: {},
-    populationPerLevel: 0,
-  },
-];
-
-const BUILDING_CATALOG: CatalogBuilding[] = [
-  { id: 'hq', name: 'HQ', category: 'governance', section: 'governance', unlockAtHq: 1, operationalId: 'hq' },
-  { id: 'mine', name: 'Mine', category: 'economy', section: 'buildings', unlockAtHq: 1, operationalId: 'mine' },
-  { id: 'quarry', name: 'Quarry', category: 'economy', section: 'buildings', unlockAtHq: 1, operationalId: 'quarry' },
-  { id: 'refinery', name: 'Refinery', category: 'economy', section: 'buildings', unlockAtHq: 3, operationalId: 'refinery' },
-  { id: 'warehouse', name: 'Warehouse', category: 'economy', section: 'buildings', unlockAtHq: 1, operationalId: 'warehouse' },
-  { id: 'housing_complex', name: 'Housing Complex', category: 'special', section: 'city', unlockAtHq: 1, operationalId: 'housing_complex' },
-  { id: 'barracks', name: 'Barracks', category: 'military', section: 'military', unlockAtHq: 2, notes: 'Unit recruitment surface.' },
-  { id: 'shipyard', name: 'Shipyard', category: 'military', section: 'military', unlockAtHq: 4, notes: 'Ship and defense production.' },
-  { id: 'wall', name: 'Wall', category: 'military', section: 'military', unlockAtHq: 2, notes: 'City defense multiplier.' },
-  { id: 'research_lab', name: 'Research Lab', category: 'research', section: 'research', unlockAtHq: 3, notes: 'Research queue and tech unlocks.' },
-  { id: 'academy', name: 'Academy', category: 'research', section: 'research', unlockAtHq: 2, notes: 'Research specialization bonuses.' },
-  { id: 'spy_center', name: 'Spy Center', category: 'espionage', section: 'espionage', unlockAtHq: 4, notes: 'Intel and covert operations.' },
-  { id: 'market', name: 'Market', category: 'special', section: 'trade', unlockAtHq: 2, notes: 'Trade offers and contracts.' },
-  { id: 'dock', name: 'Dock', category: 'special', section: 'trade', unlockAtHq: 5, notes: 'Fleet logistics and transports.' },
-  { id: 'senate', name: 'Senate', category: 'governance', section: 'governance', unlockAtHq: 4, notes: 'Policy and city governance actions.' },
-];
-
-const CITY_STATE_CACHE = new Map<string, CityState>();
 
 export class CityFoundationMode implements RenderModeController {
   readonly id = 'city3d' as const;
@@ -203,12 +52,15 @@ export class CityFoundationMode implements RenderModeController {
 
   private uiAccumulatorMs = 0;
   private state: CityState;
+  private persistenceContext: CityPersistenceContext;
 
   constructor(
     private selectedPlanet: SelectedPlanetRef,
     private readonly context: ModeContext,
   ) {
-    this.state = getCityState(selectedPlanet, planetProfileFromSeed(selectedPlanet.seed).archetype);
+    const owner = buildOwnerLabel(selectedPlanet.id);
+    this.persistenceContext = buildPersistenceContext(selectedPlanet.id, owner);
+    this.state = getCityState(selectedPlanet, planetProfileFromSeed(selectedPlanet.seed).archetype, this.persistenceContext);
   }
 
   mount() {
@@ -219,7 +71,6 @@ export class CityFoundationMode implements RenderModeController {
     this.context.host.appendChild(root);
     this.root = root;
 
-    this.applyClaimOnAccess();
     this.renderAll();
   }
 
@@ -230,8 +81,9 @@ export class CityFoundationMode implements RenderModeController {
     if (this.uiAccumulatorMs < 1000) return;
     this.uiAccumulatorMs = 0;
 
-    this.applyClaimOnAccess();
-    const completed = this.resolveCompletedConstruction();
+    const previousQueueSize = this.state.economy.queue.length;
+    this.refreshFromPersistence();
+    const completed = previousQueueSize > this.state.economy.queue.length;
 
     this.renderResourceBar();
     this.renderQueue();
@@ -240,14 +92,19 @@ export class CityFoundationMode implements RenderModeController {
       this.renderBuildings();
       this.renderSummary();
       this.renderHeader();
+      return;
     }
+
+    this.renderSummary();
   }
 
   setSelectedPlanet(nextPlanet: SelectedPlanetRef) {
     if (nextPlanet.id === this.selectedPlanet.id && nextPlanet.seed === this.selectedPlanet.seed) return;
     this.selectedPlanet = nextPlanet;
     const archetype = planetProfileFromSeed(nextPlanet.seed).archetype;
-    this.state = getCityState(nextPlanet, archetype);
+    const owner = buildOwnerLabel(nextPlanet.id);
+    this.persistenceContext = buildPersistenceContext(nextPlanet.id, owner);
+    this.state = getCityState(nextPlanet, archetype, this.persistenceContext);
     this.uiAccumulatorMs = 0;
     this.renderAll();
   }
@@ -368,7 +225,7 @@ export class CityFoundationMode implements RenderModeController {
   }
 
   private renderAll() {
-    this.applyClaimOnAccess();
+    this.refreshFromPersistence();
     this.renderHeader();
     this.renderResourceBar();
     this.renderLocalNav();
@@ -410,24 +267,7 @@ export class CityFoundationMode implements RenderModeController {
     });
   }
 
-  private renderCategoryTabs() {
-    if (!this.categoryTabs) return;
-    this.categoryTabs.innerHTML = '';
-
-    BUILDING_CATEGORIES.forEach((category) => {
-      const tab = document.createElement('button');
-      tab.type = 'button';
-      tab.className = 'city-management__category-tab';
-      if (this.activeCategory === category.id) tab.classList.add('is-active');
-      tab.textContent = category.label;
-      tab.addEventListener('click', () => {
-        this.activeCategory = category.id;
-        this.renderCategoryTabs();
-        this.renderBuildings();
-      });
-      this.categoryTabs!.append(tab);
-    });
-  }
+    const items = [`City ${this.state.planetId.toUpperCase()}`, `Planet: ${this.state.archetype.toUpperCase()}`, `Owner: ${this.state.owner}`];
 
   private getVisibleCatalog() {
     return BUILDING_CATALOG.filter((building) => {
@@ -451,10 +291,10 @@ export class CityFoundationMode implements RenderModeController {
     if (!this.resourceStrip) return;
     this.resourceStrip.innerHTML = '';
 
-    const production = this.getProductionPerHour();
-    const storage = this.getStorageCaps();
+    const production = getProductionPerHour(this.state.economy);
+    const storage = getStorageCaps(this.state.economy);
 
-    (Object.keys(RESOURCE_LABELS) as CoinageResource[]).forEach((resource) => {
+    (Object.keys(RESOURCE_LABELS) as EconomyResource[]).forEach((resource) => {
       const item = document.createElement('div');
       item.className = 'city-management__resource-item';
 
@@ -473,7 +313,7 @@ export class CityFoundationMode implements RenderModeController {
 
       const stock = document.createElement('p');
       stock.className = 'city-management__resource-stock';
-      stock.textContent = `${Math.floor(this.state.resources[resource]).toLocaleString()} / ${storage[resource].toLocaleString()}`;
+      stock.textContent = `${Math.floor(this.state.economy.resources[resource]).toLocaleString()} / ${storage[resource].toLocaleString()}`;
 
       const rate = document.createElement('p');
       rate.className = 'city-management__resource-rate';
@@ -488,19 +328,15 @@ export class CityFoundationMode implements RenderModeController {
     if (!this.buildingsGrid) return;
     this.buildingsGrid.innerHTML = '';
 
-    const visible = this.getVisibleCatalog();
-
-    visible.forEach((catalog) => {
+    getEconomyBuildingOrder().forEach((buildingId) => {
+      const building = getBuildingConfig(buildingId);
       const card = document.createElement('article');
-      card.className = 'city-management__building-op-card city-management__building-op-card--rich';
-      card.dataset.buildingId = catalog.id;
-      if (this.selectedBuildingId === catalog.id) card.classList.add('is-selected');
+      card.className = 'city-management__building-card';
 
-      const operation = catalog.operationalId ? getBuilding(catalog.operationalId) : null;
-      const currentLevel = operation ? this.getBuildingLevel(operation.id) : 0;
-      const nextLevel = currentLevel + 1;
-      const blockedReason = operation ? this.getBlockedReason(operation, nextLevel) : `Requires HQ ${catalog.unlockAtHq}`;
-      const unlocked = this.getBuildingLevel('hq') >= catalog.unlockAtHq;
+      const unlocked = isBuildingUnlocked(this.state.economy, buildingId);
+      if (!unlocked) card.classList.add('is-locked');
+
+      const currentLevel = getBuildingLevel(this.state.economy, buildingId);
 
       const glyph = document.createElement('span');
       glyph.className = 'city-management__building-glyph';
@@ -510,137 +346,32 @@ export class CityFoundationMode implements RenderModeController {
       name.className = 'city-management__building-name';
       name.textContent = catalog.name;
 
-      const level = document.createElement('span');
-      level.className = 'city-management__building-level';
-      level.textContent = operation ? `LVL ${currentLevel}` : unlocked ? 'PLANNED' : 'LOCKED';
+      const prodLine = document.createElement('p');
+      prodLine.className = 'city-management__building-production';
+      prodLine.textContent = this.getBuildingEffectText(buildingId, currentLevel);
 
-      const info = document.createElement('p');
-      info.className = 'city-management__building-status';
-      info.textContent = operation ? this.getBuildingQuickInfo(operation, currentLevel) : catalog.notes ?? 'Future operations building.';
+      const nextCost = building.levels[currentLevel];
+      const costLine = document.createElement('p');
+      costLine.className = 'city-management__building-meta';
+      costLine.textContent = nextCost
+        ? `Cost: Ore ${nextCost.resources.ore} · Stone ${nextCost.resources.stone} · Iron ${nextCost.resources.iron}`
+        : 'Cost: Max level reached';
 
-      const state = document.createElement('p');
-      state.className = 'city-management__building-op-state';
-      state.textContent = operation
-        ? this.getBuildingCardStateText(operation, currentLevel, blockedReason)
-        : unlocked
-          ? 'State: Planned system (not yet active)'
-          : `State: Locked · HQ ${catalog.unlockAtHq} required`;
+      const duration = document.createElement('p');
+      duration.className = 'city-management__building-meta';
+      duration.textContent = nextCost ? `Build time: ${formatDuration(nextCost.buildSeconds * 1000)}` : 'Build time: N/A';
 
       const action = document.createElement('button');
       action.type = 'button';
       action.className = 'city-management__upgrade';
-      action.dataset.buildingId = catalog.id;
-      if (operation) {
-        action.disabled = blockedReason !== null;
-        action.textContent = blockedReason ?? 'Upgrade';
-        action.addEventListener('click', (event) => {
-          event.stopPropagation();
-          this.applyClaimOnAccess();
-          this.startConstruction(operation, nextLevel);
-          this.renderAll();
-        });
-      } else {
-        action.disabled = true;
-        action.textContent = unlocked ? 'Operations pending implementation' : `Requires HQ ${catalog.unlockAtHq}`;
-      }
+      action.dataset.buildingId = buildingId;
 
-      card.addEventListener('click', () => {
-        this.selectedBuildingId = catalog.id;
-        this.renderSelectedBuilding();
-        this.renderBuildings();
-      });
-
-      card.append(glyph, name, level, info, state, action);
-      this.buildingsGrid!.append(card);
-    });
-  }
-
-  private getBuildingQuickInfo(building: BuildingDefinition, currentLevel: number) {
-    if (building.id === 'mine') return `Production ${currentLevel * (building.production.ore ?? 0)} Ore/h`;
-    if (building.id === 'quarry') return `Production ${currentLevel * (building.production.stone ?? 0)} Stone/h`;
-    if (building.id === 'refinery') return `Production ${currentLevel * (building.production.iron ?? 0)} Iron/h`;
-    if (building.id === 'warehouse') return `Storage x${(1 + currentLevel * 0.48).toFixed(2)}`;
-    if (building.id === 'housing_complex') return `Population +${currentLevel * 120}`;
-    return 'City progression anchor';
-  }
-
-  private getBuildingCardStateText(building: BuildingDefinition, currentLevel: number, blockedReason: string | null) {
-    if (!this.isUnlocked(building)) return `Locked · HQ ${building.unlockAtHq} required`;
-    if (blockedReason === 'Max level') return 'State: Maxed';
-    if (this.state.queue.some((entry) => entry.buildingId === building.id)) return `State: Upgrading to LVL ${currentLevel + 1}`;
-    return 'State: Operational';
-  }
-
-  private renderSelectedBuilding() {
-    if (!this.selectedPanel) return;
-    this.selectedPanel.innerHTML = '';
-
-    const catalog = this.getCatalogBuilding(this.selectedBuildingId);
-    if (!catalog) return;
-
-    const operation = catalog.operationalId ? getBuilding(catalog.operationalId) : null;
-    const unlocked = this.getBuildingLevel('hq') >= catalog.unlockAtHq;
-    const currentLevel = operation ? this.getBuildingLevel(operation.id) : 0;
-    const nextLevel = currentLevel + 1;
-    const blockedReason = operation ? this.getBlockedReason(operation, nextLevel) : `Requires HQ ${catalog.unlockAtHq}`;
-
-    const header = document.createElement('div');
-    header.className = 'city-management__selected-header';
-
-    const glyph = document.createElement('span');
-    glyph.className = 'city-management__selected-glyph';
-    glyph.textContent = getBuildingGlyph(catalog.id);
-
-    const titleWrap = document.createElement('div');
-    const title = document.createElement('h4');
-    title.className = 'city-management__selected-name';
-    title.textContent = catalog.name;
-
-    const level = document.createElement('p');
-    level.className = 'city-management__selected-level';
-    level.textContent = operation
-      ? unlocked
-        ? `Level ${currentLevel}`
-        : `Locked · Requires HQ ${catalog.unlockAtHq}`
-      : unlocked
-        ? 'Planned city system'
-        : `Locked · Requires HQ ${catalog.unlockAtHq}`;
-    titleWrap.append(title, level);
-    header.append(glyph, titleWrap);
-
-    const currentState = this.createSelectedBlock('Current State', [
-      operation ? this.getBuildingEffectText(operation, currentLevel) : catalog.notes ?? 'Planned building operations module.',
-    ]);
-
-    const nextUpgrade = this.createSelectedBlock('Next Level / Upgrade', [
-      operation ? this.getBuildingEffectText(operation, Math.min(operation.maxLevel, nextLevel)) : 'Upgrade path will be enabled with feature implementation.',
-    ]);
-
-    const requirements = this.createSelectedBlockFromData(this.getRequirementsUnlockBlock(catalog, operation));
-    const specialized = this.createSelectedBlockFromData(this.getSpecializedOperationsBlock(catalog, operation, currentLevel));
-    const relatedQueue = this.createSelectedBlockFromData(this.getRelatedQueueNotesBlock(catalog, operation));
-
-    const costRows = operation
-      ? [
-          `Ore ${this.getUpgradeCost(operation, nextLevel).ore} · Stone ${this.getUpgradeCost(operation, nextLevel).stone} · Iron ${this.getUpgradeCost(operation, nextLevel).iron}`,
-          `Build time: ${formatDuration(this.getBuildDurationMs(operation, nextLevel))}`,
-        ]
-      : ['Upgrade/operation costs will appear once the system is unlocked in gameplay.'];
-    const costTime = this.createSelectedBlock('Cost / Time', costRows);
-
-    const action = document.createElement('button');
-    action.type = 'button';
-    action.className = 'city-management__upgrade city-management__upgrade--selected';
-
-    if (!operation) {
-      action.disabled = true;
-      action.textContent = unlocked ? 'Operations pending implementation' : `Requires HQ ${catalog.unlockAtHq}`;
-    } else {
-      action.disabled = blockedReason !== null;
-      action.textContent = blockedReason ?? `Upgrade to Level ${nextLevel}`;
+      const guard = canStartConstruction(this.state.economy, buildingId);
+      action.disabled = !guard.ok;
+      action.textContent = guard.reason ?? 'Upgrade';
       action.addEventListener('click', () => {
-        this.applyClaimOnAccess();
-        this.startConstruction(operation, nextLevel);
+        const result = startCityBuildingUpgrade(this.persistenceContext, buildingId, Date.now());
+        this.state.economy = result.state.economy;
         this.renderAll();
       });
     }
@@ -809,9 +540,10 @@ export class CityFoundationMode implements RenderModeController {
     if (!this.queuePanel) return;
     this.queuePanel.innerHTML = '';
 
-    const sorted = this.state.queue.slice().sort((a, b) => a.endsAtMs - b.endsAtMs);
+    const sorted = this.state.economy.queue.slice().sort((a, b) => a.endsAtMs - b.endsAtMs);
+    const queueSlots = getConstructionQueueSlots();
 
-    for (let i = 0; i < QUEUE_CAP; i += 1) {
+    for (let i = 0; i < queueSlots; i += 1) {
       const slot = document.createElement('div');
       slot.className = 'city-management__queue-slot';
 
@@ -829,14 +561,14 @@ export class CityFoundationMode implements RenderModeController {
         continue;
       }
 
-      const definition = getBuilding(entry.buildingId);
+      const definition = getBuildingConfig(entry.buildingId);
       const remainingMs = Math.max(0, entry.endsAtMs - Date.now());
       const totalMs = Math.max(1, entry.endsAtMs - entry.startedAtMs);
       const progress = Math.min(100, Math.max(0, ((totalMs - remainingMs) / totalMs) * 100));
 
       const label = document.createElement('p');
       label.className = 'city-management__queue-name';
-      label.textContent = `${definition?.name ?? entry.buildingId} → lvl ${entry.targetLevel}`;
+      label.textContent = `${definition.name} → lvl ${entry.targetLevel}`;
 
       const timer = document.createElement('p');
       timer.className = 'city-management__queue-time';
@@ -858,16 +590,16 @@ export class CityFoundationMode implements RenderModeController {
     if (!this.summaryPanel) return;
     this.summaryPanel.innerHTML = '';
 
-    const storage = this.getStorageCaps();
-    const pop = this.getPopulationSnapshot();
-
+    const storage = getStorageCaps(this.state.economy);
+    const pop = getPopulationSnapshot(this.state.economy);
+    const queueSlots = getConstructionQueueSlots();
     const rows = [
       `Slots: ${this.getUsedSlots()}/${this.state.citySlotTotal}`,
       `Population: ${pop.used}/${pop.cap}`,
-      `Queue: ${this.state.queue.length}/${QUEUE_CAP}`,
-      `Storage Ore: ${storage.ore}`,
-      `Storage Stone: ${storage.stone}`,
-      `Storage Iron: ${storage.iron}`,
+      `Storage · Ore: ${storage.ore}`,
+      `Storage · Stone: ${storage.stone}`,
+      `Storage · Iron: ${storage.iron}`,
+      `Queue: ${this.state.economy.queue.length}/${queueSlots}`,
     ];
 
     rows.forEach((text) => {
@@ -878,171 +610,51 @@ export class CityFoundationMode implements RenderModeController {
     });
   }
 
-  private getBuildingLevel(buildingId: BuildingId) {
-    return this.state.levels[buildingId] ?? 0;
-  }
-
-  private isUnlocked(building: BuildingDefinition) {
-    if (building.id === 'hq') return true;
-    return this.getBuildingLevel('hq') >= building.unlockAtHq;
-  }
-
-  private getBlockedReason(building: BuildingDefinition, targetLevel: number): string | null {
-    if (!this.isUnlocked(building)) return `Requires HQ ${building.unlockAtHq}`;
-    if (targetLevel > building.maxLevel) return 'Max level';
-    if (this.state.queue.length >= QUEUE_CAP) return `Queue full (${QUEUE_CAP}/${QUEUE_CAP})`;
-    if (this.state.queue.some((entry) => entry.buildingId === building.id)) return 'Already queued';
-
-    const cost = this.getUpgradeCost(building, targetLevel);
-    if (!this.canAfford(cost)) return 'Not enough resources';
-    return null;
-  }
-
-  private startConstruction(building: BuildingDefinition, targetLevel: number) {
-    const blockedReason = this.getBlockedReason(building, targetLevel);
-    if (blockedReason) return;
-
-    const cost = this.getUpgradeCost(building, targetLevel);
-    this.state.resources.ore -= cost.ore;
-    this.state.resources.stone -= cost.stone;
-    this.state.resources.iron -= cost.iron;
-
-    const startedAtMs = Date.now();
-    this.state.queue.push({
-      buildingId: building.id,
-      targetLevel,
-      startedAtMs,
-      endsAtMs: startedAtMs + this.getBuildDurationMs(building, targetLevel),
-      costPaid: cost,
-    });
-  }
-
-  private resolveCompletedConstruction() {
-    const now = Date.now();
-    const complete = this.state.queue.filter((entry) => entry.endsAtMs <= now);
-    if (!complete.length) return false;
-
-    complete.forEach((entry) => {
-      this.state.levels[entry.buildingId] = entry.targetLevel;
-    });
-    this.state.queue = this.state.queue.filter((entry) => entry.endsAtMs > now);
-
-    return true;
-  }
-
-  private getUpgradeCost(building: BuildingDefinition, targetLevel: number): ResourceBundle {
-    const multiplier = Math.pow(1.34, Math.max(0, targetLevel - 1));
-    return {
-      ore: Math.round(building.baseCost.ore * multiplier),
-      stone: Math.round(building.baseCost.stone * multiplier),
-      iron: Math.round(building.baseCost.iron * multiplier),
-    };
-  }
-
-  private getBuildDurationMs(building: BuildingDefinition, targetLevel: number) {
-    const multiplier = Math.pow(1.2, Math.max(0, targetLevel - 1));
-    return Math.round(building.baseBuildSeconds * multiplier * 1000);
-  }
-
-  private getProductionPerHour(): ResourceBundle {
-    return {
-      ore: this.getBuildingLevel('mine') * (BUILDINGS.find((building) => building.id === 'mine')?.production.ore ?? 0),
-      stone: this.getBuildingLevel('quarry') * (BUILDINGS.find((building) => building.id === 'quarry')?.production.stone ?? 0),
-      iron: this.getBuildingLevel('refinery') * (BUILDINGS.find((building) => building.id === 'refinery')?.production.iron ?? 0),
-    };
-  }
-
-  private getStorageCaps(): ResourceBundle {
-    const warehouseLevel = this.getBuildingLevel('warehouse');
-    const storageScale = 1 + warehouseLevel * 0.48;
-    return {
-      ore: Math.round(this.state.baseStorage.ore * storageScale),
-      stone: Math.round(this.state.baseStorage.stone * storageScale),
-      iron: Math.round(this.state.baseStorage.iron * storageScale),
-    };
-  }
-
-  private getPopulationSnapshot() {
-    const housingLevel = this.getBuildingLevel('housing_complex');
-    const cap = this.state.basePopulationCap + housingLevel * 120;
-    const used = BUILDINGS.reduce((sum, building) => sum + this.getBuildingLevel(building.id) * building.populationPerLevel, 0);
-    return { used, cap };
-  }
-
   private getUsedSlots() {
-    return BUILDINGS.reduce((sum, building) => (this.getBuildingLevel(building.id) > 0 ? sum + 1 : sum), 0);
+    return getEconomyBuildingOrder().reduce((sum, buildingId) => (getBuildingLevel(this.state.economy, buildingId) > 0 ? sum + 1 : sum), 0);
   }
 
-  private getBuildingEffectText(building: BuildingDefinition, currentLevel: number) {
-    if (building.id === 'mine') return `+${currentLevel * (building.production.ore ?? 0)} Ore / h`;
-    if (building.id === 'quarry') return `+${currentLevel * (building.production.stone ?? 0)} Stone / h`;
-    if (building.id === 'refinery') return `+${currentLevel * (building.production.iron ?? 0)} Iron / h`;
-    if (building.id === 'warehouse') return `Storage boost x${(1 + currentLevel * 0.48).toFixed(2)}`;
-    if (building.id === 'housing_complex') return `Population cap +${currentLevel * 120}`;
+  private getBuildingEffectText(buildingId: EconomyBuildingId, currentLevel: number) {
+    const building = getBuildingConfig(buildingId);
+    const row = currentLevel > 0 ? building.levels[currentLevel - 1] : null;
+
+    if (buildingId === 'mine') return `+${row?.effect.orePerHour ?? 0} Ore / h`;
+    if (buildingId === 'quarry') return `+${row?.effect.stonePerHour ?? 0} Stone / h`;
+    if (buildingId === 'refinery') return `+${row?.effect.ironPerHour ?? 0} Iron / h`;
+    if (buildingId === 'warehouse') return `Storage boost x${(row?.effect.storageMultiplier ?? 1).toFixed(2)}`;
+    if (buildingId === 'housing_complex') return `Population cap +${row?.effect.populationCapBonus ?? 0}`;
     return `Unlocks city progression (HQ ${currentLevel})`;
   }
 
-  private canAfford(cost: ResourceBundle) {
-    return this.state.resources.ore >= cost.ore && this.state.resources.stone >= cost.stone && this.state.resources.iron >= cost.iron;
+  private refreshFromPersistence() {
+    const snapshot = loadCityEconomyState(this.persistenceContext, Date.now());
+    this.state.economy = snapshot.economy;
   }
-
-  private applyClaimOnAccess() {
-    const now = Date.now();
-    const elapsedMs = Math.max(0, now - this.state.lastUpdatedAtMs);
-    if (elapsedMs <= 0) return;
-
-    const elapsedHours = elapsedMs / (1000 * 60 * 60);
-    const production = this.getProductionPerHour();
-    const storage = this.getStorageCaps();
-
-    this.state.resources.ore = Math.min(storage.ore, this.state.resources.ore + production.ore * elapsedHours);
-    this.state.resources.stone = Math.min(storage.stone, this.state.resources.stone + production.stone * elapsedHours);
-    this.state.resources.iron = Math.min(storage.iron, this.state.resources.iron + production.iron * elapsedHours);
-    this.state.lastUpdatedAtMs = now;
-  }
-}
-
-function getBuilding(buildingId: BuildingId) {
-  return BUILDINGS.find((building) => building.id === buildingId) ?? null;
 }
 
 /**
- * Single source of truth adapter for city mode while backend city payload is not wired.
- * TODO(coinage-data): replace this adapter with real getCityState(planetId) API payload.
+ * MVP persistent city source of truth adapter for city mode.
  */
-function getCityState(planet: SelectedPlanetRef, archetype: PlanetArchetype): CityState {
-  const cached = CITY_STATE_CACHE.get(planet.id);
-  if (cached) return cached;
+function getCityState(planet: SelectedPlanetRef, archetype: PlanetArchetype, context: CityPersistenceContext): CityState {
+  const snapshot = loadCityEconomyState(context, Date.now());
 
-  const state: CityState = {
+  return {
     planetId: planet.id,
-    owner: buildOwnerLabel(planet.id),
+    owner: snapshot.ownerId,
     archetype,
-    levels: {
-      hq: 1,
-      mine: 1,
-      quarry: 1,
-      warehouse: 1,
-      housing_complex: 1,
-    },
-    resources: {
-      ore: 520,
-      stone: 340,
-      iron: 180,
-    },
-    queue: [],
+    economy: snapshot.economy,
     citySlotTotal: 15,
-    baseStorage: {
-      ore: 500,
-      stone: 300,
-      iron: 200,
-    },
-    basePopulationCap: 260,
-    lastUpdatedAtMs: Date.now(),
   };
+}
 
-  CITY_STATE_CACHE.set(planet.id, state);
-  return state;
+
+function buildPersistenceContext(cityId: string, ownerId: string): CityPersistenceContext {
+  return {
+    cityId,
+    ownerId,
+    planetId: cityId,
+    sectorId: `sector-${cityId}`,
+  };
 }
 
 function buildOwnerLabel(planetId: string) {

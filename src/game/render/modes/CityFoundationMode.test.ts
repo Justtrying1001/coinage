@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { CityFoundationMode } from '@/game/render/modes/CityFoundationMode';
+import { clearCityEconomyPersistenceForTests } from '@/game/city/economy/cityEconomyPersistence';
 
 function mountMode() {
   const host = document.createElement('div') as HTMLDivElement;
@@ -22,6 +23,11 @@ function mountMode() {
 }
 
 describe('CityFoundationMode MVP alignment', () => {
+  beforeEach(() => {
+    clearCityEconomyPersistenceForTests();
+    window.localStorage.clear();
+  });
+
   it('uses deterministic MVP start state with refinery locked behind HQ 3', () => {
     const { host, mode } = mountMode();
 
