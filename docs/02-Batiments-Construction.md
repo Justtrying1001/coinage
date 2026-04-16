@@ -12,19 +12,20 @@
 - **HQ gating**: HQ pilote les unlocks; branches militaires avec prérequis additionnels.
 - **Population**: bâtiments + troupes vivantes + réservations de formation partagent le même cap.
 - **Règle canonique**: Warehouse et Housing Complex ont un coût population de 0.
+- **Normalisation des timers**: tous les timers de construction/formation finissent par **0** ou **5**.
 
 ## 2. Vue d’ensemble du catalogue
 | Building | Category | Active version scope | Main role | Main unlock |
 | --- | --- | --- | --- | --- |
-| HQ | Économie | MVP actif | Progression centrale | N/A |
-| Mine | Économie | MVP actif | Prod Ore | HQ 1 |
-| Quarry | Économie | MVP actif | Prod Stone | HQ 1 |
-| Refinery | Économie | MVP actif | Prod Iron | HQ 3 |
-| Warehouse | Économie | MVP actif | Storage caps | HQ 1 |
-| Housing Complex | Économie | MVP actif | Population cap | HQ 1 |
-| Barracks | Militaire éco | V0 actif (éco/training) | Troupes ground base | HQ 1 |
-| Combat Forge | Militaire éco | V0 actif (éco/training) | Troupes ground avancées | HQ 5 + Barracks 8 |
-| Space Dock / Hub de déploiement | Militaire éco | V0 actif (éco/training) | Unités projection | HQ 10 + Combat Forge 5 |
+| HQ | Économie | MVP actif | Bâtiment de progression centrale | Toujours disponible. |
+| Mine | Économie | MVP actif | Production passive d'Ore | HQ >= 1 |
+| Quarry | Économie | MVP actif | Production passive de Stone | HQ >= 1 |
+| Refinery | Économie | MVP actif | Production passive d'Iron | HQ >= 3 |
+| Warehouse | Économie | MVP actif | Augmente les caps Ore/Stone/Iron | HQ >= 1 |
+| Housing Complex | Économie | MVP actif | Augmente le cap de population | HQ >= 1 |
+| Barracks | Militaire éco | V0 actif (éco/training) | Débloque et structure les troupes ground de base | HQ >= 1 |
+| Combat Forge | Militaire éco | V0 actif (éco/training) | Débloque les unités ground avancées | HQ >= 5 + Barracks >= 8 |
+| Space Dock | Militaire éco | V0 actif (éco/training) | Débloque les unités de projection (catégorie air dans le système économie/training actuel) | HQ >= 10 + Combat Forge >= 5 |
 | Defensive Wall | Militaire combat | Later | Défense passive | HQ 3 |
 | Watch Tower | Militaire combat | Later | Détection | HQ 5 |
 | Military Academy | Militaire meta | Later | Bonus permanents | HQ 15 |
@@ -47,25 +48,25 @@
 | Level | Ore cost | Stone cost | Iron cost | Build time (s) | Pop cost (lvl) | Cumulative pop used | Production per hour | Storage effect | Population cap bonus | Unlocks granted | Prerequisite notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | 220 | 180 | 35 | 55 | 1 | 1 | — | — | — | Mine, Quarry, Warehouse, Housing Complex, Barracks | — |
-| 2 | 273 | 223 | 43 | 62 | 1 | 2 | — | — | — | — | — |
-| 3 | 338 | 277 | 54 | 70 | 1 | 3 | — | — | — | Refinery | — |
-| 4 | 419 | 343 | 67 | 79 | 1 | 4 | — | — | — | — | — |
-| 5 | 520 | 426 | 83 | 90 | 1 | 5 | — | — | — | Combat Forge | — |
-| 6 | 645 | 528 | 103 | 101 | 2 | 7 | — | — | — | — | — |
-| 7 | 800 | 654 | 127 | 115 | 2 | 9 | — | — | — | — | — |
-| 8 | 992 | 811 | 158 | 129 | 2 | 11 | — | — | — | — | — |
-| 9 | 1230 | 1006 | 196 | 146 | 2 | 13 | — | — | — | — | — |
-| 10 | 1525 | 1248 | 243 | 165 | 2 | 15 | — | — | — | Space Dock | — |
-| 11 | 1891 | 1547 | 301 | 187 | 2 | 17 | — | — | — | — | — |
-| 12 | 2345 | 1918 | 373 | 211 | 2 | 19 | — | — | — | — | — |
-| 13 | 2907 | 2379 | 463 | 238 | 3 | 22 | — | — | — | — | — |
-| 14 | 3605 | 2950 | 574 | 269 | 3 | 25 | — | — | — | — | — |
-| 15 | 4470 | 3657 | 711 | 304 | 3 | 28 | — | — | — | — | — |
-| 16 | 5543 | 4535 | 882 | 344 | 3 | 31 | — | — | — | — | — |
-| 17 | 6873 | 5624 | 1093 | 389 | 3 | 34 | — | — | — | — | — |
-| 18 | 8523 | 6973 | 1356 | 439 | 3 | 37 | — | — | — | — | — |
-| 19 | 10568 | 8647 | 1681 | 496 | 3 | 40 | — | — | — | — | — |
-| 20 | 13105 | 10722 | 2085 | 561 | 3 | 43 | — | — | — | — | — |
+| 2 | 264 | 216 | 42 | 60 | 1 | 2 | — | — | — | — | — |
+| 3 | 317 | 259 | 50 | 70 | 1 | 3 | — | — | — | Refinery | — |
+| 4 | 380 | 311 | 60 | 75 | 1 | 4 | — | — | — | — | — |
+| 5 | 456 | 373 | 73 | 85 | 1 | 5 | — | — | — | Combat Forge | — |
+| 6 | 547 | 448 | 87 | 95 | 1 | 6 | — | — | — | — | — |
+| 7 | 657 | 537 | 105 | 105 | 1 | 7 | — | — | — | — | — |
+| 8 | 788 | 645 | 125 | 115 | 1 | 8 | — | — | — | — | — |
+| 9 | 946 | 774 | 150 | 125 | 1 | 9 | — | — | — | — | — |
+| 10 | 1135 | 929 | 181 | 140 | 1 | 10 | — | — | — | Space Dock | — |
+| 11 | 1362 | 1115 | 217 | 155 | 1 | 11 | — | — | — | — | — |
+| 12 | 1635 | 1337 | 260 | 175 | 1 | 12 | — | — | — | — | — |
+| 13 | 1962 | 1605 | 312 | 190 | 2 | 14 | — | — | — | — | — |
+| 14 | 2354 | 1926 | 374 | 215 | 2 | 16 | — | — | — | — | — |
+| 15 | 2825 | 2311 | 449 | 235 | 2 | 18 | — | — | — | — | — |
+| 16 | 3390 | 2773 | 539 | 265 | 2 | 20 | — | — | — | — | — |
+| 17 | 4067 | 3328 | 647 | 290 | 2 | 22 | — | — | — | — | — |
+| 18 | 4881 | 3993 | 777 | 325 | 2 | 24 | — | — | — | — | — |
+| 19 | 5857 | 4792 | 932 | 360 | 2 | 26 | — | — | — | — | — |
+| 20 | 7029 | 5751 | 1118 | 400 | 2 | 28 | — | — | — | — | — |
 
 ### Mine
 - **Rôle**: Production passive d'Ore.
@@ -73,30 +74,30 @@
 - **Unlock**: HQ >= 1
 - **Prérequis**: Aucun
 - **Niveau max**: 20
-- **Notes**: Valeurs Confirmé (snapshot config actuel).
+- **Notes**: ROI corrigé: progression coût/Δprod maintenue attractive sur 1→20.
 
 | Level | Ore cost | Stone cost | Iron cost | Build time (s) | Pop cost (lvl) | Cumulative pop used | Production per hour | Storage effect | Population cap bonus | Unlocks granted | Prerequisite notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 90 | 70 | 0 | 36 | 1 | 1 | Ore 24 | — | — | — | — |
-| 2 | 110 | 85 | 0 | 40 | 1 | 2 | Ore 27 | — | — | — | — |
-| 3 | 134 | 104 | 0 | 45 | 1 | 3 | Ore 31 | — | — | — | — |
-| 4 | 163 | 127 | 0 | 51 | 1 | 4 | Ore 35 | — | — | — | — |
-| 5 | 199 | 155 | 0 | 57 | 1 | 5 | Ore 39 | — | — | — | — |
-| 6 | 243 | 189 | 0 | 63 | 2 | 7 | Ore 44 | — | — | — | — |
-| 7 | 297 | 231 | 0 | 71 | 2 | 9 | Ore 50 | — | — | — | — |
-| 8 | 362 | 282 | 0 | 80 | 2 | 11 | Ore 56 | — | — | — | — |
-| 9 | 442 | 344 | 0 | 89 | 2 | 13 | Ore 64 | — | — | — | — |
-| 10 | 539 | 419 | 0 | 100 | 2 | 15 | Ore 72 | — | — | — | — |
-| 11 | 657 | 511 | 0 | 112 | 2 | 17 | Ore 81 | — | — | — | — |
-| 12 | 802 | 624 | 0 | 125 | 2 | 19 | Ore 92 | — | — | — | — |
-| 13 | 978 | 761 | 0 | 140 | 3 | 22 | Ore 104 | — | — | — | — |
-| 14 | 1194 | 928 | 0 | 157 | 3 | 25 | Ore 118 | — | — | — | — |
-| 15 | 1456 | 1133 | 0 | 176 | 3 | 28 | Ore 133 | — | — | — | — |
-| 16 | 1777 | 1382 | 0 | 197 | 3 | 31 | Ore 150 | — | — | — | — |
-| 17 | 2168 | 1686 | 0 | 221 | 3 | 34 | Ore 170 | — | — | — | — |
-| 18 | 2645 | 2057 | 0 | 247 | 3 | 37 | Ore 192 | — | — | — | — |
-| 19 | 3226 | 2509 | 0 | 277 | 3 | 40 | Ore 217 | — | — | — | — |
-| 20 | 3936 | 3062 | 0 | 310 | 3 | 43 | Ore 245 | — | — | — | — |
+| 1 | 80 | 65 | 0 | 35 | 1 | 1 | Ore 28 | — | — | — | — |
+| 2 | 94 | 76 | 0 | 40 | 1 | 2 | Ore 32 | — | — | — | — |
+| 3 | 110 | 89 | 0 | 40 | 1 | 3 | Ore 37 | — | — | — | — |
+| 4 | 128 | 104 | 0 | 45 | 1 | 4 | Ore 43 | — | — | — | — |
+| 5 | 150 | 122 | 0 | 50 | 1 | 5 | Ore 49 | — | — | — | — |
+| 6 | 175 | 143 | 0 | 55 | 1 | 6 | Ore 56 | — | — | — | — |
+| 7 | 205 | 167 | 0 | 60 | 1 | 7 | Ore 65 | — | — | — | — |
+| 8 | 240 | 195 | 0 | 70 | 1 | 8 | Ore 74 | — | — | — | — |
+| 9 | 281 | 228 | 0 | 75 | 1 | 9 | Ore 86 | — | — | — | — |
+| 10 | 329 | 267 | 0 | 85 | 1 | 10 | Ore 99 | — | — | — | — |
+| 11 | 385 | 312 | 0 | 90 | 1 | 11 | Ore 113 | — | — | — | — |
+| 12 | 450 | 366 | 0 | 100 | 1 | 12 | Ore 130 | — | — | — | — |
+| 13 | 526 | 428 | 0 | 110 | 2 | 14 | Ore 150 | — | — | — | — |
+| 14 | 616 | 500 | 0 | 120 | 2 | 16 | Ore 172 | — | — | — | — |
+| 15 | 721 | 585 | 0 | 135 | 2 | 18 | Ore 198 | — | — | — | — |
+| 16 | 843 | 685 | 0 | 145 | 2 | 20 | Ore 228 | — | — | — | — |
+| 17 | 986 | 801 | 0 | 160 | 2 | 22 | Ore 262 | — | — | — | — |
+| 18 | 1154 | 938 | 0 | 175 | 2 | 24 | Ore 301 | — | — | — | — |
+| 19 | 1350 | 1097 | 0 | 195 | 2 | 26 | Ore 347 | — | — | — | — |
+| 20 | 1580 | 1284 | 0 | 215 | 2 | 28 | Ore 398 | — | — | — | — |
 
 ### Quarry
 - **Rôle**: Production passive de Stone.
@@ -104,30 +105,30 @@
 - **Unlock**: HQ >= 1
 - **Prérequis**: Aucun
 - **Niveau max**: 20
-- **Notes**: Valeurs Confirmé (snapshot config actuel).
+- **Notes**: ROI corrigé: progression coût/Δprod maintenue attractive sur 1→20.
 
 | Level | Ore cost | Stone cost | Iron cost | Build time (s) | Pop cost (lvl) | Cumulative pop used | Production per hour | Storage effect | Population cap bonus | Unlocks granted | Prerequisite notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 78 | 95 | 0 | 38 | 1 | 1 | Stone 20 | — | — | — | — |
-| 2 | 95 | 116 | 0 | 43 | 1 | 2 | Stone 23 | — | — | — | — |
-| 3 | 116 | 141 | 0 | 48 | 1 | 3 | Stone 26 | — | — | — | — |
-| 4 | 142 | 173 | 0 | 53 | 1 | 4 | Stone 29 | — | — | — | — |
-| 5 | 173 | 210 | 0 | 60 | 1 | 5 | Stone 33 | — | — | — | — |
-| 6 | 211 | 257 | 0 | 67 | 2 | 7 | Stone 37 | — | — | — | — |
-| 7 | 257 | 313 | 0 | 75 | 2 | 9 | Stone 42 | — | — | — | — |
-| 8 | 314 | 382 | 0 | 84 | 2 | 11 | Stone 47 | — | — | — | — |
-| 9 | 383 | 466 | 0 | 94 | 2 | 13 | Stone 53 | — | — | — | — |
-| 10 | 467 | 569 | 0 | 105 | 2 | 15 | Stone 60 | — | — | — | — |
-| 11 | 570 | 694 | 0 | 118 | 2 | 17 | Stone 68 | — | — | — | — |
-| 12 | 695 | 847 | 0 | 132 | 2 | 19 | Stone 77 | — | — | — | — |
-| 13 | 848 | 1033 | 0 | 148 | 3 | 22 | Stone 87 | — | — | — | — |
-| 14 | 1035 | 1260 | 0 | 166 | 3 | 25 | Stone 98 | — | — | — | — |
-| 15 | 1262 | 1537 | 0 | 186 | 3 | 28 | Stone 111 | — | — | — | — |
-| 16 | 1540 | 1876 | 0 | 208 | 3 | 31 | Stone 125 | — | — | — | — |
-| 17 | 1879 | 2288 | 0 | 233 | 3 | 34 | Stone 141 | — | — | — | — |
-| 18 | 2292 | 2792 | 0 | 261 | 3 | 37 | Stone 160 | — | — | — | — |
-| 19 | 2796 | 3406 | 0 | 292 | 3 | 40 | Stone 180 | — | — | — | — |
-| 20 | 3411 | 4155 | 0 | 327 | 3 | 43 | Stone 204 | — | — | — | — |
+| 1 | 72 | 82 | 0 | 35 | 1 | 1 | Stone 24 | — | — | — | — |
+| 2 | 84 | 96 | 0 | 40 | 1 | 2 | Stone 28 | — | — | — | — |
+| 3 | 99 | 112 | 0 | 40 | 1 | 3 | Stone 32 | — | — | — | — |
+| 4 | 115 | 131 | 0 | 45 | 1 | 4 | Stone 37 | — | — | — | — |
+| 5 | 135 | 154 | 0 | 50 | 1 | 5 | Stone 42 | — | — | — | — |
+| 6 | 158 | 180 | 0 | 55 | 1 | 6 | Stone 48 | — | — | — | — |
+| 7 | 185 | 210 | 0 | 60 | 1 | 7 | Stone 56 | — | — | — | — |
+| 8 | 216 | 246 | 0 | 70 | 1 | 8 | Stone 64 | — | — | — | — |
+| 9 | 253 | 288 | 0 | 75 | 1 | 9 | Stone 73 | — | — | — | — |
+| 10 | 296 | 337 | 0 | 85 | 1 | 10 | Stone 84 | — | — | — | — |
+| 11 | 346 | 394 | 0 | 90 | 1 | 11 | Stone 97 | — | — | — | — |
+| 12 | 405 | 461 | 0 | 100 | 1 | 12 | Stone 112 | — | — | — | — |
+| 13 | 474 | 540 | 0 | 110 | 2 | 14 | Stone 128 | — | — | — | — |
+| 14 | 554 | 631 | 0 | 120 | 2 | 16 | Stone 148 | — | — | — | — |
+| 15 | 649 | 739 | 0 | 135 | 2 | 18 | Stone 170 | — | — | — | — |
+| 16 | 759 | 864 | 0 | 145 | 2 | 20 | Stone 195 | — | — | — | — |
+| 17 | 888 | 1011 | 0 | 160 | 2 | 22 | Stone 225 | — | — | — | — |
+| 18 | 1039 | 1183 | 0 | 175 | 2 | 24 | Stone 258 | — | — | — | — |
+| 19 | 1215 | 1384 | 0 | 195 | 2 | 26 | Stone 297 | — | — | — | — |
+| 20 | 1422 | 1619 | 0 | 215 | 2 | 28 | Stone 342 | — | — | — | — |
 
 ### Refinery
 - **Rôle**: Production passive d'Iron.
@@ -135,30 +136,30 @@
 - **Unlock**: HQ >= 3
 - **Prérequis**: Aucun
 - **Niveau max**: 20
-- **Notes**: Valeurs Confirmé (snapshot config actuel). Étape économique plus coûteuse et plus lente.
+- **Notes**: Plus tardive et plus coûteuse que Mine/Quarry, mais ROI maintenu rationnel.
 
 | Level | Ore cost | Stone cost | Iron cost | Build time (s) | Pop cost (lvl) | Cumulative pop used | Production per hour | Storage effect | Population cap bonus | Unlocks granted | Prerequisite notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 170 | 140 | 50 | 48 | 1 | 1 | Iron 10 | — | — | — | Requires HQ 3 |
-| 2 | 209 | 172 | 62 | 54 | 1 | 2 | Iron 11 | — | — | — | Requires HQ 3 |
-| 3 | 257 | 212 | 76 | 61 | 1 | 3 | Iron 13 | — | — | — | Requires HQ 3 |
-| 4 | 316 | 261 | 93 | 69 | 1 | 4 | Iron 15 | — | — | — | Requires HQ 3 |
-| 5 | 389 | 320 | 114 | 78 | 1 | 5 | Iron 17 | — | — | — | Requires HQ 3 |
-| 6 | 479 | 394 | 141 | 88 | 2 | 7 | Iron 19 | — | — | — | Requires HQ 3 |
-| 7 | 589 | 485 | 173 | 100 | 2 | 9 | Iron 22 | — | — | — | Requires HQ 3 |
-| 8 | 724 | 596 | 213 | 113 | 2 | 11 | Iron 25 | — | — | — | Requires HQ 3 |
-| 9 | 891 | 733 | 262 | 128 | 2 | 13 | Iron 29 | — | — | — | Requires HQ 3 |
-| 10 | 1095 | 902 | 322 | 144 | 2 | 15 | Iron 33 | — | — | — | Requires HQ 3 |
-| 11 | 1347 | 1110 | 396 | 163 | 2 | 17 | Iron 37 | — | — | — | Requires HQ 3 |
-| 12 | 1657 | 1365 | 487 | 184 | 2 | 19 | Iron 42 | — | — | — | Requires HQ 3 |
-| 13 | 2038 | 1679 | 600 | 208 | 3 | 22 | Iron 48 | — | — | — | Requires HQ 3 |
-| 14 | 2507 | 2065 | 737 | 235 | 3 | 25 | Iron 55 | — | — | — | Requires HQ 3 |
-| 15 | 3084 | 2540 | 907 | 266 | 3 | 28 | Iron 63 | — | — | — | Requires HQ 3 |
-| 16 | 3793 | 3124 | 1116 | 300 | 3 | 31 | Iron 71 | — | — | — | Requires HQ 3 |
-| 17 | 4666 | 3842 | 1372 | 339 | 3 | 34 | Iron 81 | — | — | — | Requires HQ 3 |
-| 18 | 5739 | 4726 | 1688 | 383 | 3 | 37 | Iron 93 | — | — | — | Requires HQ 3 |
-| 19 | 7059 | 5813 | 2076 | 433 | 3 | 40 | Iron 106 | — | — | — | Requires HQ 3 |
-| 20 | 8683 | 7150 | 2554 | 489 | 3 | 43 | Iron 121 | — | — | — | Requires HQ 3 |
+| 1 | 150 | 125 | 45 | 45 | 1 | 1 | Iron 13 | — | — | — | Requires HQ 3 |
+| 2 | 177 | 148 | 53 | 50 | 1 | 2 | Iron 15 | — | — | — | Requires HQ 3 |
+| 3 | 209 | 174 | 63 | 55 | 1 | 3 | Iron 17 | — | — | — | Requires HQ 3 |
+| 4 | 246 | 205 | 74 | 60 | 1 | 4 | Iron 20 | — | — | — | Requires HQ 3 |
+| 5 | 291 | 242 | 87 | 70 | 1 | 5 | Iron 24 | — | — | — | Requires HQ 3 |
+| 6 | 343 | 286 | 103 | 75 | 1 | 6 | Iron 27 | — | — | — | Requires HQ 3 |
+| 7 | 405 | 337 | 121 | 85 | 1 | 7 | Iron 32 | — | — | — | Requires HQ 3 |
+| 8 | 478 | 398 | 143 | 95 | 1 | 8 | Iron 37 | — | — | — | Requires HQ 3 |
+| 9 | 564 | 470 | 169 | 105 | 1 | 9 | Iron 43 | — | — | — | Requires HQ 3 |
+| 10 | 665 | 554 | 200 | 115 | 1 | 10 | Iron 49 | — | — | — | Requires HQ 3 |
+| 11 | 785 | 654 | 236 | 130 | 1 | 11 | Iron 57 | — | — | — | Requires HQ 3 |
+| 12 | 926 | 772 | 278 | 140 | 1 | 12 | Iron 67 | — | — | — | Requires HQ 3 |
+| 13 | 1093 | 911 | 328 | 155 | 2 | 14 | Iron 77 | — | — | — | Requires HQ 3 |
+| 14 | 1290 | 1075 | 387 | 175 | 2 | 16 | Iron 90 | — | — | — | Requires HQ 3 |
+| 15 | 1522 | 1268 | 457 | 195 | 2 | 18 | Iron 104 | — | — | — | Requires HQ 3 |
+| 16 | 1796 | 1497 | 539 | 215 | 2 | 20 | Iron 120 | — | — | — | Requires HQ 3 |
+| 17 | 2119 | 1766 | 636 | 240 | 2 | 22 | Iron 140 | — | — | — | Requires HQ 3 |
+| 18 | 2501 | 2084 | 750 | 265 | 2 | 24 | Iron 162 | — | — | — | Requires HQ 3 |
+| 19 | 2951 | 2459 | 885 | 295 | 2 | 26 | Iron 188 | — | — | — | Requires HQ 3 |
+| 20 | 3482 | 2902 | 1045 | 325 | 2 | 28 | Iron 218 | — | — | — | Requires HQ 3 |
 
 ### Warehouse
 - **Rôle**: Augmente les caps Ore/Stone/Iron.
@@ -166,30 +167,30 @@
 - **Unlock**: HQ >= 1
 - **Prérequis**: Aucun
 - **Niveau max**: 20
-- **Notes**: Valeurs Confirmé (snapshot config actuel). Pop cost = 0.
+- **Notes**: Support fort du système. Pop cost = 0.
 
 | Level | Ore cost | Stone cost | Iron cost | Build time (s) | Pop cost (lvl) | Cumulative pop used | Production per hour | Storage effect | Population cap bonus | Unlocks granted | Prerequisite notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 110 | 100 | 15 | 40 | 0 | 0 | — | x1.08 | — | — | — |
-| 2 | 133 | 121 | 18 | 44 | 0 | 0 | — | x1.17 | — | — | — |
-| 3 | 161 | 146 | 22 | 49 | 0 | 0 | — | x1.25 | — | — | — |
-| 4 | 195 | 177 | 27 | 55 | 0 | 0 | — | x1.34 | — | — | — |
-| 5 | 236 | 214 | 32 | 61 | 0 | 0 | — | x1.44 | — | — | — |
-| 6 | 285 | 259 | 39 | 67 | 0 | 0 | — | x1.53 | — | — | — |
-| 7 | 345 | 314 | 47 | 75 | 0 | 0 | — | x1.63 | — | — | — |
-| 8 | 418 | 380 | 57 | 83 | 0 | 0 | — | x1.74 | — | — | — |
-| 9 | 505 | 459 | 69 | 92 | 0 | 0 | — | x1.84 | — | — | — |
-| 10 | 612 | 556 | 83 | 102 | 0 | 0 | — | x1.95 | — | — | — |
-| 11 | 740 | 673 | 101 | 114 | 0 | 0 | — | x2.06 | — | — | — |
-| 12 | 895 | 814 | 122 | 126 | 0 | 0 | — | x2.18 | — | — | — |
-| 13 | 1083 | 985 | 148 | 140 | 0 | 0 | — | x2.29 | — | — | — |
-| 14 | 1311 | 1192 | 179 | 155 | 0 | 0 | — | x2.41 | — | — | — |
-| 15 | 1586 | 1442 | 216 | 172 | 0 | 0 | — | x2.54 | — | — | — |
-| 16 | 1919 | 1745 | 262 | 191 | 0 | 0 | — | x2.66 | — | — | — |
-| 17 | 2323 | 2111 | 317 | 212 | 0 | 0 | — | x2.79 | — | — | — |
-| 18 | 2810 | 2555 | 383 | 236 | 0 | 0 | — | x2.93 | — | — | — |
-| 19 | 3400 | 3091 | 464 | 262 | 0 | 0 | — | x3.06 | — | — | — |
-| 20 | 4114 | 3740 | 561 | 291 | 0 | 0 | — | x3.20 | — | — | — |
+| 1 | 100 | 90 | 12 | 35 | 0 | 0 | — | x1.10 | — | — | — |
+| 2 | 118 | 106 | 14 | 40 | 0 | 0 | — | x1.21 | — | — | — |
+| 3 | 139 | 125 | 17 | 40 | 0 | 0 | — | x1.32 | — | — | — |
+| 4 | 164 | 148 | 20 | 45 | 0 | 0 | — | x1.43 | — | — | — |
+| 5 | 194 | 174 | 23 | 50 | 0 | 0 | — | x1.55 | — | — | — |
+| 6 | 229 | 206 | 27 | 55 | 0 | 0 | — | x1.67 | — | — | — |
+| 7 | 270 | 243 | 32 | 60 | 0 | 0 | — | x1.80 | — | — | — |
+| 8 | 319 | 287 | 38 | 70 | 0 | 0 | — | x1.93 | — | — | — |
+| 9 | 376 | 338 | 45 | 75 | 0 | 0 | — | x2.06 | — | — | — |
+| 10 | 444 | 399 | 53 | 85 | 0 | 0 | — | x2.20 | — | — | — |
+| 11 | 523 | 471 | 63 | 90 | 0 | 0 | — | x2.34 | — | — | — |
+| 12 | 618 | 556 | 74 | 100 | 0 | 0 | — | x2.49 | — | — | — |
+| 13 | 729 | 656 | 87 | 110 | 0 | 0 | — | x2.64 | — | — | — |
+| 14 | 860 | 774 | 103 | 120 | 0 | 0 | — | x2.79 | — | — | — |
+| 15 | 1015 | 913 | 122 | 135 | 0 | 0 | — | x2.95 | — | — | — |
+| 16 | 1197 | 1078 | 144 | 145 | 0 | 0 | — | x3.11 | — | — | — |
+| 17 | 1413 | 1272 | 170 | 160 | 0 | 0 | — | x3.28 | — | — | — |
+| 18 | 1667 | 1501 | 200 | 175 | 0 | 0 | — | x3.45 | — | — | — |
+| 19 | 1967 | 1771 | 236 | 195 | 0 | 0 | — | x3.62 | — | — | — |
+| 20 | 2321 | 2089 | 279 | 215 | 0 | 0 | — | x3.80 | — | — | — |
 
 ### Housing Complex
 - **Rôle**: Augmente le cap de population.
@@ -197,30 +198,30 @@
 - **Unlock**: HQ >= 1
 - **Prérequis**: Aucun
 - **Niveau max**: 20
-- **Notes**: Valeurs Confirmé (snapshot config actuel). Pop cost = 0.
+- **Notes**: Bâtiment central de viabilité ville+armée. Pop cost = 0.
 
 | Level | Ore cost | Stone cost | Iron cost | Build time (s) | Pop cost (lvl) | Cumulative pop used | Production per hour | Storage effect | Population cap bonus | Unlocks granted | Prerequisite notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 105 | 98 | 14 | 39 | 0 | 0 | — | — | 102 | — | — |
-| 2 | 127 | 119 | 17 | 43 | 0 | 0 | — | — | 163 | — | — |
-| 3 | 154 | 143 | 20 | 48 | 0 | 0 | — | — | 228 | — | — |
-| 4 | 186 | 174 | 25 | 53 | 0 | 0 | — | — | 297 | — | — |
-| 5 | 225 | 210 | 30 | 59 | 0 | 0 | — | — | 370 | — | — |
-| 6 | 272 | 254 | 36 | 66 | 0 | 0 | — | — | 447 | — | — |
-| 7 | 330 | 308 | 44 | 73 | 0 | 0 | — | — | 528 | — | — |
-| 8 | 399 | 372 | 53 | 81 | 0 | 0 | — | — | 613 | — | — |
-| 9 | 482 | 450 | 64 | 90 | 0 | 0 | — | — | 702 | — | — |
-| 10 | 584 | 545 | 78 | 100 | 0 | 0 | — | — | 795 | — | — |
-| 11 | 706 | 659 | 94 | 111 | 0 | 0 | — | — | 892 | — | — |
-| 12 | 855 | 798 | 114 | 123 | 0 | 0 | — | — | 993 | — | — |
-| 13 | 1034 | 965 | 138 | 136 | 0 | 0 | — | — | 1098 | — | — |
-| 14 | 1251 | 1168 | 167 | 151 | 0 | 0 | — | — | 1207 | — | — |
-| 15 | 1514 | 1413 | 202 | 168 | 0 | 0 | — | — | 1320 | — | — |
-| 16 | 1832 | 1710 | 244 | 187 | 0 | 0 | — | — | 1437 | — | — |
-| 17 | 2217 | 2069 | 296 | 207 | 0 | 0 | — | — | 1558 | — | — |
-| 18 | 2683 | 2504 | 358 | 230 | 0 | 0 | — | — | 1683 | — | — |
-| 19 | 3246 | 3029 | 433 | 255 | 0 | 0 | — | — | 1812 | — | — |
-| 20 | 3927 | 3666 | 524 | 283 | 0 | 0 | — | — | 1945 | — | — |
+| 1 | 95 | 88 | 12 | 35 | 0 | 0 | — | — | 133 | — | — |
+| 2 | 112 | 104 | 14 | 40 | 0 | 0 | — | — | 212 | — | — |
+| 3 | 132 | 123 | 17 | 40 | 0 | 0 | — | — | 297 | — | — |
+| 4 | 156 | 145 | 20 | 45 | 0 | 0 | — | — | 388 | — | — |
+| 5 | 184 | 171 | 23 | 50 | 0 | 0 | — | — | 485 | — | — |
+| 6 | 217 | 201 | 27 | 55 | 0 | 0 | — | — | 588 | — | — |
+| 7 | 256 | 238 | 32 | 60 | 0 | 0 | — | — | 697 | — | — |
+| 8 | 303 | 280 | 38 | 70 | 0 | 0 | — | — | 812 | — | — |
+| 9 | 357 | 331 | 45 | 75 | 0 | 0 | — | — | 933 | — | — |
+| 10 | 421 | 390 | 53 | 85 | 0 | 0 | — | — | 1060 | — | — |
+| 11 | 497 | 461 | 63 | 90 | 0 | 0 | — | — | 1193 | — | — |
+| 12 | 587 | 543 | 74 | 100 | 0 | 0 | — | — | 1332 | — | — |
+| 13 | 692 | 641 | 87 | 110 | 0 | 0 | — | — | 1477 | — | — |
+| 14 | 817 | 757 | 103 | 120 | 0 | 0 | — | — | 1628 | — | — |
+| 15 | 964 | 893 | 122 | 135 | 0 | 0 | — | — | 1785 | — | — |
+| 16 | 1138 | 1054 | 144 | 145 | 0 | 0 | — | — | 1948 | — | — |
+| 17 | 1342 | 1243 | 170 | 160 | 0 | 0 | — | — | 2117 | — | — |
+| 18 | 1584 | 1467 | 200 | 175 | 0 | 0 | — | — | 2292 | — | — |
+| 19 | 1869 | 1731 | 236 | 195 | 0 | 0 | — | — | 2473 | — | — |
+| 20 | 2205 | 2043 | 279 | 215 | 0 | 0 | — | — | 2660 | — | — |
 
 ### Barracks
 - **Rôle**: Débloque et structure les troupes ground de base.
@@ -228,30 +229,30 @@
 - **Unlock**: HQ >= 1
 - **Prérequis**: Aucun
 - **Niveau max**: 20
-- **Notes**: Temporaire balance value — TODO validate with design.
+- **Notes**: Courbe coût/temps/pop ajustée pour viabilité militaire sans deadlock.
 
 | Level | Ore cost | Stone cost | Iron cost | Build time (s) | Pop cost (lvl) | Cumulative pop used | Production per hour | Storage effect | Population cap bonus | Unlocks granted | Prerequisite notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 150 | 120 | 20 | 52 | 1 | 1 | — | — | — | — | — |
-| 2 | 184 | 148 | 25 | 59 | 1 | 2 | — | — | — | — | — |
-| 3 | 227 | 182 | 30 | 66 | 1 | 3 | — | — | — | — | — |
-| 4 | 279 | 223 | 37 | 75 | 1 | 4 | — | — | — | — | — |
-| 5 | 343 | 275 | 46 | 85 | 1 | 5 | — | — | — | — | — |
-| 6 | 422 | 338 | 56 | 96 | 1 | 6 | — | — | — | — | — |
-| 7 | 519 | 416 | 69 | 108 | 1 | 7 | — | — | — | — | — |
-| 8 | 639 | 511 | 85 | 122 | 1 | 8 | — | — | — | — | — |
-| 9 | 786 | 629 | 105 | 138 | 1 | 9 | — | — | — | — | — |
-| 10 | 967 | 773 | 129 | 156 | 1 | 10 | — | — | — | — | — |
-| 11 | 1189 | 951 | 159 | 177 | 1 | 11 | — | — | — | — | — |
-| 12 | 1462 | 1170 | 195 | 199 | 1 | 12 | — | — | — | — | — |
-| 13 | 1799 | 1439 | 240 | 225 | 2 | 14 | — | — | — | — | — |
-| 14 | 2212 | 1770 | 295 | 255 | 2 | 16 | — | — | — | — | — |
-| 15 | 2721 | 2177 | 363 | 288 | 2 | 18 | — | — | — | — | — |
-| 16 | 3347 | 2678 | 446 | 325 | 2 | 20 | — | — | — | — | — |
-| 17 | 4117 | 3294 | 549 | 368 | 2 | 22 | — | — | — | — | — |
-| 18 | 5064 | 4051 | 675 | 415 | 2 | 24 | — | — | — | — | — |
-| 19 | 6228 | 4983 | 830 | 469 | 2 | 26 | — | — | — | — | — |
-| 20 | 7661 | 6129 | 1021 | 530 | 2 | 28 | — | — | — | — | — |
+| 1 | 140 | 110 | 20 | 50 | 1 | 1 | — | — | — | — | — |
+| 2 | 168 | 132 | 24 | 55 | 1 | 2 | — | — | — | — | — |
+| 3 | 202 | 158 | 29 | 60 | 1 | 3 | — | — | — | — | — |
+| 4 | 242 | 190 | 35 | 70 | 1 | 4 | — | — | — | — | — |
+| 5 | 290 | 228 | 41 | 75 | 1 | 5 | — | — | — | — | — |
+| 6 | 348 | 274 | 50 | 85 | 1 | 6 | — | — | — | — | — |
+| 7 | 418 | 328 | 60 | 95 | 1 | 7 | — | — | — | — | — |
+| 8 | 502 | 394 | 72 | 105 | 1 | 8 | — | — | — | — | — |
+| 9 | 602 | 473 | 86 | 115 | 1 | 9 | — | — | — | — | — |
+| 10 | 722 | 568 | 103 | 130 | 1 | 10 | — | — | — | — | — |
+| 11 | 867 | 681 | 124 | 140 | 1 | 11 | — | — | — | — | — |
+| 12 | 1040 | 817 | 149 | 160 | 1 | 12 | — | — | — | — | — |
+| 13 | 1248 | 981 | 178 | 175 | 1 | 13 | — | — | — | — | — |
+| 14 | 1498 | 1177 | 214 | 195 | 1 | 14 | — | — | — | — | — |
+| 15 | 1797 | 1412 | 257 | 215 | 1 | 15 | — | — | — | — | — |
+| 16 | 2157 | 1695 | 308 | 240 | 1 | 16 | — | — | — | — | — |
+| 17 | 2588 | 2034 | 370 | 265 | 1 | 17 | — | — | — | — | — |
+| 18 | 3106 | 2440 | 444 | 295 | 1 | 18 | — | — | — | — | — |
+| 19 | 3727 | 2929 | 532 | 325 | 1 | 19 | — | — | — | — | — |
+| 20 | 4473 | 3514 | 639 | 365 | 1 | 20 | — | — | — | — | — |
 
 ### Combat Forge
 - **Rôle**: Débloque les unités ground avancées.
@@ -259,30 +260,30 @@
 - **Unlock**: HQ >= 5 + Barracks >= 8
 - **Prérequis**: Barracks niveau 8
 - **Niveau max**: 20
-- **Notes**: Temporaire balance value — TODO validate with design.
+- **Notes**: Courbe coût/temps/pop ajustée pour spécialisation lisible.
 
 | Level | Ore cost | Stone cost | Iron cost | Build time (s) | Pop cost (lvl) | Cumulative pop used | Production per hour | Storage effect | Population cap bonus | Unlocks granted | Prerequisite notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 280 | 240 | 90 | 68 | 2 | 2 | — | — | — | — | Requires Barracks 8 (all levels) |
-| 2 | 347 | 298 | 112 | 78 | 2 | 4 | — | — | — | — | Requires Barracks 8 (all levels) |
-| 3 | 431 | 369 | 138 | 88 | 2 | 6 | — | — | — | — | Requires Barracks 8 (all levels) |
-| 4 | 534 | 458 | 172 | 101 | 2 | 8 | — | — | — | — | Requires Barracks 8 (all levels) |
-| 5 | 662 | 567 | 213 | 115 | 2 | 10 | — | — | — | — | Requires Barracks 8 (all levels) |
-| 6 | 821 | 704 | 264 | 131 | 2 | 12 | — | — | — | — | Requires Barracks 8 (all levels) |
-| 7 | 1018 | 872 | 327 | 149 | 2 | 14 | — | — | — | — | Requires Barracks 8 (all levels) |
-| 8 | 1262 | 1082 | 406 | 170 | 2 | 16 | — | — | — | — | Requires Barracks 8 (all levels) |
-| 9 | 1565 | 1341 | 503 | 194 | 2 | 18 | — | — | — | — | Requires Barracks 8 (all levels) |
-| 10 | 1941 | 1663 | 624 | 221 | 2 | 20 | — | — | — | — | Requires Barracks 8 (all levels) |
-| 11 | 2406 | 2063 | 773 | 252 | 2 | 22 | — | — | — | — | Requires Barracks 8 (all levels) |
-| 12 | 2984 | 2558 | 959 | 287 | 2 | 24 | — | — | — | — | Requires Barracks 8 (all levels) |
-| 13 | 3700 | 3172 | 1189 | 328 | 3 | 27 | — | — | — | — | Requires Barracks 8 (all levels) |
-| 14 | 4588 | 3933 | 1475 | 373 | 3 | 30 | — | — | — | — | Requires Barracks 8 (all levels) |
-| 15 | 5689 | 4877 | 1829 | 426 | 3 | 33 | — | — | — | — | Requires Barracks 8 (all levels) |
-| 16 | 7055 | 6047 | 2268 | 485 | 3 | 36 | — | — | — | — | Requires Barracks 8 (all levels) |
-| 17 | 8748 | 7498 | 2812 | 553 | 3 | 39 | — | — | — | — | Requires Barracks 8 (all levels) |
-| 18 | 10847 | 9298 | 3487 | 631 | 3 | 42 | — | — | — | — | Requires Barracks 8 (all levels) |
-| 19 | 13451 | 11529 | 4323 | 719 | 3 | 45 | — | — | — | — | Requires Barracks 8 (all levels) |
-| 20 | 16679 | 14296 | 5361 | 820 | 3 | 48 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 1 | 240 | 205 | 80 | 65 | 1 | 1 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 2 | 290 | 248 | 97 | 75 | 1 | 2 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 3 | 351 | 300 | 117 | 80 | 1 | 3 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 4 | 425 | 363 | 142 | 90 | 1 | 4 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 5 | 514 | 439 | 171 | 100 | 1 | 5 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 6 | 622 | 532 | 207 | 115 | 1 | 6 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 7 | 753 | 643 | 251 | 130 | 1 | 7 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 8 | 911 | 778 | 304 | 145 | 1 | 8 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 9 | 1103 | 942 | 368 | 160 | 1 | 9 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 10 | 1334 | 1140 | 445 | 180 | 1 | 10 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 11 | 1615 | 1379 | 538 | 200 | 1 | 11 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 12 | 1954 | 1669 | 651 | 225 | 1 | 12 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 13 | 2364 | 2019 | 788 | 255 | 2 | 14 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 14 | 2860 | 2443 | 953 | 285 | 2 | 16 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 15 | 3461 | 2956 | 1154 | 320 | 2 | 18 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 16 | 4188 | 3577 | 1396 | 355 | 2 | 20 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 17 | 5067 | 4328 | 1689 | 400 | 2 | 22 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 18 | 6131 | 5237 | 2044 | 445 | 2 | 24 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 19 | 7419 | 6337 | 2473 | 500 | 2 | 26 | — | — | — | — | Requires Barracks 8 (all levels) |
+| 20 | 8977 | 7668 | 2992 | 560 | 2 | 28 | — | — | — | — | Requires Barracks 8 (all levels) |
 
 ### Space Dock (alias actuel; docs historiques: Hub de déploiement)
 - **Rôle**: Débloque les unités de projection (catégorie air dans le système économie/training actuel).
@@ -290,33 +291,46 @@
 - **Unlock**: HQ >= 10 + Combat Forge >= 5
 - **Prérequis**: Combat Forge niveau 5
 - **Niveau max**: 20
-- **Notes**: Temporaire balance value — TODO validate with design + naming canonical à figer.
+- **Notes**: Courbe coût/temps/pop ajustée; reste la branche la plus lourde.
 
 | Level | Ore cost | Stone cost | Iron cost | Build time (s) | Pop cost (lvl) | Cumulative pop used | Production per hour | Storage effect | Population cap bonus | Unlocks granted | Prerequisite notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 430 | 360 | 180 | 84 | 2 | 2 | — | — | — | — | Requires Combat Forge 5 (all levels) |
-| 2 | 538 | 450 | 225 | 97 | 2 | 4 | — | — | — | — | Requires Combat Forge 5 (all levels) |
-| 3 | 672 | 562 | 281 | 111 | 2 | 6 | — | — | — | — | Requires Combat Forge 5 (all levels) |
-| 4 | 840 | 703 | 352 | 128 | 2 | 8 | — | — | — | — | Requires Combat Forge 5 (all levels) |
-| 5 | 1050 | 879 | 439 | 147 | 2 | 10 | — | — | — | — | Requires Combat Forge 5 (all levels) |
-| 6 | 1312 | 1099 | 549 | 169 | 3 | 13 | — | — | — | — | Requires Combat Forge 5 (all levels) |
-| 7 | 1640 | 1373 | 687 | 194 | 3 | 16 | — | — | — | — | Requires Combat Forge 5 (all levels) |
-| 8 | 2050 | 1717 | 858 | 223 | 3 | 19 | — | — | — | — | Requires Combat Forge 5 (all levels) |
-| 9 | 2563 | 2146 | 1073 | 257 | 3 | 22 | — | — | — | — | Requires Combat Forge 5 (all levels) |
-| 10 | 3204 | 2682 | 1341 | 296 | 3 | 25 | — | — | — | — | Requires Combat Forge 5 (all levels) |
-| 11 | 4005 | 3353 | 1676 | 340 | 3 | 28 | — | — | — | — | Requires Combat Forge 5 (all levels) |
-| 12 | 5006 | 4191 | 2095 | 391 | 3 | 31 | — | — | — | — | Requires Combat Forge 5 (all levels) |
-| 13 | 6257 | 5239 | 2619 | 449 | 3 | 34 | — | — | — | — | Requires Combat Forge 5 (all levels) |
-| 14 | 7822 | 6548 | 3274 | 517 | 3 | 37 | — | — | — | — | Requires Combat Forge 5 (all levels) |
-| 15 | 9777 | 8185 | 4093 | 594 | 3 | 40 | — | — | — | — | Requires Combat Forge 5 (all levels) |
-| 16 | 12221 | 10232 | 5116 | 684 | 3 | 43 | — | — | — | — | Requires Combat Forge 5 (all levels) |
-| 17 | 15277 | 12790 | 6395 | 786 | 3 | 46 | — | — | — | — | Requires Combat Forge 5 (all levels) |
-| 18 | 19096 | 15987 | 7994 | 904 | 3 | 49 | — | — | — | — | Requires Combat Forge 5 (all levels) |
-| 19 | 23870 | 19984 | 9992 | 1040 | 3 | 52 | — | — | — | — | Requires Combat Forge 5 (all levels) |
-| 20 | 29837 | 24980 | 12490 | 1195 | 3 | 55 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 1 | 360 | 300 | 150 | 80 | 1 | 1 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 2 | 439 | 366 | 183 | 90 | 1 | 2 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 3 | 536 | 447 | 223 | 100 | 1 | 3 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 4 | 654 | 545 | 272 | 115 | 1 | 4 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 5 | 798 | 665 | 332 | 130 | 1 | 5 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 6 | 973 | 811 | 405 | 145 | 2 | 7 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 7 | 1187 | 989 | 495 | 165 | 2 | 9 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 8 | 1448 | 1207 | 603 | 190 | 2 | 11 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 9 | 1767 | 1472 | 736 | 215 | 2 | 13 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 10 | 2155 | 1796 | 898 | 240 | 2 | 15 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 11 | 2630 | 2191 | 1096 | 270 | 2 | 17 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 12 | 3208 | 2673 | 1337 | 305 | 2 | 19 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 13 | 3914 | 3262 | 1631 | 345 | 2 | 21 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 14 | 4775 | 3979 | 1990 | 390 | 2 | 23 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 15 | 5826 | 4855 | 2427 | 445 | 2 | 25 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 16 | 7107 | 5923 | 2961 | 500 | 2 | 27 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 17 | 8671 | 7226 | 3613 | 565 | 2 | 29 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 18 | 10578 | 8815 | 4408 | 640 | 2 | 31 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 19 | 12906 | 10755 | 5377 | 720 | 2 | 33 | — | — | — | — | Requires Combat Forge 5 (all levels) |
+| 20 | 15745 | 13121 | 6560 | 815 | 2 | 35 | — | — | — | — | Requires Combat Forge 5 (all levels) |
 
-## 4. Open issues / points à valider
+## 4. Économie des troupes (active)
+Valeurs synchronisées avec `TROOP_CONFIG` (coûts, temps de formation, population, unlock).
+
+| Unit | Category | Required building | Required level | Ore | Stone | Iron | Training time (s) | Pop cost |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Infantry | ground | Barracks | 1 | 35 | 20 | 0 | 20 | 1 |
+| Shield Guard | ground | Barracks | 5 | 70 | 55 | 10 | 35 | 2 |
+| Marksman | ground | Barracks | 10 | 98 | 62 | 35 | 45 | 1 |
+| Raider Cavalry | ground | Barracks | 15 | 140 | 95 | 55 | 60 | 2 |
+| Assault | ground | Combat Forge | 1 | 165 | 120 | 85 | 70 | 2 |
+| Breacher | ground | Combat Forge | 8 | 240 | 200 | 130 | 95 | 3 |
+| Interception Sentinel | air | Space Dock | 1 | 210 | 150 | 125 | 85 | 3 |
+| Rapid Escort | air | Space Dock | 5 | 275 | 190 | 170 | 105 | 2 |
+
+## 5. Open issues / points à valider
 - **Naming drift**: `Space Dock` vs `Hub de déploiement` (décision canonique à figer).
-- **Branches militaires**: coûts/temps/pop marqués **Temporaire balance value** en attente de validation design.
-- **Contradiction doc unités Barracks** (DOC 02 historique vs DOC 03) sur paliers exacts: arbitrage produit requis.
-- **Bâtiments later-phase** listés au catalogue mais non détaillés 1→20 ici faute de table active centralisée.
+- **Branches militaires**: coûts/temps/pop restent des **Temporaire balance value** à confirmer en playtests.
+- **Combat layer**: valeurs économiques synchronisées, mais tuning final dépendra des stats de combat ultérieures.

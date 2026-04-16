@@ -84,6 +84,8 @@ describe('cityEconomySystem MVP+V0 economy logic', () => {
     state.levels.mine = 20;
     state.levels.quarry = 19;
     state.levels.refinery = 20;
+    state.troops.infantry = 30;
+    state.troops.shield_guard = 15;
     const blockedBuilding = canStartConstruction(state, 'quarry');
     expect(blockedBuilding).toEqual({ ok: false, reason: 'Not enough population' });
 
