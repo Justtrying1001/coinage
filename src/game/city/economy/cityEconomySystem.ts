@@ -3,6 +3,7 @@ import {
   ECONOMY_BUILDING_ORDER,
   MILITARY_BUILDING_ORDER,
   type BuildingLevelCost,
+  type BuildingLevelBandPrerequisite,
   type EconomyBuildingConfig,
   type EconomyBuildingId,
   type EconomyResource,
@@ -95,11 +96,21 @@ function getCurrentLevelRow(state: CityEconomyState, buildingId: EconomyBuilding
 }
 
 export function isBuildingUnlocked(state: CityEconomyState, buildingId: EconomyBuildingId) {
+  const currentLevel = getBuildingLevel(state, buildingId);
+  return isBuildingUnlockedForTargetLevel(state, buildingId, currentLevel + 1);
+}
+
+function getBandPrerequisiteForTargetLevel(config: EconomyBuildingConfig, targetLevel: number): BuildingLevelBandPrerequisite | null {
+  return config.levelBandPrerequisites?.find((band) => targetLevel >= band.minTargetLevel && targetLevel <= band.maxTargetLevel) ?? null;
+}
+
+function isBuildingUnlockedForTargetLevel(state: CityEconomyState, buildingId: EconomyBuildingId, targetLevel: number) {
   if (buildingId === 'hq') return true;
   const config = getBuildingConfig(buildingId);
-  if (getBuildingLevel(state, 'hq') < config.unlockAtHq) return false;
+  const hqRequirement = Math.max(config.unlockAtHq, getBandPrerequisiteForTargetLevel(config, targetLevel)?.minHqLevel ?? 0);
+  if (getBuildingLevel(state, 'hq') < hqRequirement) return false;
 
-  const prereqs = config.prerequisites ?? [];
+  const prereqs = [...(config.prerequisites ?? []), ...(getBandPrerequisiteForTargetLevel(config, targetLevel)?.prerequisites ?? [])];
   return prereqs.every((req) => getBuildingLevel(state, req.buildingId) >= req.minLevel);
 }
 
@@ -114,12 +125,7 @@ export function getUpgradeLevelCost(buildingId: EconomyBuildingId, targetLevel: 
 
 export function getStorageCaps(state: CityEconomyState): ResourceBundle {
   const warehouse = getCurrentLevelRow(state, 'warehouse');
-  const multiplier = warehouse?.effect.storageMultiplier ?? 1;
-  return {
-    ore: Math.round(CITY_ECONOMY_CONFIG.resources.baseStorageCap.ore * multiplier),
-    stone: Math.round(CITY_ECONOMY_CONFIG.resources.baseStorageCap.stone * multiplier),
-    iron: Math.round(CITY_ECONOMY_CONFIG.resources.baseStorageCap.iron * multiplier),
-  };
+  return warehouse?.effect.storageCap ?? CITY_ECONOMY_CONFIG.resources.baseStorageCap;
 }
 
 function getBuildingPopulationUsage(state: CityEconomyState) {
@@ -197,11 +203,15 @@ export function canStartConstruction(state: CityEconomyState, buildingId: Econom
   const currentLevel = getBuildingLevel(state, buildingId);
   const targetLevel = currentLevel + 1;
 
-  if (!isBuildingUnlocked(state, buildingId)) {
-    if (getBuildingLevel(state, 'hq') < config.unlockAtHq) {
-      return { ok: false, reason: `Requires HQ ${config.unlockAtHq}` };
+  const band = getBandPrerequisiteForTargetLevel(config, targetLevel);
+  const hqRequirement = Math.max(config.unlockAtHq, band?.minHqLevel ?? 0);
+  if (!isBuildingUnlockedForTargetLevel(state, buildingId, targetLevel)) {
+    if (getBuildingLevel(state, 'hq') < hqRequirement) {
+      return { ok: false, reason: `Requires HQ ${hqRequirement}` };
     }
-    const prereq = config.prerequisites?.find((req) => getBuildingLevel(state, req.buildingId) < req.minLevel);
+    const prereq = [...(config.prerequisites ?? []), ...(band?.prerequisites ?? [])].find(
+      (req) => getBuildingLevel(state, req.buildingId) < req.minLevel,
+    );
     if (prereq) return { ok: false, reason: `Requires ${prereq.buildingId} ${prereq.minLevel}` };
     return { ok: false, reason: 'Locked' };
   }

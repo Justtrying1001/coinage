@@ -30,18 +30,27 @@ describe('cityEconomySystem MVP+V0 economy logic', () => {
     const state = createInitialCityEconomyState({ cityId: 'c-1', owner: 'p1', nowMs: 0 });
     state.resources = { ore: 9_999_999, stone: 9_999_999, iron: 9_999_999 };
 
-    expect(canStartConstruction(state, 'barracks').ok).toBe(true);
-    expect(canStartConstruction(state, 'combat_forge')).toEqual({ ok: false, reason: 'Requires HQ 5' });
+    expect(canStartConstruction(state, 'barracks')).toEqual({ ok: false, reason: 'Requires HQ 2' });
+    expect(canStartConstruction(state, 'combat_forge')).toEqual({ ok: false, reason: 'Requires HQ 6' });
 
-    state.levels.hq = 5;
+    state.levels.hq = 2;
+    expect(canStartConstruction(state, 'barracks')).toEqual({ ok: false, reason: 'Requires housing_complex 2' });
+    state.levels.housing_complex = 2;
+    expect(canStartConstruction(state, 'barracks').ok).toBe(true);
+
+    state.levels.hq = 6;
     expect(canStartConstruction(state, 'combat_forge')).toEqual({ ok: false, reason: 'Requires barracks 8' });
 
     state.levels.barracks = 8;
+    expect(canStartConstruction(state, 'combat_forge')).toEqual({ ok: false, reason: 'Requires refinery 5' });
+    state.levels.refinery = 5;
     expect(canStartConstruction(state, 'combat_forge').ok).toBe(true);
 
     state.levels.hq = 10;
     expect(canStartConstruction(state, 'space_dock')).toEqual({ ok: false, reason: 'Requires combat_forge 5' });
     state.levels.combat_forge = 5;
+    expect(canStartConstruction(state, 'space_dock')).toEqual({ ok: false, reason: 'Requires refinery 6' });
+    state.levels.refinery = 6;
     expect(canStartConstruction(state, 'space_dock').ok).toBe(true);
   });
 
