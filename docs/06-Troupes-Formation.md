@@ -23,9 +23,9 @@ Ce document aligne les lignes d’unités intentionnelles du jeu (MVP/V0/later),
 | breacher | Briseur / Breacher | ground_line | V0 | fully_defined | Oui | Combat Forge 8 | Coûts + temps + pop confirmés |
 | interception_sentinel | Sentinelle d’interception | projection | V0 | fully_defined | Oui | Space Dock 1 | Coûts + temps + pop confirmés |
 | rapid_escort | Escorteur rapide | projection | V0 | fully_defined | Oui | Space Dock 5 | Coûts + temps + pop confirmés |
-| assault_convoy | Convoi d’assaut | projection | later | partially_defined | Non | Space Dock 10 | Pop/capacité intentionnelles; coûts/temps manquants |
-| siege_runner | Briseur mobile / Siege Runner | siege | later | partially_defined | Non | Space Dock 15 | Rôle et vitesse relative définis; valeurs chiffrées manquantes |
-| colonization_convoy | Convoi de colonisation | colonization | later | partially_defined | Non | Space Dock 20 + HQ 10 | Pop et usage (consommé à l’arrivée) connus; coûts/temps manquants |
+| assault_convoy | Convoi d’assaut | projection | later | partially_defined | Non | Space Dock 10 | **Profil provisoire ajouté** (coût/temps/pop/capacité) |
+| siege_runner | Briseur mobile / Siege Runner | siege | later | partially_defined | Non | Space Dock 15 | **Profil provisoire ajouté** (coût/temps/pop/vitesse) |
+| colonization_convoy | Convoi de colonisation | colonization | later | partially_defined | Non | Space Dock 20 + HQ 10 | **Profil provisoire ajouté** (coût/temps/pop/consommation) |
 
 ## 3. Classification par branches gameplay
 
@@ -48,11 +48,19 @@ Ce document aligne les lignes d’unités intentionnelles du jeu (MVP/V0/later),
 
 | Champ | Unités actives (8) | Unités later (3) |
 | --- | --- | --- |
-| Coûts ressources | Confirmés | Placeholder requis |
-| Temps de formation | Confirmés | Placeholder requis |
-| Coût population | Confirmés | Partiellement défini |
+| Coûts ressources | Confirmés | **Provisoires tablés** |
+| Temps de formation | Confirmés | **Provisoires tablés** |
+| Coût population | Confirmés | **Provisoires tablés** |
 | Stats combat détaillées (ATK/DEF typées) | Partielles | Partielles |
-| Vitesse/loot/capacité logistique | Partielles | Partielles |
+| Vitesse/loot/capacité logistique | Partielles | **Partielles mais clarifiées (tiers + capacité + escorte)** |
+
+## 4.1 Profils provisoires ajoutés (unités later)
+
+| Unit ID | Ore | Stone | Iron | Training (s) | Pop | Type | Vitesse | Logistique provisoire |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| assault_convoy | 320 | 250 | 180 | 145 | 6 | none | slow | Capacité convoyée 10 pop, escorte requise |
+| siege_runner | 285 | 240 | 195 | 160 | 5 | kinetic | slow | Escorte requise |
+| colonization_convoy | 420 | 345 | 265 | 220 | 10 | none | extreme_slow | Escorte requise, consommé à l’arrivée |
 
 ## 5. Graphe de dépendances unités (full-content)
 
@@ -70,10 +78,10 @@ Ce document aligne les lignes d’unités intentionnelles du jeu (MVP/V0/later),
 
 ## 6. Points bloquants avant balance globale finale
 
-1. Valeurs coûts/temps/pop manquantes pour les unités de projection avancée/siège/colonisation.
-2. Stats combat typées (cinétique/énergétique/plasma) incomplètes au niveau configuration canonique.
-3. Paramètres logistiques (capacité convoi, vitesse absolue, règles d’escorte) non entièrement tablés pour simulation complète.
-4. Couplage final avec bâtiments later (Mur/Tour/Académie/Usine) non encore chiffré.
+1. Valeurs coûts/temps/pop ajoutées en **provisoire**, mais encore à valider en playtest/global simulation.
+2. Coefficients combat détaillés (ATK/DEF par type) encore incomplets au niveau simulation canonique.
+3. Paramètres logistiques absolus (distance réelle, vitesse numérique, limites de stack/convoy) restent ouverts.
+4. Couplage final avec bâtiments later (Mur/Tour/Académie/Usine) nécessite arbitrage produit macro-combat.
 
 ## 7. Règle de gouvernance design
 

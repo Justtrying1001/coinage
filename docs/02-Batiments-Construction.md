@@ -391,11 +391,11 @@
 
 | Domaine valeur | Actif (MVP/V0 runtime) | Later (catalogue full-content) |
 | --- | --- | --- |
-| Coûts ressources | Confirmés | Majoritairement manquants / placeholders requis |
-| Temps construction | Confirmés | Majoritairement manquants / placeholders requis |
-| Coût population | Confirmés pour subset actif | Majoritairement manquants / questions design ouvertes |
-| Effets | Confirmés sur économie/stockage/pop | Partiels (rôle défini, quantification manquante) |
-| Paliers/prérequis | Confirmés sur subset actif | Partiels mais explicités dans le catalogue |
+| Coûts ressources | Confirmés | **Provisoires tablés** pour Mur, Tour, Académie, Usine, Marché, Lab, Espionnage, Council Chamber |
+| Temps construction | Confirmés | **Provisoires tablés** avec courbe staged 1→20 |
+| Coût population | Confirmés pour subset actif | **Provisoires tablés** (bands 1/1/2 ou 1/2/2 selon branche) |
+| Effets | Confirmés sur économie/stockage/pop | **Clarifiés** par niveau (défense, trading, espionnage, recherche, gouvernance, militarisation) |
+| Paliers/prérequis | Confirmés sur subset actif | **Étendus** avec gates par bands pour toutes les branches core non-premium |
 
 ## 9. Référence unités / troupes
 
@@ -410,3 +410,16 @@ Les branches prestige/premium/special sont **retirées du périmètre actif de b
 - `shard_vault` (premium)
 
 Elles sont conservées dans le code via un catalogue différé dédié (`DEFERRED_BUILDING_CATALOG`) pour réintégration ultérieure après stabilisation du core-game.
+
+## 11. Effets gameplay clarifiés (core non-premium)
+
+- **Defensive Wall**: bonus global de défense en phase 2 (provisoire, niveau-scalé).
+- **Watch Tower**: alerte précoce attaques entrantes + efficacité d’interception garnison (provisoire).
+- **Military Academy**: réduction temps de formation ground + capacité doctrine (provisoire).
+- **Armament Factory**: réduction coût Iron des unités militaires + réduction temps de formation projection/siège (provisoire).
+- **Intelligence Center**: robustesse vault espionnage + mapping des paliers missions 1/5/10/15/20.
+- **Research Lab**: progression RC alignée sur la formule micro (`+3 RC / niveau`, provisoire).
+- **Market**: throughput des convois logistiques + réduction taxe de transfert interne (provisoire).
+- **Council Chamber**: poids de vote gouvernance + réduction préparation mobilisation collective (provisoire).
+
+> Tous ces effets sont intégrés au catalogue de balance comme **provisional design values** et restent marqués `partially_defined` tant que l’arbitrage produit combat/macro n’est pas finalisé.

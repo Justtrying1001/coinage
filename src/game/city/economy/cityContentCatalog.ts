@@ -41,6 +41,7 @@ export interface BuildingCatalogEntry {
     population: DefinitionStatus;
     effects: DefinitionStatus;
   };
+  provisionalLevels?: BuildingLevelDraft[];
   notes?: string[];
 }
 
@@ -60,7 +61,73 @@ export interface UnitCatalogEntry {
     combatStats: DefinitionStatus;
     logisticsStats: DefinitionStatus;
   };
+  provisionalProfile?: UnitDraftProfile;
   notes?: string[];
+}
+
+export interface BuildingLevelDraft {
+  level: number;
+  resources: { ore: number; stone: number; iron: number };
+  buildSeconds: number;
+  populationCost: number;
+  effects: string[];
+}
+
+export interface UnitDraftProfile {
+  resources: { ore: number; stone: number; iron: number };
+  trainingSeconds: number;
+  populationCost: number;
+  attackType: 'kinetic' | 'energy' | 'plasma' | 'none';
+  speedTier: 'very_fast' | 'fast' | 'medium' | 'slow' | 'very_slow' | 'extreme_slow';
+  logistics?: {
+    convoyCapacityPopulation?: number;
+    consumedOnArrival?: boolean;
+    requiresEscort?: boolean;
+  };
+}
+
+function roundTo5(value: number) {
+  return Math.max(5, Math.round(value / 5) * 5);
+}
+
+function stagedBuildSeconds(level: number, earlyBaseSeconds: number, weight = 1) {
+  const earlyGrowth = 1.22;
+  const lateGrowth = 1.9;
+  const earlyBand = Math.min(level - 1, 9);
+  const lateBand = Math.max(0, level - 10);
+  const earlyValue = earlyBaseSeconds * Math.pow(earlyGrowth, earlyBand);
+  const value = lateBand > 0 ? earlyValue * Math.pow(lateGrowth, lateBand) : earlyValue;
+  return roundTo5(value * weight);
+}
+
+function populationBand(level: number, early: number, mid: number, late: number) {
+  if (level <= 5) return early;
+  if (level <= 12) return mid;
+  return late;
+}
+
+function buildProvisionalLevels(params: {
+  baseCost: { ore: number; stone: number; iron: number };
+  costScale: number;
+  baseSeconds: number;
+  populationCostByLevel: (level: number) => number;
+  effectByLevel: (level: number) => string[];
+}): BuildingLevelDraft[] {
+  return Array.from({ length: 20 }, (_, idx) => {
+    const level = idx + 1;
+    const mult = Math.pow(params.costScale, idx);
+    return {
+      level,
+      resources: {
+        ore: Math.round(params.baseCost.ore * mult),
+        stone: Math.round(params.baseCost.stone * mult),
+        iron: Math.round(params.baseCost.iron * mult),
+      },
+      buildSeconds: stagedBuildSeconds(level, params.baseSeconds),
+      populationCost: params.populationCostByLevel(level),
+      effects: params.effectByLevel(level),
+    };
+  });
 }
 
 export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
@@ -456,12 +523,45 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     role: 'Global city defense multiplier during local defense phase.',
     primarySystems: ['defense', 'combat_phase_2'],
     unlock: [{ type: 'hq', targetId: 'hq', minLevel: 4 }],
+    levelBandGates: [
+      {
+        minTargetLevel: 6,
+        maxTargetLevel: 10,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 8 },
+          { type: 'building', targetId: 'warehouse', minLevel: 6 },
+        ],
+      },
+      {
+        minTargetLevel: 11,
+        maxTargetLevel: 15,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 12 },
+          { type: 'building', targetId: 'watch_tower', minLevel: 6 },
+        ],
+      },
+      {
+        minTargetLevel: 16,
+        maxTargetLevel: 20,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 16 },
+          { type: 'building', targetId: 'housing_complex', minLevel: 14 },
+        ],
+      },
+    ],
     valueCompleteness: {
-      costs: 'placeholder_values_needed',
-      buildTime: 'placeholder_values_needed',
-      population: 'placeholder_values_needed',
+      costs: 'partially_defined',
+      buildTime: 'partially_defined',
+      population: 'partially_defined',
       effects: 'partially_defined',
     },
+    provisionalLevels: buildProvisionalLevels({
+      baseCost: { ore: 160, stone: 240, iron: 60 },
+      costScale: 1.19,
+      baseSeconds: 52,
+      populationCostByLevel: (level) => populationBand(level, 1, 1, 2),
+      effectByLevel: (level) => [`City defense bonus +${Math.round(4 + level * 1.4)}%`, 'Applies to all defending units in phase 2'],
+    }),
     notes: ['Referenced in micro combat doc as a global defense bonus source.'],
   },
   {
@@ -475,12 +575,48 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     role: 'Defensive/scouting support for incoming military visibility and local resilience.',
     primarySystems: ['defense', 'intel_support'],
     unlock: [{ type: 'hq', targetId: 'hq', minLevel: 5 }],
+    levelBandGates: [
+      {
+        minTargetLevel: 6,
+        maxTargetLevel: 10,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 8 },
+          { type: 'building', targetId: 'defensive_wall', minLevel: 4 },
+        ],
+      },
+      {
+        minTargetLevel: 11,
+        maxTargetLevel: 15,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 12 },
+          { type: 'building', targetId: 'intelligence_center', minLevel: 5 },
+        ],
+      },
+      {
+        minTargetLevel: 16,
+        maxTargetLevel: 20,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 16 },
+          { type: 'building', targetId: 'defensive_wall', minLevel: 12 },
+        ],
+      },
+    ],
     valueCompleteness: {
-      costs: 'placeholder_values_needed',
-      buildTime: 'placeholder_values_needed',
-      population: 'placeholder_values_needed',
-      effects: 'unresolved_design_questions',
+      costs: 'partially_defined',
+      buildTime: 'partially_defined',
+      population: 'partially_defined',
+      effects: 'partially_defined',
     },
+    provisionalLevels: buildProvisionalLevels({
+      baseCost: { ore: 135, stone: 165, iron: 85 },
+      costScale: 1.185,
+      baseSeconds: 48,
+      populationCostByLevel: (level) => populationBand(level, 1, 1, 2),
+      effectByLevel: (level) => [
+        `Incoming attack early-warning +${Math.round(8 + level * 1.9)}%`,
+        `Garrison interception efficiency +${Math.round(2 + level * 1.1)}%`,
+      ],
+    }),
   },
   {
     id: 'military_academy',
@@ -492,13 +628,54 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     maxLevel: 20,
     role: 'Late military specialization and doctrine building.',
     primarySystems: ['military_specialization', 'research_bridge'],
-    unlock: [{ type: 'hq', targetId: 'hq', minLevel: 12 }],
+    unlock: [
+      { type: 'hq', targetId: 'hq', minLevel: 12 },
+      { type: 'building', targetId: 'combat_forge', minLevel: 10 },
+      { type: 'building', targetId: 'research_lab', minLevel: 6 },
+    ],
+    levelBandGates: [
+      {
+        minTargetLevel: 6,
+        maxTargetLevel: 10,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 14 },
+          { type: 'building', targetId: 'armament_factory', minLevel: 4 },
+        ],
+      },
+      {
+        minTargetLevel: 11,
+        maxTargetLevel: 15,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 16 },
+          { type: 'building', targetId: 'combat_forge', minLevel: 14 },
+        ],
+      },
+      {
+        minTargetLevel: 16,
+        maxTargetLevel: 20,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 18 },
+          { type: 'building', targetId: 'council_chamber', minLevel: 10 },
+        ],
+      },
+    ],
     valueCompleteness: {
-      costs: 'placeholder_values_needed',
-      buildTime: 'placeholder_values_needed',
-      population: 'placeholder_values_needed',
-      effects: 'unresolved_design_questions',
+      costs: 'partially_defined',
+      buildTime: 'partially_defined',
+      population: 'partially_defined',
+      effects: 'partially_defined',
     },
+    provisionalLevels: buildProvisionalLevels({
+      baseCost: { ore: 290, stone: 255, iron: 140 },
+      costScale: 1.21,
+      baseSeconds: 70,
+      populationCostByLevel: (level) => populationBand(level, 1, 2, 2),
+      effectByLevel: (level) => [
+        `Ground unit training time -${Math.round(3 + level * 0.55)}%`,
+        `Doctrine slot capacity +${Math.floor(level / 5)} (provisional)`,
+      ],
+    }),
+    notes: ['Operational level effects are now structured provisionally; doctrine-capacity mechanics still require product arbitration.'],
   },
   {
     id: 'armament_factory',
@@ -510,13 +687,54 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     maxLevel: 20,
     role: 'Military production optimization / war-economy support building.',
     primarySystems: ['military_economy', 'training_efficiency'],
-    unlock: [{ type: 'hq', targetId: 'hq', minLevel: 12 }],
+    unlock: [
+      { type: 'hq', targetId: 'hq', minLevel: 12 },
+      { type: 'building', targetId: 'space_dock', minLevel: 8 },
+      { type: 'building', targetId: 'refinery', minLevel: 10 },
+    ],
+    levelBandGates: [
+      {
+        minTargetLevel: 6,
+        maxTargetLevel: 10,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 14 },
+          { type: 'building', targetId: 'warehouse', minLevel: 10 },
+        ],
+      },
+      {
+        minTargetLevel: 11,
+        maxTargetLevel: 15,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 16 },
+          { type: 'building', targetId: 'military_academy', minLevel: 8 },
+        ],
+      },
+      {
+        minTargetLevel: 16,
+        maxTargetLevel: 20,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 18 },
+          { type: 'building', targetId: 'market', minLevel: 12 },
+        ],
+      },
+    ],
     valueCompleteness: {
-      costs: 'placeholder_values_needed',
-      buildTime: 'placeholder_values_needed',
-      population: 'placeholder_values_needed',
-      effects: 'unresolved_design_questions',
+      costs: 'partially_defined',
+      buildTime: 'partially_defined',
+      population: 'partially_defined',
+      effects: 'partially_defined',
     },
+    provisionalLevels: buildProvisionalLevels({
+      baseCost: { ore: 320, stone: 235, iron: 170 },
+      costScale: 1.21,
+      baseSeconds: 72,
+      populationCostByLevel: (level) => populationBand(level, 1, 2, 2),
+      effectByLevel: (level) => [
+        `Military unit iron cost -${Math.round(2 + level * 0.45)}%`,
+        `Siege/projection unit training time -${Math.round(2 + level * 0.5)}%`,
+      ],
+    }),
+    notes: ['Acts as war-economy coupling between refinery throughput and advanced military lines.'],
   },
   {
     id: 'intelligence_center',
@@ -529,13 +747,51 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     role: 'Spy vault and mission unlock progression.',
     primarySystems: ['espionage', 'spy_vault', 'counter_intel'],
     unlock: [{ type: 'hq', targetId: 'hq', minLevel: 4 }],
+    levelBandGates: [
+      {
+        minTargetLevel: 6,
+        maxTargetLevel: 10,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 8 },
+          { type: 'building', targetId: 'watch_tower', minLevel: 4 },
+        ],
+      },
+      {
+        minTargetLevel: 11,
+        maxTargetLevel: 15,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 12 },
+          { type: 'building', targetId: 'research_lab', minLevel: 8 },
+        ],
+      },
+      {
+        minTargetLevel: 16,
+        maxTargetLevel: 20,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 16 },
+          { type: 'building', targetId: 'council_chamber', minLevel: 10 },
+        ],
+      },
+    ],
     valueCompleteness: {
-      costs: 'placeholder_values_needed',
-      buildTime: 'placeholder_values_needed',
-      population: 'placeholder_values_needed',
+      costs: 'partially_defined',
+      buildTime: 'partially_defined',
+      population: 'partially_defined',
       effects: 'partially_defined',
     },
-    notes: ['Mission tiers are defined in docs at levels 1/5/10/15/20.'],
+    provisionalLevels: buildProvisionalLevels({
+      baseCost: { ore: 170, stone: 155, iron: 125 },
+      costScale: 1.19,
+      baseSeconds: 54,
+      populationCostByLevel: (level) => populationBand(level, 1, 1, 2),
+      effectByLevel: (level) => {
+        const missionTiers = ['L1: Recon', 'L5: Infiltration', 'L10: Surveillance', 'L15: Sabotage', 'L20: Ghost Ops'].filter((tier) =>
+          tier.startsWith(`L${level}:`),
+        );
+        return [`Spy-vault resilience +${Math.round(6 + level * 1.7)}%`, ...missionTiers];
+      },
+    }),
+    notes: ['Mission tiers are defined in docs at levels 1/5/10/15/20 and now mapped into provisional level effects.'],
   },
   {
     id: 'research_lab',
@@ -548,13 +804,49 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     role: 'Research Capacity contribution and tech branch progression.',
     primarySystems: ['research', 'research_capacity'],
     unlock: [{ type: 'hq', targetId: 'hq', minLevel: 4 }],
+    levelBandGates: [
+      {
+        minTargetLevel: 6,
+        maxTargetLevel: 10,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 8 },
+          { type: 'building', targetId: 'warehouse', minLevel: 6 },
+        ],
+      },
+      {
+        minTargetLevel: 11,
+        maxTargetLevel: 15,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 12 },
+          { type: 'building', targetId: 'market', minLevel: 6 },
+        ],
+      },
+      {
+        minTargetLevel: 16,
+        maxTargetLevel: 20,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 16 },
+          { type: 'building', targetId: 'military_academy', minLevel: 10 },
+        ],
+      },
+    ],
     valueCompleteness: {
-      costs: 'placeholder_values_needed',
-      buildTime: 'placeholder_values_needed',
-      population: 'placeholder_values_needed',
+      costs: 'partially_defined',
+      buildTime: 'partially_defined',
+      population: 'partially_defined',
       effects: 'partially_defined',
     },
-    notes: ['RC formula exists, but per-level lab table remains unspecified.'],
+    provisionalLevels: buildProvisionalLevels({
+      baseCost: { ore: 165, stone: 165, iron: 120 },
+      costScale: 1.19,
+      baseSeconds: 56,
+      populationCostByLevel: (level) => populationBand(level, 1, 1, 2),
+      effectByLevel: (level) => [
+        `Research Capacity +${level * 3} (aligns with micro formula)`,
+        'One active research at a time (city rule)',
+      ],
+    }),
+    notes: ['RC formula exists in docs and now has a provisional level table aligned to +3 RC per level.'],
   },
   {
     id: 'market',
@@ -567,12 +859,48 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     role: 'Inter-city trading and resource logistics throughput.',
     primarySystems: ['trading', 'logistics'],
     unlock: [{ type: 'hq', targetId: 'hq', minLevel: 5 }],
+    levelBandGates: [
+      {
+        minTargetLevel: 6,
+        maxTargetLevel: 10,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 9 },
+          { type: 'building', targetId: 'warehouse', minLevel: 8 },
+        ],
+      },
+      {
+        minTargetLevel: 11,
+        maxTargetLevel: 15,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 13 },
+          { type: 'building', targetId: 'intelligence_center', minLevel: 6 },
+        ],
+      },
+      {
+        minTargetLevel: 16,
+        maxTargetLevel: 20,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 16 },
+          { type: 'building', targetId: 'council_chamber', minLevel: 8 },
+        ],
+      },
+    ],
     valueCompleteness: {
-      costs: 'placeholder_values_needed',
-      buildTime: 'placeholder_values_needed',
-      population: 'placeholder_values_needed',
-      effects: 'unresolved_design_questions',
+      costs: 'partially_defined',
+      buildTime: 'partially_defined',
+      population: 'partially_defined',
+      effects: 'partially_defined',
     },
+    provisionalLevels: buildProvisionalLevels({
+      baseCost: { ore: 150, stone: 135, iron: 70 },
+      costScale: 1.18,
+      baseSeconds: 46,
+      populationCostByLevel: (level) => populationBand(level, 1, 1, 2),
+      effectByLevel: (level) => [
+        `Trade convoy throughput +${Math.round(6 + level * 1.6)}%`,
+        `Internal transfer tax -${Math.round(1 + level * 0.35)}%`,
+      ],
+    }),
   },
   {
     id: 'council_chamber',
@@ -585,12 +913,49 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     role: 'Local governance/governor authority interface into faction governance.',
     primarySystems: ['governance', 'faction_politics'],
     unlock: [{ type: 'hq', targetId: 'hq', minLevel: 8 }],
+    levelBandGates: [
+      {
+        minTargetLevel: 6,
+        maxTargetLevel: 10,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 11 },
+          { type: 'building', targetId: 'research_lab', minLevel: 5 },
+        ],
+      },
+      {
+        minTargetLevel: 11,
+        maxTargetLevel: 15,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 14 },
+          { type: 'building', targetId: 'market', minLevel: 8 },
+        ],
+      },
+      {
+        minTargetLevel: 16,
+        maxTargetLevel: 20,
+        prerequisites: [
+          { type: 'hq', targetId: 'hq', minLevel: 18 },
+          { type: 'building', targetId: 'intelligence_center', minLevel: 12 },
+        ],
+      },
+    ],
     valueCompleteness: {
-      costs: 'placeholder_values_needed',
-      buildTime: 'placeholder_values_needed',
-      population: 'placeholder_values_needed',
-      effects: 'unresolved_design_questions',
+      costs: 'partially_defined',
+      buildTime: 'partially_defined',
+      population: 'partially_defined',
+      effects: 'partially_defined',
     },
+    provisionalLevels: buildProvisionalLevels({
+      baseCost: { ore: 220, stone: 205, iron: 130 },
+      costScale: 1.2,
+      baseSeconds: 60,
+      populationCostByLevel: (level) => populationBand(level, 1, 1, 2),
+      effectByLevel: (level) => [
+        `Faction governance vote weight +${Math.round(level * 0.8)}%`,
+        `Collective mobilization prep time -${Math.round(1 + level * 0.3)}%`,
+      ],
+    }),
+    notes: ['Governance effects are provisional and require macro-system product arbitration.'],
   },
 ];
 
@@ -780,13 +1145,24 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
     role: 'Required transport to project assault troops inter-sector.',
     unlock: [{ type: 'building', targetId: 'space_dock', minLevel: 10 }],
     valueCompleteness: {
-      costs: 'placeholder_values_needed',
-      trainingTime: 'placeholder_values_needed',
+      costs: 'partially_defined',
+      trainingTime: 'partially_defined',
       population: 'partially_defined',
       combatStats: 'partially_defined',
       logisticsStats: 'partially_defined',
     },
-    notes: ['Capacity 10 pop defined in docs; numeric cost/time pending.'],
+    provisionalProfile: {
+      resources: { ore: 320, stone: 250, iron: 180 },
+      trainingSeconds: 145,
+      populationCost: 6,
+      attackType: 'none',
+      speedTier: 'slow',
+      logistics: {
+        convoyCapacityPopulation: 10,
+        requiresEscort: true,
+      },
+    },
+    notes: ['Capacity 10 pop is doc-confirmed; cost/time are now provisional pending product arbitration.'],
   },
   {
     id: 'siege_runner',
@@ -798,12 +1174,23 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
     role: 'Mobile anti-structure siege line requiring escort.',
     unlock: [{ type: 'building', targetId: 'space_dock', minLevel: 15 }],
     valueCompleteness: {
-      costs: 'placeholder_values_needed',
-      trainingTime: 'placeholder_values_needed',
+      costs: 'partially_defined',
+      trainingTime: 'partially_defined',
       population: 'partially_defined',
       combatStats: 'partially_defined',
       logisticsStats: 'partially_defined',
     },
+    provisionalProfile: {
+      resources: { ore: 285, stone: 240, iron: 195 },
+      trainingSeconds: 160,
+      populationCost: 5,
+      attackType: 'kinetic',
+      speedTier: 'slow',
+      logistics: {
+        requiresEscort: true,
+      },
+    },
+    notes: ['Anti-structure role is defined; structure-damage coefficients still require combat-model arbitration.'],
   },
   {
     id: 'colonization_convoy',
@@ -818,11 +1205,22 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       { type: 'hq', targetId: 'hq', minLevel: 10 },
     ],
     valueCompleteness: {
-      costs: 'placeholder_values_needed',
-      trainingTime: 'placeholder_values_needed',
+      costs: 'partially_defined',
+      trainingTime: 'partially_defined',
       population: 'partially_defined',
       combatStats: 'partially_defined',
       logisticsStats: 'partially_defined',
+    },
+    provisionalProfile: {
+      resources: { ore: 420, stone: 345, iron: 265 },
+      trainingSeconds: 220,
+      populationCost: 10,
+      attackType: 'none',
+      speedTier: 'extreme_slow',
+      logistics: {
+        consumedOnArrival: true,
+        requiresEscort: true,
+      },
     },
     notes: ['Escort mandatory and consumed on successful colonization.'],
   },

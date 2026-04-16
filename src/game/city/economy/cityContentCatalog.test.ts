@@ -27,6 +27,27 @@ describe('cityContentCatalog full-game source of truth', () => {
     expect(activeIds.has('shard_vault')).toBe(false);
   });
 
+  it('provides provisional 1→20 design tables for non-premium core later buildings', () => {
+    const targetBuildingIds = [
+      'defensive_wall',
+      'watch_tower',
+      'military_academy',
+      'armament_factory',
+      'intelligence_center',
+      'research_lab',
+      'market',
+      'council_chamber',
+    ];
+
+    targetBuildingIds.forEach((buildingId) => {
+      const entry = FULL_BUILDING_CATALOG.find((item) => item.id === buildingId);
+      expect(entry).toBeDefined();
+      expect(entry?.provisionalLevels).toBeDefined();
+      expect(entry?.provisionalLevels).toHaveLength(20);
+      expect(entry?.provisionalLevels?.every((row) => row.buildSeconds % 5 === 0)).toBe(true);
+    });
+  });
+
   it('covers all intended unit categories and keeps later projection/siege/colonization visible', () => {
     const categories = new Set(FULL_UNIT_CATALOG.map((entry) => entry.category));
     expect(categories).toEqual(new Set(['ground_line', 'projection', 'siege', 'colonization']));
@@ -34,6 +55,16 @@ describe('cityContentCatalog full-game source of truth', () => {
     expect(UNIT_CATALOG_BY_PHASE.v0).toContain('infantry');
     expect(UNIT_CATALOG_BY_PHASE.later).toContain('assault_convoy');
     expect(UNIT_CATALOG_BY_PHASE.later).toContain('colonization_convoy');
+  });
+
+  it('adds provisional profiles for later projection/siege/colonization units', () => {
+    const laterUnits = FULL_UNIT_CATALOG.filter((entry) => ['assault_convoy', 'siege_runner', 'colonization_convoy'].includes(entry.id));
+    expect(laterUnits).toHaveLength(3);
+    laterUnits.forEach((entry) => {
+      expect(entry.provisionalProfile).toBeDefined();
+      expect(entry.provisionalProfile?.trainingSeconds).toBeGreaterThan(0);
+      expect(entry.provisionalProfile?.populationCost).toBeGreaterThan(0);
+    });
   });
 
   it('exposes explicit completeness summary for balancing workflow', () => {
