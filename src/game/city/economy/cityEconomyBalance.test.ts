@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CITY_ECONOMY_CONFIG, ECONOMY_BUILDING_ORDER, MILITARY_BUILDING_ORDER } from '@/game/city/economy/cityEconomyConfig';
-import { createInitialCityEconomyState, getPopulationSnapshot } from '@/game/city/economy/cityEconomySystem';
+import { createInitialCityEconomyState, getPopulationSnapshot, getStorageCaps } from '@/game/city/economy/cityEconomySystem';
 
 function levelTotalCost(ore: number, stone: number, iron: number) {
   return ore + stone + iron;
@@ -16,6 +16,13 @@ describe('city economy rebalance validation', () => {
 
     Object.values(CITY_ECONOMY_CONFIG.troops).forEach((troop) => {
       expect(troop.trainingSeconds % 5).toBe(0);
+    });
+  });
+
+  it('ensures final building levels are meaningful long-form commitments (>=24h)', () => {
+    [...ECONOMY_BUILDING_ORDER, ...MILITARY_BUILDING_ORDER].forEach((buildingId) => {
+      const rows = CITY_ECONOMY_CONFIG.buildings[buildingId].levels;
+      expect(rows[19].buildSeconds).toBeGreaterThanOrEqual(24 * 60 * 60);
     });
   });
 
@@ -42,6 +49,31 @@ describe('city economy rebalance validation', () => {
       }
 
       expect(Math.max(...paybacks)).toBeLessThan(maxPaybackHours);
+    });
+  });
+
+  it('uses explicit warehouse caps that cover nearby progression costs', () => {
+    const warehouseRows = CITY_ECONOMY_CONFIG.buildings.warehouse.levels;
+    warehouseRows.forEach((row) => {
+      expect(row.effect.storageCap).toBeDefined();
+      const cap = row.effect.storageCap!;
+      expect(cap.ore % 100).toBe(0);
+      expect(cap.stone % 100).toBe(0);
+      expect(cap.iron % 100).toBe(0);
+    });
+
+    const levelChecks = [3, 8, 12];
+    levelChecks.forEach((warehouseLevel) => {
+      const state = createInitialCityEconomyState({ cityId: `w-${warehouseLevel}`, owner: 'p1', nowMs: 0 });
+      state.levels.warehouse = warehouseLevel;
+      const caps = getStorageCaps(state);
+      const mineCost = CITY_ECONOMY_CONFIG.buildings.mine.levels[Math.min(warehouseLevel + 1, 20) - 1].resources;
+      const quarryCost = CITY_ECONOMY_CONFIG.buildings.quarry.levels[Math.min(warehouseLevel + 1, 20) - 1].resources;
+      const refineryCost = CITY_ECONOMY_CONFIG.buildings.refinery.levels[Math.min(Math.max(warehouseLevel, 3), 20) - 1].resources;
+
+      expect(caps.ore).toBeGreaterThanOrEqual(Math.max(mineCost.ore, quarryCost.ore, refineryCost.ore));
+      expect(caps.stone).toBeGreaterThanOrEqual(Math.max(mineCost.stone, quarryCost.stone, refineryCost.stone));
+      expect(caps.iron).toBeGreaterThanOrEqual(Math.max(mineCost.iron, quarryCost.iron, refineryCost.iron));
     });
   });
 
