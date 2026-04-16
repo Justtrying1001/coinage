@@ -92,6 +92,10 @@ function populationBand(level: number, early: number, mid: number, late: number)
   return late;
 }
 
+function roundTo5(value: number) {
+  return Math.max(5, Math.round(value / 5) * 5);
+}
+
 function buildLevels(params: {
   baseCost: ResourceBundle;
   costScale: number;
@@ -111,7 +115,7 @@ function buildLevels(params: {
         stone: Math.round(params.baseCost.stone * costMult),
         iron: Math.round(params.baseCost.iron * costMult),
       },
-      buildSeconds: Math.round(params.baseSeconds * timeMult),
+      buildSeconds: roundTo5(params.baseSeconds * timeMult),
       populationCost: params.populationCostByLevel(level),
       effect: params.effectByLevel(level),
     };
@@ -293,7 +297,7 @@ export const TROOP_CONFIG: Record<TroopId, TroopConfig> = {
     requiredBuildingId: 'barracks',
     requiredBuildingLevel: 5,
     cost: { ore: 78, stone: 62, iron: 8 },
-    trainingSeconds: 36,
+    trainingSeconds: 35,
     populationCost: 3,
   },
   marksman: {
@@ -313,7 +317,7 @@ export const TROOP_CONFIG: Record<TroopId, TroopConfig> = {
     requiredBuildingId: 'barracks',
     requiredBuildingLevel: 15,
     cost: { ore: 132, stone: 88, iron: 54 },
-    trainingSeconds: 58,
+    trainingSeconds: 60,
     populationCost: 3,
   },
   assault: {
@@ -323,7 +327,7 @@ export const TROOP_CONFIG: Record<TroopId, TroopConfig> = {
     requiredBuildingId: 'combat_forge',
     requiredBuildingLevel: 1,
     cost: { ore: 148, stone: 108, iron: 76 },
-    trainingSeconds: 64,
+    trainingSeconds: 65,
     populationCost: 2,
   },
   breacher: {
@@ -343,7 +347,7 @@ export const TROOP_CONFIG: Record<TroopId, TroopConfig> = {
     requiredBuildingId: 'space_dock',
     requiredBuildingLevel: 1,
     cost: { ore: 185, stone: 136, iron: 118 },
-    trainingSeconds: 78,
+    trainingSeconds: 80,
     populationCost: 4,
   },
   rapid_escort: {
@@ -353,7 +357,7 @@ export const TROOP_CONFIG: Record<TroopId, TroopConfig> = {
     requiredBuildingId: 'space_dock',
     requiredBuildingLevel: 5,
     cost: { ore: 245, stone: 172, iron: 158 },
-    trainingSeconds: 106,
+    trainingSeconds: 105,
     populationCost: 3,
   },
 };
