@@ -423,3 +423,22 @@ Elles sont conservées dans le code via un catalogue différé dédié (`DEFERRE
 - **Council Chamber**: poids de vote gouvernance + réduction préparation mobilisation collective (provisoire).
 
 > Tous ces effets sont intégrés au catalogue de balance comme **provisional design values** et restent marqués `partially_defined` tant que l’arbitrage produit combat/macro n’est pas finalisé.
+
+## 12. Tables provisoires (milestones) — branches core later
+
+> Les tables complètes 1→20 sont dans `src/game/city/economy/cityContentCatalog.ts` (`provisionalLevels`).  
+> Ci-dessous: points de contrôle L1/L5/L10/L15/L20 pour inspection rapide design.
+
+| Building | L1 cost/time/pop | L5 cost/time/pop | L10 cost/time/pop | L15 cost/time/pop | L20 cost/time/pop |
+| --- | --- | --- | --- | --- | --- |
+| Defensive Wall | 160/240/60 · 50s · pop1 | 321/481/120 · 115s · pop1 | 766/1149/287 · 310s · pop1 | 1827/2741/685 · 7710s · pop2 | 4360/6540/1635 · 190890s · pop2 |
+| Watch Tower | 135/165/85 · 50s · pop1 | 266/325/168 · 105s · pop1 | 622/760/392 · 285s · pop1 | 1453/1776/915 · 7115s · pop2 | 3396/4151/2138 · 176205s · pop2 |
+| Military Academy | 290/255/140 · 70s · pop1 | 622/547/300 · 155s · pop1 | 1612/1418/778 · 420s · pop2 | 4182/3677/2019 · 10380s · pop2 | 10847/9538/5237 · 256965s · pop2 |
+| Armament Factory | 320/235/170 · 70s · pop1 | 686/504/364 · 160s · pop1 | 1779/1307/945 · 430s · pop2 | 4615/3389/2452 · 10675s · pop2 | 11969/8790/6359 · 264305s · pop2 |
+| Intelligence Center | 170/155/125 · 55s · pop1 | 341/311/251 · 120s · pop1 | 814/742/598 · 325s · pop1 | 1941/1770/1427 · 8005s · pop2 | 4633/4224/3406 · 198230s · pop2 |
+| Research Lab | 165/165/120 · 55s · pop1 | 331/331/241 · 125s · pop1 | 790/790/574 · 335s · pop1 | 1884/1884/1370 · 8300s · pop2 | 4497/4497/3270 · 205570s · pop2 |
+| Market | 150/135/70 · 45s · pop1 | 291/262/136 · 100s · pop1 | 665/599/310 · 275s · pop1 | 1522/1370/710 · 6820s · pop2 | 3482/3134/1625 · 168860s · pop2 |
+| Council Chamber | 220/205/130 · 60s · pop1 | 456/425/270 · 135s · pop1 | 1135/1058/671 · 360s · pop1 | 2825/2632/1669 · 8895s · pop2 | 7029/6549/4153 · 220255s · pop2 |
+
+> Les valeurs sont **provisionnelles** et destinées à la passe globale de balancing.  
+> Elles ne remplacent pas l’arbitrage produit final.

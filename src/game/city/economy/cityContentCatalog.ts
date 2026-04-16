@@ -41,6 +41,11 @@ export interface BuildingCatalogEntry {
     population: DefinitionStatus;
     effects: DefinitionStatus;
   };
+  operationalEffectsByBand?: Array<{
+    minLevel: number;
+    maxLevel: number;
+    effects: string[];
+  }>;
   provisionalLevels?: BuildingLevelDraft[];
   notes?: string[];
 }
@@ -83,6 +88,11 @@ export interface UnitDraftProfile {
     convoyCapacityPopulation?: number;
     consumedOnArrival?: boolean;
     requiresEscort?: boolean;
+  };
+  combatProfile?: {
+    offense: { kinetic: number; energy: number; plasma: number };
+    defense: { kinetic: number; energy: number; plasma: number };
+    structureDamage: number;
   };
 }
 
@@ -415,6 +425,12 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       population: 'fully_defined',
       effects: 'partially_defined',
     },
+    operationalEffectsByBand: [
+      { minLevel: 1, maxLevel: 5, effects: ['Ground-line training speed +2% per level (provisional)'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Ground recruitment batch cap +1 every 2 levels (provisional)'] },
+      { minLevel: 11, maxLevel: 15, effects: ['Barracks queue latency reduction +1.5% per level (provisional)'] },
+      { minLevel: 16, maxLevel: 20, effects: ['Infantry/marksman upkeep efficiency +1% per level (provisional)'] },
+    ],
   },
   {
     id: 'combat_forge',
@@ -463,6 +479,12 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       population: 'fully_defined',
       effects: 'partially_defined',
     },
+    operationalEffectsByBand: [
+      { minLevel: 1, maxLevel: 5, effects: ['Advanced ground unit training speed +2.5% per level (provisional)'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Assault/Breacher iron cost reduction +1% per level (provisional)'] },
+      { minLevel: 11, maxLevel: 15, effects: ['Ground siege damage multiplier +1.5% per level (provisional)'] },
+      { minLevel: 16, maxLevel: 20, effects: ['Forge doctrine slot cap +1 every 2 levels (provisional)'] },
+    ],
   },
   {
     id: 'space_dock',
@@ -511,6 +533,12 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       population: 'fully_defined',
       effects: 'partially_defined',
     },
+    operationalEffectsByBand: [
+      { minLevel: 1, maxLevel: 5, effects: ['Projection-screen unit training speed +2% per level (provisional)'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Projection convoy capacity +1 pop every 2 levels (provisional)'] },
+      { minLevel: 11, maxLevel: 15, effects: ['Inter-sector launch cooldown reduction +1.5% per level (provisional)'] },
+      { minLevel: 16, maxLevel: 20, effects: ['Convoy durability bonus +2% per level (provisional)'] },
+    ],
   },
   {
     id: 'defensive_wall',
@@ -555,6 +583,12 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       population: 'partially_defined',
       effects: 'partially_defined',
     },
+    operationalEffectsByBand: [
+      { minLevel: 1, maxLevel: 5, effects: ['Flat city defense bonus scaling', 'Defender structure durability +1%/lvl (provisional)'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Siege damage mitigation +1.2%/lvl (provisional)'] },
+      { minLevel: 11, maxLevel: 15, effects: ['Defender morale floor +0.5%/lvl (provisional)'] },
+      { minLevel: 16, maxLevel: 20, effects: ['Final defensive phase resilience +1.5%/lvl (provisional)'] },
+    ],
     provisionalLevels: buildProvisionalLevels({
       baseCost: { ore: 160, stone: 240, iron: 60 },
       costScale: 1.19,
@@ -607,6 +641,12 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       population: 'partially_defined',
       effects: 'partially_defined',
     },
+    operationalEffectsByBand: [
+      { minLevel: 1, maxLevel: 5, effects: ['Incoming attack warning window extension (provisional)'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Projection interception coefficient +1.4%/lvl (provisional)'] },
+      { minLevel: 11, maxLevel: 15, effects: ['Counter-raid readiness bonus +1.2%/lvl (provisional)'] },
+      { minLevel: 16, maxLevel: 20, effects: ['Local intel anti-stealth detection +1.5%/lvl (provisional)'] },
+    ],
     provisionalLevels: buildProvisionalLevels({
       baseCost: { ore: 135, stone: 165, iron: 85 },
       costScale: 1.185,
@@ -665,6 +705,12 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       population: 'partially_defined',
       effects: 'partially_defined',
     },
+    operationalEffectsByBand: [
+      { minLevel: 1, maxLevel: 5, effects: ['Ground training acceleration + doctrine onboarding'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Doctrine capacity progression'] },
+      { minLevel: 11, maxLevel: 15, effects: ['Advanced line-composition efficiency (provisional)'] },
+      { minLevel: 16, maxLevel: 20, effects: ['High-command doctrine throughput (provisional)'] },
+    ],
     provisionalLevels: buildProvisionalLevels({
       baseCost: { ore: 290, stone: 255, iron: 140 },
       costScale: 1.21,
@@ -724,6 +770,12 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       population: 'partially_defined',
       effects: 'partially_defined',
     },
+    operationalEffectsByBand: [
+      { minLevel: 1, maxLevel: 5, effects: ['War-economy iron efficiency scaling'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Projection/siege training acceleration scaling'] },
+      { minLevel: 11, maxLevel: 15, effects: ['Equipment throughput multiplier (provisional)'] },
+      { minLevel: 16, maxLevel: 20, effects: ['Late war mobilization efficiency (provisional)'] },
+    ],
     provisionalLevels: buildProvisionalLevels({
       baseCost: { ore: 320, stone: 235, iron: 170 },
       costScale: 1.21,
@@ -779,6 +831,12 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       population: 'partially_defined',
       effects: 'partially_defined',
     },
+    operationalEffectsByBand: [
+      { minLevel: 1, maxLevel: 5, effects: ['Spy-vault baseline resistance scaling'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Mission detection resistance + mission unlock depth'] },
+      { minLevel: 11, maxLevel: 15, effects: ['Sabotage success coefficient (provisional)'] },
+      { minLevel: 16, maxLevel: 20, effects: ['Ghost-op stealth depth (provisional)'] },
+    ],
     provisionalLevels: buildProvisionalLevels({
       baseCost: { ore: 170, stone: 155, iron: 125 },
       costScale: 1.19,
@@ -836,6 +894,12 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       population: 'partially_defined',
       effects: 'partially_defined',
     },
+    operationalEffectsByBand: [
+      { minLevel: 1, maxLevel: 5, effects: ['Research Capacity growth (+3/lvl)'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Tech branch unlock depth progression (provisional)'] },
+      { minLevel: 11, maxLevel: 15, effects: ['Research cycle efficiency +1%/lvl (provisional)'] },
+      { minLevel: 16, maxLevel: 20, effects: ['Late strategic research throughput (provisional)'] },
+    ],
     provisionalLevels: buildProvisionalLevels({
       baseCost: { ore: 165, stone: 165, iron: 120 },
       costScale: 1.19,
@@ -891,6 +955,12 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       population: 'partially_defined',
       effects: 'partially_defined',
     },
+    operationalEffectsByBand: [
+      { minLevel: 1, maxLevel: 5, effects: ['Trade convoy throughput scaling'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Internal transfer tax reduction scaling'] },
+      { minLevel: 11, maxLevel: 15, effects: ['Route-slot growth +1 every 3 levels (provisional)'] },
+      { minLevel: 16, maxLevel: 20, effects: ['Late logistics friction reduction (provisional)'] },
+    ],
     provisionalLevels: buildProvisionalLevels({
       baseCost: { ore: 150, stone: 135, iron: 70 },
       costScale: 1.18,
@@ -945,6 +1015,12 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       population: 'partially_defined',
       effects: 'partially_defined',
     },
+    operationalEffectsByBand: [
+      { minLevel: 1, maxLevel: 5, effects: ['Local governance influence scaling'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Council vote-weight progression'] },
+      { minLevel: 11, maxLevel: 15, effects: ['Collective mobilization prep-time reduction scaling'] },
+      { minLevel: 16, maxLevel: 20, effects: ['Late-war governance coordination bonus (provisional)'] },
+    ],
     provisionalLevels: buildProvisionalLevels({
       baseCost: { ore: 220, stone: 205, iron: 130 },
       costScale: 1.2,
@@ -1015,6 +1091,18 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       combatStats: 'partially_defined',
       logisticsStats: 'partially_defined',
     },
+    provisionalProfile: {
+      resources: { ore: 30, stone: 18, iron: 0 },
+      trainingSeconds: 20,
+      populationCost: 1,
+      attackType: 'kinetic',
+      speedTier: 'medium',
+      combatProfile: {
+        offense: { kinetic: 18, energy: 8, plasma: 6 },
+        defense: { kinetic: 14, energy: 11, plasma: 9 },
+        structureDamage: 4,
+      },
+    },
   },
   {
     id: 'shield_guard',
@@ -1031,6 +1119,18 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       population: 'fully_defined',
       combatStats: 'partially_defined',
       logisticsStats: 'partially_defined',
+    },
+    provisionalProfile: {
+      resources: { ore: 62, stone: 48, iron: 10 },
+      trainingSeconds: 35,
+      populationCost: 2,
+      attackType: 'kinetic',
+      speedTier: 'slow',
+      combatProfile: {
+        offense: { kinetic: 14, energy: 7, plasma: 5 },
+        defense: { kinetic: 24, energy: 18, plasma: 16 },
+        structureDamage: 3,
+      },
     },
   },
   {
@@ -1049,6 +1149,18 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       combatStats: 'partially_defined',
       logisticsStats: 'partially_defined',
     },
+    provisionalProfile: {
+      resources: { ore: 90, stone: 56, iron: 30 },
+      trainingSeconds: 45,
+      populationCost: 1,
+      attackType: 'plasma',
+      speedTier: 'medium',
+      combatProfile: {
+        offense: { kinetic: 7, energy: 10, plasma: 24 },
+        defense: { kinetic: 9, energy: 11, plasma: 14 },
+        structureDamage: 5,
+      },
+    },
   },
   {
     id: 'raider_cavalry',
@@ -1065,6 +1177,18 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       population: 'fully_defined',
       combatStats: 'partially_defined',
       logisticsStats: 'partially_defined',
+    },
+    provisionalProfile: {
+      resources: { ore: 128, stone: 88, iron: 48 },
+      trainingSeconds: 60,
+      populationCost: 2,
+      attackType: 'kinetic',
+      speedTier: 'very_fast',
+      combatProfile: {
+        offense: { kinetic: 28, energy: 11, plasma: 9 },
+        defense: { kinetic: 12, energy: 10, plasma: 8 },
+        structureDamage: 6,
+      },
     },
   },
   {
@@ -1083,6 +1207,18 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       combatStats: 'partially_defined',
       logisticsStats: 'partially_defined',
     },
+    provisionalProfile: {
+      resources: { ore: 155, stone: 110, iron: 80 },
+      trainingSeconds: 70,
+      populationCost: 2,
+      attackType: 'energy',
+      speedTier: 'medium',
+      combatProfile: {
+        offense: { kinetic: 10, energy: 30, plasma: 12 },
+        defense: { kinetic: 14, energy: 13, plasma: 10 },
+        structureDamage: 8,
+      },
+    },
   },
   {
     id: 'breacher',
@@ -1099,6 +1235,18 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       population: 'fully_defined',
       combatStats: 'partially_defined',
       logisticsStats: 'partially_defined',
+    },
+    provisionalProfile: {
+      resources: { ore: 225, stone: 185, iron: 120 },
+      trainingSeconds: 95,
+      populationCost: 3,
+      attackType: 'kinetic',
+      speedTier: 'very_slow',
+      combatProfile: {
+        offense: { kinetic: 34, energy: 10, plasma: 8 },
+        defense: { kinetic: 18, energy: 14, plasma: 12 },
+        structureDamage: 16,
+      },
     },
   },
   {
@@ -1117,6 +1265,18 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       combatStats: 'partially_defined',
       logisticsStats: 'partially_defined',
     },
+    provisionalProfile: {
+      resources: { ore: 195, stone: 140, iron: 115 },
+      trainingSeconds: 85,
+      populationCost: 3,
+      attackType: 'energy',
+      speedTier: 'very_fast',
+      combatProfile: {
+        offense: { kinetic: 8, energy: 26, plasma: 14 },
+        defense: { kinetic: 13, energy: 18, plasma: 15 },
+        structureDamage: 4,
+      },
+    },
   },
   {
     id: 'rapid_escort',
@@ -1133,6 +1293,18 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       population: 'fully_defined',
       combatStats: 'partially_defined',
       logisticsStats: 'partially_defined',
+    },
+    provisionalProfile: {
+      resources: { ore: 255, stone: 175, iron: 155 },
+      trainingSeconds: 105,
+      populationCost: 2,
+      attackType: 'plasma',
+      speedTier: 'fast',
+      combatProfile: {
+        offense: { kinetic: 9, energy: 16, plasma: 28 },
+        defense: { kinetic: 12, energy: 14, plasma: 16 },
+        structureDamage: 5,
+      },
     },
   },
   {
@@ -1161,6 +1333,11 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
         convoyCapacityPopulation: 10,
         requiresEscort: true,
       },
+      combatProfile: {
+        offense: { kinetic: 0, energy: 0, plasma: 0 },
+        defense: { kinetic: 8, energy: 10, plasma: 8 },
+        structureDamage: 0,
+      },
     },
     notes: ['Capacity 10 pop is doc-confirmed; cost/time are now provisional pending product arbitration.'],
   },
@@ -1188,6 +1365,11 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       speedTier: 'slow',
       logistics: {
         requiresEscort: true,
+      },
+      combatProfile: {
+        offense: { kinetic: 32, energy: 9, plasma: 7 },
+        defense: { kinetic: 10, energy: 8, plasma: 9 },
+        structureDamage: 22,
       },
     },
     notes: ['Anti-structure role is defined; structure-damage coefficients still require combat-model arbitration.'],
@@ -1220,6 +1402,11 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       logistics: {
         consumedOnArrival: true,
         requiresEscort: true,
+      },
+      combatProfile: {
+        offense: { kinetic: 0, energy: 0, plasma: 0 },
+        defense: { kinetic: 6, energy: 8, plasma: 6 },
+        structureDamage: 0,
       },
     },
     notes: ['Escort mandatory and consumed on successful colonization.'],

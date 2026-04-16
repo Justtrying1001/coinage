@@ -62,6 +62,17 @@ Ce document aligne les lignes d’unités intentionnelles du jeu (MVP/V0/later),
 | siege_runner | 285 | 240 | 195 | 160 | 5 | kinetic | slow | Escorte requise |
 | colonization_convoy | 420 | 345 | 265 | 220 | 10 | none | extreme_slow | Escorte requise, consommé à l’arrivée |
 
+## 4.2 Fondation combat/logistique typée (core units)
+
+Le catalogue core inclut maintenant une base typed-combat provisoire par unité:
+- `attackType`: kinetic / energy / plasma / none
+- `combatProfile.offense`: valeurs relatives vs types
+- `combatProfile.defense`: résistances relatives vs types
+- `combatProfile.structureDamage`: pression anti-structure
+- `speedTier` + flags logistiques (escorte, capacité convoi, consommé à l’arrivée)
+
+Cette base est suffisante pour une première passe de simulation globale (sans moteur combat final), tout en restant explicitement provisoire.
+
 ## 5. Graphe de dépendances unités (full-content)
 
 - `Barracks 1` → infantry

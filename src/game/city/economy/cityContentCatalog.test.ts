@@ -45,6 +45,8 @@ describe('cityContentCatalog full-game source of truth', () => {
       expect(entry?.provisionalLevels).toBeDefined();
       expect(entry?.provisionalLevels).toHaveLength(20);
       expect(entry?.provisionalLevels?.every((row) => row.buildSeconds % 5 === 0)).toBe(true);
+      expect(entry?.operationalEffectsByBand).toBeDefined();
+      expect(entry?.operationalEffectsByBand?.length).toBeGreaterThan(0);
     });
   });
 
@@ -64,6 +66,16 @@ describe('cityContentCatalog full-game source of truth', () => {
       expect(entry.provisionalProfile).toBeDefined();
       expect(entry.provisionalProfile?.trainingSeconds).toBeGreaterThan(0);
       expect(entry.provisionalProfile?.populationCost).toBeGreaterThan(0);
+      expect(entry.provisionalProfile?.combatProfile).toBeDefined();
+    });
+  });
+
+  it('keeps typed combat/logistics foundation available for all core units', () => {
+    FULL_UNIT_CATALOG.forEach((entry) => {
+      expect(entry.provisionalProfile).toBeDefined();
+      expect(entry.provisionalProfile?.attackType).toBeDefined();
+      expect(entry.provisionalProfile?.speedTier).toBeDefined();
+      expect(entry.provisionalProfile?.combatProfile).toBeDefined();
     });
   });
 
