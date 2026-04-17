@@ -53,13 +53,13 @@ describe('CityFoundationMode stitch IA responsibilities', () => {
 
     host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Economy"]')?.click();
     expect(host.textContent).toContain('Economic Core');
-    expect(host.textContent).toContain('Economic infrastructure');
+    expect(host.textContent).toContain('Building intel');
 
     host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Military"]')?.click();
     expect(host.textContent).toContain('Unit training');
 
     host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Research"]')?.click();
-    expect(host.textContent).toContain('Research queue');
+    expect(host.textContent).toContain('Research nodes');
 
     host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Market"]')?.click();
     expect(host.textContent).toContain('Not implemented in runtime');
