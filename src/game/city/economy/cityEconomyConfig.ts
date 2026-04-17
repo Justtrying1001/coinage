@@ -150,77 +150,7 @@ export interface CityEconomyConfig {
   policies: Record<LocalPolicyId, LocalPolicyConfig>;
 }
 
-const MAX_LEVEL = 20;
-
-function escalatingPopulation(level: number, base: number, linear: number, curve: number) {
-  const value = base + (level - 1) * linear + Math.pow(level - 1, 2) * curve;
-  return Math.max(1, Math.round(value));
-}
-
-function roundTo5(value: number) {
-  return Math.max(5, Math.round(value / 5) * 5);
-}
-
-function buildLevels(params: {
-  baseCost: ResourceBundle;
-  costScale: number;
-  buildSecondsByLevel: (level: number) => number;
-  populationCostByLevel: (level: number) => number;
-  effectByLevel: (level: number) => BuildingLevelEffect;
-}): BuildingLevelCost[] {
-  return Array.from({ length: MAX_LEVEL }, (_, idx) => {
-    const level = idx + 1;
-    const costMult = Math.pow(params.costScale, idx);
-    return {
-      level,
-      resources: {
-        ore: Math.round(params.baseCost.ore * costMult),
-        stone: Math.round(params.baseCost.stone * costMult),
-        iron: Math.round(params.baseCost.iron * costMult),
-      },
-      buildSeconds: params.buildSecondsByLevel(level),
-      populationCost: params.populationCostByLevel(level),
-      effect: params.effectByLevel(level),
-    };
-  });
-}
-
-function expProduction(base: number, scale: number, level: number) {
-  return Math.round(base * Math.pow(scale, level - 1));
-}
-
-function stagedBuildSeconds(level: number, earlyBaseSeconds: number, weight = 1) {
-  const earlyGrowth = 1.22;
-  const lateGrowth = 1.86;
-  const earlyBand = Math.min(level - 1, 9);
-  const lateBand = Math.max(0, level - 10);
-  const earlyValue = earlyBaseSeconds * Math.pow(earlyGrowth, earlyBand);
-  const value = lateBand > 0 ? earlyValue * Math.pow(lateGrowth, lateBand) : earlyValue;
-  return roundTo5(value * weight);
-}
-
-const WAREHOUSE_STORAGE_CAPS: ResourceBundle[] = [
-  { ore: 1200, stone: 1000, iron: 700 },
-  { ore: 1600, stone: 1300, iron: 900 },
-  { ore: 2200, stone: 1800, iron: 1200 },
-  { ore: 2800, stone: 2200, iron: 1500 },
-  { ore: 3600, stone: 2900, iron: 2000 },
-  { ore: 4600, stone: 3700, iron: 2500 },
-  { ore: 5900, stone: 4700, iron: 3200 },
-  { ore: 7500, stone: 6000, iron: 4100 },
-  { ore: 9500, stone: 7600, iron: 5200 },
-  { ore: 12000, stone: 9600, iron: 6500 },
-  { ore: 15000, stone: 12000, iron: 8100 },
-  { ore: 18800, stone: 15000, iron: 10200 },
-  { ore: 23500, stone: 18800, iron: 12700 },
-  { ore: 29400, stone: 23500, iron: 15900 },
-  { ore: 36700, stone: 29400, iron: 19900 },
-  { ore: 45800, stone: 36600, iron: 24800 },
-  { ore: 57100, stone: 45700, iron: 30900 },
-  { ore: 71200, stone: 57000, iron: 38600 },
-  { ore: 88800, stone: 71000, iron: 48100 },
-  { ore: 110500, stone: 88400, iron: 59700 },
-];
+import { CITY_BUILDING_LEVEL_TABLES } from './cityBuildingLevelTables';
 
 export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
   queueSlots: 2,
@@ -229,264 +159,112 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
   shardsEnabled: false,
   holdingMultiplier: 1,
   resources: {
-    baseStorageCap: { ore: 500, stone: 300, iron: 200 },
+    baseStorageCap: { ore: 300, stone: 300, iron: 300 },
     startingStock: { ore: 520, stone: 340, iron: 180 },
   },
   population: {
-    baseCap: 90,
+    baseCap: 0,
   },
   buildings: {
-    hq: {
-      id: 'hq',
-      name: 'HQ',
-      maxLevel: MAX_LEVEL,
-      unlockAtHq: 1,
-      levels: buildLevels({
-        baseCost: { ore: 220, stone: 180, iron: 35 },
-        costScale: 1.195,
-        buildSecondsByLevel: (level) => stagedBuildSeconds(level, 50),
-        populationCostByLevel: (level) => escalatingPopulation(level, 2, 0.9, 0.06),
-        effectByLevel: (level) => {
-          if (level === 1) return { unlocks: ['mine', 'quarry', 'warehouse', 'housing_complex'] };
-          if (level === 2) return { unlocks: ['barracks'] };
-          if (level === 3) return { unlocks: ['refinery'] };
-          if (level === 4) return { unlocks: ['defensive_wall', 'research_lab'] };
-          if (level === 5) return { unlocks: ['watch_tower', 'intelligence_center', 'market'] };
-          if (level === 8) return { unlocks: ['space_dock', 'council_chamber'] };
-          if (level === 10) return { unlocks: ['armament_factory'] };
-          return {};
-        },
-      }),
-    },
-    mine: {
-      id: 'mine',
-      name: 'Mine',
-      maxLevel: MAX_LEVEL,
-      unlockAtHq: 1,
-      levelBandPrerequisites: [
-        { minTargetLevel: 6, maxTargetLevel: 10, minHqLevel: 4, prerequisites: [{ buildingId: 'quarry', minLevel: 5 }] },
-        { minTargetLevel: 11, maxTargetLevel: 15, minHqLevel: 8, prerequisites: [{ buildingId: 'warehouse', minLevel: 6 }] },
-        { minTargetLevel: 16, maxTargetLevel: 20, minHqLevel: 12, prerequisites: [{ buildingId: 'refinery', minLevel: 8 }] },
-      ],
-      levels: buildLevels({
-        baseCost: { ore: 76, stone: 60, iron: 0 },
-        costScale: 1.16,
-        buildSecondsByLevel: (level) => stagedBuildSeconds(level, 30),
-        populationCostByLevel: (level) => escalatingPopulation(level, 1, 0.55, 0.03),
-        effectByLevel: (level) => ({ orePerHour: expProduction(30, 1.15, level) }),
-      }),
-    },
-    quarry: {
-      id: 'quarry',
-      name: 'Quarry',
-      maxLevel: MAX_LEVEL,
-      unlockAtHq: 1,
-      levelBandPrerequisites: [
-        { minTargetLevel: 6, maxTargetLevel: 10, minHqLevel: 4, prerequisites: [{ buildingId: 'mine', minLevel: 5 }] },
-        { minTargetLevel: 11, maxTargetLevel: 15, minHqLevel: 8, prerequisites: [{ buildingId: 'warehouse', minLevel: 6 }] },
-        { minTargetLevel: 16, maxTargetLevel: 20, minHqLevel: 12, prerequisites: [{ buildingId: 'refinery', minLevel: 8 }] },
-      ],
-      levels: buildLevels({
-        baseCost: { ore: 68, stone: 78, iron: 0 },
-        costScale: 1.16,
-        buildSecondsByLevel: (level) => stagedBuildSeconds(level, 30),
-        populationCostByLevel: (level) => escalatingPopulation(level, 1, 0.55, 0.03),
-        effectByLevel: (level) => ({ stonePerHour: expProduction(26, 1.15, level) }),
-      }),
-    },
+    hq: { id: 'hq', name: 'HQ', maxLevel: CITY_BUILDING_LEVEL_TABLES.hq.length, unlockAtHq: 1, levels: CITY_BUILDING_LEVEL_TABLES.hq },
+    mine: { id: 'mine', name: 'Mine', maxLevel: CITY_BUILDING_LEVEL_TABLES.mine.length, unlockAtHq: 1, levels: CITY_BUILDING_LEVEL_TABLES.mine },
+    quarry: { id: 'quarry', name: 'Quarry', maxLevel: CITY_BUILDING_LEVEL_TABLES.quarry.length, unlockAtHq: 1, levels: CITY_BUILDING_LEVEL_TABLES.quarry },
     refinery: {
       id: 'refinery',
       name: 'Refinery',
-      maxLevel: MAX_LEVEL,
-      unlockAtHq: 3,
-      prerequisites: [
-        { buildingId: 'mine', minLevel: 4 },
-        { buildingId: 'quarry', minLevel: 4 },
-      ],
-      levels: buildLevels({
-        baseCost: { ore: 125, stone: 105, iron: 35 },
-        costScale: 1.165,
-        buildSecondsByLevel: (level) => stagedBuildSeconds(level, 45),
-        populationCostByLevel: (level) => escalatingPopulation(level, 2, 0.7, 0.04),
-        effectByLevel: (level) => ({ ironPerHour: expProduction(14, 1.17, level) }),
-      }),
-    },
-    warehouse: {
-      id: 'warehouse',
-      name: 'Warehouse',
-      maxLevel: MAX_LEVEL,
+      maxLevel: CITY_BUILDING_LEVEL_TABLES.refinery.length,
       unlockAtHq: 1,
-      levels: buildLevels({
-        baseCost: { ore: 90, stone: 84, iron: 10 },
-        costScale: 1.17,
-        buildSecondsByLevel: (level) => stagedBuildSeconds(level, 35),
-        populationCostByLevel: (level) => escalatingPopulation(level, 1, 0.45, 0.03),
-        effectByLevel: (level) => ({ storageCap: WAREHOUSE_STORAGE_CAPS[level - 1] }),
-      }),
+      prerequisites: [{ buildingId: 'mine', minLevel: 1 }],
+      levels: CITY_BUILDING_LEVEL_TABLES.refinery,
     },
-    housing_complex: {
-      id: 'housing_complex',
-      name: 'Housing Complex',
-      maxLevel: MAX_LEVEL,
-      unlockAtHq: 1,
-      levels: buildLevels({
-        baseCost: { ore: 90, stone: 84, iron: 10 },
-        costScale: 1.17,
-        buildSecondsByLevel: (level) => stagedBuildSeconds(level, 35),
-        populationCostByLevel: (level) => escalatingPopulation(level, 1, 0.5, 0.035),
-        effectByLevel: (level) => ({ populationCapBonus: 70 + level * 42 + level * level * 2 }),
-      }),
-    },
+    warehouse: { id: 'warehouse', name: 'Warehouse', maxLevel: CITY_BUILDING_LEVEL_TABLES.warehouse.length, unlockAtHq: 1, levels: CITY_BUILDING_LEVEL_TABLES.warehouse },
+    housing_complex: { id: 'housing_complex', name: 'Housing Complex', maxLevel: CITY_BUILDING_LEVEL_TABLES.housing_complex.length, unlockAtHq: 1, levels: CITY_BUILDING_LEVEL_TABLES.housing_complex },
     barracks: {
       id: 'barracks',
       name: 'Barracks',
-      maxLevel: MAX_LEVEL,
+      maxLevel: CITY_BUILDING_LEVEL_TABLES.barracks.length,
       unlockAtHq: 2,
-      prerequisites: [{ buildingId: 'housing_complex', minLevel: 2 }],
-      levels: buildLevels({
-        baseCost: { ore: 140, stone: 110, iron: 20 },
-        costScale: 1.2,
-        buildSecondsByLevel: (level) => stagedBuildSeconds(level, 50),
-        populationCostByLevel: (level) => escalatingPopulation(level, 2, 0.8, 0.05),
-        effectByLevel: (level) => ({ trainingSpeedPct: Math.round(level * 1.2 * 10) / 10 }),
-      }),
+      prerequisites: [
+        { buildingId: 'refinery', minLevel: 1 },
+        { buildingId: 'housing_complex', minLevel: 3 },
+        { buildingId: 'mine', minLevel: 1 },
+      ],
+      levels: CITY_BUILDING_LEVEL_TABLES.barracks,
     },
     space_dock: {
       id: 'space_dock',
       name: 'Space Dock',
-      maxLevel: MAX_LEVEL,
-      unlockAtHq: 8,
+      maxLevel: CITY_BUILDING_LEVEL_TABLES.space_dock.length,
+      unlockAtHq: 14,
       prerequisites: [
-        { buildingId: 'barracks', minLevel: 6 },
-        { buildingId: 'refinery', minLevel: 6 },
+        { buildingId: 'mine', minLevel: 15 },
+        { buildingId: 'refinery', minLevel: 10 },
       ],
-      levels: buildLevels({
-        baseCost: { ore: 360, stone: 300, iron: 150 },
-        costScale: 1.22,
-        buildSecondsByLevel: (level) => stagedBuildSeconds(level, 80),
-        populationCostByLevel: (level) => escalatingPopulation(level, 3, 1, 0.06),
-        effectByLevel: (level) => ({ trainingSpeedPct: Math.round(level * 0.9 * 10) / 10 }),
-      }),
+      levels: CITY_BUILDING_LEVEL_TABLES.space_dock,
     },
     defensive_wall: {
       id: 'defensive_wall',
       name: 'Defensive Wall',
-      maxLevel: MAX_LEVEL,
-      unlockAtHq: 4,
-      levels: buildLevels({
-        baseCost: { ore: 175, stone: 265, iron: 70 },
-        costScale: 1.185,
-        buildSecondsByLevel: (level) => stagedBuildSeconds(level, 52),
-        populationCostByLevel: (level) => escalatingPopulation(level, 3, 0.9, 0.055),
-        effectByLevel: (level) => ({
-          cityDefensePct: Math.round((4 + level * 1.8) * 10) / 10,
-          damageMitigationPct: Math.round((2 + level * 0.8) * 10) / 10,
-          siegeResistancePct: Math.round((3 + level * 1.1) * 10) / 10,
-        }),
-      }),
+      maxLevel: CITY_BUILDING_LEVEL_TABLES.defensive_wall.length,
+      unlockAtHq: 5,
+      levels: CITY_BUILDING_LEVEL_TABLES.defensive_wall,
     },
     watch_tower: {
       id: 'watch_tower',
       name: 'Skyguard Tower',
-      maxLevel: MAX_LEVEL,
-      unlockAtHq: 5,
-      prerequisites: [{ buildingId: 'defensive_wall', minLevel: 2 }],
-      levels: buildLevels({
-        baseCost: { ore: 145, stone: 180, iron: 95 },
-        costScale: 1.18,
-        buildSecondsByLevel: (level) => stagedBuildSeconds(level, 48),
-        populationCostByLevel: (level) => escalatingPopulation(level, 2, 0.75, 0.05),
-        effectByLevel: (level) => ({
-          cityDefensePct: Math.round((2 + level * 1.2) * 10) / 10,
-          detectionPct: Math.round((4 + level * 1.2) * 10) / 10,
-          counterIntelPct: Math.round((3 + level * 0.9) * 10) / 10,
-        }),
-      }),
+      maxLevel: CITY_BUILDING_LEVEL_TABLES.watch_tower.length,
+      unlockAtHq: 12,
+      prerequisites: [{ buildingId: 'defensive_wall', minLevel: 15 }],
+      levels: CITY_BUILDING_LEVEL_TABLES.watch_tower,
     },
     armament_factory: {
       id: 'armament_factory',
       name: 'Armament Factory',
-      maxLevel: MAX_LEVEL,
-      unlockAtHq: 10,
+      maxLevel: CITY_BUILDING_LEVEL_TABLES.armament_factory.length,
+      unlockAtHq: 8,
       prerequisites: [
+        { buildingId: 'research_lab', minLevel: 10 },
         { buildingId: 'barracks', minLevel: 10 },
-        { buildingId: 'space_dock', minLevel: 5 },
-        { buildingId: 'refinery', minLevel: 8 },
-        { buildingId: 'market', minLevel: 6 },
       ],
-      levels: buildLevels({
-        baseCost: { ore: 340, stone: 250, iron: 190 },
-        costScale: 1.205,
-        buildSecondsByLevel: (level) => stagedBuildSeconds(level, 72),
-        populationCostByLevel: (level) => escalatingPopulation(level, 4, 1.1, 0.07),
-        effectByLevel: (level) => ({
-          troopCombatPowerPct: Math.round(level * 0.8 * 10) / 10,
-          troopUpkeepEfficiencyPct: Math.round(level * 0.8 * 10) / 10,
-          trainingSpeedPct: Math.round(level * 0.9 * 10) / 10,
-        }),
-      }),
+      levels: CITY_BUILDING_LEVEL_TABLES.armament_factory,
     },
     intelligence_center: {
       id: 'intelligence_center',
       name: 'Intelligence Center',
-      maxLevel: MAX_LEVEL,
-      unlockAtHq: 4,
-      prerequisites: [{ buildingId: 'watch_tower', minLevel: 2 }],
-      levels: buildLevels({
-        baseCost: { ore: 180, stone: 165, iron: 135 },
-        costScale: 1.185,
-        buildSecondsByLevel: (level) => stagedBuildSeconds(level, 54),
-        populationCostByLevel: (level) => escalatingPopulation(level, 2, 0.75, 0.045),
-        effectByLevel: (level) => ({ detectionPct: level * 1.2, counterIntelPct: level * 2.1 }),
-      }),
+      maxLevel: CITY_BUILDING_LEVEL_TABLES.intelligence_center.length,
+      unlockAtHq: 10,
+      prerequisites: [{ buildingId: 'market', minLevel: 4 }],
+      levels: CITY_BUILDING_LEVEL_TABLES.intelligence_center,
     },
     research_lab: {
       id: 'research_lab',
       name: 'Research Lab',
-      maxLevel: MAX_LEVEL,
-      unlockAtHq: 4,
-      prerequisites: [{ buildingId: 'warehouse', minLevel: 4 }],
-      levels: buildLevels({
-        baseCost: { ore: 175, stone: 175, iron: 130 },
-        costScale: 1.185,
-        buildSecondsByLevel: (level) => stagedBuildSeconds(level, 56),
-        populationCostByLevel: (level) => escalatingPopulation(level, 2, 0.8, 0.05),
-        effectByLevel: (level) => ({ researchCapacity: level * 3 }),
-      }),
+      maxLevel: CITY_BUILDING_LEVEL_TABLES.research_lab.length,
+      unlockAtHq: 8,
+      prerequisites: [
+        { buildingId: 'housing_complex', minLevel: 6 },
+        { buildingId: 'barracks', minLevel: 5 },
+      ],
+      levels: CITY_BUILDING_LEVEL_TABLES.research_lab,
     },
     market: {
       id: 'market',
       name: 'Market',
-      maxLevel: MAX_LEVEL,
-      unlockAtHq: 5,
-      prerequisites: [
-        { buildingId: 'warehouse', minLevel: 5 },
-        { buildingId: 'research_lab', minLevel: 2 },
-      ],
-      levels: buildLevels({
-        baseCost: { ore: 165, stone: 145, iron: 80 },
-        costScale: 1.18,
-        buildSecondsByLevel: (level) => stagedBuildSeconds(level, 46),
-        populationCostByLevel: (level) => escalatingPopulation(level, 2, 0.7, 0.04),
-        effectByLevel: (level) => ({ marketEfficiencyPct: Math.round((7 + level * 1.8) * 10) / 10, buildCostReductionPct: Math.round(level * 0.5 * 10) / 10 }),
-      }),
+      maxLevel: CITY_BUILDING_LEVEL_TABLES.market.length,
+      unlockAtHq: 3,
+      prerequisites: [{ buildingId: 'warehouse', minLevel: 5 }],
+      levels: CITY_BUILDING_LEVEL_TABLES.market,
     },
     council_chamber: {
       id: 'council_chamber',
       name: 'Council Chamber',
-      maxLevel: MAX_LEVEL,
-      unlockAtHq: 8,
+      maxLevel: CITY_BUILDING_LEVEL_TABLES.council_chamber.length,
+      unlockAtHq: 15,
       prerequisites: [
-        { buildingId: 'research_lab', minLevel: 5 },
-        { buildingId: 'market', minLevel: 4 },
+        { buildingId: 'market', minLevel: 10 },
+        { buildingId: 'research_lab', minLevel: 15 },
       ],
-      levels: buildLevels({
-        baseCost: { ore: 235, stone: 220, iron: 145 },
-        costScale: 1.195,
-        buildSecondsByLevel: (level) => stagedBuildSeconds(level, 60),
-        populationCostByLevel: (level) => escalatingPopulation(level, 3, 0.95, 0.06),
-        effectByLevel: (level) => ({ cityDefensePct: Math.round(level * 0.7 * 10) / 10, buildSpeedPct: Math.round(level * 0.5 * 10) / 10 }),
-      }),
+      levels: CITY_BUILDING_LEVEL_TABLES.council_chamber,
     },
   },
   troops: {

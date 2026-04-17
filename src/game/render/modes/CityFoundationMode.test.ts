@@ -57,7 +57,7 @@ describe('CityFoundationMode command-deck micro UX', () => {
     const text = host.textContent ?? '';
     expect(text).toContain('Research queue');
     expect(text).toContain('Research Lab');
-    expect(host.querySelectorAll('.citycmd__hotspot').length).toBeGreaterThan(0);
+    expect(host.querySelectorAll('.citycmd__building-row').length).toBeGreaterThan(0);
 
     mode.destroy();
     host.remove();
@@ -65,11 +65,11 @@ describe('CityFoundationMode command-deck micro UX', () => {
 
   it('uses reduced inline stage labels with selection emphasis', () => {
     const { host, mode } = mountMode();
-    const selectedCount = host.querySelectorAll('.citycmd__hotspot.is-selected .citycmd__hotspot-name').length;
-    const nonSelectedNamed = host.querySelectorAll('.citycmd__hotspot:not(.is-selected) .citycmd__hotspot-name').length;
+    const selectedCount = host.querySelectorAll('.citycmd__building-row.is-selected').length;
+    const nonSelectedNamed = host.querySelectorAll('.citycmd__building-row').length;
 
     expect(selectedCount).toBe(1);
-    expect(nonSelectedNamed).toBe(0);
+    expect(nonSelectedNamed).toBeGreaterThan(1);
 
     mode.destroy();
     host.remove();
@@ -78,8 +78,8 @@ describe('CityFoundationMode command-deck micro UX', () => {
   it('supports building selection + immediate upgrade CTA + queue cap feedback', () => {
     const { host, mode } = mountMode();
 
-    const mineHotspot = host.querySelector<HTMLButtonElement>('.citycmd__hotspot[aria-label^="Mine"]');
-    const quarryHotspot = host.querySelector<HTMLButtonElement>('.citycmd__hotspot[aria-label^="Quarry"]');
+    const mineHotspot = host.querySelector<HTMLButtonElement>('.citycmd__building-row[data-building-id="mine"]');
+    const quarryHotspot = host.querySelector<HTMLButtonElement>('.citycmd__building-row[data-building-id="quarry"]');
     expect(mineHotspot).not.toBeNull();
     expect(quarryHotspot).not.toBeNull();
 

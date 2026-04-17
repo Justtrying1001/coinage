@@ -30,13 +30,13 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     const state = createInitialCityEconomyState({ cityId: 'c-1', owner: 'p1', nowMs: 0 });
     state.resources = { ore: 9_999_999, stone: 9_999_999, iron: 9_999_999 };
 
-    expect(canStartConstruction(state, 'defensive_wall')).toEqual({ ok: false, reason: 'Requires HQ 4' });
-    state.levels.hq = 4;
+    expect(canStartConstruction(state, 'defensive_wall')).toEqual({ ok: false, reason: 'Requires HQ 5' });
+    state.levels.hq = 5;
     expect(canStartConstruction(state, 'defensive_wall').ok).toBe(true);
 
-    expect(canStartConstruction(state, 'watch_tower')).toEqual({ ok: false, reason: 'Requires HQ 5' });
-    state.levels.hq = 5;
-    expect(canStartConstruction(state, 'watch_tower')).toEqual({ ok: false, reason: 'Requires defensive_wall 2' });
+    expect(canStartConstruction(state, 'watch_tower')).toEqual({ ok: false, reason: 'Requires HQ 12' });
+    state.levels.hq = 12;
+    expect(canStartConstruction(state, 'watch_tower')).toEqual({ ok: false, reason: 'Requires defensive_wall 15' });
   });
 
   it('supports troop training loop and resolves queue', () => {

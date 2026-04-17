@@ -5,7 +5,7 @@ Lock Coinage visual direction before implementation so rendering and UX decision
 
 ## 2. Core Artistic Statement
 Coinage combines:
-- **Grepolis structural readability** (map-first spatial strategy, island-based reading)
+- **classic browser strategy structural readability** (map-first spatial strategy, island-based reading)
 - **Dark premium techno military-command-center DA** ("Ultron" shorthand)
 
 Structural logic is inherited; artistic language is reinterpreted.
@@ -40,7 +40,7 @@ Faction-islands must read as:
 They must not read as circles, blobs, cards, UI widgets, or placeholder shapes.
 
 ## 6. Digital Ocean Language
-The digital ocean is the structural equivalent of Grepolis sea.
+The digital ocean is the structural equivalent of classic browser strategy sea.
 
 Rules:
 - Deep dark background layer

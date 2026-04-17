@@ -38,7 +38,7 @@ Exemples :
 - monument collectif.
 
 Évolution importante :
-- les wonders de fin de saison sont déjà construites avec des ressources de base (logique type Grepolis) ;
+- les wonders de fin de saison sont déjà construites avec des ressources de base (logique type classic browser strategy) ;
 - faire payer directement en « vrai argent » serait trop frictionnel.
 
 Reformulation retenue :

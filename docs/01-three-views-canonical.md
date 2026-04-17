@@ -4,12 +4,12 @@
 Coinage needs three distinct views to keep strategy readable across scales without collapsing gameplay into a single overloaded interface. The player must always understand whether they are acting at world scale, faction-territory scale, or city-management scale.
 
 ## 2. Core Principle
-Coinage reuses the **Grepolis structural hierarchy** as a product truth:
+Coinage reuses the **classic browser strategy structural hierarchy** as a product truth:
 - **Map View** (macro world)
 - **Faction View** (local territory)
 - **City View** (internal management)
 
-What changes is the artistic direction, not the structural reading logic. Coinage keeps Grepolis-like spatial comprehension while applying a dark premium techno military-command-center visual identity.
+What changes is the artistic direction, not the structural reading logic. Coinage keeps classic-browser-strategy-like spatial comprehension while applying a dark premium techno military-command-center visual identity.
 
 ## 3. Map View
 ### Purpose

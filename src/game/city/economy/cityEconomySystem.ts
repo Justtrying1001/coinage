@@ -262,7 +262,7 @@ export function getCityDerivedStats(state: CityEconomyState) {
     counterIntelPct: (tower?.effect.counterIntelPct ?? 0) + (intelCenter?.effect.counterIntelPct ?? 0) + research.counterIntelPct,
     researchCapacity: lab?.effect.researchCapacity ?? 0,
     marketEfficiencyPct: (market?.effect.marketEfficiencyPct ?? 0) + research.marketEfficiencyPct,
-    buildCostReductionPct: market?.effect.buildCostReductionPct ?? 0,
+    buildCostReductionPct: 0,
     buildSpeedPct: council?.effect.buildSpeedPct ?? 0,
     productionPct: research.productionPct + (policy?.productionPct ?? 0),
     intelReadiness: state.intelReadiness,
@@ -330,8 +330,7 @@ export function canStartConstruction(state: CityEconomyState, buildingId: Econom
   }
 
   const levelCost = getUpgradeLevelCost(buildingId, targetLevel);
-  const derived = getCityDerivedStats(state);
-  const costMultiplier = Math.max(0.5, 1 - derived.buildCostReductionPct / 100);
+  const costMultiplier = 1;
   const adjustedCost = {
     ore: Math.ceil(levelCost.resources.ore * costMultiplier),
     stone: Math.ceil(levelCost.resources.stone * costMultiplier),
@@ -361,7 +360,7 @@ export function startConstruction(state: CityEconomyState, buildingId: EconomyBu
   const targetLevel = currentLevel + 1;
   const levelCost = getUpgradeLevelCost(buildingId, targetLevel);
   const derived = getCityDerivedStats(state);
-  const costMultiplier = Math.max(0.5, 1 - derived.buildCostReductionPct / 100);
+  const costMultiplier = 1;
   const adjustedCost = {
     ore: Math.ceil(levelCost.resources.ore * costMultiplier),
     stone: Math.ceil(levelCost.resources.stone * costMultiplier),
