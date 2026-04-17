@@ -91,6 +91,8 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     state.levels.hq = 6;
     state.levels.defensive_wall = 2;
     state.levels.watch_tower = 3;
+    state.levels.warehouse = 7;
+    state.levels.market = 4;
     state.levels.intelligence_center = 3;
 
     expect(startIntelProject(state, 'sweep', 0).ok).toBe(true);

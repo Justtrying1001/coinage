@@ -36,6 +36,22 @@ describe('city economy rebalance validation', () => {
     });
   });
 
+  it('keeps military production buildings with increasing construction times and sane cost columns', () => {
+    (['barracks', 'space_dock'] as const).forEach((buildingId) => {
+      const rows = CITY_ECONOMY_CONFIG.buildings[buildingId].levels;
+      expect(rows[0].buildSeconds).toBeGreaterThan(0);
+      for (let i = 1; i < rows.length; i += 1) {
+        expect(rows[i].buildSeconds).toBeGreaterThanOrEqual(rows[i - 1].buildSeconds);
+      }
+    });
+
+    const barracks = CITY_ECONOMY_CONFIG.buildings.barracks.levels;
+    expect(barracks[0].resources).toEqual({ ore: 70, stone: 20, iron: 40 });
+
+    const spaceDock = CITY_ECONOMY_CONFIG.buildings.space_dock.levels;
+    expect(spaceDock[0].resources).toEqual({ ore: 400, stone: 200, iron: 100 });
+  });
+
   it('uses differentiated max levels matching runtime tables', () => {
     expect(CITY_ECONOMY_CONFIG.buildings.hq.maxLevel).toBe(25);
     expect(CITY_ECONOMY_CONFIG.buildings.mine.maxLevel).toBe(40);
