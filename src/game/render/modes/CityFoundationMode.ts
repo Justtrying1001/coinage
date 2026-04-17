@@ -1,5 +1,7 @@
 import {
+  canSetPolicy,
   canStartConstruction,
+  canStartResearch,
   canStartTroopTraining,
   getBuildingConfig,
   getBuildingLevel,
@@ -13,8 +15,6 @@ import {
   type CityEconomyState,
 } from '@/game/city/economy/cityEconomySystem';
 import {
-  getCityResearchGuard,
-  getCityPolicyGuard,
   loadCityEconomyState,
   setCityPolicy,
   startCityBuildingUpgrade,
@@ -44,17 +44,17 @@ interface CityState {
   citySlotTotal: number;
 }
 
-type LocalCitySection = 'economy' | 'military' | 'defense' | 'research' | 'intelligence' | 'governance' | 'logistics';
+type LocalCitySection = keyof typeof BUILDING_ORDER_BY_BRANCH;
 
 const QUEUE_CAP = getConstructionQueueSlots();
-const LOCAL_SECTIONS: Array<{ id: LocalCitySection; label: string }> = [
-  { id: 'economy', label: 'Economy' },
-  { id: 'military', label: 'Military' },
-  { id: 'defense', label: 'Defense' },
-  { id: 'research', label: 'Research' },
-  { id: 'intelligence', label: 'Intelligence' },
-  { id: 'governance', label: 'Governance' },
-  { id: 'logistics', label: 'Logistics' },
+const LOCAL_SECTIONS: Array<{ id: LocalCitySection; label: string; tagline: string }> = [
+  { id: 'economy', label: 'Economy', tagline: 'Extraction & growth' },
+  { id: 'military', label: 'Military', tagline: 'Force projection' },
+  { id: 'defense', label: 'Defense', tagline: 'City hardening' },
+  { id: 'research', label: 'Research', tagline: 'Doctrine lab' },
+  { id: 'intelligence', label: 'Intelligence', tagline: 'Recon & counter-intel' },
+  { id: 'governance', label: 'Governance', tagline: 'Local directives' },
+  { id: 'logistics', label: 'Logistics', tagline: 'Market throughput' },
 ];
 
 const RESOURCE_LABELS: Record<EconomyResource, string> = {
@@ -63,21 +63,41 @@ const RESOURCE_LABELS: Record<EconomyResource, string> = {
   iron: 'Iron',
 };
 
+const BUILDING_STAGE_COORDS: Record<EconomyBuildingId, { x: number; y: number; district: string }> = {
+  hq: { x: 50, y: 56, district: 'Command Core' },
+  mine: { x: 18, y: 68, district: 'Ore Basin' },
+  quarry: { x: 30, y: 74, district: 'Stone Ridge' },
+  refinery: { x: 43, y: 73, district: 'Smelter Ring' },
+  warehouse: { x: 61, y: 72, district: 'Storage Yard' },
+  housing_complex: { x: 72, y: 63, district: 'Residential Arc' },
+  barracks: { x: 77, y: 48, district: 'Garrison Block' },
+  combat_forge: { x: 66, y: 45, district: 'Forge Array' },
+  space_dock: { x: 84, y: 35, district: 'Orbital Ramp' },
+  defensive_wall: { x: 52, y: 84, district: 'Perimeter Ring' },
+  watch_tower: { x: 89, y: 57, district: 'Sentinel Tower' },
+  military_academy: { x: 74, y: 32, district: 'War College' },
+  armament_factory: { x: 59, y: 35, district: 'Armament Lines' },
+  intelligence_center: { x: 38, y: 34, district: 'Cipher Node' },
+  research_lab: { x: 49, y: 28, district: 'Research Cluster' },
+  market: { x: 24, y: 52, district: 'Trade Spine' },
+  council_chamber: { x: 34, y: 44, district: 'Council Hall' },
+};
+
 export class CityFoundationMode implements RenderModeController {
   readonly id = 'city3d' as const;
 
   private root: HTMLElement | null = null;
-  private headerIdentity: HTMLDivElement | null = null;
+  private topBar: HTMLElement | null = null;
   private resourceStrip: HTMLElement | null = null;
-  private localNavRail: HTMLElement | null = null;
-  private buildingsGrid: HTMLDivElement | null = null;
-  private selectedPanel: HTMLDivElement | null = null;
-  private queuePanel: HTMLDivElement | null = null;
-  private summaryPanel: HTMLDivElement | null = null;
+  private rail: HTMLElement | null = null;
+  private stage: HTMLElement | null = null;
+  private contextPanel: HTMLElement | null = null;
+  private queueStrip: HTMLElement | null = null;
+
   private selectedBuildingId: EconomyBuildingId = 'hq';
   private activeSection: LocalCitySection = 'economy';
-
   private uiAccumulatorMs = 0;
+
   private state: CityState;
   private persistenceContext: CityPersistenceContext;
 
@@ -92,12 +112,11 @@ export class CityFoundationMode implements RenderModeController {
 
   mount() {
     const root = document.createElement('section');
-    root.className = 'city-management';
-    root.append(this.createHeader(), this.createBodyLayout());
+    root.className = 'city-management citycmd';
+    root.append(this.createTopCommandBar(), this.createCommandDeck());
 
     this.context.host.appendChild(root);
     this.root = root;
-
     this.renderAll();
   }
 
@@ -107,14 +126,11 @@ export class CityFoundationMode implements RenderModeController {
     this.uiAccumulatorMs += deltaMs;
     if (this.uiAccumulatorMs < 1000) return;
     this.uiAccumulatorMs = 0;
-
     this.refreshFromPersistence();
-    this.renderResourceBar();
-    this.renderQueue();
-    this.renderSelectedBuilding();
-    this.renderSummary();
-    this.renderHeader();
-    this.renderBuildings();
+    this.renderTopBar();
+    this.renderQueueStrip();
+    this.renderStage();
+    this.renderContextPanel();
   }
 
   setSelectedPlanet(nextPlanet: SelectedPlanetRef) {
@@ -132,234 +148,273 @@ export class CityFoundationMode implements RenderModeController {
     this.root?.remove();
   }
 
-  private createHeader() {
-    const header = document.createElement('header');
-    header.className = 'city-management__header';
+  private createTopCommandBar() {
+    const top = document.createElement('header');
+    top.className = 'citycmd__top';
+    this.topBar = top;
 
-    const left = document.createElement('div');
-    left.className = 'city-management__header-left';
-    const identity = document.createElement('div');
-    identity.className = 'city-management__header-identity';
-    this.headerIdentity = identity;
-    left.append(identity);
+    const resourceStrip = document.createElement('section');
+    resourceStrip.className = 'citycmd__resources';
+    this.resourceStrip = resourceStrip;
 
-    const right = document.createElement('div');
-    right.className = 'city-management__header-right';
+    const queue = document.createElement('section');
+    queue.className = 'citycmd__queues';
+    this.queueStrip = queue;
 
-    const switcher = document.createElement('select');
-    switcher.className = 'city-management__switch';
-    const current = document.createElement('option');
-    current.value = this.selectedPlanet.id;
-    current.textContent = `Switch planet: ${this.selectedPlanet.id.toUpperCase()}`;
-    switcher.append(current);
-
-    const backPlanet = document.createElement('button');
-    backPlanet.type = 'button';
-    backPlanet.className = 'city-management__btn';
-    backPlanet.textContent = 'Back to planet';
-    backPlanet.addEventListener('click', () => this.context.onRequestMode('planet3d'));
-
-    const resource = this.createResourceBar();
-    resource.classList.add('city-management__resource-bar--header');
-    right.append(resource, switcher, backPlanet);
-    header.append(left, right);
-
-    return header;
+    top.append(resourceStrip, queue);
+    return top;
   }
 
-  private createResourceBar() {
-    const resourceBar = document.createElement('section');
-    resourceBar.className = 'city-management__resource-bar';
-    this.resourceStrip = resourceBar;
-    return resourceBar;
-  }
+  private createCommandDeck() {
+    const body = document.createElement('div');
+    body.className = 'citycmd__deck';
 
-  private createBodyLayout() {
-    const layout = document.createElement('div');
-    layout.className = 'city-management__ops-layout';
+    const rail = document.createElement('aside');
+    rail.className = 'citycmd__rail';
+    this.rail = rail;
 
-    const localNav = document.createElement('aside');
-    localNav.className = 'city-management__local-nav';
-    this.localNavRail = localNav;
+    const stage = document.createElement('section');
+    stage.className = 'citycmd__stage';
+    this.stage = stage;
 
-    const main = document.createElement('section');
-    main.className = 'city-management__ops-main';
+    const contextPanel = document.createElement('aside');
+    contextPanel.className = 'citycmd__context';
+    this.contextPanel = contextPanel;
 
-    const summary = document.createElement('div');
-    summary.className = 'city-management__summary-panel city-management__summary-panel--compact';
-    this.summaryPanel = summary;
-
-    const buildingGrid = document.createElement('div');
-    buildingGrid.className = 'city-management__ops-grid city-management__ops-grid--rich';
-    this.buildingsGrid = buildingGrid;
-
-    main.append(summary, buildingGrid);
-
-    const right = document.createElement('aside');
-    right.className = 'city-management__ops-right';
-
-    const selected = document.createElement('div');
-    selected.className = 'city-management__selected-panel';
-    this.selectedPanel = selected;
-
-    const queue = document.createElement('div');
-    queue.className = 'city-management__queue-panel';
-    this.queuePanel = queue;
-
-    right.append(selected, queue);
-    layout.append(localNav, main, right);
-
-    return layout;
+    body.append(rail, stage, contextPanel);
+    return body;
   }
 
   private renderAll() {
     this.refreshFromPersistence();
-    this.renderHeader();
-    this.renderResourceBar();
-    this.renderLocalNav();
-    this.renderBuildings();
-    this.renderSelectedBuilding();
-    this.renderQueue();
-    this.renderSummary();
+    this.ensureSelectedBuildingInActiveSection();
+    this.renderTopBar();
+    this.renderQueueStrip();
+    this.renderRail();
+    this.renderStage();
+    this.renderContextPanel();
   }
 
-  private renderLocalNav() {
-    if (!this.localNavRail) return;
-    this.localNavRail.innerHTML = '';
+  private renderTopBar() {
+    if (!this.resourceStrip || !this.topBar) return;
+    this.resourceStrip.innerHTML = '';
+
+    const pop = getPopulationSnapshot(this.state.economy);
+    const storage = getStorageCaps(this.state.economy);
+    const production = getProductionPerHour(this.state.economy);
+
+    const meta = document.createElement('div');
+    meta.className = 'citycmd__identity';
+    meta.innerHTML = `<p class="citycmd__city">${this.state.planetId.toUpperCase()} • ${this.state.archetype.toUpperCase()}</p>
+      <p class="citycmd__owner">Owner ${this.state.owner}</p>
+      <p class="citycmd__ops">Pop ${pop.used}/${pop.cap} · Slots ${this.getUsedSlots()}/${this.state.citySlotTotal} · Queue: ${this.state.economy.queue.length}/${QUEUE_CAP}</p>`;
+
+    const resources = document.createElement('div');
+    resources.className = 'citycmd__resource-strip';
+
+    (Object.keys(RESOURCE_LABELS) as EconomyResource[]).forEach((resource) => {
+      const item = document.createElement('article');
+      item.className = `citycmd__resource citycmd__resource--${resource}`;
+      item.innerHTML = `<p class="citycmd__resource-label">${RESOURCE_LABELS[resource]}</p>
+      <p class="citycmd__resource-stock">${Math.floor(this.state.economy.resources[resource]).toLocaleString()} / ${storage[resource].toLocaleString()}</p>
+      <p class="citycmd__resource-rate">+${Math.round(production[resource]).toLocaleString()}/h</p>`;
+      resources.append(item);
+    });
+
+    const controls = document.createElement('div');
+    controls.className = 'citycmd__controls';
+    const backPlanet = this.makeControlButton('Back to planet', () => this.context.onRequestMode('planet3d'));
+    const backGalaxy = this.makeControlButton('Galaxy', () => this.context.onRequestMode('galaxy2d'));
+    controls.append(backPlanet, backGalaxy);
+
+    this.resourceStrip.append(meta, resources, controls);
+  }
+
+  private renderQueueStrip() {
+    if (!this.queueStrip) return;
+    this.queueStrip.innerHTML = '';
+
+    const construction = document.createElement('div');
+    construction.className = 'citycmd__queue-group';
+    construction.innerHTML = `<p class="citycmd__queue-title">Construction ${this.state.economy.queue.length}/${QUEUE_CAP}</p>`;
+    const sorted = this.state.economy.queue.slice().sort((a, b) => a.endsAtMs - b.endsAtMs);
+    if (sorted.length === 0) {
+      construction.append(this.createQueueLine('No active build order'));
+    }
+    sorted.forEach((entry) => construction.append(this.createQueueLine(`${entry.buildingId} → lvl ${entry.targetLevel} · ${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))}`)));
+
+    const operational = document.createElement('div');
+    operational.className = 'citycmd__queue-group';
+    operational.innerHTML = `<p class="citycmd__queue-title">Ops queues</p>`;
+    operational.append(
+      this.createQueueLine(`Training: ${this.state.economy.trainingQueue.length}`),
+      this.createQueueLine(`Research: ${this.state.economy.researchQueue.length}`),
+      this.createQueueLine(`Intel projects: ${this.state.economy.intelProjects.length}`),
+    );
+
+    this.queueStrip.append(construction, operational);
+  }
+
+  private renderRail() {
+    if (!this.rail) return;
+    this.rail.innerHTML = '';
+
+    const title = document.createElement('p');
+    title.className = 'citycmd__rail-title';
+    title.textContent = 'City Operations';
+    this.rail.append(title);
 
     LOCAL_SECTIONS.forEach((section) => {
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = 'city-management__nav-item';
+      button.className = 'citycmd__rail-item';
+      button.setAttribute('aria-label', section.label);
       if (this.activeSection === section.id) button.classList.add('is-active');
-      button.textContent = section.label;
+      button.innerHTML = `<span class="citycmd__rail-item-label">${section.label}</span><span class="citycmd__rail-item-tag">${section.tagline}</span>`;
       button.addEventListener('click', () => {
         this.activeSection = section.id;
-        this.renderLocalNav();
-        this.renderBuildings();
+        this.ensureSelectedBuildingInActiveSection();
+        this.renderRail();
+        this.renderStage();
+        this.renderContextPanel();
       });
-      this.localNavRail!.append(button);
+      this.rail!.append(button);
     });
+
+    const premiumOff = document.createElement('p');
+    premiumOff.className = 'citycmd__rail-foot';
+    premiumOff.textContent = 'Premium / wallet / special buildings: disabled in MVP MICRO';
+    this.rail.append(premiumOff);
   }
 
-  private sectionBuildingIds() {
-    return BUILDING_ORDER_BY_BRANCH[this.activeSection] ?? [];
-  }
+  private renderStage() {
+    if (!this.stage) return;
+    this.stage.innerHTML = '';
 
-  private renderHeader() {
-    if (!this.headerIdentity) return;
-    const pop = getPopulationSnapshot(this.state.economy);
-    this.headerIdentity.textContent = `City ${this.state.planetId.toUpperCase()} · ${this.state.archetype.toUpperCase()} · Owner ${this.state.owner} · Slots ${this.getUsedSlots()}/${this.state.citySlotTotal} · Pop ${pop.used}/${pop.cap} · Queue: ${this.state.economy.queue.length}/${QUEUE_CAP}`;
-  }
+    const frame = document.createElement('div');
+    frame.className = `citycmd__stage-frame citycmd__stage-frame--${this.activeSection}`;
 
-  private renderResourceBar() {
-    if (!this.resourceStrip) return;
-    this.resourceStrip.innerHTML = '';
+    const skyline = document.createElement('div');
+    skyline.className = 'citycmd__skyline';
+    skyline.innerHTML = '<span></span><span></span><span></span><span></span>';
 
-    const production = getProductionPerHour(this.state.economy);
-    const storage = getStorageCaps(this.state.economy);
+    const grid = document.createElement('div');
+    grid.className = 'citycmd__district-grid';
 
-    (Object.keys(RESOURCE_LABELS) as EconomyResource[]).forEach((resource) => {
-      const item = document.createElement('div');
-      item.className = 'city-management__resource-item';
-      item.textContent = `${RESOURCE_LABELS[resource]} ${Math.floor(this.state.economy.resources[resource]).toLocaleString()} / ${storage[resource].toLocaleString()} (+${Math.round(production[resource]).toLocaleString()}/h)`;
-      this.resourceStrip!.append(item);
-    });
-  }
-
-  private renderBuildings() {
-    if (!this.buildingsGrid) return;
-    this.buildingsGrid.innerHTML = '';
-
-    this.sectionBuildingIds().forEach((buildingId) => {
-      const card = document.createElement('article');
-      card.className = 'city-management__building-card';
+    const sectionBuildings = this.getSectionBuildings();
+    sectionBuildings.forEach((buildingId) => {
       const cfg = getBuildingConfig(buildingId);
-      const currentLevel = getBuildingLevel(this.state.economy, buildingId);
-      const unlocked = isBuildingUnlocked(this.state.economy, buildingId);
+      const level = getBuildingLevel(this.state.economy, buildingId);
       const guard = canStartConstruction(this.state.economy, buildingId);
-      const nextCost = cfg.levels[currentLevel] ?? null;
+      const unlocked = isBuildingUnlocked(this.state.economy, buildingId);
+      const pos = BUILDING_STAGE_COORDS[buildingId];
 
-      if (!unlocked) card.classList.add('is-locked');
-
-      card.innerHTML = `<p class="city-management__building-name">${cfg.name}</p>
-      <p class="city-management__building-production">Lvl ${currentLevel} / ${cfg.maxLevel}</p>
-      <p class="city-management__building-meta">${this.getBuildingEffectText(buildingId, currentLevel)}</p>
-      <p class="city-management__building-meta">${nextCost ? `Next: O ${nextCost.resources.ore} · S ${nextCost.resources.stone} · I ${nextCost.resources.iron} · ${formatDuration(nextCost.buildSeconds * 1000)}` : 'Max level reached'}</p>
-      <p class="city-management__building-meta">${guard.ok ? 'Ready to upgrade' : guard.reason ?? 'Locked'}</p>`;
-
-      const action = document.createElement('button');
-      action.type = 'button';
-      action.className = 'city-management__upgrade';
-      action.dataset.buildingId = buildingId;
-      action.disabled = !guard.ok;
-      action.textContent = guard.reason ?? 'Upgrade';
-      action.addEventListener('click', (event) => {
-        event.stopPropagation();
-        const result = startCityBuildingUpgrade(this.persistenceContext, buildingId, Date.now());
-        this.state.economy = result.state.economy;
-        this.renderAll();
-      });
-
-      card.addEventListener('click', () => {
+      const hotspot = document.createElement('button');
+      hotspot.type = 'button';
+      hotspot.className = 'citycmd__hotspot';
+      if (this.selectedBuildingId === buildingId) hotspot.classList.add('is-selected');
+      if (!unlocked) hotspot.classList.add('is-locked');
+      hotspot.style.left = `${pos.x}%`;
+      hotspot.style.top = `${pos.y}%`;
+      hotspot.setAttribute('aria-label', `${cfg.name} level ${level}`);
+      hotspot.innerHTML = `<span class="citycmd__hotspot-core"></span><span class="citycmd__hotspot-name">${cfg.name}</span><span class="citycmd__hotspot-level">Lv ${level}</span>`;
+      hotspot.addEventListener('click', () => {
         this.selectedBuildingId = buildingId;
-        this.renderSelectedBuilding();
+        this.renderStage();
+        this.renderContextPanel();
       });
 
-      card.append(action);
-      this.buildingsGrid!.append(card);
+      const chip = document.createElement('p');
+      chip.className = 'citycmd__district-chip';
+      chip.style.left = `${Math.max(5, pos.x - 5)}%`;
+      chip.style.top = `${Math.max(6, pos.y - 7)}%`;
+      chip.textContent = guard.ok ? pos.district : `${pos.district} • ${guard.reason}`;
+
+      grid.append(hotspot, chip);
     });
+
+    const footer = document.createElement('div');
+    footer.className = 'citycmd__stage-footer';
+    footer.textContent = `Active branch: ${this.activeSection.toUpperCase()} • ${sectionBuildings.length} structures visible`;
+
+    frame.append(skyline, grid, footer);
+    this.stage.append(frame);
   }
 
-  private renderSelectedBuilding() {
-    if (!this.selectedPanel) return;
-    this.selectedPanel.innerHTML = '';
+  private renderContextPanel() {
+    if (!this.contextPanel) return;
+    this.contextPanel.innerHTML = '';
 
-    const cfg = getBuildingConfig(this.selectedBuildingId);
-    const currentLevel = getBuildingLevel(this.state.economy, this.selectedBuildingId);
-    const nextUpgrade = cfg.levels[currentLevel] ?? null;
+    const config = getBuildingConfig(this.selectedBuildingId);
+    const level = getBuildingLevel(this.state.economy, this.selectedBuildingId);
+    const next = config.levels[level] ?? null;
     const guard = canStartConstruction(this.state.economy, this.selectedBuildingId);
+    const derived = getCityDerivedStats(this.state.economy);
 
-    const title = document.createElement('h4');
-    title.textContent = `${cfg.name} (${this.selectedBuildingId})`;
+    const header = document.createElement('header');
+    header.className = 'citycmd__context-header';
+    header.innerHTML = `<p class="citycmd__context-id">${this.selectedBuildingId}</p>
+      <h3>${config.name}</h3>
+      <p>Current level: ${level} / ${config.maxLevel}</p>
+      <p>${this.getBuildingEffectText(this.selectedBuildingId, level)}</p>`;
 
-    const status = document.createElement('p');
-    status.textContent = `Current level: ${currentLevel}. ${this.getBuildingEffectText(this.selectedBuildingId, currentLevel)}`;
-
-    const unlockLine = document.createElement('p');
-    unlockLine.textContent = guard.ok ? 'All prerequisites met.' : `Locked: ${guard.reason}`;
-
-    const next = document.createElement('p');
-    next.textContent = nextUpgrade
-      ? `Next cost Ore ${nextUpgrade.resources.ore} · Stone ${nextUpgrade.resources.stone} · Iron ${nextUpgrade.resources.iron} · ${formatDuration(nextUpgrade.buildSeconds * 1000)}`
-      : 'Max level reached';
+    const requirements = document.createElement('section');
+    requirements.className = 'citycmd__context-block';
+    requirements.innerHTML = `<h4>Upgrade status</h4>
+      <p>${guard.ok ? 'All prerequisites met.' : `Locked: ${guard.reason}`}</p>
+      <p>${next ? `Next cost: O ${next.resources.ore} · S ${next.resources.stone} · I ${next.resources.iron}` : 'Next cost: max level reached'}</p>
+      <p>${next ? `Build time: ${formatDuration(next.buildSeconds * 1000)}` : 'Build time: —'}</p>`;
 
     const action = document.createElement('button');
-    action.className = 'city-management__upgrade';
-    action.textContent = guard.reason ?? 'Upgrade';
+    action.type = 'button';
+    action.className = 'city-management__upgrade citycmd__primary-cta';
+    action.dataset.buildingId = this.selectedBuildingId;
     action.disabled = !guard.ok;
+    action.textContent = guard.reason ?? 'Upgrade now';
     action.addEventListener('click', () => {
       const result = startCityBuildingUpgrade(this.persistenceContext, this.selectedBuildingId, Date.now());
       this.state.economy = result.state.economy;
       this.renderAll();
     });
 
-    this.selectedPanel.append(title, status, unlockLine, next, action, this.renderTrainingBlock(), this.renderResearchBlock(), this.renderIntelBlock(), this.renderGovernanceBlock(), this.renderDerivedStatsBlock());
+    const branchBlock = this.renderBranchContextBlock();
+
+    const stats = document.createElement('section');
+    stats.className = 'citycmd__context-block';
+    stats.innerHTML = `<h4>Local city effects</h4>
+      <p>Training speed +${derived.trainingSpeedPct.toFixed(1)}%</p>
+      <p>Defense +${derived.cityDefensePct.toFixed(1)}% · Mitigation +${derived.damageMitigationPct.toFixed(1)}%</p>
+      <p>Detection +${derived.detectionPct.toFixed(1)}% · Counter-intel +${derived.counterIntelPct.toFixed(1)}%</p>
+      <p>Research capacity ${derived.researchCapacity} · Market efficiency +${derived.marketEfficiencyPct.toFixed(1)}%</p>`;
+
+    this.contextPanel.append(header, requirements, action, branchBlock, stats);
   }
 
-  private renderTrainingBlock() {
+  private renderBranchContextBlock() {
+    if (this.activeSection === 'military') return this.renderMilitaryBlock();
+    if (this.activeSection === 'research') return this.renderResearchBlock();
+    if (this.activeSection === 'intelligence') return this.renderIntelBlock();
+    if (this.activeSection === 'governance') return this.renderGovernanceBlock();
+
     const block = document.createElement('section');
-    block.className = 'city-management__selected-specialized';
-    const t = document.createElement('p');
-    t.textContent = 'Troop Training';
-    block.append(t);
+    block.className = 'citycmd__context-block';
+    block.innerHTML = `<h4>Branch operations</h4>
+      <p>Focus: ${this.activeSection}</p>
+      <p>Construction queue visible in command bar. Locked actions always show exact reasons.</p>`;
+    return block;
+  }
+
+  private renderMilitaryBlock() {
+    const block = document.createElement('section');
+    block.className = 'citycmd__context-block';
+    block.innerHTML = '<h4>Training Command</h4>';
 
     (Object.keys(CITY_ECONOMY_CONFIG.troops) as TroopId[]).forEach((troopId) => {
       const troop = CITY_ECONOMY_CONFIG.troops[troopId];
       const guard = canStartTroopTraining(this.state.economy, troopId, 1);
       const row = document.createElement('button');
       row.type = 'button';
-      row.className = 'city-management__upgrade';
+      row.className = 'city-management__upgrade citycmd__line-cta';
       row.disabled = !guard.ok;
       row.textContent = `${troop.name} x1 (${guard.ok ? 'Train' : guard.reason})`;
       row.addEventListener('click', () => {
@@ -369,22 +424,22 @@ export class CityFoundationMode implements RenderModeController {
       });
       block.append(row);
     });
+
     return block;
   }
 
   private renderResearchBlock() {
     const block = document.createElement('section');
-    const title = document.createElement('p');
-    title.textContent = `Research Queue (${this.state.economy.researchQueue.length}/1)`;
-    block.append(title);
+    block.className = 'citycmd__context-block';
+    block.innerHTML = `<h4>Research Queue (${this.state.economy.researchQueue.length}/1)</h4>`;
 
     (Object.keys(CITY_ECONOMY_CONFIG.research) as ResearchId[]).forEach((researchId) => {
+      const guard = canStartResearch(this.state.economy, researchId);
       const btn = document.createElement('button');
-      btn.className = 'city-management__upgrade';
-      const guard = getCityResearchGuard(this.persistenceContext, researchId, Date.now());
-      const allowed = guard.ok;
-      btn.disabled = !allowed;
-      btn.textContent = `${CITY_ECONOMY_CONFIG.research[researchId].name} (${allowed ? 'Start' : guard.reason})`;
+      btn.type = 'button';
+      btn.className = 'city-management__upgrade citycmd__line-cta';
+      btn.disabled = !guard.ok;
+      btn.textContent = `${CITY_ECONOMY_CONFIG.research[researchId].name} (${guard.ok ? 'Start' : guard.reason})`;
       btn.addEventListener('click', () => {
         const start = startCityResearch(this.persistenceContext, researchId, Date.now());
         this.state.economy = start.state.economy;
@@ -392,19 +447,20 @@ export class CityFoundationMode implements RenderModeController {
       });
       block.append(btn);
     });
+
     return block;
   }
 
   private renderIntelBlock() {
     const block = document.createElement('section');
-    const title = document.createElement('p');
-    title.textContent = `Intel readiness: ${this.state.economy.intelReadiness}%`;
-    block.append(title);
+    block.className = 'citycmd__context-block';
+    block.innerHTML = `<h4>Intel Operations</h4><p>Readiness: ${this.state.economy.intelReadiness}%</p>`;
 
     (['sweep', 'network', 'cipher'] as const).forEach((projectType) => {
       const btn = document.createElement('button');
-      btn.className = 'city-management__upgrade';
-      btn.textContent = `Intel project: ${projectType}`;
+      btn.type = 'button';
+      btn.className = 'city-management__upgrade citycmd__line-cta';
+      btn.textContent = `Start ${projectType}`;
       btn.addEventListener('click', () => {
         const start = startCityIntelProject(this.persistenceContext, projectType, Date.now());
         this.state.economy = start.state.economy;
@@ -412,19 +468,20 @@ export class CityFoundationMode implements RenderModeController {
       });
       block.append(btn);
     });
+
     return block;
   }
 
   private renderGovernanceBlock() {
     const block = document.createElement('section');
-    const title = document.createElement('p');
-    title.textContent = `Policy: ${this.state.economy.activePolicy ?? 'none'}`;
-    block.append(title);
+    block.className = 'citycmd__context-block';
+    block.innerHTML = `<h4>Council Policies</h4><p>Active: ${this.state.economy.activePolicy ?? 'none'}</p>`;
 
     (Object.keys(CITY_ECONOMY_CONFIG.policies) as LocalPolicyId[]).forEach((policyId) => {
-      const guard = getCityPolicyGuard(this.persistenceContext, policyId, Date.now());
+      const guard = canSetPolicy(this.state.economy, policyId);
       const btn = document.createElement('button');
-      btn.className = 'city-management__upgrade';
+      btn.type = 'button';
+      btn.className = 'city-management__upgrade citycmd__line-cta';
       btn.disabled = !guard.ok;
       btn.textContent = `${CITY_ECONOMY_CONFIG.policies[policyId].name} (${guard.ok ? 'Apply' : guard.reason})`;
       btn.addEventListener('click', () => {
@@ -434,54 +491,35 @@ export class CityFoundationMode implements RenderModeController {
       });
       block.append(btn);
     });
+
     return block;
   }
 
-  private renderDerivedStatsBlock() {
-    const block = document.createElement('section');
-    const stats = getCityDerivedStats(this.state.economy);
-    block.innerHTML = `<p>Local Effects</p>
-    <p>Training speed +${stats.trainingSpeedPct.toFixed(1)}%</p>
-    <p>Defense +${stats.cityDefensePct.toFixed(1)}% · Mitigation +${stats.damageMitigationPct.toFixed(1)}%</p>
-    <p>Detection +${stats.detectionPct.toFixed(1)}% · Counter-intel +${stats.counterIntelPct.toFixed(1)}%</p>
-    <p>Research capacity ${stats.researchCapacity} · Market efficiency +${stats.marketEfficiencyPct.toFixed(1)}%</p>`;
-    return block;
+  private makeControlButton(label: string, onClick: () => void) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'city-management__btn citycmd__control';
+    button.textContent = label;
+    button.addEventListener('click', onClick);
+    return button;
   }
 
-  private renderQueue() {
-    if (!this.queuePanel) return;
-    this.queuePanel.innerHTML = `<p>Construction queue ${this.state.economy.queue.length}/${getConstructionQueueSlots()}</p>`;
-    const sorted = this.state.economy.queue.slice().sort((a, b) => a.endsAtMs - b.endsAtMs);
-    sorted.forEach((entry) => {
-      const row = document.createElement('p');
-      row.textContent = `${entry.buildingId} -> lvl ${entry.targetLevel} (${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))})`;
-      this.queuePanel!.append(row);
-    });
+  private createQueueLine(text: string) {
+    const row = document.createElement('p');
+    row.className = 'citycmd__queue-line';
+    row.textContent = text;
+    return row;
   }
 
-  private renderSummary() {
-    if (!this.summaryPanel) return;
-    this.summaryPanel.innerHTML = '';
+  private ensureSelectedBuildingInActiveSection() {
+    const ids = this.getSectionBuildings();
+    if (!ids.includes(this.selectedBuildingId)) {
+      this.selectedBuildingId = ids[0] ?? 'hq';
+    }
+  }
 
-    const storage = getStorageCaps(this.state.economy);
-    const pop = getPopulationSnapshot(this.state.economy);
-    const rows = [
-      `Slots: ${this.getUsedSlots()}/${this.state.citySlotTotal}`,
-      `Population: ${pop.used}/${pop.cap}`,
-      `Storage · Ore: ${storage.ore}`,
-      `Storage · Stone: ${storage.stone}`,
-      `Storage · Iron: ${storage.iron}`,
-      `Construction queue: ${this.state.economy.queue.length}`,
-      `Training queue: ${this.state.economy.trainingQueue.length}`,
-      `Completed research: ${this.state.economy.completedResearch.length}`,
-    ];
-
-    rows.forEach((text) => {
-      const row = document.createElement('p');
-      row.className = 'city-management__summary-row';
-      row.textContent = text;
-      this.summaryPanel!.append(row);
-    });
+  private getSectionBuildings() {
+    return BUILDING_ORDER_BY_BRANCH[this.activeSection] ?? [];
   }
 
   private getUsedSlots() {

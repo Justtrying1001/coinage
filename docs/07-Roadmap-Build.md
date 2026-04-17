@@ -24,6 +24,7 @@
 - Construction queue + troop training queue.
 - Local derived stats for production/training/defense/intel/research/logistics.
 - Persistence for economy + military + research + intel + local governance state.
+- `city3d` delivered as a premium command-deck UX (top bar + branch rail + immersive city stage + adaptive context panel).
 
 ### Pass 2 — MACRO systems (next)
 - World map projection and travel resolution.

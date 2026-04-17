@@ -25,6 +25,16 @@ MVP MICRO is now the **full city loop** with all standard non-special buildings.
 8. Local governance policies via council chamber.
 9. Local market/logistics modifiers.
 
+## CityView UX (city3d)
+
+The active city interface is a command-deck layout:
+- persistent top command bar (identity/resources/queues/nav),
+- micro branch rail on the left,
+- central immersive city stage with spatial building hotspots,
+- single right contextual operations panel adapting to selected building + branch.
+
+Premium/wallet/special interactions are intentionally absent from active CityView.
+
 ## Macro note
 
 World-map projection, cross-city warfare, colonization effects, token-world effects, and inter-faction governance are intentionally deferred to the MACRO pass.

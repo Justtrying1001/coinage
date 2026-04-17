@@ -1252,3 +1252,473 @@ canvas {
   .city-management__summary-panel--compact { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .city-management__resource-bar--header { min-width: 0; width:100%; }
 }
+
+/* ===== City Command Deck Rework (city3d) ===== */
+.citycmd {
+  inset: 3.6rem 0 0;
+  padding: 0.8rem;
+  gap: 0.8rem;
+  background:
+    radial-gradient(circle at 15% 6%, rgba(52, 138, 187, 0.18) 0%, transparent 38%),
+    radial-gradient(circle at 86% 72%, rgba(35, 95, 135, 0.14) 0%, transparent 34%),
+    linear-gradient(160deg, #050913 0%, #04070f 64%, #060c16 100%);
+}
+
+.citycmd__top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 0.8rem;
+}
+
+.citycmd__resources {
+  border: 1px solid rgba(128, 177, 207, 0.32);
+  background: linear-gradient(180deg, rgba(9, 19, 32, 0.88), rgba(5, 13, 22, 0.92));
+  border-radius: 10px;
+  padding: 0.7rem;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(131, 193, 236, 0.08);
+}
+
+.citycmd__identity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.2rem;
+  margin-bottom: 0.6rem;
+}
+
+.citycmd__city,
+.citycmd__owner,
+.citycmd__ops {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.63rem;
+}
+
+.citycmd__city {
+  color: #ecf8ff;
+  font-weight: 700;
+}
+
+.citycmd__owner,
+.citycmd__ops {
+  color: rgba(179, 211, 233, 0.92);
+}
+
+.citycmd__resource-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.citycmd__resource {
+  border: 1px solid rgba(112, 157, 188, 0.34);
+  border-radius: 7px;
+  padding: 0.45rem 0.55rem;
+  background: linear-gradient(180deg, rgba(7, 17, 30, 0.86), rgba(5, 12, 21, 0.88));
+}
+
+.citycmd__resource-label,
+.citycmd__resource-stock,
+.citycmd__resource-rate {
+  margin: 0;
+}
+
+.citycmd__resource-label {
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(173, 205, 226, 0.9);
+}
+
+.citycmd__resource-stock {
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+}
+
+.citycmd__resource-rate {
+  margin-top: 0.1rem;
+  font-size: 0.62rem;
+  color: #77d1a2;
+}
+
+.citycmd__controls {
+  margin-top: 0.7rem;
+  display: flex;
+  gap: 0.45rem;
+}
+
+.citycmd__control {
+  border-radius: 999px;
+}
+
+.citycmd__queues {
+  border: 1px solid rgba(122, 166, 192, 0.3);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(8, 18, 31, 0.9), rgba(5, 12, 20, 0.94));
+  padding: 0.65rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.55rem;
+}
+
+.citycmd__queue-group {
+  border: 1px solid rgba(107, 150, 176, 0.28);
+  border-radius: 8px;
+  padding: 0.4rem 0.45rem;
+  background: rgba(5, 14, 24, 0.72);
+}
+
+.citycmd__queue-title {
+  margin: 0;
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(202, 228, 247, 0.95);
+}
+
+.citycmd__queue-line {
+  margin: 0.25rem 0 0;
+  font-size: 0.62rem;
+  color: rgba(181, 211, 231, 0.94);
+}
+
+.citycmd__deck {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 360px;
+  gap: 0.8rem;
+  min-height: calc(100dvh - 8.2rem);
+}
+
+.citycmd__rail,
+.citycmd__stage,
+.citycmd__context {
+  border-radius: 12px;
+  border: 1px solid rgba(124, 168, 196, 0.28);
+  background: linear-gradient(180deg, rgba(8, 17, 29, 0.88), rgba(5, 11, 20, 0.95));
+  box-shadow: inset 0 0 0 1px rgba(133, 191, 231, 0.06), 0 14px 28px rgba(0, 0, 0, 0.24);
+}
+
+.citycmd__rail {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.citycmd__rail-title {
+  margin: 0;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  color: #f2d7a7;
+}
+
+.citycmd__rail-item {
+  border: 1px solid rgba(112, 152, 179, 0.28);
+  border-radius: 9px;
+  background: linear-gradient(180deg, rgba(10, 22, 37, 0.82), rgba(7, 16, 27, 0.9));
+  color: #cae7fa;
+  padding: 0.52rem 0.54rem;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.14rem;
+  cursor: pointer;
+}
+
+.citycmd__rail-item:hover,
+.citycmd__rail-item:focus-visible {
+  border-color: rgba(154, 212, 248, 0.7);
+  outline: none;
+}
+
+.citycmd__rail-item.is-active {
+  border-color: rgba(245, 214, 155, 0.78);
+  box-shadow: 0 0 0 1px rgba(245, 214, 155, 0.35) inset;
+}
+
+.citycmd__rail-item-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.citycmd__rail-item-tag {
+  font-size: 0.56rem;
+  color: rgba(155, 201, 230, 0.86);
+}
+
+.citycmd__rail-foot {
+  margin-top: auto;
+  font-size: 0.54rem;
+  letter-spacing: 0.06em;
+  color: rgba(158, 196, 221, 0.75);
+}
+
+.citycmd__stage {
+  padding: 0.7rem;
+}
+
+.citycmd__stage-frame {
+  position: relative;
+  min-height: 100%;
+  border-radius: 11px;
+  border: 1px solid rgba(113, 157, 184, 0.26);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: 110px minmax(0, 1fr) 44px;
+  background:
+    radial-gradient(circle at 50% 26%, rgba(64, 158, 211, 0.2), transparent 48%),
+    linear-gradient(rgba(118, 178, 219, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(118, 178, 219, 0.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(6, 15, 25, 0.9), rgba(4, 10, 17, 0.95));
+  background-size: auto, 26px 26px, 26px 26px, auto;
+}
+
+.citycmd__stage-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at center, transparent 48%, rgba(2, 4, 9, 0.8) 100%);
+}
+
+.citycmd__stage-frame--military {
+  filter: hue-rotate(-6deg) saturate(1.05);
+}
+
+.citycmd__stage-frame--research {
+  filter: hue-rotate(8deg) saturate(1.08);
+}
+
+.citycmd__stage-frame--defense {
+  filter: hue-rotate(-16deg) saturate(0.95);
+}
+
+.citycmd__stage-frame--intelligence {
+  filter: hue-rotate(18deg) saturate(0.86);
+}
+
+.citycmd__stage-frame--governance {
+  filter: hue-rotate(-24deg) saturate(0.9);
+}
+
+.citycmd__stage-frame--logistics {
+  filter: hue-rotate(2deg) saturate(1.2);
+}
+
+.citycmd__skyline {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0 1rem;
+}
+
+.citycmd__skyline span {
+  display: block;
+  width: 70px;
+  border-radius: 9px 9px 0 0;
+  border: 1px solid rgba(131, 188, 223, 0.36);
+  background: linear-gradient(180deg, rgba(39, 105, 143, 0.5), rgba(10, 30, 49, 0.74));
+  box-shadow: inset 0 -5px 18px rgba(0, 0, 0, 0.3);
+}
+
+.citycmd__skyline span:nth-child(1) {
+  height: 36px;
+}
+
+.citycmd__skyline span:nth-child(2) {
+  height: 54px;
+}
+
+.citycmd__skyline span:nth-child(3) {
+  height: 42px;
+}
+
+.citycmd__skyline span:nth-child(4) {
+  height: 62px;
+}
+
+.citycmd__district-grid {
+  position: relative;
+}
+
+.citycmd__hotspot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(129, 177, 204, 0.4);
+  border-radius: 10px;
+  min-width: 94px;
+  padding: 0.35rem 0.4rem;
+  background: linear-gradient(180deg, rgba(8, 20, 35, 0.93), rgba(6, 14, 24, 0.95));
+  color: #d8eeff;
+  text-align: left;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.citycmd__hotspot:hover,
+.citycmd__hotspot:focus-visible {
+  border-color: rgba(163, 219, 254, 0.9);
+  box-shadow: 0 0 0 1px rgba(171, 228, 255, 0.26) inset, 0 0 16px rgba(95, 192, 255, 0.18);
+  outline: none;
+}
+
+.citycmd__hotspot.is-selected {
+  border-color: rgba(245, 216, 160, 0.9);
+  box-shadow: 0 0 0 1px rgba(245, 216, 160, 0.38) inset;
+}
+
+.citycmd__hotspot.is-locked {
+  opacity: 0.82;
+}
+
+.citycmd__hotspot-core {
+  position: absolute;
+  right: 7px;
+  top: 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #7dd5ff;
+  box-shadow: 0 0 12px rgba(125, 213, 255, 0.7);
+}
+
+.citycmd__hotspot-name,
+.citycmd__hotspot-level {
+  display: block;
+}
+
+.citycmd__hotspot-name {
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.citycmd__hotspot-level {
+  margin-top: 0.18rem;
+  font-size: 0.67rem;
+  font-weight: 700;
+}
+
+.citycmd__district-chip {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  font-size: 0.49rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(175, 207, 227, 0.78);
+  padding: 0.2rem 0.34rem;
+  border: 1px solid rgba(107, 151, 178, 0.22);
+  border-radius: 999px;
+  background: rgba(7, 17, 29, 0.7);
+  pointer-events: none;
+}
+
+.citycmd__stage-footer {
+  display: flex;
+  align-items: center;
+  padding: 0 0.8rem;
+  border-top: 1px solid rgba(113, 159, 186, 0.22);
+  font-size: 0.58rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(196, 221, 239, 0.86);
+}
+
+.citycmd__context {
+  padding: 0.7rem;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.citycmd__context-header,
+.citycmd__context-block {
+  border: 1px solid rgba(109, 153, 180, 0.28);
+  border-radius: 9px;
+  padding: 0.55rem;
+  background: linear-gradient(180deg, rgba(8, 20, 33, 0.74), rgba(6, 14, 25, 0.84));
+}
+
+.citycmd__context-id {
+  margin: 0;
+  font-size: 0.52rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(156, 197, 222, 0.84);
+}
+
+.citycmd__context-header h3 {
+  margin: 0.3rem 0;
+  letter-spacing: 0.05em;
+}
+
+.citycmd__context-header p,
+.citycmd__context-block p,
+.citycmd__context-block h4 {
+  margin: 0.28rem 0 0;
+  font-size: 0.66rem;
+  color: rgba(213, 235, 250, 0.92);
+}
+
+.citycmd__context-block h4 {
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #f0d8aa;
+}
+
+.citycmd__primary-cta {
+  width: 100%;
+  padding: 0.62rem 0.74rem;
+}
+
+.citycmd__line-cta {
+  margin-top: 0.35rem;
+  width: 100%;
+  text-align: left;
+}
+
+@media (max-width: 1280px) {
+  .citycmd__deck {
+    grid-template-columns: 190px minmax(0, 1fr) 320px;
+  }
+
+  .citycmd__resource-strip {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1024px) {
+  .citycmd {
+    inset: 3.3rem 0 0;
+  }
+
+  .citycmd__top {
+    grid-template-columns: 1fr;
+  }
+
+  .citycmd__deck {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(340px, 1fr) auto;
+  }
+
+  .citycmd__rail {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .citycmd__rail-title,
+  .citycmd__rail-foot {
+    grid-column: 1 / -1;
+  }
+
+  .citycmd__context {
+    max-height: 45vh;
+  }
+}
