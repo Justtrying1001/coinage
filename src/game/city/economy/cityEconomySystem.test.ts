@@ -20,7 +20,7 @@ import {
 describe('cityEconomySystem MVP MICRO full standard building loop', () => {
   it('initial state contains all standard building levels', () => {
     const state = createInitialCityEconomyState({ cityId: 'c-1', owner: 'p1', nowMs: 0 });
-    expect(getEconomyBuildingOrder()).toHaveLength(17);
+    expect(getEconomyBuildingOrder()).toHaveLength(15);
     getEconomyBuildingOrder().forEach((buildingId) => {
       expect(state.levels[buildingId]).toBeDefined();
     });
@@ -104,6 +104,6 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
   });
 
   it('exposes all military branch buildings in order helper', () => {
-    expect(getMilitaryBuildingOrder()).toEqual(['barracks', 'combat_forge', 'space_dock', 'military_academy', 'armament_factory']);
+    expect(getMilitaryBuildingOrder()).toEqual(['barracks', 'space_dock', 'armament_factory']);
   });
 });
