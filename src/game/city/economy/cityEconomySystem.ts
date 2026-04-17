@@ -222,12 +222,10 @@ function getPolicyEffect(state: CityEconomyState) {
 export function getCityDerivedStats(state: CityEconomyState) {
   const wall = getCurrentLevelRow(state, 'defensive_wall');
   const tower = getCurrentLevelRow(state, 'watch_tower');
-  const academy = getCurrentLevelRow(state, 'military_academy');
   const armament = getCurrentLevelRow(state, 'armament_factory');
   const market = getCurrentLevelRow(state, 'market');
   const council = getCurrentLevelRow(state, 'council_chamber');
   const barracks = getCurrentLevelRow(state, 'barracks');
-  const forge = getCurrentLevelRow(state, 'combat_forge');
   const dock = getCurrentLevelRow(state, 'space_dock');
   const intelCenter = getCurrentLevelRow(state, 'intelligence_center');
   const lab = getCurrentLevelRow(state, 'research_lab');
@@ -238,17 +236,20 @@ export function getCityDerivedStats(state: CityEconomyState) {
   const trainingSpeedPct =
     (barracks?.effect.trainingSpeedPct ?? 0) +
     (dock?.effect.trainingSpeedPct ?? 0) +
-    (academy?.effect.trainingSpeedPct ?? 0) +
     (armament?.effect.trainingSpeedPct ?? 0) +
     research.trainingSpeedPct +
     (policy?.trainingSpeedPct ?? 0);
 
   const cityDefensePct =
-    (wall?.effect.cityDefensePct ?? 0) + (council?.effect.cityDefensePct ?? 0) + research.defensePct + (policy?.defensePct ?? 0);
+    (wall?.effect.cityDefensePct ?? 0) +
+    (tower?.effect.cityDefensePct ?? 0) +
+    (council?.effect.cityDefensePct ?? 0) +
+    research.defensePct +
+    (policy?.defensePct ?? 0);
 
   return {
     trainingSpeedPct,
-    troopCombatPowerPct: (forge?.effect.troopCombatPowerPct ?? 0) + (academy?.effect.troopCombatPowerPct ?? 0),
+    troopCombatPowerPct: armament?.effect.troopCombatPowerPct ?? 0,
     troopUpkeepEfficiencyPct: armament?.effect.troopUpkeepEfficiencyPct ?? 0,
     cityDefensePct,
     damageMitigationPct: wall?.effect.damageMitigationPct ?? 0,

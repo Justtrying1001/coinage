@@ -7,6 +7,43 @@ function levelTotalCost(ore: number, stone: number, iron: number) {
 }
 
 describe('city economy rebalance validation', () => {
+  it('keeps active MVP building roster aligned with simplified military branch', () => {
+    expect(STANDARD_BUILDING_ORDER).toEqual([
+      'hq',
+      'mine',
+      'quarry',
+      'refinery',
+      'warehouse',
+      'housing_complex',
+      'barracks',
+      'space_dock',
+      'defensive_wall',
+      'watch_tower',
+      'armament_factory',
+      'intelligence_center',
+      'research_lab',
+      'market',
+      'council_chamber',
+    ]);
+  });
+
+  it('keeps building costs, times, and population requirements increasing level over level', () => {
+    STANDARD_BUILDING_ORDER.forEach((buildingId) => {
+      const rows = CITY_ECONOMY_CONFIG.buildings[buildingId].levels;
+      for (let i = 1; i < rows.length; i += 1) {
+        const prev = rows[i - 1];
+        const next = rows[i];
+        expect(next.resources.ore + next.resources.stone + next.resources.iron).toBeGreaterThan(prev.resources.ore + prev.resources.stone + prev.resources.iron);
+        expect(next.buildSeconds).toBeGreaterThan(prev.buildSeconds);
+        expect(next.populationCost).toBeGreaterThanOrEqual(prev.populationCost);
+      }
+
+      const populations = rows.map((row) => row.populationCost);
+      expect(new Set(populations).size).toBeGreaterThanOrEqual(10);
+      expect(populations[19]).toBeGreaterThanOrEqual(populations[0] + 10);
+    });
+  });
+
   it('normalizes all building and troop timers to 0/5 endings', () => {
     STANDARD_BUILDING_ORDER.forEach((buildingId) => {
       CITY_ECONOMY_CONFIG.buildings[buildingId].levels.forEach((levelRow) => {
@@ -88,8 +125,8 @@ describe('city economy rebalance validation', () => {
       warehouse: 10,
       housing_complex: 12,
       barracks: 5,
-      combat_forge: 0,
       space_dock: 0,
+      armament_factory: 0,
     };
     economy.troops.infantry = 70;
     economy.troops.marksman = 20;
@@ -107,8 +144,8 @@ describe('city economy rebalance validation', () => {
       warehouse: 8,
       housing_complex: 14,
       barracks: 12,
-      combat_forge: 8,
       space_dock: 5,
+      armament_factory: 6,
     };
     military.troops.infantry = 80;
     military.troops.shield_guard = 40;
@@ -128,8 +165,8 @@ describe('city economy rebalance validation', () => {
       warehouse: 11,
       housing_complex: 13,
       barracks: 10,
-      combat_forge: 6,
       space_dock: 3,
+      armament_factory: 4,
     };
     mixed.troops.infantry = 60;
     mixed.troops.marksman = 25;

@@ -3,6 +3,7 @@ import {
   canStartResearch,
   canSetPolicy,
   createInitialCityEconomyState,
+  getBuildingConfig,
   resolveCompletedConstruction,
   resolveCompletedIntelProjects,
   resolveCompletedResearch,
@@ -15,7 +16,7 @@ import {
   type CityEconomyState,
   type GuardResult,
 } from '@/game/city/economy/cityEconomySystem';
-import type { EconomyBuildingId, LocalPolicyId, ResearchId, TroopId } from '@/game/city/economy/cityEconomyConfig';
+import { STANDARD_BUILDING_ORDER, type EconomyBuildingId, type LocalPolicyId, type ResearchId, type TroopId } from '@/game/city/economy/cityEconomyConfig';
 
 const STORAGE_KEY = 'coinage.mvp.cityEconomy.v2';
 
@@ -113,12 +114,29 @@ function cloneEconomyState(state: CityEconomyState): CityEconomyState {
 }
 
 function toEconomyState(record: PersistedCityEconomyRecord): CityEconomyState {
+  const defaults = createInitialCityEconomyState({
+    cityId: record.cityId,
+    owner: record.ownerId,
+    nowMs: record.lastResourceUpdateAtMs,
+  });
+
+  const validBuildingIdSet = new Set(STANDARD_BUILDING_ORDER);
+  const sanitizedLevels = { ...defaults.levels };
+  STANDARD_BUILDING_ORDER.forEach((buildingId) => {
+    const raw = (record.levels as Partial<Record<EconomyBuildingId, unknown>> | undefined)?.[buildingId];
+    if (typeof raw === 'number' && Number.isFinite(raw) && raw >= 0) {
+      sanitizedLevels[buildingId] = Math.min(getBuildingConfig(buildingId).maxLevel, Math.floor(raw));
+    }
+  });
+
   return {
     cityId: record.cityId,
     owner: record.ownerId,
-    levels: { ...record.levels },
+    levels: sanitizedLevels,
     resources: { ...record.resources },
-    queue: record.queue.map((item) => ({ ...item, costPaid: { ...item.costPaid } })),
+    queue: (record.queue ?? [])
+      .filter((item) => validBuildingIdSet.has(item.buildingId))
+      .map((item) => ({ ...item, costPaid: { ...item.costPaid } })),
     troops: { ...record.troops },
     trainingQueue: record.trainingQueue.map((item) => ({ ...item, costPaid: { ...item.costPaid } })),
     researchQueue: (record.researchQueue ?? []).map((item) => ({ ...item, costPaid: { ...item.costPaid } })),

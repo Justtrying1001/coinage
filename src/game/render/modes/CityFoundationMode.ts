@@ -83,10 +83,8 @@ const STAGE_LAYOUTS: Record<LocalCitySection, StageNode[]> = {
   military: [
     { id: 'hq', x: 48, y: 50, tier: 'anchor' },
     { id: 'barracks', x: 67, y: 61, tier: 'standard' },
-    { id: 'combat_forge', x: 62, y: 42, tier: 'standard' },
     { id: 'space_dock', x: 80, y: 30, tier: 'anchor' },
-    { id: 'military_academy', x: 73, y: 18, tier: 'context' },
-    { id: 'armament_factory', x: 44, y: 22, tier: 'context' },
+    { id: 'armament_factory', x: 56, y: 22, tier: 'anchor' },
   ],
   defense: [
     { id: 'hq', x: 50, y: 52, tier: 'anchor' },
@@ -105,7 +103,7 @@ const STAGE_LAYOUTS: Record<LocalCitySection, StageNode[]> = {
   governance: [
     { id: 'hq', x: 49, y: 58, tier: 'anchor' },
     { id: 'council_chamber', x: 38, y: 38, tier: 'anchor' },
-    { id: 'military_academy', x: 68, y: 34, tier: 'context' },
+    { id: 'armament_factory', x: 68, y: 34, tier: 'context' },
   ],
   logistics: [
     { id: 'hq', x: 50, y: 56, tier: 'anchor' },
