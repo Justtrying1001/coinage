@@ -1,5 +1,7 @@
 # City View Terrain Rebuild Spec (runtime-grounded)
 
+> UI note (2026-04-17): the active command interface architecture is documented in `docs/16-city-view-ui-audit.md`.
+
 Date: 2026-04-13  
 Scope: plan de reconstruction du pipeline terrain `city3d` basé sur l'audit runtime déjà acté.
 

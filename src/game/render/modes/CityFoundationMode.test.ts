@@ -22,58 +22,92 @@ function mountMode() {
   return { host, mode };
 }
 
-describe('CityFoundationMode MVP alignment', () => {
+describe('CityFoundationMode command-deck micro UX', () => {
   beforeEach(() => {
     clearCityEconomyPersistenceForTests();
     window.localStorage.clear();
   });
 
-  it('uses deterministic MVP start state with refinery locked behind HQ 3', () => {
+  it('shows command bar with only Ore/Stone/Iron and city identity', () => {
     const { host, mode } = mountMode();
 
     const text = host.textContent ?? '';
-    expect(text).toContain('HQ');
-    expect(text).toContain('Mine');
-    expect(text).toContain('Quarry');
-    expect(text).toContain('Warehouse');
-    expect(text).toContain('Housing Complex');
-    expect(text).toContain('Requires HQ 3');
-    expect(text).toContain('Current level: 1');
-
-    mode.destroy();
-    host.remove();
-  });
-
-  it('renders only Ore/Stone/Iron resources in city strip', () => {
-    const { host, mode } = mountMode();
-
-    const text = host.textContent ?? '';
+    expect(text).toContain('Owner');
+    expect(text).toContain('Queue: 0/2');
     expect(text).toContain('Ore');
     expect(text).toContain('Stone');
     expect(text).toContain('Iron');
-    expect(text).not.toContain('Metal');
     expect(text).not.toContain('Crystal');
-    expect(text).not.toContain('Deuterium');
-    expect(text).not.toContain('Energy');
 
     mode.destroy();
     host.remove();
   });
 
-  it('enforces MVP queue cap of 2 concurrent constructions', () => {
+  it('renders all micro sections and switches context branch', () => {
     const { host, mode } = mountMode();
 
-    const mineButton = host.querySelector<HTMLButtonElement>('.city-management__upgrade[data-building-id=\"mine\"]');
-    const quarryButton = host.querySelector<HTMLButtonElement>('.city-management__upgrade[data-building-id=\"quarry\"]');
-    expect(mineButton).not.toBeNull();
-    expect(quarryButton).not.toBeNull();
+    ['Economy', 'Military', 'Defense', 'Research', 'Intelligence', 'Governance', 'Logistics'].forEach((section) => {
+      expect(host.textContent).toContain(section);
+    });
 
-    mineButton!.click();
-    quarryButton!.click();
+    const researchButton = host.querySelector<HTMLButtonElement>('.citycmd__rail-item[aria-label="Research"]');
+    expect(researchButton).not.toBeNull();
+    researchButton!.click();
 
-    const queueText = host.textContent ?? '';
-    expect(queueText).toContain('Queue: 2/2');
-    expect(queueText).toContain('Queue full (2/2)');
+    const text = host.textContent ?? '';
+    expect(text).toContain('Research queue');
+    expect(text).toContain('Research Lab');
+    expect(host.querySelectorAll('.citycmd__hotspot').length).toBeGreaterThan(0);
+
+    mode.destroy();
+    host.remove();
+  });
+
+  it('uses reduced inline stage labels with selection emphasis', () => {
+    const { host, mode } = mountMode();
+    const selectedCount = host.querySelectorAll('.citycmd__hotspot.is-selected .citycmd__hotspot-name').length;
+    const nonSelectedNamed = host.querySelectorAll('.citycmd__hotspot:not(.is-selected) .citycmd__hotspot-name').length;
+
+    expect(selectedCount).toBe(1);
+    expect(nonSelectedNamed).toBe(0);
+
+    mode.destroy();
+    host.remove();
+  });
+
+  it('supports building selection + immediate upgrade CTA + queue cap feedback', () => {
+    const { host, mode } = mountMode();
+
+    const mineHotspot = host.querySelector<HTMLButtonElement>('.citycmd__hotspot[aria-label^="Mine"]');
+    const quarryHotspot = host.querySelector<HTMLButtonElement>('.citycmd__hotspot[aria-label^="Quarry"]');
+    expect(mineHotspot).not.toBeNull();
+    expect(quarryHotspot).not.toBeNull();
+
+    mineHotspot!.click();
+    const mineUpgrade = host.querySelector<HTMLButtonElement>('.city-management__upgrade[data-building-id="mine"]');
+    expect(mineUpgrade).not.toBeNull();
+    mineUpgrade!.click();
+
+    quarryHotspot!.click();
+    const quarryUpgrade = host.querySelector<HTMLButtonElement>('.city-management__upgrade[data-building-id="quarry"]');
+    expect(quarryUpgrade).not.toBeNull();
+    quarryUpgrade!.click();
+
+    const text = host.textContent ?? '';
+    expect(text).toContain('Queue: 2/2');
+    expect(text).toContain('Queue full (2/2)');
+
+    mode.destroy();
+    host.remove();
+  });
+
+  it('keeps premium/special features out of active city UX', () => {
+    const { host, mode } = mountMode();
+    const text = host.textContent ?? '';
+
+    expect(text).not.toContain('Shard Vault');
+    expect(text).not.toContain('Training Grounds');
+    expect(text).toContain('MVP MICRO only · premium/wallet/special disabled');
 
     mode.destroy();
     host.remove();
