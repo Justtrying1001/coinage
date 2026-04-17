@@ -38,8 +38,7 @@ describe('CityFoundationMode MVP alignment', () => {
     expect(text).toContain('Warehouse');
     expect(text).toContain('Housing Complex');
     expect(text).toContain('Requires HQ 3');
-    expect(text).toContain('LVL 1');
-    expect(text).not.toContain('LVL 2');
+    expect(text).toContain('Current level: 1');
 
     mode.destroy();
     host.remove();

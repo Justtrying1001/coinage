@@ -137,7 +137,7 @@ function expProduction(base: number, scale: number, level: number) {
 
 function stagedBuildSeconds(level: number, earlyBaseSeconds: number, weight = 1) {
   const earlyGrowth = 1.22;
-  const lateGrowth = 1.9;
+  const lateGrowth = 1.86;
   const earlyBand = Math.min(level - 1, 9);
   const lateBand = Math.max(0, level - 10);
   const earlyValue = earlyBaseSeconds * Math.pow(earlyGrowth, earlyBand);
@@ -146,26 +146,26 @@ function stagedBuildSeconds(level: number, earlyBaseSeconds: number, weight = 1)
 }
 
 const WAREHOUSE_STORAGE_CAPS: ResourceBundle[] = [
-  { ore: 1500, stone: 1200, iron: 800 },
-  { ore: 2000, stone: 1600, iron: 1000 },
-  { ore: 2600, stone: 2100, iron: 1300 },
-  { ore: 3400, stone: 2700, iron: 1700 },
-  { ore: 4400, stone: 3500, iron: 2200 },
-  { ore: 5600, stone: 4500, iron: 2800 },
-  { ore: 7200, stone: 5800, iron: 3600 },
-  { ore: 9200, stone: 7400, iron: 4600 },
-  { ore: 11700, stone: 9400, iron: 5900 },
-  { ore: 14800, stone: 11800, iron: 7400 },
-  { ore: 18600, stone: 14900, iron: 9300 },
-  { ore: 23300, stone: 18600, iron: 11600 },
-  { ore: 29100, stone: 23300, iron: 14500 },
-  { ore: 36300, stone: 29000, iron: 18100 },
-  { ore: 45200, stone: 36200, iron: 22600 },
-  { ore: 56300, stone: 45000, iron: 28100 },
-  { ore: 70100, stone: 56100, iron: 35100 },
-  { ore: 87300, stone: 69800, iron: 43600 },
-  { ore: 108700, stone: 86900, iron: 54300 },
-  { ore: 135000, stone: 108000, iron: 67500 },
+  { ore: 1200, stone: 1000, iron: 700 },
+  { ore: 1600, stone: 1300, iron: 900 },
+  { ore: 2200, stone: 1800, iron: 1200 },
+  { ore: 2800, stone: 2200, iron: 1500 },
+  { ore: 3600, stone: 2900, iron: 2000 },
+  { ore: 4600, stone: 3700, iron: 2500 },
+  { ore: 5900, stone: 4700, iron: 3200 },
+  { ore: 7500, stone: 6000, iron: 4100 },
+  { ore: 9500, stone: 7600, iron: 5200 },
+  { ore: 12000, stone: 9600, iron: 6500 },
+  { ore: 15000, stone: 12000, iron: 8100 },
+  { ore: 18800, stone: 15000, iron: 10200 },
+  { ore: 23500, stone: 18800, iron: 12700 },
+  { ore: 29400, stone: 23500, iron: 15900 },
+  { ore: 36700, stone: 29400, iron: 19900 },
+  { ore: 45800, stone: 36600, iron: 24800 },
+  { ore: 57100, stone: 45700, iron: 30900 },
+  { ore: 71200, stone: 57000, iron: 38600 },
+  { ore: 88800, stone: 71000, iron: 48100 },
+  { ore: 110500, stone: 88400, iron: 59700 },
 ];
 
 const CORE_ECONOMY_BUILDINGS: Record<
@@ -180,9 +180,9 @@ const CORE_ECONOMY_BUILDINGS: Record<
     consumesPopulation: true,
     levels: buildLevels({
       baseCost: { ore: 220, stone: 180, iron: 35 },
-      costScale: 1.2,
-      buildSecondsByLevel: (level) => stagedBuildSeconds(level, 55),
-      populationCostByLevel: (level) => populationBand(level, 1, 1, 2),
+      costScale: 1.195,
+      buildSecondsByLevel: (level) => stagedBuildSeconds(level, 50),
+      populationCostByLevel: (level) => populationBand(level, 1, 2, 3),
       effectByLevel: (level) => {
         if (level === 1) return { unlocks: ['mine', 'quarry', 'warehouse', 'housing_complex', 'barracks'] };
         if (level === 3) return { unlocks: ['refinery'] };
@@ -207,7 +207,7 @@ const CORE_ECONOMY_BUILDINGS: Record<
       baseCost: { ore: 76, stone: 60, iron: 0 },
       costScale: 1.16,
       buildSecondsByLevel: (level) => stagedBuildSeconds(level, 30),
-      populationCostByLevel: (level) => populationBand(level, 1, 1, 2),
+      populationCostByLevel: (level) => populationBand(level, 1, 2, 2),
       effectByLevel: (level) => ({ orePerHour: expProduction(30, 1.15, level) }),
     }),
   },
@@ -226,7 +226,7 @@ const CORE_ECONOMY_BUILDINGS: Record<
       baseCost: { ore: 68, stone: 78, iron: 0 },
       costScale: 1.16,
       buildSecondsByLevel: (level) => stagedBuildSeconds(level, 30),
-      populationCostByLevel: (level) => populationBand(level, 1, 1, 2),
+      populationCostByLevel: (level) => populationBand(level, 1, 2, 2),
       effectByLevel: (level) => ({ stonePerHour: expProduction(26, 1.15, level) }),
     }),
   },
@@ -265,7 +265,7 @@ const CORE_ECONOMY_BUILDINGS: Record<
       baseCost: { ore: 125, stone: 105, iron: 35 },
       costScale: 1.165,
       buildSecondsByLevel: (level) => stagedBuildSeconds(level, 45),
-      populationCostByLevel: (level) => populationBand(level, 1, 1, 2),
+      populationCostByLevel: (level) => populationBand(level, 1, 2, 2),
       effectByLevel: (level) => ({ ironPerHour: expProduction(14, 1.17, level) }),
     }),
   },
@@ -304,7 +304,7 @@ const CORE_ECONOMY_BUILDINGS: Record<
       costScale: 1.17,
       buildSecondsByLevel: (level) => stagedBuildSeconds(level, 35),
       populationCostByLevel: () => 0,
-      effectByLevel: (level) => ({ populationCapBonus: 140 + level * 85 + level * level * 4 }),
+      effectByLevel: (level) => ({ populationCapBonus: 70 + level * 42 + level * level * 2 }),
     }),
   },
 };
@@ -326,7 +326,7 @@ const MILITARY_BUILDINGS: Record<'barracks' | 'combat_forge' | 'space_dock', Eco
       baseCost: { ore: 140, stone: 110, iron: 20 },
       costScale: 1.2,
       buildSecondsByLevel: (level) => stagedBuildSeconds(level, 50),
-      populationCostByLevel: () => 1,
+      populationCostByLevel: (level) => populationBand(level, 1, 2, 2),
       effectByLevel: () => ({}),
     }),
   },
@@ -349,7 +349,7 @@ const MILITARY_BUILDINGS: Record<'barracks' | 'combat_forge' | 'space_dock', Eco
       baseCost: { ore: 240, stone: 205, iron: 80 },
       costScale: 1.21,
       buildSecondsByLevel: (level) => stagedBuildSeconds(level, 65),
-      populationCostByLevel: (level) => populationBand(level, 1, 1, 2),
+      populationCostByLevel: (level) => populationBand(level, 1, 2, 3),
       effectByLevel: () => ({}),
     }),
   },
@@ -373,7 +373,7 @@ const MILITARY_BUILDINGS: Record<'barracks' | 'combat_forge' | 'space_dock', Eco
       baseCost: { ore: 360, stone: 300, iron: 150 },
       costScale: 1.22,
       buildSecondsByLevel: (level) => stagedBuildSeconds(level, 80),
-      populationCostByLevel: (level) => populationBand(level, 1, 2, 2),
+      populationCostByLevel: (level) => populationBand(level, 2, 3, 4),
       effectByLevel: () => ({}),
     }),
   },
@@ -386,7 +386,7 @@ export const TROOP_CONFIG: Record<TroopId, TroopConfig> = {
     category: 'ground',
     requiredBuildingId: 'barracks',
     requiredBuildingLevel: 1,
-    cost: { ore: 30, stone: 18, iron: 0 },
+    cost: { ore: 28, stone: 20, iron: 0 },
     trainingSeconds: 20,
     populationCost: 1,
   },
@@ -396,8 +396,8 @@ export const TROOP_CONFIG: Record<TroopId, TroopConfig> = {
     category: 'ground',
     requiredBuildingId: 'barracks',
     requiredBuildingLevel: 5,
-    cost: { ore: 62, stone: 48, iron: 10 },
-    trainingSeconds: 35,
+    cost: { ore: 58, stone: 50, iron: 12 },
+    trainingSeconds: 40,
     populationCost: 2,
   },
   marksman: {
@@ -406,9 +406,9 @@ export const TROOP_CONFIG: Record<TroopId, TroopConfig> = {
     category: 'ground',
     requiredBuildingId: 'barracks',
     requiredBuildingLevel: 10,
-    cost: { ore: 90, stone: 56, iron: 30 },
-    trainingSeconds: 45,
-    populationCost: 1,
+    cost: { ore: 82, stone: 52, iron: 34 },
+    trainingSeconds: 50,
+    populationCost: 2,
   },
   raider_cavalry: {
     id: 'raider_cavalry',
@@ -416,9 +416,9 @@ export const TROOP_CONFIG: Record<TroopId, TroopConfig> = {
     category: 'ground',
     requiredBuildingId: 'barracks',
     requiredBuildingLevel: 15,
-    cost: { ore: 128, stone: 88, iron: 48 },
-    trainingSeconds: 60,
-    populationCost: 2,
+    cost: { ore: 122, stone: 86, iron: 54 },
+    trainingSeconds: 70,
+    populationCost: 3,
   },
   assault: {
     id: 'assault',
@@ -426,9 +426,9 @@ export const TROOP_CONFIG: Record<TroopId, TroopConfig> = {
     category: 'ground',
     requiredBuildingId: 'combat_forge',
     requiredBuildingLevel: 1,
-    cost: { ore: 155, stone: 110, iron: 80 },
-    trainingSeconds: 70,
-    populationCost: 2,
+    cost: { ore: 145, stone: 108, iron: 90 },
+    trainingSeconds: 85,
+    populationCost: 3,
   },
   breacher: {
     id: 'breacher',
@@ -436,9 +436,9 @@ export const TROOP_CONFIG: Record<TroopId, TroopConfig> = {
     category: 'ground',
     requiredBuildingId: 'combat_forge',
     requiredBuildingLevel: 8,
-    cost: { ore: 225, stone: 185, iron: 120 },
-    trainingSeconds: 95,
-    populationCost: 3,
+    cost: { ore: 210, stone: 180, iron: 135 },
+    trainingSeconds: 115,
+    populationCost: 4,
   },
   interception_sentinel: {
     id: 'interception_sentinel',
@@ -446,8 +446,8 @@ export const TROOP_CONFIG: Record<TroopId, TroopConfig> = {
     category: 'air',
     requiredBuildingId: 'space_dock',
     requiredBuildingLevel: 1,
-    cost: { ore: 195, stone: 140, iron: 115 },
-    trainingSeconds: 85,
+    cost: { ore: 178, stone: 132, iron: 130 },
+    trainingSeconds: 95,
     populationCost: 3,
   },
   rapid_escort: {
@@ -456,9 +456,9 @@ export const TROOP_CONFIG: Record<TroopId, TroopConfig> = {
     category: 'air',
     requiredBuildingId: 'space_dock',
     requiredBuildingLevel: 5,
-    cost: { ore: 255, stone: 175, iron: 155 },
-    trainingSeconds: 105,
-    populationCost: 2,
+    cost: { ore: 235, stone: 170, iron: 170 },
+    trainingSeconds: 120,
+    populationCost: 3,
   },
 };
 
@@ -473,7 +473,7 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
     startingStock: { ore: 520, stone: 340, iron: 180 },
   },
   population: {
-    baseCap: 120,
+    baseCap: 90,
   },
   buildings: {
     ...CORE_ECONOMY_BUILDINGS,
