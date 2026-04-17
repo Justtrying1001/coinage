@@ -233,7 +233,10 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       name: 'Intelligence Center',
       maxLevel: CITY_BUILDING_LEVEL_TABLES.intelligence_center.length,
       unlockAtHq: 10,
-      prerequisites: [{ buildingId: 'market', minLevel: 4 }],
+      prerequisites: [
+        { buildingId: 'market', minLevel: 4 },
+        { buildingId: 'warehouse', minLevel: 7 },
+      ],
       levels: CITY_BUILDING_LEVEL_TABLES.intelligence_center,
     },
     research_lab: {

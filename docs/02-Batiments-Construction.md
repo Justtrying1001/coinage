@@ -309,36 +309,36 @@ Source of truth runtime: `cityEconomyConfig.ts` (généré automatiquement).
 
 | Niveau | Ore | Stone | Iron | Temps (s) | Temps | Population | Effet principal |
 |---:|---:|---:|---:|---:|---|---:|---|
-| 1 | 33 | 70 | 20 | 0 | 0s | 40 | — |
-| 2 | 4 | 163 | 64 | 0 | 0s | 116 | Vitesse entraînement 1% |
-| 3 | 4 | 267 | 125 | 0 | 0s | 217 | Vitesse entraînement 2% |
-| 4 | 5 | 380 | 203 | 0 | 0s | 338 | Vitesse entraînement 3% |
-| 5 | 5 | 499 | 294 | 0 | 0s | 477 | Vitesse entraînement 4% |
-| 6 | 6 | 623 | 399 | 0 | 0s | 632 | Vitesse entraînement 5% |
-| 7 | 7 | 752 | 516 | 0 | 0s | 807 | Vitesse entraînement 6% |
-| 8 | 7 | 885 | 644 | 0 | 0s | 984 | Vitesse entraînement 7% |
-| 9 | 8 | 1022 | 785 | 0 | 0s | 1179 | Vitesse entraînement 8% |
-| 10 | 9 | 1162 | 935 | 0 | 0s | 1387 | Vitesse entraînement 9% |
-| 11 | 10 | 1305 | 1097 | 0 | 0s | 1606 | Vitesse entraînement 10% |
-| 12 | 11 | 1451 | 1268 | 0 | 0s | 1837 | Vitesse entraînement 11% |
-| 13 | 13 | 1600 | 1450 | 0 | 0s | 2077 | Vitesse entraînement 12% |
-| 14 | 14 | 1751 | 1641 | 0 | 0s | 2329 | Vitesse entraînement 13% |
-| 15 | 16 | 1905 | 1841 | 0 | 0s | 2590 | Vitesse entraînement 14% |
-| 16 | 17 | 2061 | 2051 | 0 | 0s | 2860 | Vitesse entraînement 15% |
-| 17 | 20 | 2219 | 2269 | 0 | 0s | 3140 | Vitesse entraînement 16% |
-| 18 | 22 | 2380 | 2497 | 0 | 0s | 3429 | Vitesse entraînement 17% |
-| 19 | 24 | 2542 | 2732 | 0 | 0s | 3727 | Vitesse entraînement 18% |
-| 20 | 28 | 2706 | 2977 | 0 | 0s | 4033 | Vitesse entraînement 19% |
-| 21 | 30 | 2872 | 3230 | 0 | 0s | 4348 | Vitesse entraînement 20% |
-| 22 | 34 | 3040 | 3490 | 0 | 0s | 4671 | Vitesse entraînement 21% |
-| 23 | 38 | 3209 | 3759 | 0 | 0s | 5002 | Vitesse entraînement 22% |
-| 24 | 42 | 3380 | 4036 | 0 | 0s | 5341 | Vitesse entraînement 23% |
-| 25 | 47 | 3553 | 4321 | 0 | 0s | 5687 | Vitesse entraînement 24% |
-| 26 | 52 | 3727 | 4614 | 0 | 0s | 6041 | Vitesse entraînement 25% |
-| 27 | 59 | 3903 | 4914 | 0 | 0s | 6403 | Vitesse entraînement 26% |
-| 28 | 65 | 4080 | 5221 | 0 | 0s | 6771 | Vitesse entraînement 27% |
-| 29 | 73 | 4258 | 5536 | 0 | 0s | 7147 | Vitesse entraînement 28% |
-| 30 | 81 | 4438 | 5859 | 0 | 0s | 7531 | Vitesse entraînement 29% |
+| 1 | 70 | 20 | 40 | 634 | 10m 34s | 1 | — |
+| 2 | 163 | 64 | 116 | 1508 | 25m 08s | 3 | Vitesse entraînement 1% |
+| 3 | 267 | 125 | 217 | 2504 | 41m 44s | 4 | Vitesse entraînement 2% |
+| 4 | 380 | 203 | 338 | 3588 | 59m 48s | 6 | Vitesse entraînement 3% |
+| 5 | 499 | 294 | 477 | 4742 | 1h 19m 02s | 8 | Vitesse entraînement 4% |
+| 6 | 623 | 399 | 632 | 5956 | 1h 39m 16s | 10 | Vitesse entraînement 5% |
+| 7 | 752 | 516 | 807 | 7222 | 2h 00m 22s | 13 | Vitesse entraînement 6% |
+| 8 | 885 | 644 | 984 | 8534 | 2h 22m 14s | 15 | Vitesse entraînement 7% |
+| 9 | 1022 | 785 | 1179 | 9888 | 2h 44m 48s | 17 | Vitesse entraînement 8% |
+| 10 | 1162 | 935 | 1387 | 11280 | 3h 08m 00s | 20 | Vitesse entraînement 9% |
+| 11 | 1305 | 1097 | 1606 | 12706 | 3h 31m 46s | 23 | Vitesse entraînement 10% |
+| 12 | 1451 | 1268 | 1837 | 14167 | 3h 56m 07s | 25 | Vitesse entraînement 11% |
+| 13 | 1600 | 1450 | 2077 | 15657 | 4h 20m 57s | 28 | Vitesse entraînement 12% |
+| 14 | 1751 | 1641 | 2329 | 17178 | 4h 46m 18s | 31 | Vitesse entraînement 13% |
+| 15 | 1905 | 1841 | 2590 | 18725 | 5h 12m 05s | 34 | Vitesse entraînement 14% |
+| 16 | 2061 | 2051 | 2860 | 20298 | 5h 38m 18s | 37 | Vitesse entraînement 15% |
+| 17 | 2219 | 2269 | 3140 | 21896 | 6h 04m 56s | 40 | Vitesse entraînement 16% |
+| 18 | 2380 | 2497 | 3429 | 23517 | 6h 31m 57s | 43 | Vitesse entraînement 17% |
+| 19 | 2542 | 2732 | 3727 | 25162 | 6h 59m 22s | 46 | Vitesse entraînement 18% |
+| 20 | 2706 | 2977 | 4033 | 26828 | 7h 27m 08s | 49 | Vitesse entraînement 19% |
+| 21 | 2872 | 3230 | 4348 | 28515 | 7h 55m 15s | 52 | Vitesse entraînement 20% |
+| 22 | 3040 | 3490 | 4671 | 30223 | 8h 23m 43s | 56 | Vitesse entraînement 21% |
+| 23 | 3209 | 3759 | 5002 | 31950 | 8h 52m 30s | 59 | Vitesse entraînement 22% |
+| 24 | 3380 | 4036 | 5341 | 33700 | 9h 21m 40s | 62 | Vitesse entraînement 23% |
+| 25 | 3553 | 4321 | 5687 | 35459 | 9h 50m 59s | 66 | Vitesse entraînement 24% |
+| 26 | 3727 | 4614 | 6041 | 37241 | 10h 20m 41s | 69 | Vitesse entraînement 25% |
+| 27 | 3903 | 4914 | 6403 | 39040 | 10h 50m 40s | 73 | Vitesse entraînement 26% |
+| 28 | 4080 | 5221 | 6771 | 40855 | 11h 20m 55s | 76 | Vitesse entraînement 27% |
+| 29 | 4258 | 5536 | 7147 | 42688 | 11h 51m 28s | 80 | Vitesse entraînement 28% |
+| 30 | 4438 | 5859 | 7531 | 44535 | 12h 22m 15s | 83 | Vitesse entraînement 29% |
 
 ### Space Dock (space_dock)
 - **Branche** : military
@@ -348,36 +348,36 @@ Source of truth runtime: `cityEconomyConfig.ts` (généré automatiquement).
 
 | Niveau | Ore | Stone | Iron | Temps (s) | Temps | Population | Effet principal |
 |---:|---:|---:|---:|---:|---|---:|---|
-| 1 | 66 | 400 | 200 | 0 | 0s | 100 | — |
-| 2 | 7 | 746 | 394 | 0 | 0s | 214 | Vitesse entraînement 1% |
-| 3 | 7 | 1075 | 587 | 0 | 0s | 335 | Vitesse entraînement 2% |
-| 4 | 8 | 1393 | 778 | 0 | 0s | 459 | Vitesse entraînement 3% |
-| 5 | 9 | 1703 | 968 | 0 | 0s | 587 | Vitesse entraînement 4% |
-| 6 | 9 | 2006 | 1158 | 0 | 0s | 718 | Vitesse entraînement 5% |
-| 7 | 11 | 2006 | 1158 | 0 | 0s | 718 | Vitesse entraînement 6% |
-| 8 | 12 | 2599 | 1535 | 0 | 0s | 985 | Vitesse entraînement 7% |
-| 9 | 12 | 2830 | 1723 | 0 | 0s | 1121 | Vitesse entraînement 8% |
-| 10 | 15 | 3177 | 1910 | 0 | 0s | 1259 | Vitesse entraînement 9% |
-| 11 | 15 | 3462 | 2097 | 0 | 0s | 1398 | Vitesse entraînement 10% |
-| 12 | 17 | 3744 | 2284 | 0 | 0s | 1539 | Vitesse entraînement 11% |
-| 13 | 19 | 4024 | 2470 | 0 | 0s | 1698 | Vitesse entraînement 12% |
-| 14 | 21 | 4301 | 2656 | 0 | 0s | 1823 | Vitesse entraînement 13% |
-| 15 | 23 | 4577 | 2842 | 0 | 0s | 1967 | Vitesse entraînement 14% |
-| 16 | 25 | 4850 | 3027 | 0 | 0s | 2111 | Vitesse entraînement 15% |
-| 17 | 27 | 5122 | 3213 | 0 | 0s | 2257 | Vitesse entraînement 16% |
-| 18 | 31 | 5393 | 3398 | 0 | 0s | 2403 | Vitesse entraînement 17% |
-| 19 | 31 | 5662 | 3583 | 0 | 0s | 2551 | Vitesse entraînement 18% |
-| 20 | 37 | 5929 | 3767 | 0 | 0s | 2699 | Vitesse entraînement 19% |
-| 21 | 40 | 6195 | 3952 | 0 | 0s | 2847 | Vitesse entraînement 20% |
-| 22 | 44 | 6460 | 4136 | 0 | 0s | 2997 | Vitesse entraînement 21% |
-| 23 | 49 | 6724 | 4320 | 0 | 0s | 3147 | Vitesse entraînement 22% |
-| 24 | 54 | 6986 | 4504 | 0 | 0s | 3298 | Vitesse entraînement 23% |
-| 25 | 59 | 7248 | 4688 | 0 | 0s | 3449 | Vitesse entraînement 24% |
-| 26 | 65 | 7508 | 4872 | 0 | 0s | 3601 | Vitesse entraînement 25% |
-| 27 | 72 | 7768 | 4872 | 0 | 0s | 3601 | Vitesse entraînement 26% |
-| 28 | 78 | 8026 | 5239 | 0 | 0s | 3907 | Vitesse entraînement 27% |
-| 29 | 87 | 8284 | 5422 | 0 | 0s | 4061 | Vitesse entraînement 28% |
-| 30 | 95 | 8540 | 5605 | 0 | 0s | 4215 | Vitesse entraînement 29% |
+| 1 | 400 | 200 | 100 | 95 | 1m 35s | 4 | — |
+| 2 | 746 | 394 | 214 | 408 | 6m 48s | 4 | Vitesse entraînement 1% |
+| 3 | 1075 | 587 | 335 | 956 | 15m 56s | 4 | Vitesse entraînement 2% |
+| 4 | 1393 | 778 | 459 | 1749 | 29m 09s | 4 | Vitesse entraînement 3% |
+| 5 | 1703 | 968 | 587 | 2794 | 46m 34s | 4 | Vitesse entraînement 4% |
+| 6 | 2006 | 1158 | 718 | 4097 | 1h 08m 17s | 4 | Vitesse entraînement 5% |
+| 7 | 2006 | 1158 | 718 | 5664 | 1h 34m 24s | 4 | Vitesse entraînement 6% |
+| 8 | 2599 | 1535 | 985 | 7497 | 2h 04m 57s | 4 | Vitesse entraînement 7% |
+| 9 | 2830 | 1723 | 1121 | 9601 | 2h 40m 01s | 4 | Vitesse entraînement 8% |
+| 10 | 3177 | 1910 | 1259 | 11979 | 3h 19m 39s | 4 | Vitesse entraînement 9% |
+| 11 | 3462 | 2097 | 1398 | 14780 | 4h 06m 20s | 4 | Vitesse entraînement 10% |
+| 12 | 3744 | 2284 | 1539 | 15671 | 4h 21m 11s | 4 | Vitesse entraînement 11% |
+| 13 | 4024 | 2470 | 1698 | 17762 | 4h 56m 02s | 4 | Vitesse entraînement 12% |
+| 14 | 4301 | 2656 | 1823 | 19271 | 5h 21m 11s | 4 | Vitesse entraînement 13% |
+| 15 | 4577 | 2842 | 1967 | 20790 | 5h 46m 30s | 4 | Vitesse entraînement 14% |
+| 16 | 4850 | 3027 | 2111 | 22320 | 6h 12m 00s | 4 | Vitesse entraînement 15% |
+| 17 | 5122 | 3213 | 2257 | 23859 | 6h 37m 39s | 4 | Vitesse entraînement 16% |
+| 18 | 5393 | 3398 | 2403 | 25407 | 7h 03m 27s | 4 | Vitesse entraînement 17% |
+| 19 | 5662 | 3583 | 2551 | 26964 | 7h 29m 24s | 4 | Vitesse entraînement 18% |
+| 20 | 5929 | 3767 | 2699 | 28529 | 7h 55m 29s | 4 | Vitesse entraînement 19% |
+| 21 | 6195 | 3952 | 2847 | 30102 | 8h 21m 42s | 4 | Vitesse entraînement 20% |
+| 22 | 6460 | 4136 | 2997 | 31683 | 8h 48m 03s | 4 | Vitesse entraînement 21% |
+| 23 | 6724 | 4320 | 3147 | 33270 | 9h 14m 30s | 4 | Vitesse entraînement 22% |
+| 24 | 6986 | 4504 | 3298 | 34865 | 9h 41m 05s | 4 | Vitesse entraînement 23% |
+| 25 | 7248 | 4688 | 3449 | 36466 | 10h 07m 46s | 4 | Vitesse entraînement 24% |
+| 26 | 7508 | 4872 | 3601 | 38074 | 10h 34m 34s | 4 | Vitesse entraînement 25% |
+| 27 | 7768 | 4872 | 3601 | 38074 | 10h 34m 34s | 4 | Vitesse entraînement 26% |
+| 28 | 8026 | 5239 | 3907 | 41308 | 11h 28m 28s | 4 | Vitesse entraînement 27% |
+| 29 | 8284 | 5422 | 4061 | 42934 | 11h 55m 34s | 4 | Vitesse entraînement 28% |
+| 30 | 8540 | 5605 | 4215 | 44565 | 12h 22m 45s | 4 | Vitesse entraînement 29% |
 
 ### Defensive Wall (defensive_wall)
 - **Branche** : defense
@@ -491,7 +491,7 @@ Source of truth runtime: `cityEconomyConfig.ts` (généré automatiquement).
 - **Branche** : intelligence
 - **Source** : Runtime table
 - **Max level runtime** : 10
-- **Prérequis** : HQ >= 10 · market >= 4
+- **Prérequis** : HQ >= 10 · market >= 4 · warehouse >= 7
 
 | Niveau | Ore | Stone | Iron | Temps (s) | Temps | Population | Effet principal |
 |---:|---:|---:|---:|---:|---|---:|---|
@@ -576,7 +576,7 @@ Source of truth runtime: `cityEconomyConfig.ts` (généré automatiquement).
 | 15 | 2752 | 1608 | 1066 | 36192 | 10h 03m 12s | 39 | Transport/market 75% |
 | 16 | 3027 | 1785 | 1211 | 40130 | 11h 08m 50s | 42 | Transport/market 80% |
 | 17 | 3312 | 1970 | 1365 | 44217 | 12h 16m 57s | 45 | Transport/market 85% |
-| 18 | 3604 | 2161 | 12529 | 48452 | 13h 27m 32s | 48 | Transport/market 90% |
+| 18 | 3604 | 2161 | 1529 | 48452 | 13h 27m 32s | 48 | Transport/market 90% |
 | 19 | 3904 | 2358 | 1702 | 52830 | 14h 40m 30s | 51 | Transport/market 95% |
 | 20 | 4212 | 2563 | 1884 | 57349 | 15h 55m 49s | 54 | Transport/market 100% |
 | 21 | 4527 | 2773 | 2075 | 62005 | 17h 13m 25s | 57 | Transport/market 105% |
