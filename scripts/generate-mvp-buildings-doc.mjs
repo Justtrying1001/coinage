@@ -25,11 +25,16 @@ const { CITY_ECONOMY_CONFIG, STANDARD_BUILDING_ORDER, BUILDING_ORDER_BY_BRANCH }
 const branchLabelByBuilding = {};
 for (const [branch, ids] of Object.entries(BUILDING_ORDER_BY_BRANCH)) ids.forEach((id) => (branchLabelByBuilding[id] = branch));
 
+function formatNumber(value) {
+  if (typeof value !== 'number' || Number.isNaN(value)) return '—';
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
 function prereqText(building) {
   const parts = [];
-  if (building.unlockAtHq > 1) parts.push(`HQ >= ${building.unlockAtHq}`);
+  if (building.unlockAtHq > 1) parts.push(`hq >= ${building.unlockAtHq}`);
   (building.prerequisites ?? []).forEach((req) => parts.push(`${req.buildingId} >= ${req.minLevel}`));
-  return parts.length > 0 ? parts.join(' · ') : 'Aucun prérequis (hors disponibilité de base).';
+  return parts.length > 0 ? parts.join(' · ') : 'aucun';
 }
 
 function secondsToLabel(value) {
@@ -41,46 +46,85 @@ function secondsToLabel(value) {
   return `${s}s`;
 }
 
-function effectLabel(effect) {
-  if (effect.orePerHour) return `Ore/h ${effect.orePerHour}`;
-  if (effect.stonePerHour) return `Stone/h ${effect.stonePerHour}`;
-  if (effect.ironPerHour) return `Iron/h ${effect.ironPerHour}`;
-  if (effect.populationCapBonus) return `Cap population ${effect.populationCapBonus}`;
-  if (effect.storageCap) return `Cap stock ${effect.storageCap.ore}`;
-  if (effect.researchCapacity) return `Cap recherche ${effect.researchCapacity}`;
-  if (effect.cityDefensePct || effect.damageMitigationPct) return `Defense ${effect.cityDefensePct ?? 0}%`;
-  if (effect.marketEfficiencyPct) return `Transport/market ${effect.marketEfficiencyPct}%`;
-  if (effect.trainingSpeedPct) return `Vitesse entraînement ${effect.trainingSpeedPct}%`;
-  if (effect.detectionPct || effect.counterIntelPct) return `Détection ${effect.detectionPct ?? 0}% / Contre-intel ${effect.counterIntelPct ?? 0}%`;
-  if (effect.troopCombatPowerPct) return `Puissance troupe ${effect.troopCombatPowerPct}%`;
-  if (effect.buildSpeedPct) return `Vitesse construction ${effect.buildSpeedPct}%`;
+function roleText(buildingId, building) {
+  const firstEffect = building.levels.find((row) => Object.keys(row.effect).length > 0)?.effect ?? {};
+  if (firstEffect.orePerHour !== undefined) return 'Production de ore par heure.';
+  if (firstEffect.stonePerHour !== undefined) return 'Production de stone par heure.';
+  if (firstEffect.ironPerHour !== undefined) return 'Production de iron par heure.';
+  if (firstEffect.storageCap !== undefined) return 'Augmente la capacité de stockage des ressources.';
+  if (firstEffect.populationCapBonus !== undefined) return 'Augmente la capacité de population.';
+  if (firstEffect.trainingSpeedPct !== undefined) return 'Accélère la formation des unités.';
+  if (firstEffect.researchCapacity !== undefined) return 'Augmente la capacité de recherche.';
+  if (firstEffect.detectionPct !== undefined || firstEffect.counterIntelPct !== undefined) return 'Améliore la détection et la contre-intelligence.';
+  if (firstEffect.marketEfficiencyPct !== undefined) return 'Améliore l’efficacité logistique du marché.';
+  if (firstEffect.cityDefensePct !== undefined || firstEffect.damageMitigationPct !== undefined) return 'Renforce la défense de la ville.';
+  if (firstEffect.troopCombatPowerPct !== undefined || firstEffect.troopUpkeepEfficiencyPct !== undefined) return 'Renforce la puissance militaire locale.';
+  if (firstEffect.buildSpeedPct !== undefined) return 'Améliore la vitesse de construction.';
+  if (buildingId === 'hq') return 'Nœud central de progression et de déblocage.';
   return '—';
 }
 
-let doc = '# Bâtiments & Construction — MVP MICRO\n\n';
-doc += '## Intro\nSource of truth runtime: `cityEconomyConfig.ts` (généré automatiquement).\n\n';
-doc += '## Liste des bâtiments MVP actifs\n';
-doc += STANDARD_BUILDING_ORDER.map((id) => `- \`${id}\` — ${CITY_ECONOMY_CONFIG.buildings[id].name}`).join('\n');
-doc += '\n\n## Détail par bâtiment MVP\n\n';
+function describePrimaryEffect(effectKeys) {
+  if (effectKeys.length === 0) return 'aucun effet runtime explicite';
+  return effectKeys.join(', ');
+}
 
+function getEffectKeys(building) {
+  const all = new Set();
+  building.levels.forEach((row) => {
+    Object.entries(row.effect).forEach(([key, value]) => {
+      if (value !== undefined) all.add(key);
+    });
+  });
+  return [...all].sort((a, b) => a.localeCompare(b));
+}
+
+function renderEffectValue(effect, key) {
+  const value = effect[key];
+  if (value === undefined || value === null) return '—';
+  if (typeof value === 'object') return Object.entries(value).map(([k, v]) => `${k}:${v}`).join(' · ');
+  return formatNumber(value);
+}
+
+let doc = '# Bâtiments\n\n';
+doc += 'Documentation générée automatiquement depuis le runtime (`src/game/city/economy/cityEconomyConfig.ts`).\n\n';
+doc += '## Vue d’ensemble\n\n';
+doc += '| ID | Nom affiché | Catégorie | Niveau max | Prérequis de déblocage | Effet principal | Notes |\n';
+doc += '|---|---|---|---:|---|---|---|\n';
 for (const id of STANDARD_BUILDING_ORDER) {
   const building = CITY_ECONOMY_CONFIG.buildings[id];
-  doc += `### ${building.name} (${id})\n`;
-  doc += `- **Branche** : ${branchLabelByBuilding[id]}\n`;
-  doc += `- **Source** : ${'Runtime table'}\n`;
-  doc += `- **Max level runtime** : ${building.maxLevel}\n`;
-  doc += `- **Prérequis** : ${prereqText(building)}\n\n`;
-  doc += '| Niveau | Ore | Stone | Iron | Temps (s) | Temps | Population | Effet principal |\n';
-  doc += '|---:|---:|---:|---:|---:|---|---:|---|\n';
+  const effectKeys = getEffectKeys(building);
+  doc += `| ${id} | ${building.name} | ${branchLabelByBuilding[id]} | ${building.maxLevel} | ${prereqText(building)} | ${describePrimaryEffect(effectKeys)} | source runtime |\n`;
+}
+
+doc += '\n## Détail par bâtiment\n\n';
+for (const id of STANDARD_BUILDING_ORDER) {
+  const building = CITY_ECONOMY_CONFIG.buildings[id];
+  const resourceKeys = Object.keys(building.levels[0].resources);
+  const effectKeys = getEffectKeys(building);
+
+  doc += `### ${building.name}\n`;
+  doc += `- **id**: \`${id}\`\n`;
+  doc += `- **catégorie**: \`${branchLabelByBuilding[id]}\`\n`;
+  doc += `- **rôle gameplay**: ${roleText(id, building)}\n`;
+  doc += `- **niveau max**: ${building.maxLevel}\n`;
+  doc += `- **prérequis**: ${prereqText(building)}\n\n`;
+
+  const header = ['Niveau', ...resourceKeys, 'buildSeconds', 'populationCost', ...effectKeys];
+  doc += `| ${header.join(' | ')} |\n`;
+  doc += `| ${header.map((_, idx) => (idx === 0 ? '---:' : '---')).join(' | ')} |\n`;
   building.levels.forEach((row) => {
-    doc += `| ${row.level} | ${row.resources.ore} | ${row.resources.stone} | ${row.resources.iron} | ${row.buildSeconds} | ${secondsToLabel(row.buildSeconds)} | ${row.populationCost} | ${effectLabel(row.effect)} |\n`;
+    const values = [
+      row.level,
+      ...resourceKeys.map((key) => formatNumber(row.resources[key])),
+      `${row.buildSeconds} (${secondsToLabel(row.buildSeconds)})`,
+      row.populationCost,
+      ...effectKeys.map((key) => renderEffectValue(row.effect, key)),
+    ];
+    doc += `| ${values.join(' | ')} |\n`;
   });
   doc += '\n';
 }
-
-doc += '## Bâtiments spéciaux futurs à implémenter\n';
-doc += '- `training_grounds` : bâtiment spécial différé (hors runtime MVP).\n';
-doc += '- `shard_vault` : branche premium/shards différée (hors runtime MVP).\n';
 
 fs.writeFileSync(docPath, doc);
 console.log(`Documentation generated: ${path.relative(repoRoot, docPath)}`);

@@ -1,78 +1,127 @@
-# Troupes & Formation — Core non-premium (Global pass v1)
+# Unités
 
-> Source of truth runtime: `src/game/city/economy/cityEconomyConfig.ts`.
-> Source of truth full-core: `src/game/city/economy/cityContentCatalog.ts`.
+Documentation alignée sur le runtime (`src/game/city/economy/cityEconomyConfig.ts` et `src/game/city/economy/cityEconomySystem.ts`).
 
-## 1) Périmètre unités en scope
+## Vue d’ensemble
 
-- Infantry
-- Shield Guard
-- Marksman
-- Raider Cavalry
-- Assault
-- Breacher
-- Interception Sentinel
-- Rapid Escort
-- Assault Convoy
-- Siege Runner
-- Colonization Convoy
+| ID | Nom affiché | Catégorie | Bâtiment de production | Niveau bâtiment requis | ore | stone | iron | trainingSeconds | populationCost | Notes |
+|---|---|---|---|---:|---:|---:|---:|---:|---:|---|
+| infantry | Infantry | ground | barracks | 1 | 28 | 20 | 0 | 20 | 1 | valeurs runtime |
+| shield_guard | Shield Guard | ground | barracks | 5 | 58 | 50 | 12 | 40 | 2 | valeurs runtime |
+| marksman | Marksman | ground | barracks | 10 | 82 | 52 | 34 | 50 | 2 | valeurs runtime |
+| raider_cavalry | Raider Cavalry | ground | barracks | 15 | 122 | 86 | 54 | 70 | 3 | valeurs runtime |
+| assault | Assault | ground | armament_factory | 1 | 145 | 108 | 90 | 85 | 3 | valeurs runtime |
+| breacher | Breacher | ground | armament_factory | 5 | 210 | 180 | 135 | 115 | 4 | valeurs runtime |
+| interception_sentinel | Interception Sentinel | air | space_dock | 1 | 178 | 132 | 130 | 95 | 3 | valeurs runtime |
+| rapid_escort | Rapid Escort | air | space_dock | 5 | 235 | 170 | 170 | 120 | 3 | valeurs runtime |
 
-Aucune unité premium/prestige n’est réintroduite.
+## Regroupement par famille
 
----
+### ground
 
-## 2) Table unités (post-pass global)
+| ID | Nom | Bâtiment | Niveau requis | ore | stone | iron | trainingSeconds | populationCost |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| infantry | Infantry | barracks | 1 | 28 | 20 | 0 | 20 | 1 |
+| shield_guard | Shield Guard | barracks | 5 | 58 | 50 | 12 | 40 | 2 |
+| marksman | Marksman | barracks | 10 | 82 | 52 | 34 | 50 | 2 |
+| raider_cavalry | Raider Cavalry | barracks | 15 | 122 | 86 | 54 | 70 | 3 |
+| assault | Assault | armament_factory | 1 | 145 | 108 | 90 | 85 | 3 |
+| breacher | Breacher | armament_factory | 5 | 210 | 180 | 135 | 115 | 4 |
 
-| Unité | Unlock | Coût (Ore/Stone/Iron) | Temps | Pop | Vitesse | Rôle |
-|---|---|---:|---:|---:|---|---|
-| Infantry | Barracks 1 | 28 / 20 / 0 | 20s | 1 | medium | Ligne low-cost d’ouverture |
-| Shield Guard | Barracks 5 | 58 / 50 / 12 | 40s | 2 | slow | Ancre défensive |
-| Marksman | Barracks 10 | 82 / 52 / 34 | 50s | 2 | medium | DPS plasma backline |
-| Raider Cavalry | Barracks 15 | 122 / 86 / 54 | 70s | 3 | very_fast | Raid / pression mobilité |
-| Assault | Combat Forge 1 | 145 / 108 / 90 | 85s | 3 | medium | Ligne offensive avancée |
-| Breacher | Combat Forge 8 | 210 / 180 / 135 | 115s | 4 | very_slow | Percée / anti-structure |
-| Interception Sentinel | Space Dock 1 | 178 / 132 / 130 | 95s | 3 | very_fast | Interception projection |
-| Rapid Escort | Space Dock 5 | 235 / 170 / 170 | 120s | 3 | fast | Escorte et écran mobile |
-| Assault Convoy* | Space Dock 10 | 300 / 235 / 210 | 170s | 7 | slow | Transport d’assaut (cap 12 pop) |
-| Siege Runner* | Space Dock 15 | 330 / 275 / 240 | 205s | 6 | very_slow | Siège mobile anti-structure |
-| Colonization Convoy* | Space Dock 20 + HQ 10 | 520 / 420 / 360 | 300s | 12 | extreme_slow | Colonisation (consommé à l’arrivée) |
+### air
 
-\* `Assault Convoy`, `Siege Runner`, `Colonization Convoy` sont catalogués et balancés mais restent `partially_defined` tant que les boucles runtime complètes (projection/colonisation) ne sont pas lockées produit.
+| ID | Nom | Bâtiment | Niveau requis | ore | stone | iron | trainingSeconds | populationCost |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| interception_sentinel | Interception Sentinel | space_dock | 1 | 178 | 132 | 130 | 95 | 3 |
+| rapid_escort | Rapid Escort | space_dock | 5 | 235 | 170 | 170 | 120 | 3 |
 
----
+## Détail par unité
 
-## 3) Ajustements de design appliqués
+### Infantry
+- **id**: `infantry`
+- **catégorie**: `ground`
+- **bâtiment de production**: `barracks`
+- **prérequis runtime**: `barracks >= 1`
+- **coûts**: ore=28, stone=20, iron=0
+- **temps d’entraînement**: 20 secondes
+- **coût en population**: 1
+- **autres stats runtime implémentées**: aucune stat de combat/logistique supplémentaire définie dans `TroopConfig`.
+- **intégration runtime**: validation de prérequis + coûts + population via canStartTroopTraining(), puis enqueue via startTroopTraining().
 
-### 3.1 Pression population rétablie
+### Shield Guard
+- **id**: `shield_guard`
+- **catégorie**: `ground`
+- **bâtiment de production**: `barracks`
+- **prérequis runtime**: `barracks >= 5`
+- **coûts**: ore=58, stone=50, iron=12
+- **temps d’entraînement**: 40 secondes
+- **coût en population**: 2
+- **autres stats runtime implémentées**: aucune stat de combat/logistique supplémentaire définie dans `TroopConfig`.
+- **intégration runtime**: validation de prérequis + coûts + population via canStartTroopTraining(), puis enqueue via startTroopTraining().
 
-- Pop costs augmentés sur les lignes médianes/avancées (Marksman, Raider, Assault, Breacher, Rapid Escort).
-- Objectif: empêcher les armées “gratuites en pop” et rendre `Housing Complex` + choix d’archétype structurants.
+### Marksman
+- **id**: `marksman`
+- **catégorie**: `ground`
+- **bâtiment de production**: `barracks`
+- **prérequis runtime**: `barracks >= 10`
+- **coûts**: ore=82, stone=52, iron=34
+- **temps d’entraînement**: 50 secondes
+- **coût en population**: 2
+- **autres stats runtime implémentées**: aucune stat de combat/logistique supplémentaire définie dans `TroopConfig`.
+- **intégration runtime**: validation de prérequis + coûts + population via canStartTroopTraining(), puis enqueue via startTroopTraining().
 
-### 3.2 Pacing d’entraînement
+### Raider Cavalry
+- **id**: `raider_cavalry`
+- **catégorie**: `ground`
+- **bâtiment de production**: `barracks`
+- **prérequis runtime**: `barracks >= 15`
+- **coûts**: ore=122, stone=86, iron=54
+- **temps d’entraînement**: 70 secondes
+- **coût en population**: 3
+- **autres stats runtime implémentées**: aucune stat de combat/logistique supplémentaire définie dans `TroopConfig`.
+- **intégration runtime**: validation de prérequis + coûts + population via canStartTroopTraining(), puis enqueue via startTroopTraining().
 
-- Temps de formation augmentés sur unités avancées pour différencier:
-  - spam de ligne légère,
-  - production d’élite,
-  - projection lourde.
+### Assault
+- **id**: `assault`
+- **catégorie**: `ground`
+- **bâtiment de production**: `armament_factory`
+- **prérequis runtime**: `armament_factory >= 1`
+- **coûts**: ore=145, stone=108, iron=90
+- **temps d’entraînement**: 85 secondes
+- **coût en population**: 3
+- **autres stats runtime implémentées**: aucune stat de combat/logistique supplémentaire définie dans `TroopConfig`.
+- **intégration runtime**: validation de prérequis + coûts + population via canStartTroopTraining(), puis enqueue via startTroopTraining().
 
-### 3.3 Logistique explicite
+### Breacher
+- **id**: `breacher`
+- **catégorie**: `ground`
+- **bâtiment de production**: `armament_factory`
+- **prérequis runtime**: `armament_factory >= 5`
+- **coûts**: ore=210, stone=180, iron=135
+- **temps d’entraînement**: 115 secondes
+- **coût en population**: 4
+- **autres stats runtime implémentées**: aucune stat de combat/logistique supplémentaire définie dans `TroopConfig`.
+- **intégration runtime**: validation de prérequis + coûts + population via canStartTroopTraining(), puis enqueue via startTroopTraining().
 
-- `Assault Convoy`: capacité portée à **12 pop** (au lieu de 10), mais coût/temps/pop plus lourds.
-- `Siege Runner`: lent et cher, dégâts structure élevés, impose escorte.
-- `Colonization Convoy`: extrême lenteur, très coûteux, consommé à la prise de territoire.
+### Interception Sentinel
+- **id**: `interception_sentinel`
+- **catégorie**: `air`
+- **bâtiment de production**: `space_dock`
+- **prérequis runtime**: `space_dock >= 1`
+- **coûts**: ore=178, stone=132, iron=130
+- **temps d’entraînement**: 95 secondes
+- **coût en population**: 3
+- **autres stats runtime implémentées**: aucune stat de combat/logistique supplémentaire définie dans `TroopConfig`.
+- **intégration runtime**: validation de prérequis + coûts + population via canStartTroopTraining(), puis enqueue via startTroopTraining().
 
----
+### Rapid Escort
+- **id**: `rapid_escort`
+- **catégorie**: `air`
+- **bâtiment de production**: `space_dock`
+- **prérequis runtime**: `space_dock >= 5`
+- **coûts**: ore=235, stone=170, iron=170
+- **temps d’entraînement**: 120 secondes
+- **coût en population**: 3
+- **autres stats runtime implémentées**: aucune stat de combat/logistique supplémentaire définie dans `TroopConfig`.
+- **intégration runtime**: validation de prérequis + coûts + population via canStartTroopTraining(), puis enqueue via startTroopTraining().
 
-## 4) Validation des archétypes ville (côté armée)
-
-- **Éco city**: compose surtout Infantry/Shield + défenses bâtiment, projection limitée.
-- **Military city**: absorbe coûts pop élevés et temps longs sur lignes Assault/Breacher + air/projection.
-- **Mixed city**: possible via armée plus compacte et rotations de production ciblées.
-
----
-
-## 5) Points encore provisoires avant numeric lock final
-
-- stats de combat fines (coeffs absolus offense/defense/structure),
-- calibrage exact des multiplicateurs doctrine/policy avec Academy/Council,
-- tuning de cadence de projection multi-villes en conditions réelles (playtests).

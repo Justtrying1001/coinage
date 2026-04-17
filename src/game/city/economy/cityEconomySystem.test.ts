@@ -129,4 +129,26 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
       { buildingId: 'warehouse', minLevel: 7 },
     ]);
   });
+
+  it('keeps troop category and production-building wiring coherent', () => {
+    const groundTroops = ['infantry', 'shield_guard', 'marksman', 'raider_cavalry', 'assault', 'breacher'] as const;
+    groundTroops.forEach((troopId) => {
+      const troop = CITY_ECONOMY_CONFIG.troops[troopId];
+      expect(troop.category).toBe('ground');
+      expect(['barracks', 'armament_factory']).toContain(troop.requiredBuildingId);
+      expect(troop.trainingSeconds).toBeGreaterThan(0);
+      expect(troop.populationCost).toBeGreaterThan(0);
+      expect(troop.cost.ore + troop.cost.stone + troop.cost.iron).toBeGreaterThan(0);
+    });
+
+    const airTroops = ['interception_sentinel', 'rapid_escort'] as const;
+    airTroops.forEach((troopId) => {
+      const troop = CITY_ECONOMY_CONFIG.troops[troopId];
+      expect(troop.category).toBe('air');
+      expect(troop.requiredBuildingId).toBe('space_dock');
+      expect(troop.trainingSeconds).toBeGreaterThan(0);
+      expect(troop.populationCost).toBeGreaterThan(0);
+      expect(troop.cost.ore + troop.cost.stone + troop.cost.iron).toBeGreaterThan(0);
+    });
+  });
 });

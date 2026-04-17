@@ -121,8 +121,11 @@ describe('city economy rebalance validation', () => {
     expect(CITY_ECONOMY_CONFIG.buildings.refinery.levels.every((row) => Number(row.effect.ironPerHour ?? 0) > 0)).toBe(true);
   });
 
-  it('keeps production effects stable and catches known high-level anchors', () => {
-    const assertMonotonic = (buildingId: 'quarry' | 'refinery', key: 'stonePerHour' | 'ironPerHour') => {
+  it('keeps production effects monotonic and catches known high-level anchors', () => {
+    const assertMonotonic = (
+      buildingId: 'mine' | 'quarry' | 'refinery',
+      key: 'orePerHour' | 'stonePerHour' | 'ironPerHour',
+    ) => {
       const rows = CITY_ECONOMY_CONFIG.buildings[buildingId].levels;
       for (let i = 1; i < rows.length; i += 1) {
         const prev = Number(rows[i - 1].effect[key] ?? 0);
@@ -131,8 +134,9 @@ describe('city economy rebalance validation', () => {
       }
     };
     expect(CITY_ECONOMY_CONFIG.buildings.mine.levels[34].effect.orePerHour).toBe(242);
-    expect(CITY_ECONOMY_CONFIG.buildings.mine.levels[35].effect.orePerHour).toBe(278);
+    expect(CITY_ECONOMY_CONFIG.buildings.mine.levels[35].effect.orePerHour).toBe(248);
     expect(CITY_ECONOMY_CONFIG.buildings.mine.levels[36].effect.orePerHour).toBe(255);
+    assertMonotonic('mine', 'orePerHour');
     assertMonotonic('quarry', 'stonePerHour');
     assertMonotonic('refinery', 'ironPerHour');
   });
