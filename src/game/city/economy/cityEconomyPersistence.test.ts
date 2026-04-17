@@ -78,14 +78,28 @@ describe('cityEconomyPersistence MVP flow', () => {
   });
 
   it('persists troop training and resolves trained troops lazily', () => {
-    const barracksBuild = startCityBuildingUpgrade(context, 'barracks', 1000);
-    expect(barracksBuild.guard.ok).toBe(true);
+    const hqBuild = startCityBuildingUpgrade(context, 'hq', 1_000);
+    expect(hqBuild.guard.ok).toBe(true);
+    const hqQueue = hqBuild.state.economy.queue.find((item) => item.buildingId === 'hq');
+    const hqDone = loadCityEconomyState(context, hqQueue!.endsAtMs);
+    expect(hqDone.economy.levels.hq).toBe(2);
+
+    const housingBuild = startCityBuildingUpgrade(context, 'housing_complex', hqQueue!.endsAtMs + 500);
+    expect(housingBuild.guard.ok).toBe(true);
+    const housingQueue = housingBuild.state.economy.queue.find((item) => item.buildingId === 'housing_complex');
+    const housingDone = loadCityEconomyState(context, housingQueue!.endsAtMs);
+    expect(housingDone.economy.levels.housing_complex).toBe(2);
+
+    const funded = loadCityEconomyState(context, housingQueue!.endsAtMs + 14_400_000);
+    const barracksBuild = startCityBuildingUpgrade(context, 'barracks', funded.economy.lastUpdatedAtMs + 500);
+    expect(barracksBuild.guard.ok, JSON.stringify(barracksBuild.guard)).toBe(true);
 
     const barracksQueue = barracksBuild.state.economy.queue.find((item) => item.buildingId === 'barracks');
     const barracksDone = loadCityEconomyState(context, barracksQueue!.endsAtMs);
     expect(barracksDone.economy.levels.barracks).toBe(1);
 
-    const training = startCityTroopTraining(context, 'infantry', 2, barracksQueue!.endsAtMs + 1_000);
+    const troopFunded = loadCityEconomyState(context, barracksQueue!.endsAtMs + 7_200_000);
+    const training = startCityTroopTraining(context, 'infantry', 2, troopFunded.economy.lastUpdatedAtMs + 1_000);
     expect(training.guard.ok).toBe(true);
     expect(training.state.economy.trainingQueue.length).toBe(1);
 

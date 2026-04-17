@@ -71,7 +71,7 @@ const BUILDING_CATALOG: CatalogBuilding[] = [
     unlockAtHq: getBuildingConfig(id).unlockAtHq,
   })),
   { id: 'research_lab', name: 'Research Lab', section: 'research', category: 'research', unlockAtHq: 4, notes: 'Planned module.' },
-  { id: 'market', name: 'Market', section: 'city', category: 'economy', unlockAtHq: 2, notes: 'Planned module.' },
+  { id: 'market', name: 'Market', section: 'city', category: 'economy', unlockAtHq: 5, notes: 'Planned module.' },
   { id: 'spy_center', name: 'Spy Center', section: 'espionage', category: 'espionage', unlockAtHq: 5, notes: 'Planned module.' },
   { id: 'dock', name: 'Dock', section: 'military', category: 'military', unlockAtHq: 6, notes: 'Planned module.' },
   { id: 'shipyard', name: 'Shipyard', section: 'military', category: 'military', unlockAtHq: 8, notes: 'Planned module.' },

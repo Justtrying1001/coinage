@@ -102,7 +102,7 @@ function roundTo5(value: number) {
 
 function stagedBuildSeconds(level: number, earlyBaseSeconds: number, weight = 1) {
   const earlyGrowth = 1.22;
-  const lateGrowth = 1.9;
+  const lateGrowth = 1.86;
   const earlyBand = Math.min(level - 1, 9);
   const lateBand = Math.max(0, level - 10);
   const earlyValue = earlyBaseSeconds * Math.pow(earlyGrowth, earlyBand);
@@ -557,7 +557,7 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
         maxTargetLevel: 10,
         prerequisites: [
           { type: 'hq', targetId: 'hq', minLevel: 8 },
-          { type: 'building', targetId: 'warehouse', minLevel: 6 },
+          { type: 'building', targetId: 'warehouse', minLevel: 7 },
         ],
       },
       {
@@ -584,19 +584,22 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       effects: 'partially_defined',
     },
     operationalEffectsByBand: [
-      { minLevel: 1, maxLevel: 5, effects: ['Flat city defense bonus scaling', 'Defender structure durability +1%/lvl (provisional)'] },
-      { minLevel: 6, maxLevel: 10, effects: ['Siege damage mitigation +1.2%/lvl (provisional)'] },
-      { minLevel: 11, maxLevel: 15, effects: ['Defender morale floor +0.5%/lvl (provisional)'] },
-      { minLevel: 16, maxLevel: 20, effects: ['Final defensive phase resilience +1.5%/lvl (provisional)'] },
+      { minLevel: 1, maxLevel: 5, effects: ['Global city defense multiplier +3.0% per level', 'Defender structure durability +1.0% per level'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Siege damage mitigation +1.6% per level', 'Emergency militia muster speed +1.0% per level'] },
+      { minLevel: 11, maxLevel: 15, effects: ['Defender morale floor +0.9% per level', 'Wall breach recovery rate +1.2% per level'] },
+      { minLevel: 16, maxLevel: 20, effects: ['Final defense phase resilience +1.9% per level', 'Assault convoy unloading disruption +1.5% per level'] },
     ],
     provisionalLevels: buildProvisionalLevels({
-      baseCost: { ore: 160, stone: 240, iron: 60 },
-      costScale: 1.19,
+      baseCost: { ore: 175, stone: 265, iron: 70 },
+      costScale: 1.185,
       baseSeconds: 52,
-      populationCostByLevel: (level) => populationBand(level, 1, 1, 2),
-      effectByLevel: (level) => [`City defense bonus +${Math.round(4 + level * 1.4)}%`, 'Applies to all defending units in phase 2'],
+      populationCostByLevel: (level) => populationBand(level, 1, 2, 3),
+      effectByLevel: (level) => [`City defense bonus +${Math.round(5 + level * 1.9)}%`, 'Applies to all defending units during local defense phase'],
     }),
-    notes: ['Referenced in micro combat doc as a global defense bonus source.'],
+    notes: [
+      'Referenced in micro combat doc as a global defense bonus source.',
+      'Balanced as early defensive anchor; ties into storage pressure to avoid free turtling.',
+    ],
   },
   {
     id: 'watch_tower',
@@ -608,7 +611,10 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     maxLevel: 20,
     role: 'Defensive/scouting support for incoming military visibility and local resilience.',
     primarySystems: ['defense', 'intel_support'],
-    unlock: [{ type: 'hq', targetId: 'hq', minLevel: 5 }],
+    unlock: [
+      { type: 'hq', targetId: 'hq', minLevel: 5 },
+      { type: 'building', targetId: 'defensive_wall', minLevel: 2 },
+    ],
     levelBandGates: [
       {
         minTargetLevel: 6,
@@ -642,19 +648,19 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       effects: 'partially_defined',
     },
     operationalEffectsByBand: [
-      { minLevel: 1, maxLevel: 5, effects: ['Incoming attack warning window extension (provisional)'] },
-      { minLevel: 6, maxLevel: 10, effects: ['Projection interception coefficient +1.4%/lvl (provisional)'] },
-      { minLevel: 11, maxLevel: 15, effects: ['Counter-raid readiness bonus +1.2%/lvl (provisional)'] },
-      { minLevel: 16, maxLevel: 20, effects: ['Local intel anti-stealth detection +1.5%/lvl (provisional)'] },
+      { minLevel: 1, maxLevel: 5, effects: ['Incoming attack warning window +4% per level', 'Scout report freshness retention +2% per level'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Projection interception coefficient +1.7% per level', 'False-signal suppression +1.0% per level'] },
+      { minLevel: 11, maxLevel: 15, effects: ['Counter-raid readiness bonus +1.5% per level', 'Defender response mobilization +1.2% per level'] },
+      { minLevel: 16, maxLevel: 20, effects: ['Anti-stealth detection +1.8% per level', 'Enemy approach ETA variance -2% per level'] },
     ],
     provisionalLevels: buildProvisionalLevels({
-      baseCost: { ore: 135, stone: 165, iron: 85 },
-      costScale: 1.185,
+      baseCost: { ore: 145, stone: 180, iron: 95 },
+      costScale: 1.18,
       baseSeconds: 48,
-      populationCostByLevel: (level) => populationBand(level, 1, 1, 2),
+      populationCostByLevel: (level) => populationBand(level, 1, 2, 2),
       effectByLevel: (level) => [
-        `Incoming attack early-warning +${Math.round(8 + level * 1.9)}%`,
-        `Garrison interception efficiency +${Math.round(2 + level * 1.1)}%`,
+        `Incoming attack early-warning +${Math.round(10 + level * 2.2)}%`,
+        `Garrison interception efficiency +${Math.round(3 + level * 1.3)}%`,
       ],
     }),
   },
@@ -671,7 +677,8 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     unlock: [
       { type: 'hq', targetId: 'hq', minLevel: 12 },
       { type: 'building', targetId: 'combat_forge', minLevel: 10 },
-      { type: 'building', targetId: 'research_lab', minLevel: 6 },
+      { type: 'building', targetId: 'research_lab', minLevel: 8 },
+      { type: 'building', targetId: 'council_chamber', minLevel: 4 },
     ],
     levelBandGates: [
       {
@@ -706,19 +713,19 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       effects: 'partially_defined',
     },
     operationalEffectsByBand: [
-      { minLevel: 1, maxLevel: 5, effects: ['Ground training acceleration + doctrine onboarding'] },
-      { minLevel: 6, maxLevel: 10, effects: ['Doctrine capacity progression'] },
-      { minLevel: 11, maxLevel: 15, effects: ['Advanced line-composition efficiency (provisional)'] },
-      { minLevel: 16, maxLevel: 20, effects: ['High-command doctrine throughput (provisional)'] },
+      { minLevel: 1, maxLevel: 5, effects: ['Ground unit training speed +2.4% per level', 'Unlocks doctrine slot at level 4'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Ground and siege training speed +1.8% per level', 'Doctrine slot +1 at level 8'] },
+      { minLevel: 11, maxLevel: 15, effects: ['Formation cohesion bonus +1.2% per level', 'Doctrine slot +1 at level 12'] },
+      { minLevel: 16, maxLevel: 20, effects: ['High-command cycle speed +1.5% per level', 'Doctrine slot +1 at level 16 and 20'] },
     ],
     provisionalLevels: buildProvisionalLevels({
-      baseCost: { ore: 290, stone: 255, iron: 140 },
-      costScale: 1.21,
+      baseCost: { ore: 305, stone: 270, iron: 165 },
+      costScale: 1.205,
       baseSeconds: 70,
-      populationCostByLevel: (level) => populationBand(level, 1, 2, 2),
+      populationCostByLevel: (level) => populationBand(level, 2, 3, 4),
       effectByLevel: (level) => [
-        `Ground unit training time -${Math.round(3 + level * 0.55)}%`,
-        `Doctrine slot capacity +${Math.floor(level / 5)} (provisional)`,
+        `Ground unit training time -${Math.round(3 + level * 0.75)}%`,
+        `Doctrine slot capacity +${Math.floor(level / 4)}`,
       ],
     }),
     notes: ['Operational level effects are now structured provisionally; doctrine-capacity mechanics still require product arbitration.'],
@@ -737,6 +744,7 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       { type: 'hq', targetId: 'hq', minLevel: 12 },
       { type: 'building', targetId: 'space_dock', minLevel: 8 },
       { type: 'building', targetId: 'refinery', minLevel: 10 },
+      { type: 'building', targetId: 'market', minLevel: 6 },
     ],
     levelBandGates: [
       {
@@ -771,19 +779,19 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       effects: 'partially_defined',
     },
     operationalEffectsByBand: [
-      { minLevel: 1, maxLevel: 5, effects: ['War-economy iron efficiency scaling'] },
-      { minLevel: 6, maxLevel: 10, effects: ['Projection/siege training acceleration scaling'] },
-      { minLevel: 11, maxLevel: 15, effects: ['Equipment throughput multiplier (provisional)'] },
-      { minLevel: 16, maxLevel: 20, effects: ['Late war mobilization efficiency (provisional)'] },
+      { minLevel: 1, maxLevel: 5, effects: ['Military unit iron cost -1.6% per level', 'Arsenal conversion throughput +1.5% per level'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Projection/siege training time -1.9% per level', 'Heavy ammunition throughput +1.4% per level'] },
+      { minLevel: 11, maxLevel: 15, effects: ['Equipment pipeline loss reduction -1.1% per level', 'Field refit readiness +1.2% per level'] },
+      { minLevel: 16, maxLevel: 20, effects: ['Late-war mobilization prep time -1.6% per level', 'Assault convoy payload efficiency +1.3% per level'] },
     ],
     provisionalLevels: buildProvisionalLevels({
-      baseCost: { ore: 320, stone: 235, iron: 170 },
-      costScale: 1.21,
+      baseCost: { ore: 340, stone: 250, iron: 190 },
+      costScale: 1.205,
       baseSeconds: 72,
-      populationCostByLevel: (level) => populationBand(level, 1, 2, 2),
+      populationCostByLevel: (level) => populationBand(level, 2, 3, 4),
       effectByLevel: (level) => [
-        `Military unit iron cost -${Math.round(2 + level * 0.45)}%`,
-        `Siege/projection unit training time -${Math.round(2 + level * 0.5)}%`,
+        `Military unit iron cost -${Math.round(2 + level * 0.65)}%`,
+        `Siege/projection unit training time -${Math.round(2 + level * 0.7)}%`,
       ],
     }),
     notes: ['Acts as war-economy coupling between refinery throughput and advanced military lines.'],
@@ -798,7 +806,10 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     maxLevel: 20,
     role: 'Spy vault and mission unlock progression.',
     primarySystems: ['espionage', 'spy_vault', 'counter_intel'],
-    unlock: [{ type: 'hq', targetId: 'hq', minLevel: 4 }],
+    unlock: [
+      { type: 'hq', targetId: 'hq', minLevel: 4 },
+      { type: 'building', targetId: 'watch_tower', minLevel: 2 },
+    ],
     levelBandGates: [
       {
         minTargetLevel: 6,
@@ -832,21 +843,21 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       effects: 'partially_defined',
     },
     operationalEffectsByBand: [
-      { minLevel: 1, maxLevel: 5, effects: ['Spy-vault baseline resistance scaling'] },
-      { minLevel: 6, maxLevel: 10, effects: ['Mission detection resistance + mission unlock depth'] },
-      { minLevel: 11, maxLevel: 15, effects: ['Sabotage success coefficient (provisional)'] },
-      { minLevel: 16, maxLevel: 20, effects: ['Ghost-op stealth depth (provisional)'] },
+      { minLevel: 1, maxLevel: 5, effects: ['Spy-vault resilience +3.0% per level', 'Counter-intel sweep strength +1.8% per level'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Mission detection resistance +2.0% per level', 'Mission depth unlock at levels 5/10'] },
+      { minLevel: 11, maxLevel: 15, effects: ['Sabotage operation reliability +1.5% per level', 'Intel report granularity +1.0% per level'] },
+      { minLevel: 16, maxLevel: 20, effects: ['Ghost-op stealth depth +1.7% per level', 'Counter-espionage cooldown -1.3% per level'] },
     ],
     provisionalLevels: buildProvisionalLevels({
-      baseCost: { ore: 170, stone: 155, iron: 125 },
-      costScale: 1.19,
+      baseCost: { ore: 180, stone: 165, iron: 135 },
+      costScale: 1.185,
       baseSeconds: 54,
-      populationCostByLevel: (level) => populationBand(level, 1, 1, 2),
+      populationCostByLevel: (level) => populationBand(level, 1, 2, 3),
       effectByLevel: (level) => {
         const missionTiers = ['L1: Recon', 'L5: Infiltration', 'L10: Surveillance', 'L15: Sabotage', 'L20: Ghost Ops'].filter((tier) =>
           tier.startsWith(`L${level}:`),
         );
-        return [`Spy-vault resilience +${Math.round(6 + level * 1.7)}%`, ...missionTiers];
+        return [`Spy-vault resilience +${Math.round(8 + level * 2.1)}%`, ...missionTiers];
       },
     }),
     notes: ['Mission tiers are defined in docs at levels 1/5/10/15/20 and now mapped into provisional level effects.'],
@@ -861,7 +872,10 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     maxLevel: 20,
     role: 'Research Capacity contribution and tech branch progression.',
     primarySystems: ['research', 'research_capacity'],
-    unlock: [{ type: 'hq', targetId: 'hq', minLevel: 4 }],
+    unlock: [
+      { type: 'hq', targetId: 'hq', minLevel: 4 },
+      { type: 'building', targetId: 'warehouse', minLevel: 4 },
+    ],
     levelBandGates: [
       {
         minTargetLevel: 6,
@@ -895,16 +909,16 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       effects: 'partially_defined',
     },
     operationalEffectsByBand: [
-      { minLevel: 1, maxLevel: 5, effects: ['Research Capacity growth (+3/lvl)'] },
-      { minLevel: 6, maxLevel: 10, effects: ['Tech branch unlock depth progression (provisional)'] },
-      { minLevel: 11, maxLevel: 15, effects: ['Research cycle efficiency +1%/lvl (provisional)'] },
-      { minLevel: 16, maxLevel: 20, effects: ['Late strategic research throughput (provisional)'] },
+      { minLevel: 1, maxLevel: 5, effects: ['Research Capacity +3 per level', 'Active research prep time -1.0% per level'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Tech branch unlock depth progression', 'Research cycle efficiency +1.3% per level'] },
+      { minLevel: 11, maxLevel: 15, effects: ['Cross-branch prerequisite relief +1.0% per level', 'Research queue turnover +1.2% per level'] },
+      { minLevel: 16, maxLevel: 20, effects: ['Late strategic research throughput +1.6% per level', 'Global doctrine sync +1.0% per level'] },
     ],
     provisionalLevels: buildProvisionalLevels({
-      baseCost: { ore: 165, stone: 165, iron: 120 },
-      costScale: 1.19,
+      baseCost: { ore: 175, stone: 175, iron: 130 },
+      costScale: 1.185,
       baseSeconds: 56,
-      populationCostByLevel: (level) => populationBand(level, 1, 1, 2),
+      populationCostByLevel: (level) => populationBand(level, 1, 2, 3),
       effectByLevel: (level) => [
         `Research Capacity +${level * 3} (aligns with micro formula)`,
         'One active research at a time (city rule)',
@@ -922,7 +936,11 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     maxLevel: 20,
     role: 'Inter-city trading and resource logistics throughput.',
     primarySystems: ['trading', 'logistics'],
-    unlock: [{ type: 'hq', targetId: 'hq', minLevel: 5 }],
+    unlock: [
+      { type: 'hq', targetId: 'hq', minLevel: 5 },
+      { type: 'building', targetId: 'warehouse', minLevel: 5 },
+      { type: 'building', targetId: 'research_lab', minLevel: 2 },
+    ],
     levelBandGates: [
       {
         minTargetLevel: 6,
@@ -956,19 +974,19 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       effects: 'partially_defined',
     },
     operationalEffectsByBand: [
-      { minLevel: 1, maxLevel: 5, effects: ['Trade convoy throughput scaling'] },
-      { minLevel: 6, maxLevel: 10, effects: ['Internal transfer tax reduction scaling'] },
-      { minLevel: 11, maxLevel: 15, effects: ['Route-slot growth +1 every 3 levels (provisional)'] },
-      { minLevel: 16, maxLevel: 20, effects: ['Late logistics friction reduction (provisional)'] },
+      { minLevel: 1, maxLevel: 5, effects: ['Trade convoy throughput +3.5% per level', 'Resource transit safety +1.4% per level'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Internal transfer tax -1.2% per level', 'Market order refresh speed +1.5% per level'] },
+      { minLevel: 11, maxLevel: 15, effects: ['Route-slot growth +1 every 2 levels', 'Long-range convoy reliability +1.2% per level'] },
+      { minLevel: 16, maxLevel: 20, effects: ['Late logistics friction reduction -1.5% per level', 'Bulk transfer cooldown -1.4% per level'] },
     ],
     provisionalLevels: buildProvisionalLevels({
-      baseCost: { ore: 150, stone: 135, iron: 70 },
+      baseCost: { ore: 165, stone: 145, iron: 80 },
       costScale: 1.18,
       baseSeconds: 46,
-      populationCostByLevel: (level) => populationBand(level, 1, 1, 2),
+      populationCostByLevel: (level) => populationBand(level, 1, 2, 3),
       effectByLevel: (level) => [
-        `Trade convoy throughput +${Math.round(6 + level * 1.6)}%`,
-        `Internal transfer tax -${Math.round(1 + level * 0.35)}%`,
+        `Trade convoy throughput +${Math.round(8 + level * 2.1)}%`,
+        `Internal transfer tax -${Math.round(1 + level * 0.55)}%`,
       ],
     }),
   },
@@ -982,7 +1000,11 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     maxLevel: 20,
     role: 'Local governance/governor authority interface into faction governance.',
     primarySystems: ['governance', 'faction_politics'],
-    unlock: [{ type: 'hq', targetId: 'hq', minLevel: 8 }],
+    unlock: [
+      { type: 'hq', targetId: 'hq', minLevel: 8 },
+      { type: 'building', targetId: 'research_lab', minLevel: 5 },
+      { type: 'building', targetId: 'market', minLevel: 4 },
+    ],
     levelBandGates: [
       {
         minTargetLevel: 6,
@@ -1016,19 +1038,19 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       effects: 'partially_defined',
     },
     operationalEffectsByBand: [
-      { minLevel: 1, maxLevel: 5, effects: ['Local governance influence scaling'] },
-      { minLevel: 6, maxLevel: 10, effects: ['Council vote-weight progression'] },
-      { minLevel: 11, maxLevel: 15, effects: ['Collective mobilization prep-time reduction scaling'] },
-      { minLevel: 16, maxLevel: 20, effects: ['Late-war governance coordination bonus (provisional)'] },
+      { minLevel: 1, maxLevel: 5, effects: ['Local governance influence +2.2% per level', 'City policy duration +1.0% per level'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Council vote-weight +1.8% per level', 'Policy slot +1 at levels 7 and 10'] },
+      { minLevel: 11, maxLevel: 15, effects: ['Collective mobilization prep-time -1.4% per level', 'Alliance aid request throughput +1.3% per level'] },
+      { minLevel: 16, maxLevel: 20, effects: ['Late-war governance coordination +1.9% per level', 'Emergency decree cooldown -1.5% per level'] },
     ],
     provisionalLevels: buildProvisionalLevels({
-      baseCost: { ore: 220, stone: 205, iron: 130 },
-      costScale: 1.2,
+      baseCost: { ore: 235, stone: 220, iron: 145 },
+      costScale: 1.195,
       baseSeconds: 60,
-      populationCostByLevel: (level) => populationBand(level, 1, 1, 2),
+      populationCostByLevel: (level) => populationBand(level, 1, 2, 3),
       effectByLevel: (level) => [
-        `Faction governance vote weight +${Math.round(level * 0.8)}%`,
-        `Collective mobilization prep time -${Math.round(1 + level * 0.3)}%`,
+        `Faction governance vote weight +${Math.round(level * 1.1)}%`,
+        `Collective mobilization prep time -${Math.round(1 + level * 0.5)}%`,
       ],
     }),
     notes: ['Governance effects are provisional and require macro-system product arbitration.'],
@@ -1092,7 +1114,7 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       logisticsStats: 'partially_defined',
     },
     provisionalProfile: {
-      resources: { ore: 30, stone: 18, iron: 0 },
+      resources: { ore: 28, stone: 20, iron: 0 },
       trainingSeconds: 20,
       populationCost: 1,
       attackType: 'kinetic',
@@ -1121,8 +1143,8 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       logisticsStats: 'partially_defined',
     },
     provisionalProfile: {
-      resources: { ore: 62, stone: 48, iron: 10 },
-      trainingSeconds: 35,
+      resources: { ore: 58, stone: 50, iron: 12 },
+      trainingSeconds: 40,
       populationCost: 2,
       attackType: 'kinetic',
       speedTier: 'slow',
@@ -1150,9 +1172,9 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       logisticsStats: 'partially_defined',
     },
     provisionalProfile: {
-      resources: { ore: 90, stone: 56, iron: 30 },
-      trainingSeconds: 45,
-      populationCost: 1,
+      resources: { ore: 82, stone: 52, iron: 34 },
+      trainingSeconds: 50,
+      populationCost: 2,
       attackType: 'plasma',
       speedTier: 'medium',
       combatProfile: {
@@ -1179,9 +1201,9 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       logisticsStats: 'partially_defined',
     },
     provisionalProfile: {
-      resources: { ore: 128, stone: 88, iron: 48 },
-      trainingSeconds: 60,
-      populationCost: 2,
+      resources: { ore: 122, stone: 86, iron: 54 },
+      trainingSeconds: 70,
+      populationCost: 3,
       attackType: 'kinetic',
       speedTier: 'very_fast',
       combatProfile: {
@@ -1208,9 +1230,9 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       logisticsStats: 'partially_defined',
     },
     provisionalProfile: {
-      resources: { ore: 155, stone: 110, iron: 80 },
-      trainingSeconds: 70,
-      populationCost: 2,
+      resources: { ore: 145, stone: 108, iron: 90 },
+      trainingSeconds: 85,
+      populationCost: 3,
       attackType: 'energy',
       speedTier: 'medium',
       combatProfile: {
@@ -1237,9 +1259,9 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       logisticsStats: 'partially_defined',
     },
     provisionalProfile: {
-      resources: { ore: 225, stone: 185, iron: 120 },
-      trainingSeconds: 95,
-      populationCost: 3,
+      resources: { ore: 210, stone: 180, iron: 135 },
+      trainingSeconds: 115,
+      populationCost: 4,
       attackType: 'kinetic',
       speedTier: 'very_slow',
       combatProfile: {
@@ -1266,8 +1288,8 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       logisticsStats: 'partially_defined',
     },
     provisionalProfile: {
-      resources: { ore: 195, stone: 140, iron: 115 },
-      trainingSeconds: 85,
+      resources: { ore: 178, stone: 132, iron: 130 },
+      trainingSeconds: 95,
       populationCost: 3,
       attackType: 'energy',
       speedTier: 'very_fast',
@@ -1295,9 +1317,9 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       logisticsStats: 'partially_defined',
     },
     provisionalProfile: {
-      resources: { ore: 255, stone: 175, iron: 155 },
-      trainingSeconds: 105,
-      populationCost: 2,
+      resources: { ore: 235, stone: 170, iron: 170 },
+      trainingSeconds: 120,
+      populationCost: 3,
       attackType: 'plasma',
       speedTier: 'fast',
       combatProfile: {
@@ -1324,13 +1346,13 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       logisticsStats: 'partially_defined',
     },
     provisionalProfile: {
-      resources: { ore: 320, stone: 250, iron: 180 },
-      trainingSeconds: 145,
-      populationCost: 6,
+      resources: { ore: 300, stone: 235, iron: 210 },
+      trainingSeconds: 170,
+      populationCost: 7,
       attackType: 'none',
       speedTier: 'slow',
       logistics: {
-        convoyCapacityPopulation: 10,
+        convoyCapacityPopulation: 12,
         requiresEscort: true,
       },
       combatProfile: {
@@ -1358,11 +1380,11 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       logisticsStats: 'partially_defined',
     },
     provisionalProfile: {
-      resources: { ore: 285, stone: 240, iron: 195 },
-      trainingSeconds: 160,
-      populationCost: 5,
+      resources: { ore: 330, stone: 275, iron: 240 },
+      trainingSeconds: 205,
+      populationCost: 6,
       attackType: 'kinetic',
-      speedTier: 'slow',
+      speedTier: 'very_slow',
       logistics: {
         requiresEscort: true,
       },
@@ -1394,9 +1416,9 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
       logisticsStats: 'partially_defined',
     },
     provisionalProfile: {
-      resources: { ore: 420, stone: 345, iron: 265 },
-      trainingSeconds: 220,
-      populationCost: 10,
+      resources: { ore: 520, stone: 420, iron: 360 },
+      trainingSeconds: 300,
+      populationCost: 12,
       attackType: 'none',
       speedTier: 'extreme_slow',
       logistics: {
