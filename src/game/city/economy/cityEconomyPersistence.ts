@@ -1,16 +1,23 @@
 import {
   applyClaimOnAccess,
+  canStartResearch,
+  canSetPolicy,
   createInitialCityEconomyState,
   resolveCompletedConstruction,
+  resolveCompletedIntelProjects,
+  resolveCompletedResearch,
   resolveCompletedTraining,
+  setActivePolicy,
   startConstruction,
+  startIntelProject,
+  startResearch,
   startTroopTraining,
   type CityEconomyState,
   type GuardResult,
 } from '@/game/city/economy/cityEconomySystem';
-import type { EconomyBuildingId, TroopId } from '@/game/city/economy/cityEconomyConfig';
+import type { EconomyBuildingId, LocalPolicyId, ResearchId, TroopId } from '@/game/city/economy/cityEconomyConfig';
 
-const STORAGE_KEY = 'coinage.mvp.cityEconomy.v1';
+const STORAGE_KEY = 'coinage.mvp.cityEconomy.v2';
 
 interface PersistedCityEconomyRecord {
   cityId: string;
@@ -23,6 +30,11 @@ interface PersistedCityEconomyRecord {
   queue: CityEconomyState['queue'];
   troops: CityEconomyState['troops'];
   trainingQueue: CityEconomyState['trainingQueue'];
+  researchQueue: CityEconomyState['researchQueue'];
+  completedResearch: CityEconomyState['completedResearch'];
+  activePolicy: CityEconomyState['activePolicy'];
+  intelReadiness: number;
+  intelProjects: CityEconomyState['intelProjects'];
 }
 
 type PersistedCityEconomyMap = Record<string, PersistedCityEconomyRecord>;
@@ -92,6 +104,11 @@ function cloneEconomyState(state: CityEconomyState): CityEconomyState {
     lastUpdatedAtMs: state.lastUpdatedAtMs,
     troops: { ...state.troops },
     trainingQueue: state.trainingQueue.map((item) => ({ ...item, costPaid: { ...item.costPaid } })),
+    researchQueue: state.researchQueue.map((item) => ({ ...item, costPaid: { ...item.costPaid } })),
+    completedResearch: [...state.completedResearch],
+    activePolicy: state.activePolicy,
+    intelReadiness: state.intelReadiness,
+    intelProjects: state.intelProjects.map((item) => ({ ...item })),
   };
 }
 
@@ -104,6 +121,11 @@ function toEconomyState(record: PersistedCityEconomyRecord): CityEconomyState {
     queue: record.queue.map((item) => ({ ...item, costPaid: { ...item.costPaid } })),
     troops: { ...record.troops },
     trainingQueue: record.trainingQueue.map((item) => ({ ...item, costPaid: { ...item.costPaid } })),
+    researchQueue: (record.researchQueue ?? []).map((item) => ({ ...item, costPaid: { ...item.costPaid } })),
+    completedResearch: [...(record.completedResearch ?? [])],
+    activePolicy: record.activePolicy ?? null,
+    intelReadiness: record.intelReadiness ?? 0,
+    intelProjects: (record.intelProjects ?? []).map((item) => ({ ...item })),
     lastUpdatedAtMs: record.lastResourceUpdateAtMs,
   };
 }
@@ -120,6 +142,11 @@ function fromEconomyState(context: CityPersistenceContext, state: CityEconomySta
     queue: state.queue.map((item) => ({ ...item, costPaid: { ...item.costPaid } })),
     troops: { ...state.troops },
     trainingQueue: state.trainingQueue.map((item) => ({ ...item, costPaid: { ...item.costPaid } })),
+    researchQueue: state.researchQueue.map((item) => ({ ...item, costPaid: { ...item.costPaid } })),
+    completedResearch: [...state.completedResearch],
+    activePolicy: state.activePolicy,
+    intelReadiness: state.intelReadiness,
+    intelProjects: state.intelProjects.map((item) => ({ ...item })),
   };
 }
 
@@ -164,6 +191,8 @@ export function loadCityEconomyState(context: CityPersistenceContext, nowMs = Da
   applyClaimOnAccess(mutable, nowMs);
   resolveCompletedConstruction(mutable, nowMs);
   resolveCompletedTraining(mutable, nowMs);
+  resolveCompletedResearch(mutable, nowMs);
+  resolveCompletedIntelProjects(mutable, nowMs);
 
   const persisted = fromEconomyState(context, mutable);
   saveRecord(persisted);
@@ -189,15 +218,6 @@ export function startCityBuildingUpgrade(
   };
 }
 
-export function clearCityEconomyPersistenceForTests() {
-  const storage = getStorage();
-  if (storage) {
-    storage.removeItem(STORAGE_KEY);
-    return;
-  }
-  fallbackMemoryStore.delete(STORAGE_KEY);
-}
-
 export function startCityTroopTraining(
   context: CityPersistenceContext,
   troopId: TroopId,
@@ -215,4 +235,54 @@ export function startCityTroopTraining(
     state: buildSnapshot(persisted),
     guard,
   };
+}
+
+export function startCityResearch(context: CityPersistenceContext, researchId: ResearchId, nowMs = Date.now()) {
+  const loaded = loadCityEconomyState(context, nowMs);
+  const mutable = cloneEconomyState(loaded.economy);
+  const guard = startResearch(mutable, researchId, nowMs);
+  const persisted = fromEconomyState(context, mutable);
+  saveRecord(persisted);
+  return { state: buildSnapshot(persisted), guard };
+}
+
+export function getCityResearchGuard(context: CityPersistenceContext, researchId: ResearchId, nowMs = Date.now()) {
+  const loaded = loadCityEconomyState(context, nowMs);
+  return canStartResearch(loaded.economy, researchId);
+}
+
+export function setCityPolicy(context: CityPersistenceContext, policyId: LocalPolicyId, nowMs = Date.now()) {
+  const loaded = loadCityEconomyState(context, nowMs);
+  const mutable = cloneEconomyState(loaded.economy);
+  const guard = setActivePolicy(mutable, policyId);
+  const persisted = fromEconomyState(context, mutable);
+  saveRecord(persisted);
+  return { state: buildSnapshot(persisted), guard };
+}
+
+export function getCityPolicyGuard(context: CityPersistenceContext, policyId: LocalPolicyId, nowMs = Date.now()) {
+  const loaded = loadCityEconomyState(context, nowMs);
+  return canSetPolicy(loaded.economy, policyId);
+}
+
+export function startCityIntelProject(
+  context: CityPersistenceContext,
+  projectType: 'sweep' | 'network' | 'cipher',
+  nowMs = Date.now(),
+) {
+  const loaded = loadCityEconomyState(context, nowMs);
+  const mutable = cloneEconomyState(loaded.economy);
+  const guard = startIntelProject(mutable, projectType, nowMs);
+  const persisted = fromEconomyState(context, mutable);
+  saveRecord(persisted);
+  return { state: buildSnapshot(persisted), guard };
+}
+
+export function clearCityEconomyPersistenceForTests() {
+  const storage = getStorage();
+  if (storage) {
+    storage.removeItem(STORAGE_KEY);
+    return;
+  }
+  fallbackMemoryStore.delete(STORAGE_KEY);
 }

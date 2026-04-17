@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CITY_ECONOMY_CONFIG, ECONOMY_BUILDING_ORDER, MILITARY_BUILDING_ORDER } from '@/game/city/economy/cityEconomyConfig';
+import { CITY_ECONOMY_CONFIG, STANDARD_BUILDING_ORDER } from '@/game/city/economy/cityEconomyConfig';
 import { createInitialCityEconomyState, getPopulationSnapshot, getStorageCaps } from '@/game/city/economy/cityEconomySystem';
 
 function levelTotalCost(ore: number, stone: number, iron: number) {
@@ -8,7 +8,7 @@ function levelTotalCost(ore: number, stone: number, iron: number) {
 
 describe('city economy rebalance validation', () => {
   it('normalizes all building and troop timers to 0/5 endings', () => {
-    [...ECONOMY_BUILDING_ORDER, ...MILITARY_BUILDING_ORDER].forEach((buildingId) => {
+    STANDARD_BUILDING_ORDER.forEach((buildingId) => {
       CITY_ECONOMY_CONFIG.buildings[buildingId].levels.forEach((levelRow) => {
         expect(levelRow.buildSeconds % 5).toBe(0);
       });
@@ -20,7 +20,7 @@ describe('city economy rebalance validation', () => {
   });
 
   it('ensures final building levels are meaningful long-form commitments (>=24h)', () => {
-    [...ECONOMY_BUILDING_ORDER, ...MILITARY_BUILDING_ORDER].forEach((buildingId) => {
+    STANDARD_BUILDING_ORDER.forEach((buildingId) => {
       const rows = CITY_ECONOMY_CONFIG.buildings[buildingId].levels;
       expect(rows[19].buildSeconds).toBeGreaterThanOrEqual(24 * 60 * 60);
     });

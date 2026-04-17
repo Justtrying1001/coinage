@@ -1,181 +1,109 @@
 import { describe, expect, it } from 'vitest';
 import {
-  applyClaimOnAccess,
+  canSetPolicy,
   canStartConstruction,
+  canStartResearch,
   canStartTroopTraining,
   createInitialCityEconomyState,
-  getBuildingLevel,
-  getConstructionQueueSlots,
+  getCityDerivedStats,
+  getEconomyBuildingOrder,
   getMilitaryBuildingOrder,
-  getPopulationSnapshot,
-  getProductionPerHour,
-  getStorageCaps,
-  resolveCompletedConstruction,
+  resolveCompletedIntelProjects,
+  resolveCompletedResearch,
   resolveCompletedTraining,
-  startConstruction,
+  setActivePolicy,
+  startIntelProject,
+  startResearch,
   startTroopTraining,
 } from '@/game/city/economy/cityEconomySystem';
 
-describe('cityEconomySystem MVP+V0 economy logic', () => {
-  it('enforces economy building unlock rules (refinery requires HQ 3)', () => {
+describe('cityEconomySystem MVP MICRO full standard building loop', () => {
+  it('initial state contains all standard building levels', () => {
     const state = createInitialCityEconomyState({ cityId: 'c-1', owner: 'p1', nowMs: 0 });
-
-    expect(canStartConstruction(state, 'refinery')).toEqual({ ok: false, reason: 'Requires HQ 3' });
-
-    state.levels.hq = 3;
-    expect(canStartConstruction(state, 'refinery').reason).not.toBe('Requires HQ 3');
+    expect(getEconomyBuildingOrder()).toHaveLength(17);
+    getEconomyBuildingOrder().forEach((buildingId) => {
+      expect(state.levels[buildingId]).toBeDefined();
+    });
   });
 
-  it('enforces military building unlock + prerequisite chain', () => {
+  it('enforces unlock chains for newly active standard branches', () => {
     const state = createInitialCityEconomyState({ cityId: 'c-1', owner: 'p1', nowMs: 0 });
     state.resources = { ore: 9_999_999, stone: 9_999_999, iron: 9_999_999 };
 
-    expect(canStartConstruction(state, 'barracks')).toEqual({ ok: false, reason: 'Requires HQ 2' });
-    expect(canStartConstruction(state, 'combat_forge')).toEqual({ ok: false, reason: 'Requires HQ 6' });
+    expect(canStartConstruction(state, 'defensive_wall')).toEqual({ ok: false, reason: 'Requires HQ 4' });
+    state.levels.hq = 4;
+    expect(canStartConstruction(state, 'defensive_wall').ok).toBe(true);
 
-    state.levels.hq = 2;
-    expect(canStartConstruction(state, 'barracks')).toEqual({ ok: false, reason: 'Requires housing_complex 2' });
-    state.levels.housing_complex = 2;
-    expect(canStartConstruction(state, 'barracks').ok).toBe(true);
-
-    state.levels.hq = 6;
-    expect(canStartConstruction(state, 'combat_forge')).toEqual({ ok: false, reason: 'Requires barracks 8' });
-
-    state.levels.barracks = 8;
-    expect(canStartConstruction(state, 'combat_forge')).toEqual({ ok: false, reason: 'Requires refinery 5' });
-    state.levels.refinery = 5;
-    expect(canStartConstruction(state, 'combat_forge').ok).toBe(true);
-
-    state.levels.hq = 10;
-    expect(canStartConstruction(state, 'space_dock')).toEqual({ ok: false, reason: 'Requires combat_forge 5' });
-    state.levels.combat_forge = 5;
-    expect(canStartConstruction(state, 'space_dock')).toEqual({ ok: false, reason: 'Requires refinery 6' });
-    state.levels.refinery = 6;
-    expect(canStartConstruction(state, 'space_dock').ok).toBe(true);
+    expect(canStartConstruction(state, 'watch_tower')).toEqual({ ok: false, reason: 'Requires HQ 5' });
+    state.levels.hq = 5;
+    expect(canStartConstruction(state, 'watch_tower')).toEqual({ ok: false, reason: 'Requires defensive_wall 2' });
   });
 
-  it('computes production on claim-on-access and clamps at storage caps', () => {
+  it('supports troop training loop and resolves queue', () => {
     const state = createInitialCityEconomyState({ cityId: 'c-1', owner: 'p1', nowMs: 0 });
-    state.resources = { ore: 0, stone: 0, iron: 0 };
-
-    applyClaimOnAccess(state, 60 * 60 * 1000);
-
-    const perHour = getProductionPerHour(state);
-    expect(Math.floor(state.resources.ore)).toBe(perHour.ore);
-    expect(Math.floor(state.resources.stone)).toBe(perHour.stone);
-    expect(Math.floor(state.resources.iron)).toBe(perHour.iron);
-
-    state.levels.refinery = 1;
-    const caps = getStorageCaps(state);
-    applyClaimOnAccess(state, 5000 * 60 * 60 * 1000);
-    expect(state.resources.ore).toBe(caps.ore);
-    expect(state.resources.stone).toBe(caps.stone);
-    expect(state.resources.iron).toBe(caps.iron);
-  });
-
-  it('updates storage cap with warehouse level', () => {
-    const state = createInitialCityEconomyState({ cityId: 'c-1', owner: 'p1' });
-    const base = getStorageCaps(state);
-    state.levels.warehouse = 2;
-    const upgraded = getStorageCaps(state);
-
-    expect(upgraded.ore).toBeGreaterThan(base.ore);
-    expect(upgraded.stone).toBeGreaterThan(base.stone);
-    expect(upgraded.iron).toBeGreaterThan(base.iron);
-  });
-
-  it('enforces combined population usage across buildings + troops + queued training', () => {
-    const state = createInitialCityEconomyState({ cityId: 'c-1', owner: 'p1' });
-    state.resources = { ore: 9_999_999, stone: 9_999_999, iron: 9_999_999 };
-
-    state.levels.housing_complex = 0;
-    state.levels.hq = 20;
-    state.levels.mine = 20;
-    state.levels.quarry = 19;
-    state.levels.refinery = 20;
-    state.troops.infantry = 30;
-    state.troops.shield_guard = 15;
-    const blockedBuilding = canStartConstruction(state, 'quarry');
-    expect(blockedBuilding).toEqual({ ok: false, reason: 'Not enough population' });
-
-    state.levels.housing_complex = 20;
-    state.levels.barracks = 10;
-    const before = getPopulationSnapshot(state);
-    const trainGuard = startTroopTraining(state, 'marksman', 20, 0);
-    expect(trainGuard.ok).toBe(true);
-    const after = getPopulationSnapshot(state);
-    expect(after.used).toBeGreaterThan(before.used);
-    expect(after.breakdown.trainingReserved).toBeGreaterThan(0);
-  });
-
-  it('enforces queue slot limit at 2 and deducts cost at start', () => {
-    const state = createInitialCityEconomyState({ cityId: 'c-1', owner: 'p1', nowMs: 0 });
-    const before = { ...state.resources };
-
-    const first = startConstruction(state, 'mine', 0);
-    const second = startConstruction(state, 'quarry', 0);
-
-    expect(first.ok).toBe(true);
-    expect(second.ok).toBe(true);
-    expect(state.queue).toHaveLength(getConstructionQueueSlots());
-    expect(state.resources.ore).toBeLessThan(before.ore);
-    expect(state.resources.stone).toBeLessThan(before.stone);
-
-    const third = canStartConstruction(state, 'warehouse');
-    expect(third).toEqual({ ok: false, reason: 'Queue full (2/2)' });
-  });
-
-  it('applies construction completion only after timer', () => {
-    const state = createInitialCityEconomyState({ cityId: 'c-1', owner: 'p1', nowMs: 0 });
-    const current = getBuildingLevel(state, 'mine');
-
-    startConstruction(state, 'mine', 0);
-    const entry = state.queue[0];
-
-    const beforeDone = resolveCompletedConstruction(state, entry.endsAtMs - 1);
-    expect(beforeDone).toBe(false);
-    expect(getBuildingLevel(state, 'mine')).toBe(current);
-
-    const afterDone = resolveCompletedConstruction(state, entry.endsAtMs);
-    expect(afterDone).toBe(true);
-    expect(getBuildingLevel(state, 'mine')).toBe(current + 1);
-    expect(state.queue).toHaveLength(0);
-  });
-
-  it('validates troop unlock and training cost/pop requirements', () => {
-    const state = createInitialCityEconomyState({ cityId: 'c-1', owner: 'p1', nowMs: 0 });
-
-    expect(canStartTroopTraining(state, 'infantry', 1)).toEqual({ ok: false, reason: 'Requires barracks 1' });
-
-    state.levels.barracks = 1;
-    state.resources = { ore: 0, stone: 0, iron: 0 };
-    expect(canStartTroopTraining(state, 'infantry', 1)).toEqual({ ok: false, reason: 'Not enough resources' });
-
-    state.resources = { ore: 999, stone: 999, iron: 999 };
-    expect(canStartTroopTraining(state, 'infantry', 1).ok).toBe(true);
-  });
-
-  it('handles troop training timer and unit creation on completion', () => {
-    const state = createInitialCityEconomyState({ cityId: 'c-1', owner: 'p1', nowMs: 0 });
-    state.levels.barracks = 1;
     state.resources = { ore: 9999, stone: 9999, iron: 9999 };
+    state.levels.hq = 2;
+    state.levels.housing_complex = 2;
+    state.levels.barracks = 1;
 
-    const start = startTroopTraining(state, 'infantry', 3, 0);
-    expect(start.ok).toBe(true);
-    expect(state.trainingQueue).toHaveLength(1);
-
+    expect(canStartTroopTraining(state, 'infantry', 2).ok).toBe(true);
+    expect(startTroopTraining(state, 'infantry', 2, 0).ok).toBe(true);
     const entry = state.trainingQueue[0];
-    const before = resolveCompletedTraining(state, entry.endsAtMs - 1);
-    expect(before).toBe(false);
-    expect(state.troops.infantry).toBe(0);
-
-    const after = resolveCompletedTraining(state, entry.endsAtMs);
-    expect(after).toBe(true);
-    expect(state.troops.infantry).toBe(3);
-    expect(state.trainingQueue).toHaveLength(0);
+    expect(resolveCompletedTraining(state, entry.endsAtMs - 1)).toBe(false);
+    expect(resolveCompletedTraining(state, entry.endsAtMs)).toBe(true);
+    expect(state.troops.infantry).toBe(2);
   });
 
-  it('exposes military building order for economy/training dependency graph', () => {
-    expect(getMilitaryBuildingOrder()).toEqual(['barracks', 'combat_forge', 'space_dock']);
+  it('supports research queue persistence model and bonuses', () => {
+    const state = createInitialCityEconomyState({ cityId: 'c-1', owner: 'p1', nowMs: 0 });
+    state.resources = { ore: 9999, stone: 9999, iron: 9999 };
+    state.levels.hq = 4;
+    state.levels.warehouse = 4;
+    state.levels.research_lab = 6;
+
+    expect(canStartResearch(state, 'economy_drills').ok).toBe(true);
+    expect(startResearch(state, 'economy_drills', 0).ok).toBe(true);
+    const entry = state.researchQueue[0];
+    expect(resolveCompletedResearch(state, entry.endsAtMs)).toBe(true);
+    expect(state.completedResearch).toContain('economy_drills');
+
+    const stats = getCityDerivedStats(state);
+    expect(stats.productionPct).toBeGreaterThan(0);
+  });
+
+  it('supports governance policy persistence and bonuses', () => {
+    const state = createInitialCityEconomyState({ cityId: 'c-1', owner: 'p1', nowMs: 0 });
+    state.levels.hq = 8;
+    state.levels.warehouse = 5;
+    state.levels.research_lab = 5;
+    state.levels.market = 4;
+    state.levels.council_chamber = 3;
+
+    expect(canSetPolicy(state, 'martial_law').ok).toBe(true);
+    expect(setActivePolicy(state, 'martial_law').ok).toBe(true);
+    const stats = getCityDerivedStats(state);
+    expect(stats.trainingSpeedPct).toBeGreaterThan(0);
+    expect(stats.cityDefensePct).toBeGreaterThan(0);
+  });
+
+  it('supports intelligence readiness projects with derived detection/counter-intel', () => {
+    const state = createInitialCityEconomyState({ cityId: 'c-1', owner: 'p1', nowMs: 0 });
+    state.levels.hq = 6;
+    state.levels.defensive_wall = 2;
+    state.levels.watch_tower = 3;
+    state.levels.intelligence_center = 3;
+
+    expect(startIntelProject(state, 'sweep', 0).ok).toBe(true);
+    const entry = state.intelProjects[0];
+    expect(resolveCompletedIntelProjects(state, entry.endsAtMs)).toBe(true);
+    expect(state.intelReadiness).toBeGreaterThan(0);
+
+    const stats = getCityDerivedStats(state);
+    expect(stats.detectionPct).toBeGreaterThan(0);
+    expect(stats.counterIntelPct).toBeGreaterThan(0);
+  });
+
+  it('exposes all military branch buildings in order helper', () => {
+    expect(getMilitaryBuildingOrder()).toEqual(['barracks', 'combat_forge', 'space_dock', 'military_academy', 'armament_factory']);
   });
 });

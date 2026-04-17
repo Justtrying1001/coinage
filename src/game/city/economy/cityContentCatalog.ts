@@ -1435,10 +1435,32 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
   },
 ];
 
+export const MVP_MICRO_STANDARD_BUILDING_IDS = [
+  'hq',
+  'mine',
+  'quarry',
+  'refinery',
+  'warehouse',
+  'housing_complex',
+  'barracks',
+  'combat_forge',
+  'space_dock',
+  'defensive_wall',
+  'watch_tower',
+  'military_academy',
+  'armament_factory',
+  'intelligence_center',
+  'research_lab',
+  'market',
+  'council_chamber',
+] as const;
+
 export const BUILDING_CATALOG_BY_PHASE: Record<ContentPhase, string[]> = {
-  mvp: FULL_BUILDING_CATALOG.filter((entry) => entry.phase === 'mvp').map((entry) => entry.id),
-  v0: FULL_BUILDING_CATALOG.filter((entry) => entry.phase === 'v0').map((entry) => entry.id),
-  later: FULL_BUILDING_CATALOG.filter((entry) => entry.phase === 'later').map((entry) => entry.id),
+  mvp: [...MVP_MICRO_STANDARD_BUILDING_IDS],
+  v0: [],
+  later: FULL_BUILDING_CATALOG.filter((entry) => !MVP_MICRO_STANDARD_BUILDING_IDS.includes(entry.id as (typeof MVP_MICRO_STANDARD_BUILDING_IDS)[number])).map(
+    (entry) => entry.id,
+  ),
 };
 
 export const UNIT_CATALOG_BY_PHASE: Record<ContentPhase, string[]> = {
