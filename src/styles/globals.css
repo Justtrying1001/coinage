@@ -2147,3 +2147,68 @@ canvas {
   .city-stitch__main { right: 0; }
   .city-stitch__right { display: none; }
 }
+
+/* Stitch IA pass cleanup */
+.city-stitch__main-header p { overflow-wrap: anywhere; }
+.city-stitch__nav-btn { min-height: 56px; }
+.city-stitch__nav-btn span:last-child {
+  max-width: 72px;
+  text-align: center;
+  white-space: normal;
+  line-height: 1.1;
+}
+.city-stitch__right { display: flex; flex-direction: column; gap: 8px; }
+.city-stitch__detail-block h3,
+.city-stitch__detail-block p,
+.city-stitch__ops-card h3,
+.city-stitch__ops-card p,
+.city-stitch__ops-row p,
+.city-stitch__link-row {
+  overflow-wrap: anywhere;
+}
+.city-stitch__ops-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.city-stitch__ops-card {
+  border: 1px solid rgba(77, 70, 53, 0.28);
+  background: #181c22;
+  padding: 10px;
+}
+.city-stitch__ops-card h3 { margin: 0 0 6px; font: 700 10px 'Space Grotesk', sans-serif; text-transform: uppercase; letter-spacing: .08em; color:#f2ca50; }
+.city-stitch__ops-card p { margin: 0 0 4px; font-size: 12px; color: #d0c5af; }
+.city-stitch__ops-list {
+  border: 1px solid rgba(77, 70, 53, 0.28);
+  background: #181c22;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+.city-stitch__ops-list h3 { margin: 0 0 8px; font: 700 11px 'Space Grotesk', sans-serif; letter-spacing: .08em; text-transform: uppercase; color:#f2ca50; }
+.city-stitch__ops-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(77, 70, 53, 0.2);
+}
+.city-stitch__ops-row:last-child { border-bottom: none; }
+.city-stitch__ops-row p { margin: 0; font-size: 12px; color:#d0c5af; }
+.city-stitch__link-row {
+  width: 100%;
+  text-align: left;
+  margin-bottom: 6px;
+  border: 1px solid rgba(77, 70, 53, 0.35);
+  background: #10141a;
+  color: #dfe2eb;
+  padding: 8px;
+  font: 600 11px 'Space Grotesk', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.city-stitch__queue { scrollbar-width: thin; }
+@media (max-width: 1200px) {
+  .city-stitch__ops-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
