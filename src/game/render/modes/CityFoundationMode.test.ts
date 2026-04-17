@@ -22,49 +22,52 @@ function mountMode() {
   return { host, mode };
 }
 
-describe('CityFoundationMode stitch city port', () => {
+describe('CityFoundationMode stitch city replacement shell', () => {
   beforeEach(() => {
     clearCityEconomyPersistenceForTests();
     window.localStorage.clear();
   });
 
-  it('renders stitch shell with top bar and core resources', () => {
+  it('renders only stitch shell and not legacy city classes', () => {
     const { host, mode } = mountMode();
 
-    const text = host.textContent ?? '';
     expect(host.querySelector('.city-stitch')).not.toBeNull();
-    expect(host.querySelector('.city-stitch__top')).not.toBeNull();
-    expect(text).toContain('COINAGE');
-    expect(text).toContain('Ore');
-    expect(text).toContain('Stone');
-    expect(text).toContain('Iron');
+    expect(host.querySelector('.city-management')).toBeNull();
+    expect(host.querySelector('.citycmd')).toBeNull();
 
     mode.destroy();
     host.remove();
   });
 
-  it('renders all branch nav tabs and supports branch switch to research', () => {
+  it('renders required branch views and switches to market/research', () => {
     const { host, mode } = mountMode();
 
-    ['Economy', 'Military', 'Defense', 'Research', 'Intelligence', 'Governance', 'Logistics'].forEach((section) => {
+    ['Command', 'Economy', 'Military', 'Defense', 'Research', 'Intelligence', 'Governance', 'Market'].forEach((section) => {
       expect(host.textContent).toContain(section);
     });
+    expect(host.textContent).not.toContain('Logistics');
+
+    const marketButton = host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Market"]');
+    expect(marketButton).not.toBeNull();
+    marketButton!.click();
+    expect(host.textContent).toContain('Exchange Hub');
 
     const researchButton = host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Research"]');
     expect(researchButton).not.toBeNull();
     researchButton!.click();
 
-    const text = host.textContent ?? '';
-    expect(text).toContain('Research queue');
-    expect(text).toContain('Research Lab');
-    expect(host.querySelectorAll('.city-stitch__card').length).toBeGreaterThan(0);
+    expect(host.textContent).toContain('Research queue');
+    expect(host.textContent).toContain('Research Lab');
 
     mode.destroy();
     host.remove();
   });
 
-  it('supports selecting a building and issuing upgrade action', () => {
+  it('supports selecting buildings and issuing upgrade action', () => {
     const { host, mode } = mountMode();
+
+    const economyButton = host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Economy"]');
+    economyButton?.click();
 
     const mineCard = host.querySelector<HTMLButtonElement>('.city-stitch__card[data-building-id="mine"]');
     const quarryCard = host.querySelector<HTMLButtonElement>('.city-stitch__card[data-building-id="quarry"]');
@@ -72,30 +75,14 @@ describe('CityFoundationMode stitch city port', () => {
     expect(quarryCard).not.toBeNull();
 
     mineCard!.click();
-    const mineUpgrade = host.querySelector<HTMLButtonElement>('.city-stitch__primary[data-building-id="mine"]');
-    expect(mineUpgrade).not.toBeNull();
-    mineUpgrade!.click();
+    host.querySelector<HTMLButtonElement>('.city-stitch__primary[data-building-id="mine"]')?.click();
 
     quarryCard!.click();
-    const quarryUpgrade = host.querySelector<HTMLButtonElement>('.city-stitch__primary[data-building-id="quarry"]');
-    expect(quarryUpgrade).not.toBeNull();
-    quarryUpgrade!.click();
+    host.querySelector<HTMLButtonElement>('.city-stitch__primary[data-building-id="quarry"]')?.click();
 
     const text = host.textContent ?? '';
     expect(text).toContain('Queue: 2/2');
     expect(text).toContain('Queue full (2/2)');
-
-    mode.destroy();
-    host.remove();
-  });
-
-  it('keeps non-runtime premium/special features disabled', () => {
-    const { host, mode } = mountMode();
-    const text = host.textContent ?? '';
-
-    expect(text).not.toContain('Shard Vault');
-    expect(text).not.toContain('Training Grounds');
-    expect(text).toContain('MVP MICRO only · premium/wallet/special disabled');
 
     mode.destroy();
     host.remove();

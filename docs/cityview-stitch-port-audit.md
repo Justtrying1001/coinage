@@ -64,9 +64,12 @@ Real systems confirmed as implemented and usable in city UI wiring:
 
 Systems visually represented but branch-specific deep operations still limited by runtime scope:
 - Dedicated defense board actions beyond building upgrade are not separately implemented.
-- Dedicated logistics/market exchange operations beyond building/effect layer are not separately implemented.
+- Dedicated market exchange operations beyond building/effect layer are not separately implemented.
 
 Port strategy:
 - Keep runtime and mutation calls grounded in these real modules.
 - Replace the city visual shell with Stitch-faithful layout primitives.
 - Keep non-implemented branch-specific operations visually present with disabled/unavailable messaging instead of invented behavior.
+
+
+Current Stitch replacement target branches: Command, Economy, Military, Defense, Research, Intelligence, Governance, Market.

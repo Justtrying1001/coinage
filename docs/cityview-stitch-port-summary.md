@@ -42,10 +42,24 @@
   - real queue slot usage status
 
 ## 4) Visually present but intentionally disabled/unavailable
-- Defense/logistics branch-specific non-building operation modules are shown as visual branch context blocks with explicit unavailable messaging (no invented backend actions).
+- Defense/market branch-specific non-building operation modules are shown as visual branch context blocks with explicit unavailable messaging (no invented backend actions).
 - Premium/wallet/special systems remain explicitly disabled (`MVP MICRO only · premium/wallet/special disabled`).
 
 ## 5) Follow-up items / risks
 - Stitch export includes multiple branch-specific compositions with unique sub-layouts. Current port unifies those into one shared shell + branch content cards while preserving strict visual language and fixed-region composition.
 - If strict per-branch one-to-one scene composition is required (beyond common shell fidelity), additional branch-specific templates can be added over this base wiring.
 - Material Symbols glyph rendering depends on host font availability; icon fallback remains text-safe.
+
+
+## 6) Branch coverage in current shell
+- Command / Home
+- Economy
+- Military
+- Defense
+- Research
+- Intelligence
+- Governance
+- Market
+
+Legacy overlap correction:
+- City mode now clears host content before mounting Stitch shell, and global game header is hidden while in city mode to prevent dual top bars.
