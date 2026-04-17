@@ -22,92 +22,69 @@ function mountMode() {
   return { host, mode };
 }
 
-describe('CityFoundationMode command-deck micro UX', () => {
+describe('CityFoundationMode stitch IA responsibilities', () => {
   beforeEach(() => {
     clearCityEconomyPersistenceForTests();
     window.localStorage.clear();
   });
 
-  it('shows command bar with only Ore/Stone/Iron and city identity', () => {
+  it('renders stitch shell only and required branch map', () => {
     const { host, mode } = mountMode();
 
-    const text = host.textContent ?? '';
-    expect(text).toContain('Owner');
-    expect(text).toContain('Queue: 0/2');
-    expect(text).toContain('Ore');
-    expect(text).toContain('Stone');
-    expect(text).toContain('Iron');
-    expect(text).not.toContain('Crystal');
+    expect(host.querySelector('.city-stitch')).not.toBeNull();
+    expect(host.querySelector('.city-management')).toBeNull();
+    expect(host.querySelector('.citycmd')).toBeNull();
 
-    mode.destroy();
-    host.remove();
-  });
-
-  it('renders all micro sections and switches context branch', () => {
-    const { host, mode } = mountMode();
-
-    ['Economy', 'Military', 'Defense', 'Research', 'Intelligence', 'Governance', 'Logistics'].forEach((section) => {
+    ['Command', 'Economy', 'Military', 'Defense', 'Research', 'Intelligence', 'Governance', 'Market'].forEach((section) => {
       expect(host.textContent).toContain(section);
     });
-
-    const researchButton = host.querySelector<HTMLButtonElement>('.citycmd__rail-item[aria-label="Research"]');
-    expect(researchButton).not.toBeNull();
-    researchButton!.click();
-
-    const text = host.textContent ?? '';
-    expect(text).toContain('Research queue');
-    expect(text).toContain('Research Lab');
-    expect(host.querySelectorAll('.citycmd__building-row').length).toBeGreaterThan(0);
+    expect(host.textContent).not.toContain('Token');
+    expect(host.textContent).not.toContain('Logistics');
 
     mode.destroy();
     host.remove();
   });
 
-  it('uses reduced inline stage labels with selection emphasis', () => {
+  it('keeps building management in command page and uses functional content in branches', () => {
     const { host, mode } = mountMode();
-    const selectedCount = host.querySelectorAll('.citycmd__building-row.is-selected').length;
-    const nonSelectedNamed = host.querySelectorAll('.citycmd__building-row').length;
 
-    expect(selectedCount).toBe(1);
-    expect(nonSelectedNamed).toBeGreaterThan(1);
+    expect(host.textContent).toContain('City Command');
+    expect(host.querySelectorAll('.city-stitch__card').length).toBeGreaterThan(5);
+
+    host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Economy"]')?.click();
+    expect(host.textContent).toContain('Economic Core');
+    expect(host.textContent).toContain('Economic infrastructure');
+
+    host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Military"]')?.click();
+    expect(host.textContent).toContain('Unit training');
+
+    host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Research"]')?.click();
+    expect(host.textContent).toContain('Research queue');
+
+    host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Market"]')?.click();
+    expect(host.textContent).toContain('Not implemented in runtime');
 
     mode.destroy();
     host.remove();
   });
 
-  it('supports building selection + immediate upgrade CTA + queue cap feedback', () => {
+  it('supports command-page building upgrade workflow and queue cap', () => {
     const { host, mode } = mountMode();
 
-    const mineHotspot = host.querySelector<HTMLButtonElement>('.citycmd__building-row[data-building-id="mine"]');
-    const quarryHotspot = host.querySelector<HTMLButtonElement>('.citycmd__building-row[data-building-id="quarry"]');
-    expect(mineHotspot).not.toBeNull();
-    expect(quarryHotspot).not.toBeNull();
+    const mineCard = host.querySelector<HTMLButtonElement>('.city-stitch__card[data-building-id="mine"]');
+    const quarryCard = host.querySelector<HTMLButtonElement>('.city-stitch__card[data-building-id="quarry"]');
+    expect(mineCard).not.toBeNull();
+    expect(quarryCard).not.toBeNull();
 
-    mineHotspot!.click();
-    const mineUpgrade = host.querySelector<HTMLButtonElement>('.city-management__upgrade[data-building-id="mine"]');
-    expect(mineUpgrade).not.toBeNull();
-    mineUpgrade!.click();
+    mineCard!.click();
+    host.querySelector<HTMLButtonElement>('.city-stitch__detail-block .city-stitch__line-btn')?.click();
 
-    quarryHotspot!.click();
-    const quarryUpgrade = host.querySelector<HTMLButtonElement>('.city-management__upgrade[data-building-id="quarry"]');
-    expect(quarryUpgrade).not.toBeNull();
-    quarryUpgrade!.click();
+    quarryCard!.click();
+    host.querySelector<HTMLButtonElement>('.city-stitch__detail-block .city-stitch__line-btn')?.click();
 
     const text = host.textContent ?? '';
     expect(text).toContain('Queue: 2/2');
     expect(text).toContain('Queue full (2/2)');
-
-    mode.destroy();
-    host.remove();
-  });
-
-  it('keeps premium/special features out of active city UX', () => {
-    const { host, mode } = mountMode();
-    const text = host.textContent ?? '';
-
-    expect(text).not.toContain('Shard Vault');
-    expect(text).not.toContain('Training Grounds');
-    expect(text).toContain('MVP MICRO only · premium/wallet/special disabled');
 
     mode.destroy();
     host.remove();
