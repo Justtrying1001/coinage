@@ -22,74 +22,62 @@ function mountMode() {
   return { host, mode };
 }
 
-describe('CityFoundationMode command-deck micro UX', () => {
+describe('CityFoundationMode stitch city port', () => {
   beforeEach(() => {
     clearCityEconomyPersistenceForTests();
     window.localStorage.clear();
   });
 
-  it('shows command bar with only Ore/Stone/Iron and city identity', () => {
+  it('renders stitch shell with top bar and core resources', () => {
     const { host, mode } = mountMode();
 
     const text = host.textContent ?? '';
-    expect(text).toContain('Owner');
-    expect(text).toContain('Queue: 0/2');
+    expect(host.querySelector('.city-stitch')).not.toBeNull();
+    expect(host.querySelector('.city-stitch__top')).not.toBeNull();
+    expect(text).toContain('COINAGE');
     expect(text).toContain('Ore');
     expect(text).toContain('Stone');
     expect(text).toContain('Iron');
-    expect(text).not.toContain('Crystal');
 
     mode.destroy();
     host.remove();
   });
 
-  it('renders all micro sections and switches context branch', () => {
+  it('renders all branch nav tabs and supports branch switch to research', () => {
     const { host, mode } = mountMode();
 
     ['Economy', 'Military', 'Defense', 'Research', 'Intelligence', 'Governance', 'Logistics'].forEach((section) => {
       expect(host.textContent).toContain(section);
     });
 
-    const researchButton = host.querySelector<HTMLButtonElement>('.citycmd__rail-item[aria-label="Research"]');
+    const researchButton = host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Research"]');
     expect(researchButton).not.toBeNull();
     researchButton!.click();
 
     const text = host.textContent ?? '';
     expect(text).toContain('Research queue');
     expect(text).toContain('Research Lab');
-    expect(host.querySelectorAll('.citycmd__building-row').length).toBeGreaterThan(0);
+    expect(host.querySelectorAll('.city-stitch__card').length).toBeGreaterThan(0);
 
     mode.destroy();
     host.remove();
   });
 
-  it('uses reduced inline stage labels with selection emphasis', () => {
-    const { host, mode } = mountMode();
-    const selectedCount = host.querySelectorAll('.citycmd__building-row.is-selected').length;
-    const nonSelectedNamed = host.querySelectorAll('.citycmd__building-row').length;
-
-    expect(selectedCount).toBe(1);
-    expect(nonSelectedNamed).toBeGreaterThan(1);
-
-    mode.destroy();
-    host.remove();
-  });
-
-  it('supports building selection + immediate upgrade CTA + queue cap feedback', () => {
+  it('supports selecting a building and issuing upgrade action', () => {
     const { host, mode } = mountMode();
 
-    const mineHotspot = host.querySelector<HTMLButtonElement>('.citycmd__building-row[data-building-id="mine"]');
-    const quarryHotspot = host.querySelector<HTMLButtonElement>('.citycmd__building-row[data-building-id="quarry"]');
-    expect(mineHotspot).not.toBeNull();
-    expect(quarryHotspot).not.toBeNull();
+    const mineCard = host.querySelector<HTMLButtonElement>('.city-stitch__card[data-building-id="mine"]');
+    const quarryCard = host.querySelector<HTMLButtonElement>('.city-stitch__card[data-building-id="quarry"]');
+    expect(mineCard).not.toBeNull();
+    expect(quarryCard).not.toBeNull();
 
-    mineHotspot!.click();
-    const mineUpgrade = host.querySelector<HTMLButtonElement>('.city-management__upgrade[data-building-id="mine"]');
+    mineCard!.click();
+    const mineUpgrade = host.querySelector<HTMLButtonElement>('.city-stitch__primary[data-building-id="mine"]');
     expect(mineUpgrade).not.toBeNull();
     mineUpgrade!.click();
 
-    quarryHotspot!.click();
-    const quarryUpgrade = host.querySelector<HTMLButtonElement>('.city-management__upgrade[data-building-id="quarry"]');
+    quarryCard!.click();
+    const quarryUpgrade = host.querySelector<HTMLButtonElement>('.city-stitch__primary[data-building-id="quarry"]');
     expect(quarryUpgrade).not.toBeNull();
     quarryUpgrade!.click();
 
@@ -101,7 +89,7 @@ describe('CityFoundationMode command-deck micro UX', () => {
     host.remove();
   });
 
-  it('keeps premium/special features out of active city UX', () => {
+  it('keeps non-runtime premium/special features disabled', () => {
     const { host, mode } = mountMode();
     const text = host.textContent ?? '';
 

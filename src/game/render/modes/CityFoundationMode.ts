@@ -1,6 +1,7 @@
 import {
   canSetPolicy,
   canStartConstruction,
+  canStartIntelProject,
   canStartResearch,
   canStartTroopTraining,
   getBuildingConfig,
@@ -47,14 +48,14 @@ interface CityState {
 type LocalCitySection = keyof typeof BUILDING_ORDER_BY_BRANCH;
 
 const QUEUE_CAP = getConstructionQueueSlots();
-const LOCAL_SECTIONS: Array<{ id: LocalCitySection; label: string; tagline: string }> = [
-  { id: 'economy', label: 'Economy', tagline: 'Extraction & growth' },
-  { id: 'military', label: 'Military', tagline: 'Force projection' },
-  { id: 'defense', label: 'Defense', tagline: 'City hardening' },
-  { id: 'research', label: 'Research', tagline: 'Doctrine lab' },
-  { id: 'intelligence', label: 'Intelligence', tagline: 'Recon & counter-intel' },
-  { id: 'governance', label: 'Governance', tagline: 'Local directives' },
-  { id: 'logistics', label: 'Logistics', tagline: 'Market throughput' },
+const LOCAL_SECTIONS: Array<{ id: LocalCitySection; label: string; tag: string; icon: string; accentClass: string }> = [
+  { id: 'economy', label: 'Economy', tag: 'Extraction', icon: 'payments', accentClass: 'is-economy' },
+  { id: 'military', label: 'Military', tag: 'Force', icon: 'military_tech', accentClass: 'is-military' },
+  { id: 'defense', label: 'Defense', tag: 'Shield', icon: 'shield', accentClass: 'is-defense' },
+  { id: 'research', label: 'Research', tag: 'Tech', icon: 'science', accentClass: 'is-research' },
+  { id: 'intelligence', label: 'Intelligence', tag: 'Intel', icon: 'visibility', accentClass: 'is-intelligence' },
+  { id: 'governance', label: 'Governance', tag: 'Policy', icon: 'account_balance', accentClass: 'is-governance' },
+  { id: 'logistics', label: 'Logistics', tag: 'Trade', icon: 'local_shipping', accentClass: 'is-logistics' },
 ];
 
 const RESOURCE_LABELS: Record<EconomyResource, string> = {
@@ -63,16 +64,31 @@ const RESOURCE_LABELS: Record<EconomyResource, string> = {
   iron: 'Iron',
 };
 
+const BUILDING_ASSETS: Partial<Record<EconomyBuildingId, string>> = {
+  hq: '/assets/HQ.png',
+  mine: '/assets/stone.png',
+  quarry: '/assets/stone.png',
+  refinery: '/assets/refeniry.png',
+  warehouse: '/assets/warehouse.png',
+  housing_complex: '/assets/housing.png',
+  barracks: '/assets/barrack.png',
+  watch_tower: '/assets/watchtower.png',
+  defensive_wall: '/assets/walls.png',
+  intelligence_center: '/assets/spycenter.png',
+  research_lab: '/assets/researchlabs.png',
+  market: '/assets/market.png',
+  council_chamber: '/assets/councill.png',
+};
 
 export class CityFoundationMode implements RenderModeController {
   readonly id = 'city3d' as const;
 
   private root: HTMLElement | null = null;
-  private resourceStrip: HTMLElement | null = null;
-  private rail: HTMLElement | null = null;
-  private stage: HTMLElement | null = null;
-  private contextPanel: HTMLElement | null = null;
-  private queueStrip: HTMLElement | null = null;
+  private topBar: HTMLElement | null = null;
+  private sideNav: HTMLElement | null = null;
+  private mainCanvas: HTMLElement | null = null;
+  private detailPanel: HTMLElement | null = null;
+  private bottomBar: HTMLElement | null = null;
 
   private selectedBuildingId: EconomyBuildingId = 'hq';
   private activeSection: LocalCitySection = 'economy';
@@ -92,9 +108,9 @@ export class CityFoundationMode implements RenderModeController {
 
   mount() {
     const root = document.createElement('section');
-    root.className = 'city-management citycmd';
-    root.append(this.createTopCommandBar(), this.createCommandDeck());
-    this.context.host.appendChild(root);
+    root.className = 'city-stitch';
+    root.append(this.createTopBar(), this.createSideNav(), this.createMainCanvas(), this.createDetailPanel(), this.createBottomBar());
+    this.context.host.append(root);
     this.root = root;
     this.renderAll();
   }
@@ -106,10 +122,7 @@ export class CityFoundationMode implements RenderModeController {
     if (this.uiAccumulatorMs < 1000) return;
     this.uiAccumulatorMs = 0;
     this.refreshFromPersistence();
-    this.renderTopBar();
-    this.renderQueueStrip();
-    this.renderStage();
-    this.renderContextPanel();
+    this.renderAll();
   }
 
   setSelectedPlanet(nextPlanet: SelectedPlanetRef) {
@@ -127,189 +140,177 @@ export class CityFoundationMode implements RenderModeController {
     this.root?.remove();
   }
 
-  private createTopCommandBar() {
-    const top = document.createElement('header');
-    top.className = 'citycmd__top';
-
-    const resourceStrip = document.createElement('section');
-    resourceStrip.className = 'citycmd__resources';
-    this.resourceStrip = resourceStrip;
-
-    const queue = document.createElement('section');
-    queue.className = 'citycmd__queues';
-    this.queueStrip = queue;
-
-    top.append(resourceStrip, queue);
-    return top;
+  private createTopBar() {
+    const bar = document.createElement('header');
+    bar.className = 'city-stitch__top';
+    this.topBar = bar;
+    return bar;
   }
 
-  private createCommandDeck() {
-    const body = document.createElement('div');
-    body.className = 'citycmd__deck';
+  private createSideNav() {
+    const nav = document.createElement('aside');
+    nav.className = 'city-stitch__side';
+    this.sideNav = nav;
+    return nav;
+  }
 
-    const rail = document.createElement('aside');
-    rail.className = 'citycmd__rail';
-    this.rail = rail;
+  private createMainCanvas() {
+    const canvas = document.createElement('main');
+    canvas.className = 'city-stitch__main';
+    this.mainCanvas = canvas;
+    return canvas;
+  }
 
-    const stage = document.createElement('section');
-    stage.className = 'citycmd__stage citycmd__management';
-    this.stage = stage;
+  private createDetailPanel() {
+    const panel = document.createElement('aside');
+    panel.className = 'city-stitch__right';
+    this.detailPanel = panel;
+    return panel;
+  }
 
-    const contextPanel = document.createElement('aside');
-    contextPanel.className = 'citycmd__context';
-    this.contextPanel = contextPanel;
-
-    body.append(rail, stage, contextPanel);
-    return body;
+  private createBottomBar() {
+    const bar = document.createElement('footer');
+    bar.className = 'city-stitch__bottom';
+    this.bottomBar = bar;
+    return bar;
   }
 
   private renderAll() {
     this.refreshFromPersistence();
     this.ensureSelectedBuildingInActiveSection();
     this.renderTopBar();
-    this.renderQueueStrip();
-    this.renderRail();
-    this.renderStage();
-    this.renderContextPanel();
+    this.renderSideNav();
+    this.renderMainCanvas();
+    this.renderDetailPanel();
+    this.renderBottomBar();
   }
 
   private renderTopBar() {
-    if (!this.resourceStrip) return;
-    this.resourceStrip.innerHTML = '';
-
+    if (!this.topBar) return;
     const pop = getPopulationSnapshot(this.state.economy);
     const storage = getStorageCaps(this.state.economy);
     const production = getProductionPerHour(this.state.economy);
+    const storagePct = Math.max(0, Math.min(100, Math.max(
+      this.state.economy.resources.ore / Math.max(1, storage.ore),
+      this.state.economy.resources.stone / Math.max(1, storage.stone),
+      this.state.economy.resources.iron / Math.max(1, storage.iron),
+    ) * 100));
 
-    const meta = document.createElement('div');
-    meta.className = 'citycmd__identity';
-    meta.innerHTML = `<p class="citycmd__city">${this.state.planetId.toUpperCase()} • ${this.state.archetype.toUpperCase()}</p>
-      <p class="citycmd__owner">Owner ${this.state.owner}</p>
-      <p class="citycmd__ops">Queue: ${this.state.economy.queue.length}/${QUEUE_CAP} · Pop ${pop.used}/${pop.cap}</p>`;
+    this.topBar.innerHTML = '';
+
+    const left = document.createElement('div');
+    left.className = 'city-stitch__brand';
+    left.innerHTML = '<span class="city-stitch__logo">COINAGE</span>';
 
     const resources = document.createElement('div');
-    resources.className = 'citycmd__resource-strip';
+    resources.className = 'city-stitch__resource-strip';
     (Object.keys(RESOURCE_LABELS) as EconomyResource[]).forEach((resource) => {
       const item = document.createElement('article');
-      item.className = `citycmd__resource citycmd__resource--${resource}`;
-      item.innerHTML = `<p class="citycmd__resource-label">${RESOURCE_LABELS[resource]}</p>
-      <p class="citycmd__resource-stock">${Math.floor(this.state.economy.resources[resource]).toLocaleString()} / ${storage[resource].toLocaleString()}</p>
-      <p class="citycmd__resource-rate">+${Math.round(production[resource]).toLocaleString()}/h</p>`;
+      item.className = 'city-stitch__resource';
+      item.innerHTML = `<p class="city-stitch__resource-name">${RESOURCE_LABELS[resource]}</p>
+      <p class="city-stitch__resource-amount">${Math.floor(this.state.economy.resources[resource]).toLocaleString()}</p>
+      <p class="city-stitch__resource-rate">+${Math.round(production[resource]).toLocaleString()}/h</p>`;
       resources.append(item);
     });
 
+    const right = document.createElement('div');
+    right.className = 'city-stitch__meta';
+    right.innerHTML = `<p class="city-stitch__meta-row">POP: ${pop.used.toLocaleString()} / ${pop.cap.toLocaleString()}</p>
+      <p class="city-stitch__meta-row">STORAGE: ${storagePct.toFixed(1)}%</p>
+      <div class="city-stitch__storage-bar"><span style="width:${storagePct.toFixed(1)}%"></span></div>`;
+
     const controls = document.createElement('div');
-    controls.className = 'citycmd__controls';
-    controls.append(this.makeControlButton('Back to planet', () => this.context.onRequestMode('planet3d')));
-    controls.append(this.makeControlButton('Galaxy', () => this.context.onRequestMode('galaxy2d')));
+    controls.className = 'city-stitch__top-controls';
+    controls.append(this.makeTopControl('planet', () => this.context.onRequestMode('planet3d')));
+    controls.append(this.makeTopControl('public', () => this.context.onRequestMode('galaxy2d')));
 
-    this.resourceStrip.append(meta, resources, controls);
+    this.topBar.append(left, resources, right, controls);
   }
 
-  private renderQueueStrip() {
-    if (!this.queueStrip) return;
-    this.queueStrip.innerHTML = '';
+  private renderSideNav() {
+    if (!this.sideNav) return;
+    this.sideNav.innerHTML = `<div class="city-stitch__sector">SECTOR 07</div>`;
 
-    const construction = document.createElement('div');
-    construction.className = 'citycmd__queue-group';
-    construction.innerHTML = `<p class="citycmd__queue-title">Construction</p>`;
-    const sorted = this.state.economy.queue.slice().sort((a, b) => a.endsAtMs - b.endsAtMs);
-    if (sorted.length === 0) construction.append(this.createQueueLine('No active build order'));
-    sorted.forEach((entry) => construction.append(this.createQueueLine(`${entry.buildingId} → lv${entry.targetLevel} · ${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))}`)));
-
-    const ops = document.createElement('div');
-    ops.className = 'citycmd__queue-group';
-    ops.innerHTML = `<p class="citycmd__queue-title">Ops</p>`;
-    ops.append(
-      this.createQueueLine(`Training ${this.state.economy.trainingQueue.length}`),
-      this.createQueueLine(`Research ${this.state.economy.researchQueue.length}`),
-      this.createQueueLine(`Intel ${this.state.economy.intelProjects.length}`),
-    );
-
-    this.queueStrip.append(construction, ops);
-  }
-
-  private renderRail() {
-    if (!this.rail) return;
-    this.rail.innerHTML = '';
-
-    const title = document.createElement('p');
-    title.className = 'citycmd__rail-title';
-    title.textContent = 'City Operations';
-    this.rail.append(title);
-
+    const nav = document.createElement('nav');
+    nav.className = 'city-stitch__nav';
     LOCAL_SECTIONS.forEach((section) => {
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = 'citycmd__rail-item';
-      button.setAttribute('aria-label', section.label);
+      button.className = `city-stitch__nav-btn ${section.accentClass}`;
       if (this.activeSection === section.id) button.classList.add('is-active');
-      button.innerHTML = `<span class="citycmd__rail-item-label">${section.label}</span><span class="citycmd__rail-item-tag">${section.tagline}</span>`;
+      button.setAttribute('aria-label', section.label);
+      button.innerHTML = `<span class="material-symbols-outlined">${section.icon}</span><span>${section.label}</span>`;
       button.addEventListener('click', () => {
         this.activeSection = section.id;
         this.ensureSelectedBuildingInActiveSection();
-        this.renderRail();
-        this.renderStage();
-        this.renderContextPanel();
+        this.renderMainCanvas();
+        this.renderSideNav();
+        this.renderDetailPanel();
       });
-      this.rail!.append(button);
+      nav.append(button);
     });
 
-    const foot = document.createElement('p');
-    foot.className = 'citycmd__rail-foot';
-    foot.textContent = 'MVP MICRO only · premium/wallet/special disabled';
-    this.rail.append(foot);
+    this.sideNav.append(nav);
   }
 
-  private renderStage() {
-    if (!this.stage) return;
-    this.stage.innerHTML = '';
-    const frame = document.createElement('div');
-    frame.className = 'citycmd__stage-frame citycmd__stage-frame--management';
+  private renderMainCanvas() {
+    if (!this.mainCanvas) return;
+    this.mainCanvas.innerHTML = '';
 
     const header = document.createElement('header');
-    header.className = 'citycmd__stage-header';
-    const currentSection = LOCAL_SECTIONS.find((section) => section.id === this.activeSection);
-    header.innerHTML = `<h3>${currentSection?.label ?? 'Buildings'}</h3><p>${currentSection?.tagline ?? ''}</p>`;
+    header.className = 'city-stitch__main-header';
+    header.innerHTML = `<h1>${LOCAL_SECTIONS.find((s) => s.id === this.activeSection)?.label ?? 'City'} Sector</h1>
+      <p>${this.state.planetId.toUpperCase()} • ${this.state.archetype.toUpperCase()} • OWNER ${this.state.owner}</p>`;
 
-    const table = document.createElement('div');
-    table.className = 'citycmd__building-table';
+    const grid = document.createElement('section');
+    grid.className = 'city-stitch__cards';
 
     BUILDING_ORDER_BY_BRANCH[this.activeSection].forEach((buildingId) => {
-      const cfg = getBuildingConfig(buildingId);
-      const level = getBuildingLevel(this.state.economy, buildingId);
-      const unlocked = isBuildingUnlocked(this.state.economy, buildingId);
-      const guard = canStartConstruction(this.state.economy, buildingId);
-      const next = cfg.levels[level] ?? null;
-      const isSelected = this.selectedBuildingId === buildingId;
-
-      const row = document.createElement('button');
-      row.type = 'button';
-      row.className = 'citycmd__building-row';
-      if (isSelected) row.classList.add('is-selected');
-      if (!unlocked) row.classList.add('is-locked');
-      row.dataset.buildingId = buildingId;
-      row.setAttribute('aria-label', `${cfg.name} level ${level}`);
-      row.innerHTML = `<span class="citycmd__building-main"><strong>${cfg.name}</strong><small>${buildingId}</small></span>
-        <span class="citycmd__building-level">Lv ${level}/${cfg.maxLevel}</span>
-        <span class="citycmd__building-meta">${next ? `O ${next.resources.ore} · S ${next.resources.stone} · I ${next.resources.iron}` : 'Maxed'}</span>
-        <span class="citycmd__building-meta">${next ? formatDuration(next.buildSeconds * 1000) : '—'}</span>
-        <span class="citycmd__building-status">${guard.ok ? 'Ready' : guard.reason ?? 'Locked'}</span>`;
-      row.addEventListener('click', () => {
-        this.selectedBuildingId = buildingId;
-        this.renderStage();
-        this.renderContextPanel();
-      });
-      table.append(row);
+      grid.append(this.createBuildingCard(buildingId));
     });
 
-    frame.append(header, table);
-    this.stage.append(frame);
+    this.mainCanvas.append(header, grid);
   }
 
-  private renderContextPanel() {
-    if (!this.contextPanel) return;
-    this.contextPanel.innerHTML = '';
+  private createBuildingCard(buildingId: EconomyBuildingId) {
+    const config = getBuildingConfig(buildingId);
+    const level = getBuildingLevel(this.state.economy, buildingId);
+    const guard = canStartConstruction(this.state.economy, buildingId);
+    const unlocked = isBuildingUnlocked(this.state.economy, buildingId);
+    const next = config.levels[level] ?? null;
+    const selected = this.selectedBuildingId === buildingId;
+
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'city-stitch__card';
+    if (selected) card.classList.add('is-selected');
+    if (!unlocked) card.classList.add('is-disabled');
+    card.dataset.buildingId = buildingId;
+
+    const image = BUILDING_ASSETS[buildingId];
+    const imageMarkup = image
+      ? `<div class="city-stitch__card-image"><img src="${image}" alt="${config.name}"/></div>`
+      : '<div class="city-stitch__card-image city-stitch__card-image--empty"><span class="material-symbols-outlined">domain</span></div>';
+
+    card.innerHTML = `<div class="city-stitch__card-top"><p class="city-stitch__card-name">${config.name}</p><p class="city-stitch__card-level">LVL ${level}</p></div>
+      ${imageMarkup}
+      <div class="city-stitch__card-bottom">
+        <p>${next ? `O ${next.resources.ore} · S ${next.resources.stone} · I ${next.resources.iron}` : 'MAX LEVEL'}</p>
+        <p>${guard.ok ? 'READY' : guard.reason ?? 'LOCKED'}</p>
+      </div>`;
+
+    card.addEventListener('click', () => {
+      this.selectedBuildingId = buildingId;
+      this.renderMainCanvas();
+      this.renderDetailPanel();
+    });
+
+    return card;
+  }
+
+  private renderDetailPanel() {
+    if (!this.detailPanel) return;
+    this.detailPanel.innerHTML = '';
 
     const config = getBuildingConfig(this.selectedBuildingId);
     const level = getBuildingLevel(this.state.economy, this.selectedBuildingId);
@@ -317,70 +318,61 @@ export class CityFoundationMode implements RenderModeController {
     const guard = canStartConstruction(this.state.economy, this.selectedBuildingId);
     const derived = getCityDerivedStats(this.state.economy);
 
-    const hero = document.createElement('header');
-    hero.className = 'citycmd__context-header citycmd__context-hero';
-    hero.innerHTML = `<p class="citycmd__context-id">${this.selectedBuildingId}</p>
-      <h3>${config.name}</h3>
-      <p class="citycmd__hero-level">Current level: ${level} / ${config.maxLevel}</p>
+    const hero = document.createElement('section');
+    hero.className = 'city-stitch__detail-hero';
+    hero.innerHTML = `<h2>${config.name}</h2>
+      <p>Current level: ${level}/${config.maxLevel}</p>
       <p>${this.getBuildingEffectText(this.selectedBuildingId, level)}</p>`;
 
-    const actionBlock = document.createElement('section');
-    actionBlock.className = 'citycmd__context-block';
-    actionBlock.innerHTML = `<h4>Next action</h4>
-      <p>${guard.ok ? 'All prerequisites met.' : `Locked: ${guard.reason}`}</p>
+    const nextAction = document.createElement('section');
+    nextAction.className = 'city-stitch__detail-block';
+    nextAction.innerHTML = `<h3>Next action</h3>
+      <p>${guard.ok ? 'All prerequisites met.' : guard.reason ?? 'Unavailable'}</p>
       <p>${next ? `Cost O ${next.resources.ore} · S ${next.resources.stone} · I ${next.resources.iron}` : 'Cost: max level reached'}</p>
       <p>${next ? `Build ${formatDuration(next.buildSeconds * 1000)}` : 'Build: —'}</p>`;
 
-    const cta = document.createElement('button');
-    cta.type = 'button';
-    cta.className = 'city-management__upgrade citycmd__primary-cta';
-    cta.dataset.buildingId = this.selectedBuildingId;
-    cta.disabled = !guard.ok;
-    cta.textContent = guard.reason ?? 'Upgrade now';
-    cta.addEventListener('click', () => {
+    const upgrade = document.createElement('button');
+    upgrade.type = 'button';
+    upgrade.className = 'city-stitch__primary';
+    upgrade.dataset.buildingId = this.selectedBuildingId;
+    upgrade.disabled = !guard.ok;
+    upgrade.textContent = guard.ok ? 'Upgrade now' : guard.reason ?? 'Unavailable';
+    upgrade.addEventListener('click', () => {
       const result = startCityBuildingUpgrade(this.persistenceContext, this.selectedBuildingId, Date.now());
       this.state.economy = result.state.economy;
       this.renderAll();
     });
 
-    const branchBlock = this.renderBranchContextBlock();
-
-    const advanced = document.createElement('details');
-    advanced.className = 'citycmd__context-advanced';
-    advanced.innerHTML = `<summary>Advanced local effects</summary>
-      <p>Training speed +${derived.trainingSpeedPct.toFixed(1)}%</p>
-      <p>Defense +${derived.cityDefensePct.toFixed(1)}% · Mitigation +${derived.damageMitigationPct.toFixed(1)}%</p>
-      <p>Detection +${derived.detectionPct.toFixed(1)}% · Counter-intel +${derived.counterIntelPct.toFixed(1)}%</p>
-      <p>Research capacity ${derived.researchCapacity} · Market efficiency +${derived.marketEfficiencyPct.toFixed(1)}%</p>`;
-
-    this.contextPanel.append(hero, actionBlock, cta, branchBlock, advanced);
+    this.detailPanel.append(hero, nextAction, upgrade, this.renderBranchBlock(), this.renderDerivedBlock(derived));
   }
 
-  private renderBranchContextBlock() {
+  private renderBranchBlock() {
     if (this.activeSection === 'military') return this.renderMilitaryBlock();
     if (this.activeSection === 'research') return this.renderResearchBlock();
     if (this.activeSection === 'intelligence') return this.renderIntelBlock();
     if (this.activeSection === 'governance') return this.renderGovernanceBlock();
 
     const block = document.createElement('section');
-    block.className = 'citycmd__context-block';
-    block.innerHTML = `<h4>Branch summary</h4>
-      <p>Active branch: ${this.activeSection}</p>
-      <p>Select a building from the management list to inspect and upgrade quickly.</p>`;
+    block.className = 'city-stitch__detail-block';
+    if (this.activeSection === 'defense' || this.activeSection === 'logistics') {
+      block.innerHTML = '<h3>Branch operations</h3><p>Visual panel active. No branch-specific action wiring beyond building upgrades in current runtime.</p>';
+      return block;
+    }
+    block.innerHTML = `<h3>Branch summary</h3><p>Active branch: ${this.activeSection}</p>`;
     return block;
   }
 
   private renderMilitaryBlock() {
     const block = document.createElement('section');
-    block.className = 'citycmd__context-block';
-    block.innerHTML = '<h4>Training command</h4>';
+    block.className = 'city-stitch__detail-block';
+    block.innerHTML = '<h3>Training command</h3>';
 
     (Object.keys(CITY_ECONOMY_CONFIG.troops) as TroopId[]).forEach((troopId) => {
       const troop = CITY_ECONOMY_CONFIG.troops[troopId];
       const guard = canStartTroopTraining(this.state.economy, troopId, 1);
       const row = document.createElement('button');
       row.type = 'button';
-      row.className = 'city-management__upgrade citycmd__line-cta';
+      row.className = 'city-stitch__line-btn';
       row.disabled = !guard.ok;
       row.textContent = `${troop.name} x1 (${guard.ok ? 'Train' : guard.reason})`;
       row.addEventListener('click', () => {
@@ -396,19 +388,19 @@ export class CityFoundationMode implements RenderModeController {
 
   private renderResearchBlock() {
     const block = document.createElement('section');
-    block.className = 'citycmd__context-block';
-    block.innerHTML = `<h4>Research queue ${this.state.economy.researchQueue.length}/1</h4>`;
+    block.className = 'city-stitch__detail-block';
+    block.innerHTML = `<h3>Research queue ${this.state.economy.researchQueue.length}/1</h3>`;
 
     (Object.keys(CITY_ECONOMY_CONFIG.research) as ResearchId[]).forEach((researchId) => {
       const guard = canStartResearch(this.state.economy, researchId);
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'city-management__upgrade citycmd__line-cta';
+      btn.className = 'city-stitch__line-btn';
       btn.disabled = !guard.ok;
       btn.textContent = `${CITY_ECONOMY_CONFIG.research[researchId].name} (${guard.ok ? 'Start' : guard.reason})`;
       btn.addEventListener('click', () => {
-        const start = startCityResearch(this.persistenceContext, researchId, Date.now());
-        this.state.economy = start.state.economy;
+        const result = startCityResearch(this.persistenceContext, researchId, Date.now());
+        this.state.economy = result.state.economy;
         this.renderAll();
       });
       block.append(btn);
@@ -419,17 +411,19 @@ export class CityFoundationMode implements RenderModeController {
 
   private renderIntelBlock() {
     const block = document.createElement('section');
-    block.className = 'citycmd__context-block';
-    block.innerHTML = `<h4>Intel operations</h4><p>Readiness ${this.state.economy.intelReadiness}%</p>`;
+    block.className = 'city-stitch__detail-block';
+    const baseGuard = canStartIntelProject(this.state.economy);
+    block.innerHTML = `<h3>Intel operations</h3><p>Readiness ${this.state.economy.intelReadiness.toFixed(1)}%</p>`;
 
     (['sweep', 'network', 'cipher'] as const).forEach((projectType) => {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'city-management__upgrade citycmd__line-cta';
-      btn.textContent = `Start ${projectType}`;
+      btn.className = 'city-stitch__line-btn';
+      btn.disabled = !baseGuard.ok;
+      btn.textContent = `Start ${projectType} (${baseGuard.ok ? 'Begin' : baseGuard.reason})`;
       btn.addEventListener('click', () => {
-        const start = startCityIntelProject(this.persistenceContext, projectType, Date.now());
-        this.state.economy = start.state.economy;
+        const result = startCityIntelProject(this.persistenceContext, projectType, Date.now());
+        this.state.economy = result.state.economy;
         this.renderAll();
       });
       block.append(btn);
@@ -440,14 +434,14 @@ export class CityFoundationMode implements RenderModeController {
 
   private renderGovernanceBlock() {
     const block = document.createElement('section');
-    block.className = 'citycmd__context-block';
-    block.innerHTML = `<h4>Council policies</h4><p>Active: ${this.state.economy.activePolicy ?? 'none'}</p>`;
+    block.className = 'city-stitch__detail-block';
+    block.innerHTML = `<h3>Council policies</h3><p>Active: ${this.state.economy.activePolicy ?? 'none'}</p>`;
 
     (Object.keys(CITY_ECONOMY_CONFIG.policies) as LocalPolicyId[]).forEach((policyId) => {
       const guard = canSetPolicy(this.state.economy, policyId);
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'city-management__upgrade citycmd__line-cta';
+      btn.className = 'city-stitch__line-btn';
       btn.disabled = !guard.ok;
       btn.textContent = `${CITY_ECONOMY_CONFIG.policies[policyId].name} (${guard.ok ? 'Apply' : guard.reason})`;
       btn.addEventListener('click', () => {
@@ -461,18 +455,60 @@ export class CityFoundationMode implements RenderModeController {
     return block;
   }
 
-  private makeControlButton(label: string, onClick: () => void) {
+  private renderDerivedBlock(derived: ReturnType<typeof getCityDerivedStats>) {
+    const block = document.createElement('section');
+    block.className = 'city-stitch__detail-block';
+    block.innerHTML = `<h3>City effects</h3>
+      <p>Defense +${derived.cityDefensePct.toFixed(1)}% · Mitigation +${derived.damageMitigationPct.toFixed(1)}%</p>
+      <p>Training +${derived.trainingSpeedPct.toFixed(1)}% · Troop power +${derived.troopCombatPowerPct.toFixed(1)}%</p>
+      <p>Detection +${derived.detectionPct.toFixed(1)}% · Counter-intel +${derived.counterIntelPct.toFixed(1)}%</p>
+      <p>Research cap ${derived.researchCapacity} · Market +${derived.marketEfficiencyPct.toFixed(1)}%</p>`;
+    return block;
+  }
+
+  private renderBottomBar() {
+    if (!this.bottomBar) return;
+    this.bottomBar.innerHTML = '';
+
+    const queue = document.createElement('div');
+    queue.className = 'city-stitch__queue';
+    queue.innerHTML = '<p class="city-stitch__queue-title">Construction Queue</p>';
+    const builds = this.state.economy.queue.slice().sort((a, b) => a.endsAtMs - b.endsAtMs);
+    if (builds.length === 0) {
+      queue.append(this.createQueueLine('No active build order'));
+    }
+    builds.forEach((entry) => {
+      queue.append(this.createQueueLine(`${entry.buildingId} → lv${entry.targetLevel} · ${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))}`));
+    });
+
+    const ops = document.createElement('div');
+    ops.className = 'city-stitch__queue';
+    ops.innerHTML = `<p class="city-stitch__queue-title">Operations</p>
+      <p class="city-stitch__queue-line">Training: ${this.state.economy.trainingQueue.length}</p>
+      <p class="city-stitch__queue-line">Research: ${this.state.economy.researchQueue.length}</p>
+      <p class="city-stitch__queue-line">Intel: ${this.state.economy.intelProjects.length}</p>`;
+
+    const status = document.createElement('div');
+    status.className = 'city-stitch__queue';
+    status.innerHTML = `<p class="city-stitch__queue-title">Runtime status</p>
+      <p class="city-stitch__queue-line">Queue: ${this.state.economy.queue.length}/${QUEUE_CAP}</p>
+      <p class="city-stitch__queue-line">MVP MICRO only · premium/wallet/special disabled</p>`;
+
+    this.bottomBar.append(queue, ops, status);
+  }
+
+  private makeTopControl(icon: string, onClick: () => void) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'city-management__btn citycmd__control';
-    button.textContent = label;
+    button.className = 'city-stitch__top-btn material-symbols-outlined';
+    button.textContent = icon;
     button.addEventListener('click', onClick);
     return button;
   }
 
   private createQueueLine(text: string) {
     const row = document.createElement('p');
-    row.className = 'citycmd__queue-line';
+    row.className = 'city-stitch__queue-line';
     row.textContent = text;
     return row;
   }
