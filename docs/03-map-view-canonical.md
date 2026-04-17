@@ -5,8 +5,8 @@ Map View is the primary game surface. It is where players read the world, evalua
 
 ## 2. Structural Comparison
 Canonical equivalence:
-- Factions = Grepolis islands (structural role)
-- Digital ocean = Grepolis sea (structural role)
+- Factions = classic browser strategy islands (structural role)
+- Digital ocean = classic browser strategy sea (structural role)
 - City slots visible directly on faction-islands
 - Spatial reading first, UI panel reading second
 

@@ -45,14 +45,6 @@ interface CityState {
 }
 
 type LocalCitySection = keyof typeof BUILDING_ORDER_BY_BRANCH;
-type NodeTier = 'anchor' | 'standard' | 'context';
-
-interface StageNode {
-  id: EconomyBuildingId;
-  x: number;
-  y: number;
-  tier: NodeTier;
-}
 
 const QUEUE_CAP = getConstructionQueueSlots();
 const LOCAL_SECTIONS: Array<{ id: LocalCitySection; label: string; tagline: string }> = [
@@ -71,46 +63,6 @@ const RESOURCE_LABELS: Record<EconomyResource, string> = {
   iron: 'Iron',
 };
 
-const STAGE_LAYOUTS: Record<LocalCitySection, StageNode[]> = {
-  economy: [
-    { id: 'hq', x: 50, y: 50, tier: 'anchor' },
-    { id: 'mine', x: 24, y: 64, tier: 'standard' },
-    { id: 'quarry', x: 35, y: 74, tier: 'standard' },
-    { id: 'refinery', x: 48, y: 78, tier: 'standard' },
-    { id: 'warehouse', x: 64, y: 70, tier: 'standard' },
-    { id: 'housing_complex', x: 76, y: 58, tier: 'standard' },
-  ],
-  military: [
-    { id: 'hq', x: 48, y: 50, tier: 'anchor' },
-    { id: 'barracks', x: 67, y: 61, tier: 'standard' },
-    { id: 'space_dock', x: 80, y: 30, tier: 'anchor' },
-    { id: 'armament_factory', x: 56, y: 22, tier: 'anchor' },
-  ],
-  defense: [
-    { id: 'hq', x: 50, y: 52, tier: 'anchor' },
-    { id: 'defensive_wall', x: 50, y: 80, tier: 'anchor' },
-    { id: 'watch_tower', x: 76, y: 55, tier: 'standard' },
-  ],
-  research: [
-    { id: 'hq', x: 48, y: 56, tier: 'anchor' },
-    { id: 'research_lab', x: 52, y: 32, tier: 'anchor' },
-  ],
-  intelligence: [
-    { id: 'hq', x: 50, y: 58, tier: 'anchor' },
-    { id: 'intelligence_center', x: 44, y: 34, tier: 'anchor' },
-    { id: 'watch_tower', x: 70, y: 45, tier: 'context' },
-  ],
-  governance: [
-    { id: 'hq', x: 49, y: 58, tier: 'anchor' },
-    { id: 'council_chamber', x: 38, y: 38, tier: 'anchor' },
-    { id: 'armament_factory', x: 68, y: 34, tier: 'context' },
-  ],
-  logistics: [
-    { id: 'hq', x: 50, y: 56, tier: 'anchor' },
-    { id: 'market', x: 29, y: 51, tier: 'anchor' },
-    { id: 'warehouse', x: 66, y: 63, tier: 'context' },
-  ],
-};
 
 export class CityFoundationMode implements RenderModeController {
   readonly id = 'city3d' as const;
@@ -200,7 +152,7 @@ export class CityFoundationMode implements RenderModeController {
     this.rail = rail;
 
     const stage = document.createElement('section');
-    stage.className = 'citycmd__stage';
+    stage.className = 'citycmd__stage citycmd__management';
     this.stage = stage;
 
     const contextPanel = document.createElement('aside');
@@ -312,51 +264,46 @@ export class CityFoundationMode implements RenderModeController {
   private renderStage() {
     if (!this.stage) return;
     this.stage.innerHTML = '';
-
     const frame = document.createElement('div');
-    frame.className = `citycmd__stage-frame citycmd__stage-frame--${this.activeSection}`;
+    frame.className = 'citycmd__stage-frame citycmd__stage-frame--management';
 
-    const skyline = document.createElement('div');
-    skyline.className = 'citycmd__skyline';
-    skyline.innerHTML = '<span></span><span></span><span></span><span></span>';
+    const header = document.createElement('header');
+    header.className = 'citycmd__stage-header';
+    const currentSection = LOCAL_SECTIONS.find((section) => section.id === this.activeSection);
+    header.innerHTML = `<h3>${currentSection?.label ?? 'Buildings'}</h3><p>${currentSection?.tagline ?? ''}</p>`;
 
-    const grid = document.createElement('div');
-    grid.className = 'citycmd__district-grid';
+    const table = document.createElement('div');
+    table.className = 'citycmd__building-table';
 
-    this.getStageNodes().forEach((node) => {
-      const cfg = getBuildingConfig(node.id);
-      const level = getBuildingLevel(this.state.economy, node.id);
-      const guard = canStartConstruction(this.state.economy, node.id);
-      const unlocked = isBuildingUnlocked(this.state.economy, node.id);
-      const isSelected = this.selectedBuildingId === node.id;
+    BUILDING_ORDER_BY_BRANCH[this.activeSection].forEach((buildingId) => {
+      const cfg = getBuildingConfig(buildingId);
+      const level = getBuildingLevel(this.state.economy, buildingId);
+      const unlocked = isBuildingUnlocked(this.state.economy, buildingId);
+      const guard = canStartConstruction(this.state.economy, buildingId);
+      const next = cfg.levels[level] ?? null;
+      const isSelected = this.selectedBuildingId === buildingId;
 
-      const hotspot = document.createElement('button');
-      hotspot.type = 'button';
-      hotspot.className = `citycmd__hotspot citycmd__hotspot--${node.tier}`;
-      if (isSelected) hotspot.classList.add('is-selected');
-      if (!unlocked) hotspot.classList.add('is-locked');
-      hotspot.style.left = `${node.x}%`;
-      hotspot.style.top = `${node.y}%`;
-      hotspot.dataset.buildingId = node.id;
-      hotspot.setAttribute('aria-label', `${cfg.name} level ${level}`);
-      hotspot.title = `${cfg.name} · level ${level}${guard.ok ? '' : ` · ${guard.reason}`}`;
-      hotspot.innerHTML = `<span class="citycmd__hotspot-core"></span><span class="citycmd__hotspot-level">Lv ${level}</span>${
-        isSelected ? `<span class="citycmd__hotspot-name">${cfg.name}</span>` : ''
-      }`;
-      hotspot.addEventListener('click', () => {
-        this.selectedBuildingId = node.id;
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'citycmd__building-row';
+      if (isSelected) row.classList.add('is-selected');
+      if (!unlocked) row.classList.add('is-locked');
+      row.dataset.buildingId = buildingId;
+      row.setAttribute('aria-label', `${cfg.name} level ${level}`);
+      row.innerHTML = `<span class="citycmd__building-main"><strong>${cfg.name}</strong><small>${buildingId}</small></span>
+        <span class="citycmd__building-level">Lv ${level}/${cfg.maxLevel}</span>
+        <span class="citycmd__building-meta">${next ? `O ${next.resources.ore} · S ${next.resources.stone} · I ${next.resources.iron}` : 'Maxed'}</span>
+        <span class="citycmd__building-meta">${next ? formatDuration(next.buildSeconds * 1000) : '—'}</span>
+        <span class="citycmd__building-status">${guard.ok ? 'Ready' : guard.reason ?? 'Locked'}</span>`;
+      row.addEventListener('click', () => {
+        this.selectedBuildingId = buildingId;
         this.renderStage();
         this.renderContextPanel();
       });
-
-      grid.append(hotspot);
+      table.append(row);
     });
 
-    const footer = document.createElement('div');
-    footer.className = 'citycmd__stage-footer';
-    footer.textContent = `Branch ${this.activeSection.toUpperCase()} · ${this.getStageNodes().length} visible nodes`;
-
-    frame.append(skyline, grid, footer);
+    frame.append(header, table);
     this.stage.append(frame);
   }
 
@@ -419,7 +366,7 @@ export class CityFoundationMode implements RenderModeController {
     block.className = 'citycmd__context-block';
     block.innerHTML = `<h4>Branch summary</h4>
       <p>Active branch: ${this.activeSection}</p>
-      <p>Use stage nodes to change focus; queue and advanced stats are progressively disclosed.</p>`;
+      <p>Select a building from the management list to inspect and upgrade quickly.</p>`;
     return block;
   }
 
@@ -514,10 +461,6 @@ export class CityFoundationMode implements RenderModeController {
     return block;
   }
 
-  private getStageNodes() {
-    return STAGE_LAYOUTS[this.activeSection];
-  }
-
   private makeControlButton(label: string, onClick: () => void) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -591,8 +534,13 @@ function buildOwnerLabel(planetId: string) {
 
 function formatDuration(durationMs: number) {
   const seconds = Math.max(0, Math.ceil(durationMs / 1000));
+  const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor(seconds / 60);
   const remainder = seconds % 60;
+  if (hours > 0) {
+    const m = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${m.toString().padStart(2, '0')}m`;
+  }
   if (minutes <= 0) return `${remainder}s`;
   return `${minutes}m ${remainder.toString().padStart(2, '0')}s`;
 }

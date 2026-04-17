@@ -1838,3 +1838,84 @@ canvas {
   font-size: 0.63rem;
   color: rgba(200, 227, 244, 0.9);
 }
+
+.citycmd__stage-frame--management {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.citycmd__stage-header h3,
+.citycmd__stage-header p {
+  margin: 0;
+}
+
+.citycmd__stage-header h3 {
+  font-size: 0.88rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #e5f1f8;
+}
+
+.citycmd__stage-header p {
+  font-size: 0.65rem;
+  color: rgba(178, 208, 230, 0.88);
+}
+
+.citycmd__building-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.citycmd__building-row {
+  border: 1px solid rgba(114, 152, 177, 0.3);
+  background: rgba(7, 15, 25, 0.8);
+  color: #dcebf5;
+  font: inherit;
+  text-align: left;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: minmax(110px, 2fr) auto minmax(130px, 2fr) auto minmax(110px, 1.4fr);
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.citycmd__building-row.is-selected {
+  border-color: rgba(140, 215, 252, 0.8);
+  box-shadow: 0 0 0 1px rgba(116, 198, 241, 0.33) inset;
+}
+
+.citycmd__building-row.is-locked {
+  opacity: 0.64;
+}
+
+.citycmd__building-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.citycmd__building-main small {
+  font-size: 0.58rem;
+  color: rgba(174, 206, 227, 0.86);
+}
+
+.citycmd__building-level {
+  font-size: 0.64rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.citycmd__building-meta,
+.citycmd__building-status {
+  font-size: 0.62rem;
+  color: rgba(191, 216, 234, 0.92);
+}
+
+@media (max-width: 980px) {
+  .citycmd__building-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
