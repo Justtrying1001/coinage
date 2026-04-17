@@ -2052,6 +2052,13 @@ canvas {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
+.city-stitch__command-layout {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 12px;
+}
+.city-stitch__command-layout > .city-stitch__ops-list { grid-column: span 4; margin-bottom: 0; }
+.city-stitch__command-layout > .city-stitch__cards { grid-column: 1 / -1; margin-top: 4px; }
 .city-stitch__card {
   border: 1px solid rgba(77, 70, 53, 0.3);
   background: #1c2026;
@@ -2172,6 +2179,8 @@ canvas {
   gap: 10px;
   margin-bottom: 12px;
 }
+.city-stitch__ops-grid--economy { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.city-stitch__ops-grid--defense { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .city-stitch__ops-card {
   border: 1px solid rgba(77, 70, 53, 0.28);
   background: #181c22;
@@ -2188,7 +2197,7 @@ canvas {
 .city-stitch__ops-list h3 { margin: 0 0 8px; font: 700 11px 'Space Grotesk', sans-serif; letter-spacing: .08em; text-transform: uppercase; color:#f2ca50; }
 .city-stitch__ops-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) minmax(96px, auto) minmax(92px, auto);
   gap: 8px;
   align-items: center;
   padding: 6px 0;
@@ -2211,4 +2220,7 @@ canvas {
 .city-stitch__queue { scrollbar-width: thin; }
 @media (max-width: 1200px) {
   .city-stitch__ops-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .city-stitch__command-layout { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+  .city-stitch__command-layout > .city-stitch__ops-list,
+  .city-stitch__command-layout > .city-stitch__cards { grid-column: auto; }
 }

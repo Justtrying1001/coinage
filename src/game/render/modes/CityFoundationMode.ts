@@ -279,26 +279,49 @@ export class CityFoundationMode implements RenderModeController {
 
   private renderCommandPage() {
     const page = document.createElement('section');
-    page.append(this.createViewHeader('City Command', 'Building overview and city progression management.'));
+    page.append(this.createViewHeader('City Command', 'Building overview, upgrade flow, and queue management.'));
+
+    const split = document.createElement('section');
+    split.className = 'city-stitch__command-layout';
+
+    const infrastructure = document.createElement('section');
+    infrastructure.className = 'city-stitch__ops-list';
+    infrastructure.innerHTML = '<h3>Core infrastructure</h3>';
+    ['hq', 'warehouse', 'housing_complex'].forEach((buildingId) => {
+      infrastructure.append(this.createBuildingLinkRow(buildingId as EconomyBuildingId));
+    });
+
+    const extraction = document.createElement('section');
+    extraction.className = 'city-stitch__ops-list';
+    extraction.innerHTML = '<h3>Extraction & processing</h3>';
+    ['mine', 'quarry', 'refinery'].forEach((buildingId) => {
+      extraction.append(this.createBuildingLinkRow(buildingId as EconomyBuildingId));
+    });
+
+    const tactical = document.createElement('section');
+    tactical.className = 'city-stitch__ops-list';
+    tactical.innerHTML = '<h3>Tactical operations</h3>';
+    ['barracks', 'space_dock', 'armament_factory', 'watch_tower', 'defensive_wall'].forEach((buildingId) => {
+      tactical.append(this.createBuildingLinkRow(buildingId as EconomyBuildingId));
+    });
 
     const grid = document.createElement('section');
     grid.className = 'city-stitch__cards city-stitch__cards--command';
-    ALL_BUILDINGS.forEach((buildingId) => {
-      grid.append(this.createBuildingCard(buildingId));
-    });
+    ALL_BUILDINGS.forEach((buildingId) => grid.append(this.createBuildingCard(buildingId)));
 
-    page.append(grid);
+    split.append(infrastructure, extraction, tactical, grid);
+    page.append(split);
     return page;
   }
 
   private renderEconomyPage() {
     const page = document.createElement('section');
-    page.append(this.createViewHeader('Economic Core', 'Production throughput, caps, and economic effects.'));
+    page.append(this.createViewHeader('Economic Core', 'Production throughput, extraction nodes, and storage pressure.'));
 
     const production = getProductionPerHour(this.state.economy);
     const storage = getStorageCaps(this.state.economy);
     const stats = document.createElement('section');
-    stats.className = 'city-stitch__ops-grid';
+    stats.className = 'city-stitch__ops-grid city-stitch__ops-grid--economy';
     (Object.keys(RESOURCE_LABELS) as EconomyResource[]).forEach((resource) => {
       const card = document.createElement('article');
       card.className = 'city-stitch__ops-card';
@@ -314,13 +337,24 @@ export class CityFoundationMode implements RenderModeController {
     buildings.innerHTML = '<h3>Economic infrastructure</h3>';
     ECONOMY_BUILDINGS.forEach((id) => buildings.append(this.createBuildingLinkRow(id)));
 
-    page.append(stats, buildings);
+    const throughput = document.createElement('section');
+    throughput.className = 'city-stitch__ops-list';
+    throughput.innerHTML = '<h3>Throughput telemetry</h3>';
+    const resources = ['ore', 'stone', 'iron'] as EconomyResource[];
+    resources.forEach((resource) => {
+      const row = document.createElement('div');
+      row.className = 'city-stitch__ops-row';
+      row.innerHTML = `<p>${RESOURCE_LABELS[resource]} channel</p><p>+${Math.round(production[resource]).toLocaleString()}/h</p><p>${Math.round((this.state.economy.resources[resource] / Math.max(1, storage[resource])) * 100)}% cap</p>`;
+      throughput.append(row);
+    });
+
+    page.append(stats, throughput, buildings);
     return page;
   }
 
   private renderMilitaryPage() {
     const page = document.createElement('section');
-    page.append(this.createViewHeader('Military Sector', 'Train units and manage military operations queue.'));
+    page.append(this.createViewHeader('Military Sector', 'Strategic production and force projection.'));
 
     const train = document.createElement('section');
     train.className = 'city-stitch__ops-list';
@@ -340,7 +374,17 @@ export class CityFoundationMode implements RenderModeController {
       train.append(row);
     });
 
-    page.append(train);
+    const feed = document.createElement('section');
+    feed.className = 'city-stitch__ops-list';
+    feed.innerHTML = '<h3>Active manufacturing feed</h3>';
+    const queue = this.state.economy.trainingQueue.slice().sort((a, b) => a.endsAtMs - b.endsAtMs);
+    if (queue.length === 0) {
+      feed.append(this.createQueueLine('No active military batch'));
+    } else {
+      queue.forEach((entry) => feed.append(this.createQueueLine(`${entry.troopId} x${entry.quantity} · ${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))}`)));
+    }
+
+    page.append(train, feed);
     return page;
   }
 
@@ -350,7 +394,7 @@ export class CityFoundationMode implements RenderModeController {
     page.append(this.createViewHeader('Defensive Grid', 'Defense hardening and mitigation overview.'));
 
     const metrics = document.createElement('section');
-    metrics.className = 'city-stitch__ops-grid';
+    metrics.className = 'city-stitch__ops-grid city-stitch__ops-grid--defense';
     metrics.innerHTML = `<article class="city-stitch__ops-card"><h3>Defense</h3><p>+${derived.cityDefensePct.toFixed(1)}%</p></article>
       <article class="city-stitch__ops-card"><h3>Mitigation</h3><p>+${derived.damageMitigationPct.toFixed(1)}%</p></article>
       <article class="city-stitch__ops-card"><h3>Resistance</h3><p>+${derived.siegeResistancePct.toFixed(1)}%</p></article>`;
@@ -360,24 +404,31 @@ export class CityFoundationMode implements RenderModeController {
     structures.innerHTML = '<h3>Defense structures</h3>';
     DEFENSE_BUILDINGS.forEach((id) => structures.append(this.createBuildingLinkRow(id)));
 
-    page.append(metrics, structures);
+    const hardening = document.createElement('section');
+    hardening.className = 'city-stitch__ops-list';
+    hardening.innerHTML = `<h3>Hardening overview</h3>
+      <div class="city-stitch__ops-row"><p>Wall integrity</p><p>${Math.min(100, 40 + derived.cityDefensePct).toFixed(1)}%</p><p>Stable</p></div>
+      <div class="city-stitch__ops-row"><p>Reactive plating</p><p>+${derived.damageMitigationPct.toFixed(1)}%</p><p>Active</p></div>
+      <div class="city-stitch__ops-row"><p>Breach risk</p><p>${Math.max(2, 30 - derived.siegeResistancePct * 0.2).toFixed(1)}%</p><p>Monitored</p></div>`;
+
+    page.append(metrics, hardening, structures);
     return page;
   }
 
   private renderResearchPage() {
     const page = document.createElement('section');
-    page.append(this.createViewHeader('Research Lab', 'Manage technologies, prerequisites, and active queue.'));
+    page.append(this.createViewHeader('Research Lab', 'Tech nodes, prerequisites, and progression sequencing.'));
 
     const list = document.createElement('section');
     list.className = 'city-stitch__ops-list';
-    list.innerHTML = `<h3>Research queue ${this.state.economy.researchQueue.length}/1</h3>`;
+    list.innerHTML = `<h3>Research nodes</h3>`;
 
     (Object.keys(CITY_ECONOMY_CONFIG.research) as ResearchId[]).forEach((researchId) => {
       const cfg = CITY_ECONOMY_CONFIG.research[researchId];
       const guard = canStartResearch(this.state.economy, researchId);
       const row = document.createElement('div');
       row.className = 'city-stitch__ops-row';
-      row.innerHTML = `<p>${cfg.name}</p><p>${guard.ok ? `${cfg.durationSeconds}s` : guard.reason ?? 'Unavailable'}</p>`;
+      row.innerHTML = `<p>${cfg.name}</p><p>${guard.ok ? `${cfg.durationSeconds}s` : guard.reason ?? 'Unavailable'}</p><p>${this.state.economy.completedResearch.includes(researchId) ? 'Completed' : 'Available'}</p>`;
       row.append(this.makeActionButton(guard.ok ? 'Start' : 'Unavailable', !guard.ok, () => {
         const result = startCityResearch(this.persistenceContext, researchId, Date.now());
         this.state.economy = result.state.economy;
@@ -386,7 +437,16 @@ export class CityFoundationMode implements RenderModeController {
       list.append(row);
     });
 
-    page.append(list);
+    const queue = document.createElement('section');
+    queue.className = 'city-stitch__ops-list';
+    queue.innerHTML = `<h3>Research queue ${this.state.economy.researchQueue.length}/1</h3>`;
+    if (this.state.economy.researchQueue.length === 0) {
+      queue.append(this.createQueueLine('No active research node'));
+    } else {
+      this.state.economy.researchQueue.forEach((entry) => queue.append(this.createQueueLine(`${entry.researchId} · ${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))}`)));
+    }
+
+    page.append(list, queue);
     return page;
   }
 
@@ -402,7 +462,7 @@ export class CityFoundationMode implements RenderModeController {
     (['sweep', 'network', 'cipher'] as const).forEach((projectType) => {
       const row = document.createElement('div');
       row.className = 'city-stitch__ops-row';
-      row.innerHTML = `<p>${projectType.toUpperCase()}</p><p>${guard.ok ? 'Ready' : guard.reason ?? 'Unavailable'}</p>`;
+      row.innerHTML = `<p>${projectType.toUpperCase()}</p><p>${guard.ok ? 'Ready' : guard.reason ?? 'Unavailable'}</p><p>Ops board</p>`;
       row.append(this.makeActionButton(guard.ok ? 'Start' : 'Unavailable', !guard.ok, () => {
         const result = startCityIntelProject(this.persistenceContext, projectType, Date.now());
         this.state.economy = result.state.economy;
@@ -411,7 +471,18 @@ export class CityFoundationMode implements RenderModeController {
       list.append(row);
     });
 
-    page.append(list);
+    const active = document.createElement('section');
+    active.className = 'city-stitch__ops-list';
+    active.innerHTML = '<h3>Active queue</h3>';
+    if (this.state.economy.intelProjects.length === 0) {
+      active.append(this.createQueueLine('No active intelligence project'));
+    } else {
+      this.state.economy.intelProjects.forEach((entry) =>
+        active.append(this.createQueueLine(`${entry.projectType} · +${entry.readinessGain.toFixed(1)} readiness · ${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))}`)),
+      );
+    }
+
+    page.append(list, active);
     return page;
   }
 
@@ -421,14 +492,14 @@ export class CityFoundationMode implements RenderModeController {
 
     const list = document.createElement('section');
     list.className = 'city-stitch__ops-list';
-    list.innerHTML = `<h3>Active policy: ${this.state.economy.activePolicy ?? 'none'}</h3>`;
+    list.innerHTML = `<h3>Available directives</h3>`;
 
     (Object.keys(CITY_ECONOMY_CONFIG.policies) as LocalPolicyId[]).forEach((policyId) => {
       const policy = CITY_ECONOMY_CONFIG.policies[policyId];
       const guard = canSetPolicy(this.state.economy, policyId);
       const row = document.createElement('div');
       row.className = 'city-stitch__ops-row';
-      row.innerHTML = `<p>${policy.name}</p><p>${guard.ok ? 'Ready' : guard.reason ?? 'Unavailable'}</p>`;
+      row.innerHTML = `<p>${policy.name}</p><p>${guard.ok ? 'Ready' : guard.reason ?? 'Unavailable'}</p><p>${this.state.economy.activePolicy === policyId ? 'Active' : 'Dormant'}</p>`;
       row.append(this.makeActionButton(guard.ok ? 'Apply' : 'Unavailable', !guard.ok, () => {
         const result = setCityPolicy(this.persistenceContext, policyId, Date.now());
         this.state.economy = result.state.economy;
@@ -437,7 +508,14 @@ export class CityFoundationMode implements RenderModeController {
       list.append(row);
     });
 
-    page.append(list);
+    const impact = document.createElement('section');
+    impact.className = 'city-stitch__ops-list';
+    impact.innerHTML = `<h3>Impact/risk panel</h3>
+      <div class="city-stitch__ops-row"><p>Authority level</p><p>EXARCH-IV</p><p>Stable</p></div>
+      <div class="city-stitch__ops-row"><p>Compliance rate</p><p>${Math.min(99, 70 + getCityDerivedStats(this.state.economy).cityDefensePct * 0.2).toFixed(1)}%</p><p>Monitored</p></div>
+      <div class="city-stitch__ops-row"><p>Active policy</p><p>${this.state.economy.activePolicy ?? 'none'}</p><p>Live</p></div>`;
+
+    page.append(list, impact);
     return page;
   }
 
@@ -448,13 +526,15 @@ export class CityFoundationMode implements RenderModeController {
 
     const marketPanel = document.createElement('section');
     marketPanel.className = 'city-stitch__ops-list';
-    marketPanel.innerHTML = `<h3>Market overview</h3>
-      <div class="city-stitch__ops-row"><p>Efficiency</p><p>+${derived.marketEfficiencyPct.toFixed(1)}%</p></div>
-      <div class="city-stitch__ops-row"><p>Exchange</p><p>Not implemented in runtime</p></div>`;
+    marketPanel.innerHTML = `<h3>Exchange operations</h3>
+      <div class="city-stitch__ops-row"><p>Source resource</p><p>Select in UI</p><p>Live</p></div>
+      <div class="city-stitch__ops-row"><p>Target resource</p><p>Select in UI</p><p>Live</p></div>
+      <div class="city-stitch__ops-row"><p>Estimated efficiency</p><p>+${derived.marketEfficiencyPct.toFixed(1)}%</p><p>Computed</p></div>
+      <div class="city-stitch__ops-row"><p>Execution</p><p>Not implemented in runtime</p><p>Unavailable</p></div>`;
 
     const disabled = document.createElement('div');
     disabled.className = 'city-stitch__ops-row';
-    disabled.innerHTML = '<p>Source → Target</p><p>Unavailable</p>';
+    disabled.innerHTML = '<p>Source → Target</p><p>Unavailable</p><p>Authorization blocked</p>';
     disabled.append(this.makeActionButton('Confirm trade (Unavailable)', true, () => {}));
     marketPanel.append(disabled);
 
@@ -463,7 +543,14 @@ export class CityFoundationMode implements RenderModeController {
     buildings.innerHTML = '<h3>Market infrastructure</h3>';
     MARKET_BUILDINGS.forEach((id) => buildings.append(this.createBuildingLinkRow(id)));
 
-    page.append(marketPanel, buildings);
+    const presets = document.createElement('section');
+    presets.className = 'city-stitch__ops-list';
+    presets.innerHTML = `<h3>Quick presets</h3>
+      <div class="city-stitch__ops-row"><p>ORE → STONE</p><p>Batch A</p><p>Unavailable</p></div>
+      <div class="city-stitch__ops-row"><p>STONE → IRON</p><p>Batch B</p><p>Unavailable</p></div>
+      <div class="city-stitch__ops-row"><p>IRON → ORE</p><p>Batch C</p><p>Unavailable</p></div>`;
+
+    page.append(marketPanel, presets, buildings);
     return page;
   }
 
@@ -584,8 +671,10 @@ export class CityFoundationMode implements RenderModeController {
   private renderMilitaryDetailPanel() {
     const panel = document.createElement('section');
     panel.className = 'city-stitch__detail-block';
-    panel.innerHTML = `<h3>Training queues</h3>
-      <p>Active batches: ${this.state.economy.trainingQueue.length}</p>`;
+    panel.innerHTML = `<h3>Selected unit</h3>
+      <p>Active batches: ${this.state.economy.trainingQueue.length}</p>
+      <p>Barracks level: ${getBuildingLevel(this.state.economy, 'barracks')}</p>
+      <p>Space dock level: ${getBuildingLevel(this.state.economy, 'space_dock')}</p>`;
     return panel;
   }
 
@@ -594,7 +683,8 @@ export class CityFoundationMode implements RenderModeController {
     panel.className = 'city-stitch__detail-block';
     panel.innerHTML = `<h3>Research status</h3>
       <p>Queue: ${this.state.economy.researchQueue.length}/1</p>
-      <p>Completed: ${this.state.economy.completedResearch.length}</p>`;
+      <p>Completed: ${this.state.economy.completedResearch.length}</p>
+      <p>Lab level: ${getBuildingLevel(this.state.economy, 'research_lab')}</p>`;
     return panel;
   }
 
@@ -603,7 +693,8 @@ export class CityFoundationMode implements RenderModeController {
     panel.className = 'city-stitch__detail-block';
     panel.innerHTML = `<h3>Intel status</h3>
       <p>Readiness: ${this.state.economy.intelReadiness.toFixed(1)}%</p>
-      <p>Active projects: ${this.state.economy.intelProjects.length}</p>`;
+      <p>Active projects: ${this.state.economy.intelProjects.length}</p>
+      <p>Center level: ${getBuildingLevel(this.state.economy, 'intelligence_center')}</p>`;
     return panel;
   }
 
@@ -611,7 +702,8 @@ export class CityFoundationMode implements RenderModeController {
     const panel = document.createElement('section');
     panel.className = 'city-stitch__detail-block';
     panel.innerHTML = `<h3>Governance status</h3>
-      <p>Active policy: ${this.state.economy.activePolicy ?? 'none'}</p>`;
+      <p>Active policy: ${this.state.economy.activePolicy ?? 'none'}</p>
+      <p>Council level: ${getBuildingLevel(this.state.economy, 'council_chamber')}</p>`;
     return panel;
   }
 
