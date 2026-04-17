@@ -37,3 +37,7 @@
   - `docs/15-city-view-terrain-runtime-audit.md` (cross-link)
   - `docs/03-Gameplay-Micro.md`
   - `docs/07-Roadmap-Build.md`
+
+## Follow-up
+
+- Readability correction pass documented in `docs/17-city-view-readability-pass.md`.

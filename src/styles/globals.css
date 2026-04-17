@@ -1722,3 +1722,119 @@ canvas {
     max-height: 45vh;
   }
 }
+
+/* ===== City command readability pass ===== */
+.citycmd__ops {
+  color: rgba(165, 199, 221, 0.86);
+}
+
+.citycmd__queue-title {
+  color: rgba(225, 239, 249, 0.98);
+}
+
+.citycmd__queue-line {
+  opacity: 0.9;
+}
+
+.citycmd__stage-frame {
+  grid-template-rows: 86px minmax(0, 1fr) 38px;
+}
+
+.citycmd__district-grid {
+  padding: 0.4rem 0.5rem;
+}
+
+.citycmd__hotspot {
+  min-width: 70px;
+  padding: 0.34rem 0.42rem;
+  text-align: center;
+  border-radius: 12px;
+}
+
+.citycmd__hotspot--anchor {
+  min-width: 98px;
+  border-color: rgba(192, 224, 244, 0.72);
+  box-shadow: 0 0 20px rgba(85, 175, 225, 0.14);
+}
+
+.citycmd__hotspot--standard {
+  min-width: 78px;
+}
+
+.citycmd__hotspot--context {
+  min-width: 70px;
+  opacity: 0.86;
+}
+
+.citycmd__hotspot.is-selected {
+  transform: translate(-50%, -50%) scale(1.06);
+  border-color: rgba(246, 221, 173, 0.95);
+  box-shadow: 0 0 0 1px rgba(246, 221, 173, 0.34) inset, 0 0 24px rgba(246, 221, 173, 0.28);
+}
+
+.citycmd__hotspot.is-locked {
+  border-style: dashed;
+  opacity: 0.58;
+}
+
+.citycmd__hotspot-level {
+  font-size: 0.64rem;
+  letter-spacing: 0.04em;
+}
+
+.citycmd__hotspot-name {
+  display: block;
+  margin-top: 0.16rem;
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(217, 236, 248, 0.95);
+}
+
+.citycmd__stage-footer {
+  font-size: 0.54rem;
+  letter-spacing: 0.11em;
+  color: rgba(169, 202, 223, 0.78);
+}
+
+.citycmd__context {
+  gap: 0.45rem;
+}
+
+.citycmd__context-hero {
+  border-color: rgba(170, 208, 231, 0.38);
+}
+
+.citycmd__hero-level {
+  color: rgba(232, 244, 251, 0.95);
+  font-weight: 600;
+}
+
+.citycmd__context-block h4 {
+  color: #ecd29e;
+}
+
+.citycmd__primary-cta {
+  margin-top: 0.1rem;
+}
+
+.citycmd__context-advanced {
+  border: 1px solid rgba(102, 142, 168, 0.28);
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem;
+  background: rgba(7, 16, 27, 0.78);
+}
+
+.citycmd__context-advanced summary {
+  cursor: pointer;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: rgba(179, 214, 235, 0.92);
+}
+
+.citycmd__context-advanced p {
+  margin: 0.35rem 0 0;
+  font-size: 0.63rem;
+  color: rgba(200, 227, 244, 0.9);
+}

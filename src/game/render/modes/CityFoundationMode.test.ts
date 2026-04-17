@@ -55,8 +55,21 @@ describe('CityFoundationMode command-deck micro UX', () => {
     researchButton!.click();
 
     const text = host.textContent ?? '';
-    expect(text).toContain('Research Queue');
+    expect(text).toContain('Research queue');
     expect(text).toContain('Research Lab');
+    expect(host.querySelectorAll('.citycmd__hotspot').length).toBeGreaterThan(0);
+
+    mode.destroy();
+    host.remove();
+  });
+
+  it('uses reduced inline stage labels with selection emphasis', () => {
+    const { host, mode } = mountMode();
+    const selectedCount = host.querySelectorAll('.citycmd__hotspot.is-selected .citycmd__hotspot-name').length;
+    const nonSelectedNamed = host.querySelectorAll('.citycmd__hotspot:not(.is-selected) .citycmd__hotspot-name').length;
+
+    expect(selectedCount).toBe(1);
+    expect(nonSelectedNamed).toBe(0);
 
     mode.destroy();
     host.remove();
@@ -94,7 +107,7 @@ describe('CityFoundationMode command-deck micro UX', () => {
 
     expect(text).not.toContain('Shard Vault');
     expect(text).not.toContain('Training Grounds');
-    expect(text).toContain('Premium / wallet / special buildings: disabled in MVP MICRO');
+    expect(text).toContain('MVP MICRO only · premium/wallet/special disabled');
 
     mode.destroy();
     host.remove();
