@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CITY_ECONOMY_CONFIG,
+} from '@/game/city/economy/cityEconomyConfig';
+import {
   canSetPolicy,
   canStartConstruction,
   canStartResearch,
@@ -107,5 +110,23 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
 
   it('exposes all military branch buildings in order helper', () => {
     expect(getMilitaryBuildingOrder()).toEqual(['barracks', 'space_dock', 'armament_factory']);
+  });
+
+  it('keeps economy/military prerequisite integrity for key progression gates', () => {
+    expect(CITY_ECONOMY_CONFIG.buildings.refinery.prerequisites).toEqual([{ buildingId: 'mine', minLevel: 1 }]);
+    expect(CITY_ECONOMY_CONFIG.buildings.market.prerequisites).toEqual([{ buildingId: 'warehouse', minLevel: 5 }]);
+    expect(CITY_ECONOMY_CONFIG.buildings.barracks.prerequisites).toEqual([
+      { buildingId: 'refinery', minLevel: 1 },
+      { buildingId: 'housing_complex', minLevel: 3 },
+      { buildingId: 'mine', minLevel: 1 },
+    ]);
+    expect(CITY_ECONOMY_CONFIG.buildings.space_dock.prerequisites).toEqual([
+      { buildingId: 'mine', minLevel: 15 },
+      { buildingId: 'refinery', minLevel: 10 },
+    ]);
+    expect(CITY_ECONOMY_CONFIG.buildings.intelligence_center.prerequisites).toEqual([
+      { buildingId: 'market', minLevel: 4 },
+      { buildingId: 'warehouse', minLevel: 7 },
+    ]);
   });
 });

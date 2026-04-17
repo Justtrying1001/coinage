@@ -1,0 +1,3406 @@
+{
+  "generatedAt": "2026-04-17T21:20:44.162Z",
+  "scope": "city-economy-sensitive-verification",
+  "entries": [
+    {
+      "buildingId": "mine",
+      "level": 1,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 3,
+          "stone": 2,
+          "iron": 1
+        },
+        "buildSeconds": 2,
+        "populationCost": 1,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 8
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 3,
+          "stone": 2,
+          "iron": 1
+        },
+        "buildSeconds": 2,
+        "populationCost": 1,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 8
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 2,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 10,
+          "stone": 9,
+          "iron": 6
+        },
+        "buildSeconds": 3,
+        "populationCost": 2,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 12
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 10,
+          "stone": 9,
+          "iron": 6
+        },
+        "buildSeconds": 3,
+        "populationCost": 2,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 12
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 3,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 21,
+          "stone": 20,
+          "iron": 15
+        },
+        "buildSeconds": 5,
+        "populationCost": 2,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 18
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 21,
+          "stone": 20,
+          "iron": 15
+        },
+        "buildSeconds": 5,
+        "populationCost": 2,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 18
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 4,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 36,
+          "stone": 37,
+          "iron": 27
+        },
+        "buildSeconds": 8,
+        "populationCost": 2,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 24
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 36,
+          "stone": 37,
+          "iron": 27
+        },
+        "buildSeconds": 8,
+        "populationCost": 2,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 24
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 5,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 55,
+          "stone": 59,
+          "iron": 44
+        },
+        "buildSeconds": 33,
+        "populationCost": 2,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 30
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 55,
+          "stone": 59,
+          "iron": 44
+        },
+        "buildSeconds": 33,
+        "populationCost": 2,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 30
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 6,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 78,
+          "stone": 86,
+          "iron": 64
+        },
+        "buildSeconds": 87,
+        "populationCost": 2,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 37
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 78,
+          "stone": 86,
+          "iron": 64
+        },
+        "buildSeconds": 87,
+        "populationCost": 2,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 37
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 7,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 105,
+          "stone": 119,
+          "iron": 89
+        },
+        "buildSeconds": 171,
+        "populationCost": 2,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 43
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 105,
+          "stone": 119,
+          "iron": 89
+        },
+        "buildSeconds": 171,
+        "populationCost": 2,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 43
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 8,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 135,
+          "stone": 158,
+          "iron": 117
+        },
+        "buildSeconds": 373,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 51
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 135,
+          "stone": 158,
+          "iron": 117
+        },
+        "buildSeconds": 373,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 51
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 9,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 169,
+          "stone": 202,
+          "iron": 150
+        },
+        "buildSeconds": 1764,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 58
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 169,
+          "stone": 202,
+          "iron": 150
+        },
+        "buildSeconds": 1764,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 58
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 10,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 207,
+          "stone": 252,
+          "iron": 188
+        },
+        "buildSeconds": 4572,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 66
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 207,
+          "stone": 252,
+          "iron": 188
+        },
+        "buildSeconds": 4572,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 66
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 11,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 248,
+          "stone": 308,
+          "iron": 229
+        },
+        "buildSeconds": 7258,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 73
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 248,
+          "stone": 308,
+          "iron": 229
+        },
+        "buildSeconds": 7258,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 73
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 12,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 292,
+          "stone": 369,
+          "iron": 275
+        },
+        "buildSeconds": 9435,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 81
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 292,
+          "stone": 369,
+          "iron": 275
+        },
+        "buildSeconds": 9435,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 81
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 13,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 340,
+          "stone": 437,
+          "iron": 325
+        },
+        "buildSeconds": 11612,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 89
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 340,
+          "stone": 437,
+          "iron": 325
+        },
+        "buildSeconds": 11612,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 89
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 14,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 391,
+          "stone": 510,
+          "iron": 380
+        },
+        "buildSeconds": 13064,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 98
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 391,
+          "stone": 510,
+          "iron": 380
+        },
+        "buildSeconds": 13064,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 98
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 15,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 446,
+          "stone": 590,
+          "iron": 440
+        },
+        "buildSeconds": 14515,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 106
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 446,
+          "stone": 590,
+          "iron": 440
+        },
+        "buildSeconds": 14515,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 106
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 16,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 504,
+          "stone": 676,
+          "iron": 503
+        },
+        "buildSeconds": 16408,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 114
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 504,
+          "stone": 676,
+          "iron": 503
+        },
+        "buildSeconds": 16408,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 114
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 17,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 566,
+          "stone": 767,
+          "iron": 572
+        },
+        "buildSeconds": 18416,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 123
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 566,
+          "stone": 767,
+          "iron": 572
+        },
+        "buildSeconds": 18416,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 123
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 18,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 631,
+          "stone": 865,
+          "iron": 645
+        },
+        "buildSeconds": 20525,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 132
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 631,
+          "stone": 865,
+          "iron": 645
+        },
+        "buildSeconds": 20525,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 132
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 19,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 699,
+          "stone": 969,
+          "iron": 722
+        },
+        "buildSeconds": 22745,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 141
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 699,
+          "stone": 969,
+          "iron": 722
+        },
+        "buildSeconds": 22745,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 141
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 20,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 771,
+          "stone": 1079,
+          "iron": 804
+        },
+        "buildSeconds": 25073,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 147
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 771,
+          "stone": 1079,
+          "iron": 804
+        },
+        "buildSeconds": 25073,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 147
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 21,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 846,
+          "stone": 1196,
+          "iron": 891
+        },
+        "buildSeconds": 27508,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 153
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 846,
+          "stone": 1196,
+          "iron": 891
+        },
+        "buildSeconds": 27508,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 153
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 22,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 924,
+          "stone": 1319,
+          "iron": 982
+        },
+        "buildSeconds": 30051,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 159
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 924,
+          "stone": 1319,
+          "iron": 982
+        },
+        "buildSeconds": 30051,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 159
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 23,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 1005,
+          "stone": 1448,
+          "iron": 1078
+        },
+        "buildSeconds": 32699,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 165
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 1005,
+          "stone": 1448,
+          "iron": 1078
+        },
+        "buildSeconds": 32699,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 165
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 24,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 1090,
+          "stone": 1583,
+          "iron": 1179
+        },
+        "buildSeconds": 35453,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 171
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 1090,
+          "stone": 1583,
+          "iron": 1179
+        },
+        "buildSeconds": 35453,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 171
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 25,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 1178,
+          "stone": 1725,
+          "iron": 1285
+        },
+        "buildSeconds": 38312,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 177
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 1178,
+          "stone": 1725,
+          "iron": 1285
+        },
+        "buildSeconds": 38312,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 177
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 26,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 1269,
+          "stone": 1873,
+          "iron": 1395
+        },
+        "buildSeconds": 41276,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 184
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 1269,
+          "stone": 1873,
+          "iron": 1395
+        },
+        "buildSeconds": 41276,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 184
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 27,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 1363,
+          "stone": 2027,
+          "iron": 1510
+        },
+        "buildSeconds": 44345,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 190
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 1363,
+          "stone": 2027,
+          "iron": 1510
+        },
+        "buildSeconds": 44345,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 190
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 28,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 1461,
+          "stone": 2188,
+          "iron": 1630
+        },
+        "buildSeconds": 47517,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 196
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 1461,
+          "stone": 2188,
+          "iron": 1630
+        },
+        "buildSeconds": 47517,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 196
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 29,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 1561,
+          "stone": 2355,
+          "iron": 1755
+        },
+        "buildSeconds": 50793,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 203
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 1561,
+          "stone": 2355,
+          "iron": 1755
+        },
+        "buildSeconds": 50793,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 203
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 30,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 1665,
+          "stone": 2529,
+          "iron": 1884
+        },
+        "buildSeconds": 54172,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 209
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 1665,
+          "stone": 2529,
+          "iron": 1884
+        },
+        "buildSeconds": 54172,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 209
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 31,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 1772,
+          "stone": 2710,
+          "iron": 2019
+        },
+        "buildSeconds": 57655,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 216
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 1772,
+          "stone": 2710,
+          "iron": 2019
+        },
+        "buildSeconds": 57655,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 216
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 32,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 1883,
+          "stone": 2896,
+          "iron": 2158
+        },
+        "buildSeconds": 61240,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 222
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 1883,
+          "stone": 2896,
+          "iron": 2158
+        },
+        "buildSeconds": 61240,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 222
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 33,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 1996,
+          "stone": 3090,
+          "iron": 2302
+        },
+        "buildSeconds": 64927,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 229
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 1996,
+          "stone": 3090,
+          "iron": 2302
+        },
+        "buildSeconds": 64927,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 229
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 34,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 2112,
+          "stone": 3290,
+          "iron": 2451
+        },
+        "buildSeconds": 68716,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 235
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 2112,
+          "stone": 3290,
+          "iron": 2451
+        },
+        "buildSeconds": 68716,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 235
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 35,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 2232,
+          "stone": 3496,
+          "iron": 2605
+        },
+        "buildSeconds": 72607,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 242
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 2232,
+          "stone": 3496,
+          "iron": 2605
+        },
+        "buildSeconds": 72607,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 242
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 36,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 2355,
+          "stone": 3709,
+          "iron": 2763
+        },
+        "buildSeconds": 76599,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 248
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 2355,
+          "stone": 3709,
+          "iron": 2763
+        },
+        "buildSeconds": 76599,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 278
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists mine level 36 output as 278; runtime corrected accordingly."
+    },
+    {
+      "buildingId": "mine",
+      "level": 37,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 2481,
+          "stone": 3929,
+          "iron": 2927
+        },
+        "buildSeconds": 80692,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 255
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 2481,
+          "stone": 3929,
+          "iron": 2927
+        },
+        "buildSeconds": 80692,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 255
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 38,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 2610,
+          "stone": 4155,
+          "iron": 3096
+        },
+        "buildSeconds": 84886,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 261
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 2610,
+          "stone": 4155,
+          "iron": 3096
+        },
+        "buildSeconds": 84886,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 261
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 39,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 2742,
+          "stone": 4388,
+          "iron": 3269
+        },
+        "buildSeconds": 89181,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 268
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 2742,
+          "stone": 4388,
+          "iron": 3269
+        },
+        "buildSeconds": 89181,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 268
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "mine",
+      "level": 40,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 2877,
+          "stone": 4628,
+          "iron": 3448
+        },
+        "buildSeconds": 93576,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 275
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 2877,
+          "stone": 4628,
+          "iron": 3448
+        },
+        "buildSeconds": 93576,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "orePerHour": 275
+        }
+      },
+      "status": "OK",
+      "sourceConfidence": "official_only",
+      "note": "Verified against official building tables."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 1,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 5,
+          "stone": 2,
+          "iron": 4
+        },
+        "buildSeconds": 2,
+        "populationCost": 1,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 8
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 5,
+          "stone": 2,
+          "iron": 4
+        },
+        "buildSeconds": 2,
+        "populationCost": 1,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 8
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 2,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 19,
+          "stone": 8,
+          "iron": 14
+        },
+        "buildSeconds": 3,
+        "populationCost": 2,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 12
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 19,
+          "stone": 8,
+          "iron": 14
+        },
+        "buildSeconds": 3,
+        "populationCost": 2,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 12
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 3,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 40,
+          "stone": 18,
+          "iron": 29
+        },
+        "buildSeconds": 5,
+        "populationCost": 2,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 18
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 40,
+          "stone": 18,
+          "iron": 29
+        },
+        "buildSeconds": 5,
+        "populationCost": 2,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 18
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 4,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 70,
+          "stone": 32,
+          "iron": 49
+        },
+        "buildSeconds": 8,
+        "populationCost": 2,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 24
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 70,
+          "stone": 32,
+          "iron": 49
+        },
+        "buildSeconds": 8,
+        "populationCost": 2,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 24
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 5,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 106,
+          "stone": 50,
+          "iron": 72
+        },
+        "buildSeconds": 58,
+        "populationCost": 2,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 30
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 106,
+          "stone": 50,
+          "iron": 72
+        },
+        "buildSeconds": 58,
+        "populationCost": 2,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 30
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 6,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 150,
+          "stone": 72,
+          "iron": 101
+        },
+        "buildSeconds": 149,
+        "populationCost": 2,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 37
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 150,
+          "stone": 72,
+          "iron": 101
+        },
+        "buildSeconds": 149,
+        "populationCost": 2,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 37
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 7,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 202,
+          "stone": 98,
+          "iron": 133
+        },
+        "buildSeconds": 280,
+        "populationCost": 2,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 43
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 202,
+          "stone": 98,
+          "iron": 133
+        },
+        "buildSeconds": 280,
+        "populationCost": 2,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 43
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 8,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 260,
+          "stone": 128,
+          "iron": 169
+        },
+        "buildSeconds": 578,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 51
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 260,
+          "stone": 128,
+          "iron": 169
+        },
+        "buildSeconds": 578,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 51
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 9,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 325,
+          "stone": 162,
+          "iron": 209
+        },
+        "buildSeconds": 2552,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 58
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 325,
+          "stone": 162,
+          "iron": 209
+        },
+        "buildSeconds": 2552,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 58
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 10,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 397,
+          "stone": 200,
+          "iron": 252
+        },
+        "buildSeconds": 6065,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 66
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 397,
+          "stone": 200,
+          "iron": 252
+        },
+        "buildSeconds": 6065,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 66
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 11,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 476,
+          "stone": 242,
+          "iron": 300
+        },
+        "buildSeconds": 9627,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 73
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 476,
+          "stone": 242,
+          "iron": 300
+        },
+        "buildSeconds": 9627,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 73
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 12,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 562,
+          "stone": 288,
+          "iron": 350
+        },
+        "buildSeconds": 12514,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 81
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 562,
+          "stone": 288,
+          "iron": 350
+        },
+        "buildSeconds": 12514,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 81
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 13,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 654,
+          "stone": 338,
+          "iron": 405
+        },
+        "buildSeconds": 15402,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 89
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 654,
+          "stone": 338,
+          "iron": 405
+        },
+        "buildSeconds": 15402,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 89
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 14,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 753,
+          "stone": 392,
+          "iron": 462
+        },
+        "buildSeconds": 17328,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 98
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 753,
+          "stone": 392,
+          "iron": 462
+        },
+        "buildSeconds": 17328,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 98
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 15,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 858,
+          "stone": 450,
+          "iron": 524
+        },
+        "buildSeconds": 19253,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 106
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 858,
+          "stone": 450,
+          "iron": 524
+        },
+        "buildSeconds": 19253,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 106
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 16,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 970,
+          "stone": 512,
+          "iron": 588
+        },
+        "buildSeconds": 21088,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 115
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 970,
+          "stone": 512,
+          "iron": 588
+        },
+        "buildSeconds": 21088,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 115
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 17,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 1088,
+          "stone": 578,
+          "iron": 656
+        },
+        "buildSeconds": 22969,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 123
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 1088,
+          "stone": 578,
+          "iron": 656
+        },
+        "buildSeconds": 22969,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 123
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 18,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 1213,
+          "stone": 648,
+          "iron": 727
+        },
+        "buildSeconds": 24897,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 132
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 1213,
+          "stone": 648,
+          "iron": 727
+        },
+        "buildSeconds": 24897,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 132
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 19,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 1345,
+          "stone": 722,
+          "iron": 801
+        },
+        "buildSeconds": 26870,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 141
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 1345,
+          "stone": 722,
+          "iron": 801
+        },
+        "buildSeconds": 26870,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 141
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 20,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 1482,
+          "stone": 800,
+          "iron": 879
+        },
+        "buildSeconds": 28885,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 147
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 1482,
+          "stone": 800,
+          "iron": 879
+        },
+        "buildSeconds": 28885,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 147
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 21,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 1626,
+          "stone": 882,
+          "iron": 960
+        },
+        "buildSeconds": 30942,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 153
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 1626,
+          "stone": 882,
+          "iron": 960
+        },
+        "buildSeconds": 30942,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 153
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 22,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 1777,
+          "stone": 968,
+          "iron": 1043
+        },
+        "buildSeconds": 33040,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 159
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 1777,
+          "stone": 968,
+          "iron": 1043
+        },
+        "buildSeconds": 33040,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 159
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 23,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 1933,
+          "stone": 1058,
+          "iron": 1130
+        },
+        "buildSeconds": 35177,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 165
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 1933,
+          "stone": 1058,
+          "iron": 1130
+        },
+        "buildSeconds": 35177,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 165
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 24,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 2096,
+          "stone": 1152,
+          "iron": 1220
+        },
+        "buildSeconds": 37352,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 171
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 2096,
+          "stone": 1152,
+          "iron": 1220
+        },
+        "buildSeconds": 37352,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 171
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 25,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 2265,
+          "stone": 1250,
+          "iron": 1313
+        },
+        "buildSeconds": 38700,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 177
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 2265,
+          "stone": 1250,
+          "iron": 1313
+        },
+        "buildSeconds": 38700,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 177
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 26,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 2440,
+          "stone": 1352,
+          "iron": 1409
+        },
+        "buildSeconds": 41815,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 184
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 2440,
+          "stone": 1352,
+          "iron": 1409
+        },
+        "buildSeconds": 41815,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 184
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 27,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 2622,
+          "stone": 1458,
+          "iron": 1508
+        },
+        "buildSeconds": 44100,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 190
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 2622,
+          "stone": 1458,
+          "iron": 1508
+        },
+        "buildSeconds": 44100,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 190
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 28,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 2809,
+          "stone": 1568,
+          "iron": 1610
+        },
+        "buildSeconds": 46420,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 196
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 2809,
+          "stone": 1568,
+          "iron": 1610
+        },
+        "buildSeconds": 46420,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 196
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 29,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 3003,
+          "stone": 1682,
+          "iron": 1715
+        },
+        "buildSeconds": 48775,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 203
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 3003,
+          "stone": 1682,
+          "iron": 1715
+        },
+        "buildSeconds": 48775,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 203
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 30,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 3203,
+          "stone": 1800,
+          "iron": 1823
+        },
+        "buildSeconds": 51164,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 209
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 3203,
+          "stone": 1800,
+          "iron": 1823
+        },
+        "buildSeconds": 51164,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 209
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 31,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 3408,
+          "stone": 1922,
+          "iron": 1934
+        },
+        "buildSeconds": 53585,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 216
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 3408,
+          "stone": 1922,
+          "iron": 1934
+        },
+        "buildSeconds": 53585,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 216
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 32,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 3620,
+          "stone": 2048,
+          "iron": 2028
+        },
+        "buildSeconds": 56037,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 222
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 3620,
+          "stone": 2048,
+          "iron": 2028
+        },
+        "buildSeconds": 56037,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 222
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 33,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 3838,
+          "stone": 2178,
+          "iron": 2165
+        },
+        "buildSeconds": 58522,
+        "populationCost": 3,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 229
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 3838,
+          "stone": 2178,
+          "iron": 2165
+        },
+        "buildSeconds": 58522,
+        "populationCost": 3,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 229
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 34,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 4062,
+          "stone": 2312,
+          "iron": 2284
+        },
+        "buildSeconds": 61039,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 235
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 4062,
+          "stone": 2312,
+          "iron": 2284
+        },
+        "buildSeconds": 61039,
+        "populationCost": 4,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 235
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 35,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 4292,
+          "stone": 2450,
+          "iron": 2406
+        },
+        "buildSeconds": 63585,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 242
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 4292,
+          "stone": 2450,
+          "iron": 2406
+        },
+        "buildSeconds": 63585,
+        "populationCost": 4,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 242
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 36,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 4528,
+          "stone": 2592,
+          "iron": 2532
+        },
+        "buildSeconds": 66161,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 248
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 4528,
+          "stone": 2592,
+          "iron": 2532
+        },
+        "buildSeconds": 66161,
+        "populationCost": 4,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 248
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 37,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 4770,
+          "stone": 2738,
+          "iron": 2660
+        },
+        "buildSeconds": 68767,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 255
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 4770,
+          "stone": 2738,
+          "iron": 2660
+        },
+        "buildSeconds": 68767,
+        "populationCost": 4,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 255
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 38,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 5018,
+          "stone": 2888,
+          "iron": 2790
+        },
+        "buildSeconds": 71403,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 261
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 5018,
+          "stone": 2888,
+          "iron": 2790
+        },
+        "buildSeconds": 71403,
+        "populationCost": 4,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 261
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 39,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 5272,
+          "stone": 3042,
+          "iron": 2924
+        },
+        "buildSeconds": 74066,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 268
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 5272,
+          "stone": 3042,
+          "iron": 2924
+        },
+        "buildSeconds": 74066,
+        "populationCost": 4,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 268
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    },
+    {
+      "buildingId": "refinery",
+      "level": 40,
+      "checkedFields": [
+        "resources",
+        "buildSeconds",
+        "populationCost",
+        "prerequisites",
+        "effects"
+      ],
+      "previousRuntimeValues": {
+        "resources": {
+          "ore": 5532,
+          "stone": 3200,
+          "iron": 3060
+        },
+        "buildSeconds": 76758,
+        "populationCost": 4,
+        "prerequisites": [],
+        "effects": {
+          "ironPerHour": 275
+        }
+      },
+      "correctedValues": {
+        "resources": {
+          "ore": 5532,
+          "stone": 3200,
+          "iron": 3060
+        },
+        "buildSeconds": 76758,
+        "populationCost": 4,
+        "prerequisites": [
+          {
+            "buildingId": "mine",
+            "minLevel": 1
+          }
+        ],
+        "effects": {
+          "ironPerHour": 275
+        }
+      },
+      "status": "FIXED",
+      "sourceConfidence": "official_only",
+      "note": "Official table lists refinery/silver-mine requirement of mine/timber level 1; runtime prerequisite restored."
+    }
+  ]
+}

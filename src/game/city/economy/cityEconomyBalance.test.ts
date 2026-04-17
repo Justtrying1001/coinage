@@ -32,7 +32,56 @@ describe('city economy rebalance validation', () => {
         expect(next.level).toBe(prev.level + 1);
         expect(next.resources.ore + next.resources.stone + next.resources.iron).toBeGreaterThan(0);
         expect(next.populationCost).toBeGreaterThanOrEqual(0);
+        expect(next.buildSeconds).toBeGreaterThan(0);
       }
+    });
+  });
+
+  it('keeps critical first-row runtime values stable for economy and military progression', () => {
+    expect(CITY_ECONOMY_CONFIG.buildings.mine.levels[0]).toMatchObject({
+      resources: { ore: 3, stone: 2, iron: 1 },
+      buildSeconds: 2,
+      populationCost: 1,
+    });
+    expect(CITY_ECONOMY_CONFIG.buildings.quarry.levels[0]).toMatchObject({
+      resources: { ore: 1, stone: 3, iron: 2 },
+      buildSeconds: 2,
+      populationCost: 1,
+    });
+    expect(CITY_ECONOMY_CONFIG.buildings.refinery.levels[0]).toMatchObject({
+      resources: { ore: 5, stone: 2, iron: 4 },
+      buildSeconds: 2,
+      populationCost: 1,
+    });
+    expect(CITY_ECONOMY_CONFIG.buildings.warehouse.levels[0]).toMatchObject({
+      resources: { ore: 0, stone: 0, iron: 0 },
+      buildSeconds: 0,
+      populationCost: 1,
+    });
+    expect(CITY_ECONOMY_CONFIG.buildings.housing_complex.levels[0]).toMatchObject({
+      resources: { ore: 0, stone: 0, iron: 0 },
+      buildSeconds: 0,
+      populationCost: 1,
+    });
+    expect(CITY_ECONOMY_CONFIG.buildings.barracks.levels[0]).toMatchObject({
+      resources: { ore: 70, stone: 20, iron: 40 },
+      buildSeconds: 634,
+      populationCost: 1,
+    });
+    expect(CITY_ECONOMY_CONFIG.buildings.space_dock.levels[0]).toMatchObject({
+      resources: { ore: 400, stone: 200, iron: 100 },
+      buildSeconds: 95,
+      populationCost: 4,
+    });
+    expect(CITY_ECONOMY_CONFIG.buildings.market.levels[0]).toMatchObject({
+      resources: { ore: 50, stone: 20, iron: 5 },
+      buildSeconds: 25,
+      populationCost: 2,
+    });
+    expect(CITY_ECONOMY_CONFIG.buildings.intelligence_center.levels[0]).toMatchObject({
+      resources: { ore: 200, stone: 400, iron: 700 },
+      buildSeconds: 37,
+      populationCost: 3,
     });
   });
 
@@ -70,6 +119,22 @@ describe('city economy rebalance validation', () => {
     expect(CITY_ECONOMY_CONFIG.buildings.mine.levels.every((row) => Number(row.effect.orePerHour ?? 0) > 0)).toBe(true);
     expect(CITY_ECONOMY_CONFIG.buildings.quarry.levels.every((row) => Number(row.effect.stonePerHour ?? 0) > 0)).toBe(true);
     expect(CITY_ECONOMY_CONFIG.buildings.refinery.levels.every((row) => Number(row.effect.ironPerHour ?? 0) > 0)).toBe(true);
+  });
+
+  it('keeps production effects stable and catches known high-level anchors', () => {
+    const assertMonotonic = (buildingId: 'quarry' | 'refinery', key: 'stonePerHour' | 'ironPerHour') => {
+      const rows = CITY_ECONOMY_CONFIG.buildings[buildingId].levels;
+      for (let i = 1; i < rows.length; i += 1) {
+        const prev = Number(rows[i - 1].effect[key] ?? 0);
+        const next = Number(rows[i].effect[key] ?? 0);
+        expect(next).toBeGreaterThanOrEqual(prev);
+      }
+    };
+    expect(CITY_ECONOMY_CONFIG.buildings.mine.levels[34].effect.orePerHour).toBe(242);
+    expect(CITY_ECONOMY_CONFIG.buildings.mine.levels[35].effect.orePerHour).toBe(278);
+    expect(CITY_ECONOMY_CONFIG.buildings.mine.levels[36].effect.orePerHour).toBe(255);
+    assertMonotonic('quarry', 'stonePerHour');
+    assertMonotonic('refinery', 'ironPerHour');
   });
 
   it('uses explicit warehouse caps that cover nearby progression costs', () => {
