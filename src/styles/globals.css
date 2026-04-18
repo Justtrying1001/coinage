@@ -2156,6 +2156,14 @@ canvas {
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
+.city-stitch__sector-sub {
+  margin: 0 0 8px;
+  color: var(--cg-text-4);
+  text-align: center;
+  font: 600 8px/1.1 var(--cg-font-display);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
 .city-stitch__nav { display: flex; flex-direction: column; gap: 6px; }
 .city-stitch__nav-btn {
   border: 1px solid var(--cg-stroke-1);
@@ -2189,6 +2197,12 @@ canvas {
   text-align: center;
   max-width: 100%;
   overflow-wrap: anywhere;
+}
+.city-stitch__nav-sub {
+  color: var(--cg-text-4);
+  font: 600 8px/1 var(--cg-font-mono);
+  letter-spacing: .05em;
+  text-transform: uppercase;
 }
 .city-stitch__nav-btn:hover {
   border-color: var(--cg-stroke-3);
@@ -2259,6 +2273,33 @@ canvas {
   text-transform: uppercase;
   letter-spacing: .1em;
   overflow-wrap: anywhere;
+}
+
+.city-stitch__branch-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.city-stitch__kpi {
+  border: 1px solid var(--cg-stroke-2);
+  border-radius: var(--cg-r-2);
+  padding: 8px 10px;
+  background: linear-gradient(180deg, rgba(11, 26, 41, 0.82), rgba(7, 17, 28, 0.9));
+}
+.city-stitch__kpi p {
+  margin: 0;
+  color: var(--cg-text-4);
+  font: 600 9px/1 var(--cg-font-display);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.city-stitch__kpi h3 {
+  margin: 6px 0 0;
+  color: var(--cg-text-1);
+  font: 700 18px/1 var(--cg-font-display);
+  letter-spacing: .04em;
+  text-transform: uppercase;
 }
 
 .city-stitch__command-zones { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-bottom: 10px; }
@@ -2395,6 +2436,31 @@ canvas {
   letter-spacing: .11em;
   text-transform: uppercase;
 }
+.city-stitch__view--economy .city-stitch__main-header h1,
+.city-stitch__view--market .city-stitch__main-header h1 {
+  color: var(--cg-brass-300);
+}
+.city-stitch__view--military .city-stitch__main-header h1,
+.city-stitch__view--defense .city-stitch__main-header h1 {
+  color: var(--cg-cyan-100);
+}
+.city-stitch__view--intelligence .city-stitch__main-header h1 {
+  color: #b7e9ff;
+}
+.city-stitch__view--governance .city-stitch__main-header h1 {
+  color: #f6dfb2;
+}
+.city-stitch__view--research .city-stitch__main-header h1 {
+  color: #d9f5ff;
+}
+.city-stitch__view--military .city-stitch__kpi:nth-child(1),
+.city-stitch__view--defense .city-stitch__kpi:nth-child(1),
+.city-stitch__view--research .city-stitch__kpi:nth-child(1),
+.city-stitch__view--intelligence .city-stitch__kpi:nth-child(1),
+.city-stitch__view--governance .city-stitch__kpi:nth-child(1),
+.city-stitch__view--market .city-stitch__kpi:nth-child(1) {
+  border-left: 2px solid var(--cg-brass-300);
+}
 .city-stitch__ops-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(108px, auto) minmax(92px, auto);
@@ -2522,6 +2588,7 @@ canvas {
     width: 104px;
   }
   .city-stitch__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .city-stitch__branch-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .city-stitch__command-zones,
   .city-stitch__ops-grid,
   .city-stitch__ops-grid--double,
