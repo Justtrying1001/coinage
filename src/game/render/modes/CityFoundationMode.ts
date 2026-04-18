@@ -217,7 +217,7 @@ export class CityFoundationMode implements RenderModeController {
 
     const left = document.createElement('div');
     left.className = 'city-stitch__brand';
-    left.innerHTML = '<span class="city-stitch__logo">COINAGE</span>';
+    left.innerHTML = '<p class="city-stitch__overline">City command</p><span class="city-stitch__logo">COINAGE ◆</span>';
 
     const resources = document.createElement('div');
     resources.className = 'city-stitch__resource-strip';
@@ -225,15 +225,15 @@ export class CityFoundationMode implements RenderModeController {
       const item = document.createElement('article');
       item.className = 'city-stitch__resource';
       item.innerHTML = `<p class="city-stitch__resource-name">${RESOURCE_LABELS[resource]}</p>
-      <p class="city-stitch__resource-amount">${Math.floor(this.state.economy.resources[resource]).toLocaleString()}</p>
-      <p class="city-stitch__resource-rate">+${Math.round(production[resource]).toLocaleString()}/h</p>`;
+      <p class="city-stitch__resource-amount city-stitch__metric">${Math.floor(this.state.economy.resources[resource]).toLocaleString()}</p>
+      <p class="city-stitch__resource-rate city-stitch__metric">+${Math.round(production[resource]).toLocaleString()}/h</p>`;
       resources.append(item);
     });
 
     const right = document.createElement('div');
     right.className = 'city-stitch__meta';
-    right.innerHTML = `<p class="city-stitch__meta-row">POP: ${pop.used.toLocaleString()} / ${pop.cap.toLocaleString()}</p>
-      <p class="city-stitch__meta-row">STORAGE: ${storagePct.toFixed(1)}%</p>
+    right.innerHTML = `<p class="city-stitch__meta-row"><span>Population</span><strong class="city-stitch__metric">${pop.used.toLocaleString()} / ${pop.cap.toLocaleString()}</strong></p>
+      <p class="city-stitch__meta-row"><span>Storage</span><strong class="city-stitch__metric">${storagePct.toFixed(1)}%</strong></p>
       <div class="city-stitch__storage-bar"><span style="width:${storagePct.toFixed(1)}%"></span></div>`;
 
     const controls = document.createElement('div');
@@ -771,21 +771,76 @@ export class CityFoundationMode implements RenderModeController {
     if (builds.length === 0) queue.append(this.createQueueLine('No active build order'));
     builds.forEach((entry) => {
       const buildingName = getBuildingConfig(entry.buildingId).name;
-      queue.append(this.createQueueLine(`${buildingName} → LVL ${entry.targetLevel} · ${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))}`));
+      queue.append(
+        this.createQueueRow({
+          label: `${buildingName} → LVL ${entry.targetLevel}`,
+          meta: formatDuration(Math.max(0, entry.endsAtMs - Date.now())),
+          progressPct: progressFromTimes(entry.startedAtMs, entry.endsAtMs, Date.now()),
+          tone: 'cyan',
+        }),
+      );
     });
 
     const ops = document.createElement('div');
     ops.className = 'city-stitch__queue';
-    ops.innerHTML = `<p class="city-stitch__queue-title">Operations</p>
-      <p class="city-stitch__queue-line">Training: ${this.state.economy.trainingQueue.length}</p>
-      <p class="city-stitch__queue-line">Research: ${this.state.economy.researchQueue.length}</p>
-      <p class="city-stitch__queue-line">Intel: ${this.state.economy.intelProjects.length}</p>`;
+    ops.innerHTML = '<p class="city-stitch__queue-title">Operations</p>';
+    if (this.state.economy.trainingQueue.length === 0) {
+      ops.append(this.createQueueLine('Training: idle'));
+    } else {
+      const firstTraining = this.state.economy.trainingQueue.slice().sort((a, b) => a.endsAtMs - b.endsAtMs)[0];
+      const troop = CITY_ECONOMY_CONFIG.troops[firstTraining.troopId];
+      ops.append(
+        this.createQueueRow({
+          label: `Training · ${troop.name} x${firstTraining.quantity}`,
+          meta: formatDuration(Math.max(0, firstTraining.endsAtMs - Date.now())),
+          progressPct: progressFromTimes(firstTraining.startedAtMs, firstTraining.endsAtMs, Date.now()),
+          tone: 'ok',
+        }),
+      );
+    }
+    if (this.state.economy.researchQueue.length === 0) {
+      ops.append(this.createQueueLine('Research: idle'));
+    } else {
+      const firstResearch = this.state.economy.researchQueue[0];
+      const research = CITY_ECONOMY_CONFIG.research[firstResearch.researchId];
+      ops.append(
+        this.createQueueRow({
+          label: `Research · ${research.name}`,
+          meta: formatDuration(Math.max(0, firstResearch.endsAtMs - Date.now())),
+          progressPct: progressFromTimes(firstResearch.startedAtMs, firstResearch.endsAtMs, Date.now()),
+          tone: 'brass',
+        }),
+      );
+    }
+    if (this.state.economy.intelProjects.length === 0) {
+      ops.append(this.createQueueLine('Intel: idle'));
+    } else {
+      const firstIntel = this.state.economy.intelProjects.slice().sort((a, b) => a.endsAtMs - b.endsAtMs)[0];
+      const label = INTEL_PROJECT_LABELS[firstIntel.projectType];
+      ops.append(
+        this.createQueueRow({
+          label: `Intel · ${label}`,
+          meta: formatDuration(Math.max(0, firstIntel.endsAtMs - Date.now())),
+          progressPct: progressFromTimes(firstIntel.startedAtMs, firstIntel.endsAtMs, Date.now()),
+          tone: 'cyan',
+        }),
+      );
+    }
 
     const status = document.createElement('div');
     status.className = 'city-stitch__queue';
+    const queuePressure = Math.round((this.state.economy.queue.length / Math.max(1, QUEUE_CAP)) * 100);
     status.innerHTML = `<p class="city-stitch__queue-title">Runtime status</p>
       <p class="city-stitch__queue-line">Queue: ${this.state.economy.queue.length}/${QUEUE_CAP}</p>
       <p class="city-stitch__queue-line">MVP MICRO only · premium/wallet/special disabled</p>`;
+    status.append(
+      this.createQueueRow({
+        label: 'Queue pressure',
+        meta: `${queuePressure}%`,
+        progressPct: queuePressure,
+        tone: queuePressure >= 90 ? 'warn' : 'cyan',
+      }),
+    );
 
     this.bottomBar.append(queue, ops, status);
   }
@@ -823,6 +878,14 @@ export class CityFoundationMode implements RenderModeController {
     const row = document.createElement('p');
     row.className = 'city-stitch__queue-line';
     row.textContent = text;
+    return row;
+  }
+
+  private createQueueRow(input: { label: string; meta: string; progressPct: number; tone: 'cyan' | 'ok' | 'warn' | 'brass' }) {
+    const row = document.createElement('article');
+    row.className = `city-stitch__queue-row city-stitch__queue-row--${input.tone}`;
+    row.innerHTML = `<div class="city-stitch__queue-row-top"><p>${input.label}</p><p class="city-stitch__metric">${input.meta}</p></div>
+      <div class="city-stitch__queue-progress"><span style="width:${Math.max(0, Math.min(100, input.progressPct)).toFixed(1)}%"></span></div>`;
     return row;
   }
 
@@ -886,6 +949,12 @@ function formatDuration(durationMs: number) {
   }
   if (minutes <= 0) return `${remainder}s`;
   return `${minutes}m ${remainder.toString().padStart(2, '0')}s`;
+}
+
+function progressFromTimes(startedAtMs: number, endsAtMs: number, nowMs: number) {
+  const duration = Math.max(1, endsAtMs - startedAtMs);
+  const elapsed = Math.max(0, nowMs - startedAtMs);
+  return Math.max(0, Math.min(100, (elapsed / duration) * 100));
 }
 
 function iconToGlyph(icon: string) {
