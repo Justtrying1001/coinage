@@ -38,6 +38,9 @@ describe('CityFoundationMode stitch IA responsibilities', () => {
     ['Command', 'Economy', 'Military', 'Defense', 'Research', 'Intelligence', 'Governance', 'Market'].forEach((section) => {
       expect(host.textContent).toContain(section);
     });
+    ['payments', 'military_tech', 'shield', 'science', 'visibility', 'account_balance', 'currency_exchange'].forEach((technicalLabel) => {
+      expect(host.textContent).not.toContain(technicalLabel);
+    });
     expect(host.textContent).not.toContain('Token');
     expect(host.textContent).not.toContain('Logistics');
 
@@ -53,13 +56,13 @@ describe('CityFoundationMode stitch IA responsibilities', () => {
 
     host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Economy"]')?.click();
     expect(host.textContent).toContain('Economic Core');
-    expect(host.textContent).toContain('Economic infrastructure');
+    expect(host.textContent).toContain('Building intel');
 
     host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Military"]')?.click();
     expect(host.textContent).toContain('Unit training');
 
     host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Research"]')?.click();
-    expect(host.textContent).toContain('Research queue');
+    expect(host.textContent).toContain('Research nodes');
 
     host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Market"]')?.click();
     expect(host.textContent).toContain('Not implemented in runtime');
