@@ -56,12 +56,12 @@ describe('city economy rebalance validation', () => {
     expect(CITY_ECONOMY_CONFIG.buildings.warehouse.levels[0]).toMatchObject({
       resources: { ore: 0, stone: 0, iron: 0 },
       buildSeconds: 0,
-      populationCost: 1,
+      populationCost: 0,
     });
     expect(CITY_ECONOMY_CONFIG.buildings.housing_complex.levels[0]).toMatchObject({
       resources: { ore: 0, stone: 0, iron: 0 },
       buildSeconds: 0,
-      populationCost: 1,
+      populationCost: 0,
     });
     expect(CITY_ECONOMY_CONFIG.buildings.barracks.levels[0]).toMatchObject({
       resources: { ore: 70, stone: 20, iron: 40 },
@@ -143,6 +143,7 @@ describe('city economy rebalance validation', () => {
 
   it('uses explicit warehouse caps that cover nearby progression costs', () => {
     const warehouseRows = CITY_ECONOMY_CONFIG.buildings.warehouse.levels;
+    expect(warehouseRows.every((row) => row.populationCost === 0)).toBe(true);
     warehouseRows.forEach((row) => {
       expect(row.effect.storageCap).toBeDefined();
       const cap = row.effect.storageCap!;
@@ -164,6 +165,16 @@ describe('city economy rebalance validation', () => {
       expect(caps.stone).toBeGreaterThanOrEqual(Math.max(mineCost.stone, quarryCost.stone, refineryCost.stone));
       expect(caps.iron).toBeGreaterThanOrEqual(Math.max(mineCost.iron, quarryCost.iron, refineryCost.iron));
     });
+  });
+
+  it('keeps housing_complex rows at zero population cost while increasing capacity', () => {
+    const housingRows = CITY_ECONOMY_CONFIG.buildings.housing_complex.levels;
+    expect(housingRows.every((row) => row.populationCost === 0)).toBe(true);
+    for (let i = 1; i < housingRows.length; i += 1) {
+      expect(Number(housingRows[i].effect.populationCapBonus ?? 0)).toBeGreaterThanOrEqual(
+        Number(housingRows[i - 1].effect.populationCapBonus ?? 0),
+      );
+    }
   });
 
   it('supports viable economy, military, and mixed archetypes without population deadlock', () => {
