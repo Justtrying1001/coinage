@@ -174,54 +174,22 @@ a {
   overflow: hidden;
 }
 
-.game-header {
+.game-shared-hud {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   z-index: 10;
-  padding: 1rem 1.25rem;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(3, 7, 13, 0.82) 0%, rgba(3, 7, 13, 0) 100%);
-}
-
-.game-overline {
-  margin: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: #90acc4;
-  font-size: 0.72rem;
-}
-
-.game-header h1 {
-  margin: 0.25rem 0 0;
-  font-size: 1.1rem;
-  letter-spacing: 0.07em;
-}
-
-.game-render-switches {
-  margin-top: 0.75rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
+  padding: 4px 8px 0;
   pointer-events: auto;
 }
-
-.game-render-switches button {
-  border: 1px solid rgba(125, 213, 255, 0.3);
-  background: rgba(9, 25, 39, 0.82);
-  color: #c9def0;
-  border-radius: 999px;
-  padding: 0.4rem 0.8rem;
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
-  cursor: pointer;
+.game-shared-hud__frame {
+  height: 68px;
 }
-
-.game-render-switches button.is-active {
-  border-color: rgba(149, 226, 255, 0.9);
-  color: #e8f6ff;
-  box-shadow: 0 0 0 1px rgba(149, 226, 255, 0.35) inset;
+.game-shared-hud__placeholder .city-stitch__queue-line {
+  color: rgba(191, 216, 234, 0.84);
+  font-size: 10px;
+  letter-spacing: .08em;
 }
 
 .game-canvas-shell {
@@ -2667,8 +2635,10 @@ canvas {
   content: "";
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(-22deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 13px);
-  opacity: .55;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(9, 15, 22, 0.08), rgba(6, 10, 16, 0.5) 70%),
+    linear-gradient(180deg, rgba(4, 7, 11, 0.24), rgba(3, 6, 10, 0.45));
+  opacity: .9;
 }
 .city-stitch__classified-overlay--chip {
   place-items: start center;
