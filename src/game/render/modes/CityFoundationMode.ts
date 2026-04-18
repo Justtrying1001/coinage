@@ -103,7 +103,6 @@ export class CityFoundationMode implements RenderModeController {
   private sideNav: HTMLElement | null = null;
   private mainCanvas: HTMLElement | null = null;
   private detailPanel: HTMLElement | null = null;
-  private bottomBar: HTMLElement | null = null;
 
   private selectedBuildingId: EconomyBuildingId = 'hq';
   private activeSection: LocalCitySection = 'command';
@@ -125,7 +124,7 @@ export class CityFoundationMode implements RenderModeController {
     this.context.host.innerHTML = '';
     const root = document.createElement('section');
     root.className = 'city-stitch';
-    root.append(this.createTopBar(), this.createSideNav(), this.createMainCanvas(), this.createDetailPanel(), this.createBottomBar());
+    root.append(this.createTopBar(), this.createSideNav(), this.createMainCanvas(), this.createDetailPanel());
     this.context.host.append(root);
     this.root = root;
     this.renderAll();
@@ -184,20 +183,12 @@ export class CityFoundationMode implements RenderModeController {
     return panel;
   }
 
-  private createBottomBar() {
-    const bar = document.createElement('footer');
-    bar.className = 'city-stitch__bottom';
-    this.bottomBar = bar;
-    return bar;
-  }
-
   private renderAll() {
     this.refreshFromPersistence();
     this.renderTopBar();
     this.renderSideNav();
     this.renderMainCanvas();
     this.renderDetailPanel();
-    this.renderBottomBar();
     this.renderClassifiedOverlays();
   }
 
@@ -220,37 +211,50 @@ export class CityFoundationMode implements RenderModeController {
     );
 
     this.topBar.innerHTML = '';
+    const activeSectionLabel = LOCAL_SECTIONS.find((section) => section.id === this.activeSection)?.label ?? 'Command';
 
-    const left = document.createElement('div');
-    left.className = 'city-stitch__brand';
-    left.innerHTML = '<p class="city-stitch__overline">Sector command</p><span class="city-stitch__logo">COINAGE</span>';
+    const leftCluster = document.createElement('div');
+    leftCluster.className = 'city-stitch__hud-cluster city-stitch__hud-cluster--brand';
+    leftCluster.innerHTML = `<p class="city-stitch__overline">Sector command</p>
+      <p class="city-stitch__logo">COINAGE</p>
+      <p class="city-stitch__hud-muted">Sector 07 · ${activeSectionLabel}</p>`;
+
+    const contextAnchor = document.createElement('div');
+    contextAnchor.className = 'city-stitch__hud-cluster city-stitch__hud-cluster--context';
+    contextAnchor.innerHTML = `<p class="city-stitch__overline">Local context</p>
+      <p class="city-stitch__hud-context-title">${activeSectionLabel} branch</p>
+      <p class="city-stitch__hud-muted">${getBuildingConfig(this.selectedBuildingId).name} focus · Queue ${this.state.economy.queue.length}/${QUEUE_CAP}</p>`;
 
     const resources = document.createElement('div');
-    resources.className = 'city-stitch__resource-strip';
+    resources.className = 'city-stitch__hud-cluster city-stitch__hud-cluster--resources';
     (Object.keys(RESOURCE_LABELS) as EconomyResource[]).forEach((resource) => {
       const item = document.createElement('article');
-      item.className = 'city-stitch__resource';
+      item.className = 'city-stitch__resource city-stitch__resource--compact';
       item.innerHTML = `<p class="city-stitch__resource-name">${RESOURCE_LABELS[resource]}</p>
       <p class="city-stitch__resource-amount city-stitch__metric">${Math.floor(this.state.economy.resources[resource]).toLocaleString()}</p>
       <p class="city-stitch__resource-rate city-stitch__metric">+${Math.round(production[resource]).toLocaleString()}/h</p>`;
       resources.append(item);
     });
+    const meta = document.createElement('article');
+    meta.className = 'city-stitch__resource city-stitch__resource--compact city-stitch__resource--meta';
+    meta.innerHTML = `<p class="city-stitch__resource-name">Population</p>
+      <p class="city-stitch__resource-amount city-stitch__metric">${pop.used.toLocaleString()} / ${pop.cap.toLocaleString()}</p>
+      <p class="city-stitch__resource-rate city-stitch__metric">Storage ${storagePct.toFixed(1)}%</p>`;
+    resources.append(meta);
 
-    const right = document.createElement('div');
-    right.className = 'city-stitch__meta';
-    right.innerHTML = `<p class="city-stitch__meta-row"><span>Population</span><strong class="city-stitch__metric">${pop.used.toLocaleString()} / ${pop.cap.toLocaleString()}</strong></p>
-      <p class="city-stitch__meta-row"><span>Storage</span><strong class="city-stitch__metric">${storagePct.toFixed(1)}%</strong></p>
-      <div class="city-stitch__storage-bar"><span style="width:${storagePct.toFixed(1)}%"></span></div>`;
+    const queueModule = document.createElement('div');
+    queueModule.className = 'city-stitch__hud-cluster city-stitch__hud-cluster--queue';
+    queueModule.append(this.createTopQueueModule());
 
     const controls = document.createElement('div');
-    controls.className = 'city-stitch__top-controls';
+    controls.className = 'city-stitch__hud-cluster city-stitch__hud-cluster--controls';
     controls.append(
       this.makeModeButton('Galaxy', 'galaxy2d', false),
       this.makeModeButton('Planet', 'planet3d', false),
       this.makeModeButton('City', 'city3d', true),
     );
 
-    this.topBar.append(left, resources, right, controls);
+    this.topBar.append(leftCluster, contextAnchor, resources, queueModule, controls);
   }
 
   private renderSideNav() {
@@ -284,7 +288,6 @@ export class CityFoundationMode implements RenderModeController {
         this.activeSection = section.id;
         this.renderMainCanvas();
         this.renderDetailPanel();
-        this.renderBottomBar();
         this.renderClassifiedOverlays();
         this.renderSideNav();
       });
@@ -910,89 +913,29 @@ export class CityFoundationMode implements RenderModeController {
     return panel;
   }
 
-  private renderBottomBar() {
-    if (!this.bottomBar) return;
-    this.bottomBar.innerHTML = '';
+  private createTopQueueModule() {
+    const block = document.createElement('section');
+    block.className = 'city-stitch__top-queue';
+    block.innerHTML = `<p class="city-stitch__queue-title">Construction queue</p>`;
 
-    const queue = document.createElement('div');
-    queue.className = 'city-stitch__queue';
-    queue.innerHTML = '<p class="city-stitch__queue-title">Construction queue</p>';
     const builds = this.state.economy.queue.slice().sort((a, b) => a.endsAtMs - b.endsAtMs);
-    if (builds.length === 0) queue.append(this.createQueueLine('No active build order'));
-    builds.forEach((entry) => {
-      const buildingName = getBuildingConfig(entry.buildingId).name;
-      queue.append(
-        this.createQueueRow({
-          label: `${buildingName} → LVL ${entry.targetLevel}`,
-          meta: formatDuration(Math.max(0, entry.endsAtMs - Date.now())),
-          progressPct: progressFromTimes(entry.startedAtMs, entry.endsAtMs, Date.now()),
-          tone: 'cyan',
-        }),
-      );
-    });
-
-    const ops = document.createElement('div');
-    ops.className = 'city-stitch__queue';
-    ops.innerHTML = '<p class="city-stitch__queue-title">Operations</p>';
-    if (this.state.economy.trainingQueue.length === 0) {
-      ops.append(this.createQueueLine('Training: idle'));
-    } else {
-      const firstTraining = this.state.economy.trainingQueue.slice().sort((a, b) => a.endsAtMs - b.endsAtMs)[0];
-      const troop = CITY_ECONOMY_CONFIG.troops[firstTraining.troopId];
-      ops.append(
-        this.createQueueRow({
-          label: `Training · ${troop.name} x${firstTraining.quantity}`,
-          meta: formatDuration(Math.max(0, firstTraining.endsAtMs - Date.now())),
-          progressPct: progressFromTimes(firstTraining.startedAtMs, firstTraining.endsAtMs, Date.now()),
-          tone: 'ok',
-        }),
-      );
-    }
-    if (this.state.economy.researchQueue.length === 0) {
-      ops.append(this.createQueueLine('Research: idle'));
-    } else {
-      const firstResearch = this.state.economy.researchQueue[0];
-      const research = CITY_ECONOMY_CONFIG.research[firstResearch.researchId];
-      ops.append(
-        this.createQueueRow({
-          label: `Research · ${research.name}`,
-          meta: formatDuration(Math.max(0, firstResearch.endsAtMs - Date.now())),
-          progressPct: progressFromTimes(firstResearch.startedAtMs, firstResearch.endsAtMs, Date.now()),
-          tone: 'brass',
-        }),
-      );
-    }
-    if (this.state.economy.intelProjects.length === 0) {
-      ops.append(this.createQueueLine('Intel: idle'));
-    } else {
-      const firstIntel = this.state.economy.intelProjects.slice().sort((a, b) => a.endsAtMs - b.endsAtMs)[0];
-      const label = INTEL_PROJECT_LABELS[firstIntel.projectType];
-      ops.append(
-        this.createQueueRow({
-          label: `Intel · ${label}`,
-          meta: formatDuration(Math.max(0, firstIntel.endsAtMs - Date.now())),
-          progressPct: progressFromTimes(firstIntel.startedAtMs, firstIntel.endsAtMs, Date.now()),
-          tone: 'cyan',
-        }),
-      );
+    if (builds.length === 0) {
+      block.append(this.createQueueLine(`Queue: 0/${QUEUE_CAP} · idle`));
+      return block;
     }
 
-    const status = document.createElement('div');
-    status.className = 'city-stitch__queue';
-    const queuePressure = Math.round((this.state.economy.queue.length / Math.max(1, QUEUE_CAP)) * 100);
-    status.innerHTML = `<p class="city-stitch__queue-title">Runtime status</p>
-      <p class="city-stitch__queue-line">Queue: ${this.state.economy.queue.length}/${QUEUE_CAP}</p>
-      <p class="city-stitch__queue-line">MVP MICRO only · premium/wallet/special disabled</p>`;
-    status.append(
+    const current = builds[0];
+    const buildingName = getBuildingConfig(current.buildingId).name;
+    block.append(
       this.createQueueRow({
-        label: 'Queue pressure',
-        meta: `${queuePressure}%`,
-        progressPct: queuePressure,
-        tone: queuePressure >= 90 ? 'warn' : 'cyan',
+        label: `${buildingName} → LVL ${current.targetLevel}`,
+        meta: formatDuration(Math.max(0, current.endsAtMs - Date.now())),
+        progressPct: progressFromTimes(current.startedAtMs, current.endsAtMs, Date.now()),
+        tone: 'cyan',
       }),
+      this.createQueueLine(`Queue: ${builds.length}/${QUEUE_CAP}`),
     );
-
-    this.bottomBar.append(queue, ops, status);
+    return block;
   }
 
   private isClassifiedBranch(section: LocalCitySection) {
@@ -1003,15 +946,11 @@ export class CityFoundationMode implements RenderModeController {
     const isClassifiedBranch = this.isClassifiedBranch(this.activeSection);
     this.syncOverlay(this.mainCanvas, isClassifiedBranch, {
       title: 'CLASSIFIED',
-      subtitle: 'Branch access restricted · Gameplay loop not yet deployed',
+      subtitle: 'DOSSIER SEALED',
     });
     this.syncOverlay(this.detailPanel, isClassifiedBranch, {
       title: 'CLASSIFIED',
-      subtitle: 'Tactical dossier withheld',
-    });
-    this.syncOverlay(this.bottomBar, isClassifiedBranch, {
-      title: 'CLASSIFIED',
-      subtitle: 'Operational feed hidden',
+      subtitle: 'GAMEPLAY LOOP NOT YET ONLINE',
     });
   }
 

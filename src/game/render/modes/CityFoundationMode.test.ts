@@ -81,21 +81,19 @@ describe('CityFoundationMode stitch IA responsibilities', () => {
     const main = host.querySelector<HTMLElement>('.city-stitch__main');
     const right = host.querySelector<HTMLElement>('.city-stitch__right');
     const bottom = host.querySelector<HTMLElement>('.city-stitch__bottom');
+    expect(bottom).toBeNull();
     expect(main?.classList.contains('is-classified')).toBe(false);
     expect(right?.classList.contains('is-classified')).toBe(false);
-    expect(bottom?.classList.contains('is-classified')).toBe(false);
 
     host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Research"]')?.click();
     expect(main?.classList.contains('is-classified')).toBe(true);
     expect(right?.classList.contains('is-classified')).toBe(true);
-    expect(bottom?.classList.contains('is-classified')).toBe(true);
-    expect(host.querySelectorAll('.city-stitch__classified-overlay').length).toBe(3);
+    expect(host.querySelectorAll('.city-stitch__classified-overlay').length).toBe(2);
     expect(host.textContent).toContain('CLASSIFIED');
 
     host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Defense"]')?.click();
     expect(main?.classList.contains('is-classified')).toBe(false);
     expect(right?.classList.contains('is-classified')).toBe(false);
-    expect(bottom?.classList.contains('is-classified')).toBe(false);
 
     mode.destroy();
     host.remove();
@@ -116,7 +114,7 @@ describe('CityFoundationMode stitch IA responsibilities', () => {
     host.querySelector<HTMLButtonElement>('.city-stitch__detail-block .city-stitch__line-btn')?.click();
 
     const text = host.textContent ?? '';
-    expect(text).toContain('Queue: 2/2');
+    expect(text).toContain('Queue 2/2');
     expect(text).toContain('Queue full (2/2)');
 
     mode.destroy();
