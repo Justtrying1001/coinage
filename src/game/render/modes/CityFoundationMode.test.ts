@@ -114,7 +114,7 @@ describe('CityFoundationMode stitch IA responsibilities', () => {
     host.querySelector<HTMLButtonElement>('.city-stitch__detail-block .city-stitch__line-btn')?.click();
 
     const text = host.textContent ?? '';
-    expect(text).toContain('Queue 2/2');
+    expect(text).toMatch(/Queue:? 2\/2/);
     expect(text).toContain('Queue full (2/2)');
 
     mode.destroy();

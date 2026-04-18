@@ -213,20 +213,23 @@ export class CityFoundationMode implements RenderModeController {
     this.topBar.innerHTML = '';
     const activeSectionLabel = LOCAL_SECTIONS.find((section) => section.id === this.activeSection)?.label ?? 'Command';
 
-    const leftCluster = document.createElement('div');
-    leftCluster.className = 'city-stitch__hud-cluster city-stitch__hud-cluster--brand';
+    const frame = document.createElement('div');
+    frame.className = 'city-stitch__hud-frame';
+
+    const leftCluster = document.createElement('section');
+    leftCluster.className = 'city-stitch__hud-segment city-stitch__hud-segment--brand';
     leftCluster.innerHTML = `<p class="city-stitch__overline">Sector command</p>
       <p class="city-stitch__logo">COINAGE</p>
       <p class="city-stitch__hud-muted">Sector 07 · ${activeSectionLabel}</p>`;
 
-    const contextAnchor = document.createElement('div');
-    contextAnchor.className = 'city-stitch__hud-cluster city-stitch__hud-cluster--context';
+    const contextAnchor = document.createElement('section');
+    contextAnchor.className = 'city-stitch__hud-segment city-stitch__hud-segment--context';
     contextAnchor.innerHTML = `<p class="city-stitch__overline">Local context</p>
       <p class="city-stitch__hud-context-title">${activeSectionLabel} branch</p>
       <p class="city-stitch__hud-muted">${getBuildingConfig(this.selectedBuildingId).name} focus · Queue ${this.state.economy.queue.length}/${QUEUE_CAP}</p>`;
 
-    const resources = document.createElement('div');
-    resources.className = 'city-stitch__hud-cluster city-stitch__hud-cluster--resources';
+    const resources = document.createElement('section');
+    resources.className = 'city-stitch__hud-segment city-stitch__hud-segment--resources';
     (Object.keys(RESOURCE_LABELS) as EconomyResource[]).forEach((resource) => {
       const item = document.createElement('article');
       item.className = 'city-stitch__resource city-stitch__resource--compact';
@@ -242,19 +245,20 @@ export class CityFoundationMode implements RenderModeController {
       <p class="city-stitch__resource-rate city-stitch__metric">Storage ${storagePct.toFixed(1)}%</p>`;
     resources.append(meta);
 
-    const queueModule = document.createElement('div');
-    queueModule.className = 'city-stitch__hud-cluster city-stitch__hud-cluster--queue';
+    const queueModule = document.createElement('section');
+    queueModule.className = 'city-stitch__hud-segment city-stitch__hud-segment--queue';
     queueModule.append(this.createTopQueueModule());
 
-    const controls = document.createElement('div');
-    controls.className = 'city-stitch__hud-cluster city-stitch__hud-cluster--controls';
+    const controls = document.createElement('section');
+    controls.className = 'city-stitch__hud-segment city-stitch__hud-segment--controls';
     controls.append(
       this.makeModeButton('Galaxy', 'galaxy2d', false),
       this.makeModeButton('Planet', 'planet3d', false),
       this.makeModeButton('City', 'city3d', true),
     );
 
-    this.topBar.append(leftCluster, contextAnchor, resources, queueModule, controls);
+    frame.append(leftCluster, contextAnchor, resources, queueModule, controls);
+    this.topBar.append(frame);
   }
 
   private renderSideNav() {
@@ -946,15 +950,17 @@ export class CityFoundationMode implements RenderModeController {
     const isClassifiedBranch = this.isClassifiedBranch(this.activeSection);
     this.syncOverlay(this.mainCanvas, isClassifiedBranch, {
       title: 'CLASSIFIED',
-      subtitle: 'DOSSIER SEALED',
+      subtitle: 'ACCESS WITHHELD',
+      variant: 'panel',
     });
     this.syncOverlay(this.detailPanel, isClassifiedBranch, {
       title: 'CLASSIFIED',
-      subtitle: 'GAMEPLAY LOOP NOT YET ONLINE',
+      subtitle: 'TACTICAL FILE SEALED',
+      variant: 'chip',
     });
   }
 
-  private syncOverlay(target: HTMLElement | null, active: boolean, content: { title: string; subtitle: string }) {
+  private syncOverlay(target: HTMLElement | null, active: boolean, content: { title: string; subtitle: string; variant: 'panel' | 'chip' }) {
     if (!target) return;
     target.classList.toggle('is-classified', active);
     const current = target.querySelector<HTMLElement>(':scope > .city-stitch__classified-overlay');
@@ -966,11 +972,15 @@ export class CityFoundationMode implements RenderModeController {
     if (current) return;
 
     const overlay = document.createElement('section');
-    overlay.className = 'city-stitch__classified-overlay';
-    overlay.innerHTML = `<div class="city-stitch__classified-card">
-      <p class="city-stitch__classified-title">${content.title}</p>
-      <p class="city-stitch__classified-subtitle">${content.subtitle}</p>
-    </div>`;
+    overlay.className = `city-stitch__classified-overlay city-stitch__classified-overlay--${content.variant}`;
+    if (content.variant === 'chip') {
+      overlay.innerHTML = `<div class="city-stitch__classified-chip">${content.title} · ${content.subtitle}</div>`;
+    } else {
+      overlay.innerHTML = `<div class="city-stitch__classified-card">
+        <p class="city-stitch__classified-title">${content.title}</p>
+        <p class="city-stitch__classified-subtitle">${content.subtitle}</p>
+      </div>`;
+    }
     target.append(overlay);
   }
 
