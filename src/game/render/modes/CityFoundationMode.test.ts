@@ -38,6 +38,9 @@ describe('CityFoundationMode stitch IA responsibilities', () => {
     ['Command', 'Economy', 'Military', 'Defense', 'Research', 'Intelligence', 'Governance', 'Market'].forEach((section) => {
       expect(host.textContent).toContain(section);
     });
+    ['payments', 'military_tech', 'shield', 'science', 'visibility', 'account_balance', 'currency_exchange'].forEach((technicalLabel) => {
+      expect(host.textContent).not.toContain(technicalLabel);
+    });
     expect(host.textContent).not.toContain('Token');
     expect(host.textContent).not.toContain('Logistics');
 

@@ -1930,7 +1930,6 @@ canvas {
   font-family: Manrope, system-ui, sans-serif;
   overflow: hidden;
 }
-.city-stitch .material-symbols-outlined { font-size: 18px; }
 .city-stitch__top {
   position: absolute;
   top: 0;
@@ -1957,8 +1956,24 @@ canvas {
 .city-stitch__meta-row { font-size: 10px; letter-spacing: 0.09em; text-align: right; color: #d0c5af; }
 .city-stitch__storage-bar { height: 4px; background: #31353c; margin-top: 4px; }
 .city-stitch__storage-bar span { display: block; height: 100%; background: #f2ca50; }
-.city-stitch__top-controls { display: flex; gap: 4px; }
-.city-stitch__top-btn { border: 1px solid rgba(77, 70, 53, 0.35); background: #181c22; color: #d0c5af; width: 30px; height: 30px; }
+.city-stitch__top-controls { display: flex; gap: 4px; align-items: center; }
+.city-stitch__top-btn {
+  border: 1px solid rgba(77, 70, 53, 0.35);
+  background: #181c22;
+  color: #d0c5af;
+  min-width: 58px;
+  height: 30px;
+  padding: 0 10px;
+  font: 700 10px 'Space Grotesk', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.city-stitch__top-btn.is-active {
+  border-color: rgba(242, 202, 80, 0.55);
+  color: #f2ca50;
+  background: #1c2026;
+}
+.city-stitch__top-btn:disabled { opacity: 1; cursor: default; }
 
 .city-stitch__side {
   position: absolute;
@@ -1974,8 +1989,19 @@ canvas {
 .city-stitch__sector { color: #f2ca50; font: 700 9px 'Space Grotesk', sans-serif; letter-spacing: 0.16em; text-transform: uppercase; text-align: center; margin-bottom: 10px; }
 .city-stitch__nav { display: flex; flex-direction: column; gap: 2px; }
 .city-stitch__nav-btn { border: none; background: transparent; color: rgba(223, 226, 235, 0.65); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px; min-height: 56px; }
-.city-stitch__nav-btn span:last-child { font-size: 8px; letter-spacing: 0.1em; max-width: 72px; text-align: center; line-height: 1.1; }
+.city-stitch__nav-icon {
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(77, 70, 53, 0.38);
+  background: #181c22;
+  display: grid;
+  place-items: center;
+  font: 700 9px 'Space Grotesk', sans-serif;
+  letter-spacing: 0.02em;
+}
+.city-stitch__nav-label { font-size: 8px; letter-spacing: 0.1em; max-width: 72px; text-align: center; line-height: 1.1; }
 .city-stitch__nav-btn.is-active { color: #f2ca50; border-left: 2px solid #f2ca50; background: #1c2026; }
+.city-stitch__nav-btn.is-active .city-stitch__nav-icon { border-color: rgba(242, 202, 80, 0.55); color: #f2ca50; }
 
 .city-stitch__main {
   position: absolute;
@@ -2002,6 +2028,13 @@ canvas {
 .city-stitch__card-image { margin: 8px 0; height: 84px; background: #0a0e14; border: 1px solid rgba(77, 70, 53, 0.25); }
 .city-stitch__card-image img { width: 100%; height: 100%; object-fit: cover; opacity: 0.78; }
 .city-stitch__card-image--empty { display: grid; place-items: center; color: #d0c5af; }
+.city-stitch__fallback-badge {
+  border: 1px solid rgba(77, 70, 53, 0.45);
+  padding: 4px 8px;
+  font: 700 10px 'Space Grotesk', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
 .city-stitch__card-bottom p { font-size: 10px; letter-spacing: 0.07em; color: #d0c5af; }
 
 .city-stitch__tile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }

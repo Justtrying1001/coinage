@@ -84,6 +84,11 @@ const ALL_BUILDINGS = getEconomyBuildingOrder();
 const ECONOMY_BUILDINGS: EconomyBuildingId[] = ['mine', 'quarry', 'refinery', 'warehouse', 'housing_complex'];
 const DEFENSE_BUILDINGS: EconomyBuildingId[] = ['defensive_wall', 'watch_tower'];
 const MARKET_BUILDINGS: EconomyBuildingId[] = ['market', 'warehouse'];
+const INTEL_PROJECT_LABELS: Record<'sweep' | 'network' | 'cipher', string> = {
+  sweep: 'Signal Sweep',
+  network: 'Network Infiltration',
+  cipher: 'Cipher Breach',
+};
 
 export class CityFoundationMode implements RenderModeController {
   readonly id = 'city3d' as const;
@@ -233,8 +238,11 @@ export class CityFoundationMode implements RenderModeController {
 
     const controls = document.createElement('div');
     controls.className = 'city-stitch__top-controls';
-    controls.append(this.makeTopControl('public', () => this.context.onRequestMode('galaxy2d')));
-    controls.append(this.makeTopControl('planet', () => this.context.onRequestMode('planet3d')));
+    controls.append(
+      this.makeModeButton('Galaxy', 'galaxy2d', false),
+      this.makeModeButton('Planet', 'planet3d', false),
+      this.makeModeButton('City', 'city3d', true),
+    );
 
     this.topBar.append(left, resources, right, controls);
   }
@@ -252,7 +260,11 @@ export class CityFoundationMode implements RenderModeController {
       button.className = 'city-stitch__nav-btn';
       if (this.activeSection === section.id) button.classList.add('is-active');
       button.setAttribute('aria-label', section.label);
-      button.innerHTML = `<span class="material-symbols-outlined">${section.icon}</span><span>${section.label}</span>`;
+      const icon = this.createNavIcon(section.icon);
+      const label = document.createElement('span');
+      label.className = 'city-stitch__nav-label';
+      label.textContent = section.label;
+      button.append(icon, label);
       button.addEventListener('click', () => {
         this.activeSection = section.id;
         this.renderMainCanvas();
@@ -351,7 +363,7 @@ export class CityFoundationMode implements RenderModeController {
       const guard = canStartTroopTraining(this.state.economy, troopId, 1);
       const row = document.createElement('div');
       row.className = 'city-stitch__ops-row';
-      row.innerHTML = `<p>${troop.name}</p><p>${guard.ok ? `${troop.trainingSeconds}s` : guard.reason ?? 'Unavailable'}</p><p>${troop.category}</p>`;
+      row.innerHTML = `<p>${troop.name}</p><p>${guard.ok ? `${troop.trainingSeconds}s` : guard.reason ?? 'Unavailable'}</p><p>${troop.category === 'air' ? 'Air' : 'Ground'}</p>`;
       row.append(this.makeActionButton(guard.ok ? 'Train x1' : 'Unavailable', !guard.ok, () => {
         const result = startCityTroopTraining(this.persistenceContext, troopId, 1, Date.now());
         this.state.economy = result.state.economy;
@@ -367,7 +379,10 @@ export class CityFoundationMode implements RenderModeController {
     if (queue.length === 0) {
       feed.append(this.createQueueLine('No active military batch'));
     } else {
-      queue.forEach((entry) => feed.append(this.createQueueLine(`${entry.troopId} x${entry.quantity} · ${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))}`)));
+      queue.forEach((entry) => {
+        const troopName = CITY_ECONOMY_CONFIG.troops[entry.troopId].name;
+        feed.append(this.createQueueLine(`${troopName} x${entry.quantity} · ${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))}`));
+      });
     }
 
     const support = document.createElement('section');
@@ -434,7 +449,10 @@ export class CityFoundationMode implements RenderModeController {
     if (this.state.economy.researchQueue.length === 0) {
       queue.append(this.createQueueLine('No active research node'));
     } else {
-      this.state.economy.researchQueue.forEach((entry) => queue.append(this.createQueueLine(`${entry.researchId} · ${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))}`)));
+      this.state.economy.researchQueue.forEach((entry) => {
+        const researchName = CITY_ECONOMY_CONFIG.research[entry.researchId].name;
+        queue.append(this.createQueueLine(`${researchName} · ${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))}`));
+      });
     }
 
     page.append(list, queue);
@@ -468,9 +486,10 @@ export class CityFoundationMode implements RenderModeController {
     if (this.state.economy.intelProjects.length === 0) {
       active.append(this.createQueueLine('No active intelligence project'));
     } else {
-      this.state.economy.intelProjects.forEach((entry) =>
-        active.append(this.createQueueLine(`${entry.projectType} · +${entry.readinessGain.toFixed(1)} readiness · ${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))}`)),
-      );
+      this.state.economy.intelProjects.forEach((entry) => {
+        const projectLabel = INTEL_PROJECT_LABELS[entry.projectType];
+        active.append(this.createQueueLine(`${projectLabel} · +${entry.readinessGain.toFixed(1)} readiness · ${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))}`));
+      });
     }
 
     page.append(list, active);
@@ -504,7 +523,7 @@ export class CityFoundationMode implements RenderModeController {
     impact.innerHTML = `<h3>Impact panel</h3>
       <div class="city-stitch__ops-row"><p>Authority level</p><p>EXARCH-IV</p><p>Stable</p></div>
       <div class="city-stitch__ops-row"><p>Compliance rate</p><p>${Math.min(99, 70 + getCityDerivedStats(this.state.economy).cityDefensePct * 0.2).toFixed(1)}%</p><p>Monitored</p></div>
-      <div class="city-stitch__ops-row"><p>Active policy</p><p>${this.state.economy.activePolicy ?? 'none'}</p><p>Live</p></div>`;
+      <div class="city-stitch__ops-row"><p>Active policy</p><p>${this.state.economy.activePolicy ? CITY_ECONOMY_CONFIG.policies[this.state.economy.activePolicy].name : 'None'}</p><p>Live</p></div>`;
 
     page.append(list, impact);
     return page;
@@ -602,7 +621,7 @@ export class CityFoundationMode implements RenderModeController {
     const image = BUILDING_ASSETS[buildingId];
     const imageMarkup = image
       ? `<div class="city-stitch__card-image"><img src="${image}" alt="${config.name}"/></div>`
-      : '<div class="city-stitch__card-image city-stitch__card-image--empty"><span class="material-symbols-outlined">domain</span></div>';
+      : '<div class="city-stitch__card-image city-stitch__card-image--empty"><span class="city-stitch__fallback-badge">No Art</span></div>';
 
     card.innerHTML = `<div class="city-stitch__card-top"><p class="city-stitch__card-name">${config.name}</p><p class="city-stitch__card-level">LVL ${level}</p></div>
       ${imageMarkup}
@@ -750,7 +769,10 @@ export class CityFoundationMode implements RenderModeController {
     queue.innerHTML = '<p class="city-stitch__queue-title">Construction queue</p>';
     const builds = this.state.economy.queue.slice().sort((a, b) => a.endsAtMs - b.endsAtMs);
     if (builds.length === 0) queue.append(this.createQueueLine('No active build order'));
-    builds.forEach((entry) => queue.append(this.createQueueLine(`${entry.buildingId} → lv${entry.targetLevel} · ${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))}`)));
+    builds.forEach((entry) => {
+      const buildingName = getBuildingConfig(entry.buildingId).name;
+      queue.append(this.createQueueLine(`${buildingName} → LVL ${entry.targetLevel} · ${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))}`));
+    });
 
     const ops = document.createElement('div');
     ops.className = 'city-stitch__queue';
@@ -768,13 +790,23 @@ export class CityFoundationMode implements RenderModeController {
     this.bottomBar.append(queue, ops, status);
   }
 
-  private makeTopControl(icon: string, onClick: () => void) {
+  private makeModeButton(label: string, mode: 'galaxy2d' | 'planet3d' | 'city3d', active: boolean) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'city-stitch__top-btn material-symbols-outlined';
-    button.textContent = icon;
-    button.addEventListener('click', onClick);
+    button.className = `city-stitch__top-btn${active ? ' is-active' : ''}`;
+    button.textContent = label;
+    button.setAttribute('aria-label', `Open ${label} view`);
+    button.disabled = active;
+    button.addEventListener('click', () => this.context.onRequestMode(mode));
     return button;
+  }
+
+  private createNavIcon(icon: string) {
+    const span = document.createElement('span');
+    span.className = 'city-stitch__nav-icon';
+    span.setAttribute('aria-hidden', 'true');
+    span.textContent = iconToGlyph(icon);
+    return span;
   }
 
   private makeActionButton(label: string, disabled: boolean, onClick: () => void) {
@@ -854,4 +886,16 @@ function formatDuration(durationMs: number) {
   }
   if (minutes <= 0) return `${remainder}s`;
   return `${minutes}m ${remainder.toString().padStart(2, '0')}s`;
+}
+
+function iconToGlyph(icon: string) {
+  if (icon === 'home') return 'CM';
+  if (icon === 'payments') return 'EC';
+  if (icon === 'military_tech') return 'MI';
+  if (icon === 'shield') return 'DF';
+  if (icon === 'science') return 'RS';
+  if (icon === 'visibility') return 'IN';
+  if (icon === 'account_balance') return 'GV';
+  if (icon === 'currency_exchange') return 'MK';
+  return '--';
 }
