@@ -2012,7 +2012,7 @@ canvas {
   width: 100%;
   height: 100%;
   display: grid;
-  grid-template-columns: minmax(150px, .8fr) minmax(230px, 1fr) minmax(290px, 1.15fr) minmax(190px, .9fr) auto;
+  grid-template-columns: 188px minmax(150px, .7fr) minmax(240px, 1fr) minmax(320px, 1.2fr) minmax(180px, .85fr);
   gap: 0;
   border: 1px solid rgba(77, 70, 53, 0.38);
   background: linear-gradient(180deg, rgba(10, 19, 30, 0.9), rgba(6, 12, 20, 0.92));
@@ -2026,6 +2026,14 @@ canvas {
   flex-direction: column;
   gap: 1px;
   justify-content: center;
+}
+.city-stitch__hud-segment--switch {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  padding: 6px;
+  background: linear-gradient(180deg, rgba(9, 18, 29, 0.9), rgba(7, 14, 22, 0.9));
 }
 .city-stitch__hud-segment:last-child {
   border-right: none;
@@ -2059,14 +2067,6 @@ canvas {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
   align-content: center;
-}
-.city-stitch__hud-segment--controls {
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  padding: 6px 8px;
-  background: rgba(8, 18, 28, 0.6);
 }
 .city-stitch__overline {
   margin: 0;
@@ -2105,9 +2105,19 @@ canvas {
   background: linear-gradient(180deg, rgba(10, 24, 39, 0.84), rgba(6, 14, 23, 0.9));
   padding: 4px 6px;
   box-shadow: inset 0 0 0 1px rgba(133, 191, 231, 0.08);
+  position: relative;
 }
 .city-stitch__resource--meta {
   border-color: rgba(243, 216, 165, 0.24);
+}
+.city-stitch__resource-icon {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  margin: 0;
+  color: var(--cg-brass-300);
+  font: 700 8px/1 var(--cg-font-display);
+  letter-spacing: .08em;
 }
 .city-stitch__resource-name,
 .city-stitch__resource-amount,
@@ -2136,6 +2146,18 @@ canvas {
   color: var(--cg-ok);
   font: 600 9px/1 var(--cg-font-mono);
 }
+.city-stitch__resource-fill {
+  margin-top: 3px;
+  height: 3px;
+  border-radius: var(--cg-r-pill);
+  background: rgba(56, 84, 108, 0.45);
+  overflow: hidden;
+}
+.city-stitch__resource-fill span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(242, 202, 80, 0.75), rgba(134, 228, 255, 0.9));
+}
 .city-stitch__metric {
   font-family: var(--cg-font-mono);
   font-variant-numeric: tabular-nums;
@@ -2144,14 +2166,25 @@ canvas {
   border: 1px solid var(--cg-stroke-2);
   background: rgba(9, 25, 39, 0.82);
   color: var(--cg-text-2);
-  min-width: 58px;
-  height: 24px;
-  padding: 0 8px;
-  border-radius: var(--cg-r-pill);
+  min-width: 56px;
+  height: 30px;
+  padding: 2px 6px;
+  border-radius: var(--cg-r-1);
   font: 600 10px/1 var(--cg-font-display);
   text-transform: uppercase;
   letter-spacing: .1em;
   transition: border-color var(--cg-dur-hover) var(--cg-ease-hover), box-shadow var(--cg-dur-hover) var(--cg-ease-hover), color var(--cg-dur-hover) var(--cg-ease-hover);
+  display: grid;
+  place-items: center;
+  gap: 2px;
+}
+.city-stitch__top-btn-glyph {
+  font: 700 10px/1 var(--cg-font-display);
+  letter-spacing: .08em;
+}
+.city-stitch__top-btn-label {
+  font: 600 7px/1 var(--cg-font-display);
+  letter-spacing: .08em;
 }
 .city-stitch__top-btn.is-active {
   border-color: var(--cg-stroke-brass);
@@ -2755,8 +2788,8 @@ canvas {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-rows: repeat(3, auto);
   }
-  .city-stitch__hud-segment--brand,
-  .city-stitch__hud-segment--controls {
+  .city-stitch__hud-segment--switch,
+  .city-stitch__hud-segment--brand {
     grid-column: 1 / -1;
   }
   .city-stitch__main {

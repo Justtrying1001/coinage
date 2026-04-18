@@ -63,6 +63,11 @@ const RESOURCE_LABELS: Record<EconomyResource, string> = {
   stone: 'Stone',
   iron: 'Iron',
 };
+const RESOURCE_GLYPHS: Record<EconomyResource, string> = {
+  ore: 'OR',
+  stone: 'ST',
+  iron: 'IR',
+};
 
 const BUILDING_ASSETS: Partial<Record<EconomyBuildingId, string>> = {
   hq: '/assets/HQ.png',
@@ -216,6 +221,14 @@ export class CityFoundationMode implements RenderModeController {
     const frame = document.createElement('div');
     frame.className = 'city-stitch__hud-frame';
 
+    const switchCluster = document.createElement('section');
+    switchCluster.className = 'city-stitch__hud-segment city-stitch__hud-segment--switch';
+    switchCluster.append(
+      this.makeModeButton('Galaxy', 'galaxy2d', false),
+      this.makeModeButton('Planet', 'planet3d', false),
+      this.makeModeButton('City', 'city3d', true),
+    );
+
     const leftCluster = document.createElement('section');
     leftCluster.className = 'city-stitch__hud-segment city-stitch__hud-segment--brand';
     leftCluster.innerHTML = `<p class="city-stitch__overline">Sector command</p>
@@ -233,9 +246,12 @@ export class CityFoundationMode implements RenderModeController {
     (Object.keys(RESOURCE_LABELS) as EconomyResource[]).forEach((resource) => {
       const item = document.createElement('article');
       item.className = 'city-stitch__resource city-stitch__resource--compact';
+      const resourcePct = Math.max(0, Math.min(100, (this.state.economy.resources[resource] / Math.max(1, storage[resource])) * 100));
       item.innerHTML = `<p class="city-stitch__resource-name">${RESOURCE_LABELS[resource]}</p>
+      <p class="city-stitch__resource-icon">${RESOURCE_GLYPHS[resource]}</p>
       <p class="city-stitch__resource-amount city-stitch__metric">${Math.floor(this.state.economy.resources[resource]).toLocaleString()}</p>
-      <p class="city-stitch__resource-rate city-stitch__metric">+${Math.round(production[resource]).toLocaleString()}/h</p>`;
+      <p class="city-stitch__resource-rate city-stitch__metric">+${Math.round(production[resource]).toLocaleString()}/h</p>
+      <div class="city-stitch__resource-fill"><span style="width:${resourcePct.toFixed(1)}%"></span></div>`;
       resources.append(item);
     });
     const meta = document.createElement('article');
@@ -249,15 +265,7 @@ export class CityFoundationMode implements RenderModeController {
     queueModule.className = 'city-stitch__hud-segment city-stitch__hud-segment--queue';
     queueModule.append(this.createTopQueueModule());
 
-    const controls = document.createElement('section');
-    controls.className = 'city-stitch__hud-segment city-stitch__hud-segment--controls';
-    controls.append(
-      this.makeModeButton('Galaxy', 'galaxy2d', false),
-      this.makeModeButton('Planet', 'planet3d', false),
-      this.makeModeButton('City', 'city3d', true),
-    );
-
-    frame.append(leftCluster, contextAnchor, resources, queueModule, controls);
+    frame.append(switchCluster, leftCluster, contextAnchor, resources, queueModule);
     this.topBar.append(frame);
   }
 
@@ -988,7 +996,7 @@ export class CityFoundationMode implements RenderModeController {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `city-stitch__top-btn${active ? ' is-active' : ''}`;
-    button.textContent = label;
+    button.innerHTML = `<span class="city-stitch__top-btn-glyph">${modeToGlyph(mode)}</span><span class="city-stitch__top-btn-label">${label}</span>`;
     button.setAttribute('aria-label', `Open ${label} view`);
     button.disabled = active;
     button.addEventListener('click', () => this.context.onRequestMode(mode));
@@ -1117,4 +1125,10 @@ function iconToGlyph(icon: string) {
   if (icon === 'account_balance') return 'GV';
   if (icon === 'currency_exchange') return 'MK';
   return '--';
+}
+
+function modeToGlyph(mode: 'galaxy2d' | 'planet3d' | 'city3d') {
+  if (mode === 'galaxy2d') return 'GX';
+  if (mode === 'planet3d') return 'PL';
+  return 'CT';
 }
