@@ -46,6 +46,7 @@ interface CityState {
 type LocalCitySection = 'command' | 'economy' | 'military' | 'defense' | 'research' | 'intelligence' | 'governance' | 'market';
 
 const QUEUE_CAP = getConstructionQueueSlots();
+const CLASSIFIED_BRANCHES = new Set<LocalCitySection>(['governance', 'intelligence', 'market', 'research']);
 const LOCAL_SECTIONS: Array<{ id: LocalCitySection; label: string; icon: string }> = [
   { id: 'command', label: 'Command', icon: 'home' },
   { id: 'economy', label: 'Economy', icon: 'payments' },
@@ -197,6 +198,7 @@ export class CityFoundationMode implements RenderModeController {
     this.renderMainCanvas();
     this.renderDetailPanel();
     this.renderBottomBar();
+    this.renderClassifiedOverlays();
   }
 
   private renderTopBar() {
@@ -272,10 +274,18 @@ export class CityFoundationMode implements RenderModeController {
       subLabel.className = 'city-stitch__nav-sub';
       subLabel.textContent = this.getSectionSubLabel(section.id);
       button.append(icon, label, subLabel);
+      if (CLASSIFIED_BRANCHES.has(section.id)) {
+        const lock = document.createElement('span');
+        lock.className = 'city-stitch__nav-lock';
+        lock.textContent = 'Classified';
+        button.append(lock);
+      }
       button.addEventListener('click', () => {
         this.activeSection = section.id;
         this.renderMainCanvas();
         this.renderDetailPanel();
+        this.renderBottomBar();
+        this.renderClassifiedOverlays();
         this.renderSideNav();
       });
       nav.append(button);
@@ -983,6 +993,46 @@ export class CityFoundationMode implements RenderModeController {
     );
 
     this.bottomBar.append(queue, ops, status);
+  }
+
+  private isClassifiedBranch(section: LocalCitySection) {
+    return CLASSIFIED_BRANCHES.has(section);
+  }
+
+  private renderClassifiedOverlays() {
+    const isClassifiedBranch = this.isClassifiedBranch(this.activeSection);
+    this.syncOverlay(this.mainCanvas, isClassifiedBranch, {
+      title: 'CLASSIFIED',
+      subtitle: 'Branch access restricted · Gameplay loop not yet deployed',
+    });
+    this.syncOverlay(this.detailPanel, isClassifiedBranch, {
+      title: 'CLASSIFIED',
+      subtitle: 'Tactical dossier withheld',
+    });
+    this.syncOverlay(this.bottomBar, isClassifiedBranch, {
+      title: 'CLASSIFIED',
+      subtitle: 'Operational feed hidden',
+    });
+  }
+
+  private syncOverlay(target: HTMLElement | null, active: boolean, content: { title: string; subtitle: string }) {
+    if (!target) return;
+    target.classList.toggle('is-classified', active);
+    const current = target.querySelector<HTMLElement>(':scope > .city-stitch__classified-overlay');
+    if (!active) {
+      current?.remove();
+      return;
+    }
+
+    if (current) return;
+
+    const overlay = document.createElement('section');
+    overlay.className = 'city-stitch__classified-overlay';
+    overlay.innerHTML = `<div class="city-stitch__classified-card">
+      <p class="city-stitch__classified-title">${content.title}</p>
+      <p class="city-stitch__classified-subtitle">${content.subtitle}</p>
+    </div>`;
+    target.append(overlay);
   }
 
   private makeModeButton(label: string, mode: 'galaxy2d' | 'planet3d' | 'city3d', active: boolean) {
