@@ -483,7 +483,7 @@ export class CityFoundationMode implements RenderModeController {
         this.state.economy = result.state.economy;
         this.renderAll();
       }));
-      rosterGrid.append(card);
+      rosterGrid.append(row);
     });
     roster.append(rosterGrid);
 
@@ -993,6 +993,7 @@ export class CityFoundationMode implements RenderModeController {
     });
   }
 
+  private createOperationsModule() {
     const ops = document.createElement('div');
     ops.className = 'city-stitch__queue';
     ops.innerHTML = `<p class="city-stitch__queue-title">Operations</p>
@@ -1000,6 +1001,20 @@ export class CityFoundationMode implements RenderModeController {
       <p class="city-stitch__queue-line">Research: ${this.state.economy.researchQueue.length}</p>
       <p class="city-stitch__queue-line">Intel: ${this.state.economy.intelProjects.length}</p>
       <p class="city-stitch__queue-line">Militia: ${isMilitiaActive(this.state.economy) ? `ACTIVE (${this.state.economy.militia.currentMilitia})` : 'Inactive'}</p>`;
+    return ops;
+  }
+
+  private syncOverlay(
+    target: HTMLElement | null,
+    showOverlay: boolean,
+    content: { title: string; subtitle: string; variant: 'panel' | 'chip' },
+  ) {
+    if (!target) return;
+    const current = target.querySelector('.city-stitch__classified-overlay');
+    if (!showOverlay) {
+      if (current) current.remove();
+      return;
+    }
 
     if (current) return;
 
