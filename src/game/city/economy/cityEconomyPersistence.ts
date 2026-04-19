@@ -21,7 +21,7 @@ import {
   type CityEconomyState,
   type GuardResult,
 } from '@/game/city/economy/cityEconomySystem';
-import { STANDARD_BUILDING_ORDER, type EconomyBuildingId, type LocalPolicyId, type ResearchId, type TroopId } from '@/game/city/economy/cityEconomyConfig';
+import { CITY_ECONOMY_CONFIG, STANDARD_BUILDING_ORDER, type EconomyBuildingId, type LocalPolicyId, type ResearchId, type TroopId } from '@/game/city/economy/cityEconomyConfig';
 
 const STORAGE_KEY = 'coinage.mvp.cityEconomy.v2';
 
@@ -143,6 +143,12 @@ function toEconomyState(record: PersistedCityEconomyRecord): CityEconomyState {
     }
   });
 
+  const validResearchIds = new Set(Object.keys(CITY_ECONOMY_CONFIG.research) as ResearchId[]);
+  const coerceResearchId = (rawId: string) => {
+    const mapped = (LEGACY_RESEARCH_ID_MAP[rawId] ?? rawId) as ResearchId;
+    return validResearchIds.has(mapped) ? mapped : null;
+  };
+
   return {
     cityId: record.cityId,
     owner: record.ownerId,
@@ -153,8 +159,14 @@ function toEconomyState(record: PersistedCityEconomyRecord): CityEconomyState {
       .map((item) => ({ ...item, costPaid: { ...item.costPaid } })),
     troops: { ...record.troops },
     trainingQueue: record.trainingQueue.map((item) => ({ ...item, costPaid: { ...item.costPaid } })),
-    researchQueue: (record.researchQueue ?? []).map((item) => ({ ...item, costPaid: { ...item.costPaid } })),
-    completedResearch: [...(record.completedResearch ?? [])],
+    researchQueue: (record.researchQueue ?? [])
+      .map((item) => {
+        const normalizedId = coerceResearchId(item.researchId);
+        if (!normalizedId) return null;
+        return { ...item, researchId: normalizedId, costPaid: { ...item.costPaid } };
+      })
+      .filter((item): item is CityEconomyState['researchQueue'][number] => Boolean(item)),
+    completedResearch: [...new Set((record.completedResearch ?? []).map((id) => coerceResearchId(id)).filter((id): id is ResearchId => Boolean(id)))],
     activePolicy: record.activePolicy ?? null,
     militia: { ...defaults.militia, ...(record.militia ?? {}) },
     intelReadiness: record.intelReadiness ?? 0,

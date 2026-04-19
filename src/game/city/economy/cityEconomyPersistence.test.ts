@@ -129,7 +129,7 @@ describe('cityEconomyPersistence MVP MICRO flow', () => {
     const training = startCityTroopTraining(context, 'infantry', 1, 3_000);
     expect(training.guard.ok).toBe(false);
 
-    const research = startCityResearch(context, 'economy_drills', 3_000);
+    const research = startCityResearch(context, 'diplomacy', 3_000);
     expect(research.guard.ok).toBe(false);
 
     const intel = startCityIntelProject(context, 'sweep', 3_000);
