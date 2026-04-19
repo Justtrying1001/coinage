@@ -2414,6 +2414,10 @@ canvas {
   letter-spacing: 0.08em;
 }
 .city-stitch__card-bottom p { color: var(--cg-text-3); font: 600 10px/1.3 var(--cg-font-display); letter-spacing: .08em; }
+.city-stitch__state--ok { color: var(--cg-ok) !important; }
+.city-stitch__state--warn { color: #ffcf8f !important; }
+.city-stitch__state--locked { color: #ff9e9e !important; }
+.city-stitch__state--muted { color: var(--cg-text-4) !important; }
 
 .city-stitch__tile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
 .city-stitch__tile {
@@ -2535,7 +2539,10 @@ canvas {
   background: rgba(7, 16, 26, 0.78);
 }
 .city-stitch__directive-card.is-active,
-.city-stitch__node-card.is-complete {
+.city-stitch__node-card.is-complete,
+.city-stitch__unit-card.is-active,
+.city-stitch__node-card.is-active,
+.city-stitch__intel-card.is-active {
   border-color: var(--cg-stroke-brass);
   box-shadow: 0 0 0 1px rgba(243, 216, 165, 0.2) inset;
 }

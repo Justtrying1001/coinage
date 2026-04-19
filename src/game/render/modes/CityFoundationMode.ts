@@ -47,6 +47,15 @@ import {
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
 import type { PlanetArchetype, SelectedPlanetRef } from '@/game/render/types';
 import { planetProfileFromSeed } from '@/game/world/galaxyGenerator';
+import {
+  buildingStateLabel,
+  buildingUnlockSummary,
+  formatBundle,
+  formatEffectList,
+  formatPolicyEffects,
+  formatTroopProductionSite,
+  formatTroopStats,
+} from '@/game/render/modes/cityViewUiHelpers';
 
 interface CityState {
   planetId: string;
@@ -58,7 +67,6 @@ interface CityState {
 type LocalCitySection = 'command' | 'economy' | 'military' | 'defense' | 'research' | 'intelligence' | 'governance' | 'market';
 
 const QUEUE_CAP = getConstructionQueueSlots();
-const CLASSIFIED_BRANCHES = new Set<LocalCitySection>(['governance', 'intelligence', 'market', 'research']);
 const LOCAL_SECTIONS: Array<{ id: LocalCitySection; label: string; icon: string }> = [
   { id: 'command', label: 'Command', icon: 'home' },
   { id: 'economy', label: 'Economy', icon: 'payments' },
@@ -122,6 +130,10 @@ export class CityFoundationMode implements RenderModeController {
   private detailPanel: HTMLElement | null = null;
 
   private selectedBuildingId: EconomyBuildingId = 'hq';
+  private selectedTroopId: TroopId | null = null;
+  private selectedResearchId: ResearchId | null = null;
+  private selectedPolicyId: LocalPolicyId | null = null;
+  private selectedIntelProject: 'sweep' | 'network' | 'cipher' | null = null;
   private activeSection: LocalCitySection = 'command';
   private uiAccumulatorMs = 0;
 
@@ -206,7 +218,6 @@ export class CityFoundationMode implements RenderModeController {
     this.renderSideNav();
     this.renderMainCanvas();
     this.renderDetailPanel();
-    this.renderClassifiedOverlays();
   }
 
   private renderTopBar() {
@@ -243,15 +254,15 @@ export class CityFoundationMode implements RenderModeController {
 
     const leftCluster = document.createElement('section');
     leftCluster.className = 'city-stitch__hud-segment city-stitch__hud-segment--brand';
-    leftCluster.innerHTML = `<p class="city-stitch__overline">Sector command</p>
-      <p class="city-stitch__logo">COINAGE</p>
-      <p class="city-stitch__hud-muted">Sector 07 · ${activeSectionLabel}</p>`;
+    leftCluster.innerHTML = `<p class="city-stitch__overline">City</p>
+      <p class="city-stitch__logo">${this.state.planetId.toUpperCase()}</p>
+      <p class="city-stitch__hud-muted">${this.state.owner} · ${this.state.archetype}</p>`;
 
     const contextAnchor = document.createElement('section');
     contextAnchor.className = 'city-stitch__hud-segment city-stitch__hud-segment--context';
-    contextAnchor.innerHTML = `<p class="city-stitch__overline">Local context</p>
-      <p class="city-stitch__hud-context-title">${activeSectionLabel} branch</p>
-      <p class="city-stitch__hud-muted">${getBuildingConfig(this.selectedBuildingId).name} focus · Queue ${this.state.economy.queue.length}/${QUEUE_CAP}</p>`;
+    contextAnchor.innerHTML = `<p class="city-stitch__overline">Selection</p>
+      <p class="city-stitch__hud-context-title">${activeSectionLabel}</p>
+      <p class="city-stitch__hud-muted">${getBuildingConfig(this.selectedBuildingId).name} · Build ${this.state.economy.queue.length}/${QUEUE_CAP} · Train ${this.state.economy.trainingQueue.length} · Intel ${this.state.economy.intelProjects.length}</p>`;
 
     const resources = document.createElement('section');
     resources.className = 'city-stitch__hud-segment city-stitch__hud-segment--resources';
@@ -270,7 +281,7 @@ export class CityFoundationMode implements RenderModeController {
     meta.className = 'city-stitch__resource city-stitch__resource--compact city-stitch__resource--meta';
     meta.innerHTML = `<p class="city-stitch__resource-name">Population</p>
       <p class="city-stitch__resource-amount city-stitch__metric">${pop.used.toLocaleString()} / ${pop.cap.toLocaleString()}</p>
-      <p class="city-stitch__resource-rate city-stitch__metric">Storage ${storagePct.toFixed(1)}%</p>`;
+      <p class="city-stitch__resource-rate city-stitch__metric">Storage ${storagePct.toFixed(1)}% · ${this.getHudAlert()}</p>`;
     resources.append(meta);
 
     const queueModule = document.createElement('section');
@@ -284,7 +295,7 @@ export class CityFoundationMode implements RenderModeController {
   private renderSideNav() {
     if (!this.sideNav) return;
 
-    this.sideNav.innerHTML = '<div class="city-stitch__sector">SECTOR 07</div><div class="city-stitch__sector-sub">Local branches</div>';
+    this.sideNav.innerHTML = '<div class="city-stitch__sector">CITYVIEW</div><div class="city-stitch__sector-sub">Sections</div>';
     const nav = document.createElement('nav');
     nav.className = 'city-stitch__nav';
 
@@ -302,17 +313,14 @@ export class CityFoundationMode implements RenderModeController {
       subLabel.className = 'city-stitch__nav-sub';
       subLabel.textContent = this.getSectionSubLabel(section.id);
       button.append(icon, label, subLabel);
-      if (CLASSIFIED_BRANCHES.has(section.id)) {
-        const lock = document.createElement('span');
-        lock.className = 'city-stitch__nav-lock';
-        lock.textContent = 'Classified';
-        button.append(lock);
-      }
+      const lock = document.createElement('span');
+      lock.className = 'city-stitch__nav-lock';
+      lock.textContent = this.getSectionStatusBadge(section.id);
+      button.append(lock);
       button.addEventListener('click', () => {
         this.activeSection = section.id;
         this.renderMainCanvas();
         this.renderDetailPanel();
-        this.renderClassifiedOverlays();
         this.renderSideNav();
       });
       nav.append(button);
@@ -342,7 +350,7 @@ export class CityFoundationMode implements RenderModeController {
 
   private renderCommandPage() {
     const page = document.createElement('section');
-    page.append(this.createViewHeader('City Command', 'Core infrastructure, tactical buildings, and direct upgrade access.'));
+    page.append(this.createViewHeader('City Command', 'Upgrade buildings and track requirements.'));
     page.append(
       this.createBranchKpis([
         { label: 'Structures', value: `${ALL_BUILDINGS.filter((id) => getBuildingLevel(this.state.economy, id) > 0).length}/${ALL_BUILDINGS.length}` },
@@ -394,7 +402,7 @@ export class CityFoundationMode implements RenderModeController {
 
   private renderEconomyPage() {
     const page = document.createElement('section');
-    page.append(this.createViewHeader('Economic Core', 'Production throughput and extraction monitoring.'));
+    page.append(this.createViewHeader('Economy', 'Production, storage, and population usage.'));
     const production = getProductionPerHour(this.state.economy);
     const storage = getStorageCaps(this.state.economy);
     page.append(
@@ -463,7 +471,7 @@ export class CityFoundationMode implements RenderModeController {
 
   private renderMilitaryPage() {
     const page = document.createElement('section');
-    page.append(this.createViewHeader('Military Sector', 'Unit training and active force projection queue.'));
+    page.append(this.createViewHeader('Military', 'Train units and inspect combat stats.'));
     page.append(
       this.createBranchKpis([
         { label: 'Training queue', value: `${this.state.economy.trainingQueue.length}` },
@@ -482,10 +490,21 @@ export class CityFoundationMode implements RenderModeController {
       const troop = CITY_ECONOMY_CONFIG.troops[troopId];
       if (troop.category === 'militia') return;
       const guard = canStartTroopTraining(this.state.economy, troopId, 1);
-      const row = document.createElement('div');
-      row.className = 'city-stitch__ops-row';
-      row.innerHTML = `<p>${troop.name}</p><p>${guard.ok ? `${troop.trainingSeconds}s` : guard.reason ?? 'Unavailable'}</p><p>${troop.category === 'naval' ? 'Naval' : 'Ground'}</p>`;
-      row.append(this.makeActionButton(guard.ok ? 'Train x1' : 'Unavailable', !guard.ok, () => {
+      const row = document.createElement('article');
+      row.className = `city-stitch__unit-card${this.selectedTroopId === troopId ? ' is-active' : ''}`;
+      row.innerHTML = `<p class="city-stitch__unit-head">${troop.category.toUpperCase()} · ${guard.ok ? 'AVAILABLE' : 'UNAVAILABLE'}</p>
+        <h4>${troop.name}</h4>
+        <p class="city-stitch__unit-meta">${formatTroopStats(troop)}</p>
+        <p class="city-stitch__unit-meta">Cost ${formatBundle(troop.cost)} · Train ${formatDuration(troop.trainingSeconds * 1000)}</p>
+        <p class="city-stitch__unit-meta">Req ${formatTroopProductionSite(troop)}${troop.requiredResearch ? ` · Research ${troop.requiredResearch}` : ''}</p>
+        <p class="city-stitch__unit-meta">Owned ${this.state.economy.troops[troopId]} · Queued ${this.state.economy.trainingQueue.filter((entry) => entry.troopId === troopId).reduce((sum, entry) => sum + entry.quantity, 0)}</p>
+        <p class="city-stitch__unit-meta">${guard.ok ? 'Ready to train' : guard.reason ?? 'Unavailable'}</p>`;
+      row.addEventListener('click', () => {
+        this.selectedTroopId = troopId;
+        this.renderDetailPanel();
+        this.renderMainCanvas();
+      });
+      row.append(this.makeActionButton(guard.ok ? 'Train x1' : guard.reason ?? 'Unavailable', !guard.ok, () => {
         const result = startCityTroopTraining(this.persistenceContext, troopId, 1, Date.now());
         this.state.economy = result.state.economy;
         this.renderAll();
@@ -519,7 +538,7 @@ export class CityFoundationMode implements RenderModeController {
   private renderDefensePage() {
     const page = document.createElement('section');
     const derived = getCityDerivedStats(this.state.economy);
-    page.append(this.createViewHeader('Defensive Grid', 'Defense hardening and mitigation controls.'));
+    page.append(this.createViewHeader('Defense', 'Defense bonuses and mitigation values.'));
     page.append(
       this.createBranchKpis([
         { label: 'Integrity', value: `${Math.min(100, 40 + derived.cityDefensePct).toFixed(1)}%` },
@@ -554,7 +573,7 @@ export class CityFoundationMode implements RenderModeController {
 
   private renderResearchPage() {
     const page = document.createElement('section');
-    page.append(this.createViewHeader('Research Lab', 'Research nodes and RP-gated progression.'));
+    page.append(this.createViewHeader('Research', 'Unlock research using resources and RP capacity.'));
     const researchCapacity = getBuildingLevel(this.state.economy, 'research_lab') * 4;
     const researchSpent = this.state.economy.completedResearch.reduce(
       (sum, researchId) => sum + CITY_ECONOMY_CONFIG.research[researchId].researchPointsCost,
@@ -578,12 +597,19 @@ export class CityFoundationMode implements RenderModeController {
       const guard = canStartResearch(this.state.economy, researchId);
       const completed = this.state.economy.completedResearch.includes(researchId);
       const node = document.createElement('article');
-      node.className = `city-stitch__node-card${completed ? ' is-complete' : ''}`;
-      node.innerHTML = `<p class="city-stitch__unit-head">${completed ? 'Complete' : guard.ok ? 'Ready' : 'Locked'}</p>
+      node.className = `city-stitch__node-card${completed ? ' is-complete' : ''}${this.selectedResearchId === researchId ? ' is-active' : ''}`;
+      node.innerHTML = `<p class="city-stitch__unit-head">${completed ? 'COMPLETED' : guard.ok ? 'AVAILABLE' : 'LOCKED'}</p>
         <h4>${cfg.name}</h4>
-        <p class="city-stitch__unit-meta">Academy lvl ${cfg.requiredBuildingLevel} · ${cfg.researchPointsCost} pts</p>
-        <p class="city-stitch__unit-meta">Cost O${cfg.cost.ore} S${cfg.cost.stone} I${cfg.cost.iron}</p>`;
-      node.append(this.makeActionButton(guard.ok ? 'Start' : 'Unavailable', !guard.ok, () => {
+        <p class="city-stitch__unit-meta">Lab lvl ${cfg.requiredBuildingLevel} · ${cfg.researchPointsCost} RP</p>
+        <p class="city-stitch__unit-meta">Cost ${formatBundle(cfg.cost)}</p>
+        <p class="city-stitch__unit-meta">${formatResearchEffect(cfg.effect)}</p>
+        <p class="city-stitch__unit-meta">${guard.ok ? 'Ready to start' : guard.reason ?? 'Unavailable'}</p>`;
+      node.addEventListener('click', () => {
+        this.selectedResearchId = researchId;
+        this.renderDetailPanel();
+        this.renderMainCanvas();
+      });
+      node.append(this.makeActionButton(guard.ok ? 'Start research' : guard.reason ?? 'Unavailable', !guard.ok, () => {
         const result = startCityResearch(this.persistenceContext, researchId, Date.now());
         this.state.economy = result.state.economy;
         this.renderAll();
@@ -599,7 +625,7 @@ export class CityFoundationMode implements RenderModeController {
   private renderIntelligencePage() {
     const page = document.createElement('section');
     const guard = canStartIntelProject(this.state.economy);
-    page.append(this.createViewHeader('Intel Ops Board', 'Manage recon and counter-intelligence projects.'));
+    page.append(this.createViewHeader('Intelligence', 'Run intel projects, vault silver, and espionage missions.'));
     page.append(
       this.createBranchKpis([
         { label: 'Readiness', value: `${this.state.economy.intelReadiness.toFixed(1)}%` },
@@ -617,11 +643,19 @@ export class CityFoundationMode implements RenderModeController {
 
     (['sweep', 'network', 'cipher'] as const).forEach((projectType) => {
       const card = document.createElement('article');
-      card.className = 'city-stitch__intel-card';
-      card.innerHTML = `<p class="city-stitch__unit-head">${projectType.toUpperCase()}</p>
+      const runtimeDurationSeconds = projectType === 'sweep' ? 70 : projectType === 'network' ? 120 : 160;
+      const runtimeReadinessGain = projectType === 'sweep' ? 8 : projectType === 'network' ? 14 : 20;
+      card.className = `city-stitch__intel-card${this.selectedIntelProject === projectType ? ' is-active' : ''}`;
+      card.innerHTML = `<p class="city-stitch__unit-head">${projectType.toUpperCase()} · ${guard.ok ? 'AVAILABLE' : 'BLOCKED'}</p>
         <h4>${INTEL_PROJECT_LABELS[projectType]}</h4>
-        <p class="city-stitch__unit-meta">${guard.ok ? 'Ready' : guard.reason ?? 'Unavailable'}</p>`;
-      card.append(this.makeActionButton(guard.ok ? 'Start' : 'Unavailable', !guard.ok, () => {
+        <p class="city-stitch__unit-meta">Duration ${formatDuration(runtimeDurationSeconds * 1000)} · +${runtimeReadinessGain}% readiness</p>
+        <p class="city-stitch__unit-meta">${guard.ok ? 'Ready to start' : guard.reason ?? 'Unavailable'}</p>`;
+      card.addEventListener('click', () => {
+        this.selectedIntelProject = projectType;
+        this.renderDetailPanel();
+        this.renderMainCanvas();
+      });
+      card.append(this.makeActionButton(guard.ok ? 'Start project' : guard.reason ?? 'Unavailable', !guard.ok, () => {
         const result = startCityIntelProject(this.persistenceContext, projectType, Date.now());
         this.state.economy = result.state.economy;
         this.renderAll();
@@ -647,8 +681,8 @@ export class CityFoundationMode implements RenderModeController {
     const cap = getSpyVaultCap(this.state.economy);
     const inFlight = getSpySilverCommittedInTransit(this.state.economy);
     espionage.innerHTML = `<h3>Spy vault</h3>
-      <div class="city-stitch__ops-row"><p>Stored silver</p><p>${Math.floor(this.state.economy.spyVaultSilver)}</p><p>Iron locked as intel funds</p></div>
-      <div class="city-stitch__ops-row"><p>Capacity</p><p>${Number.isFinite(cap) ? Math.floor(cap) : '∞'}</p><p>In-flight silver ${Math.floor(inFlight)}</p></div>`;
+      <div class="city-stitch__ops-row"><p>Stored silver</p><p>${Math.floor(this.state.economy.spyVaultSilver)}</p><p>Converted from iron</p></div>
+      <div class="city-stitch__ops-row"><p>Capacity</p><p>${Number.isFinite(cap) ? Math.floor(cap) : '∞'}</p><p>In flight ${Math.floor(inFlight)}</p></div>`;
 
     const depositGuard = canDepositSpySilver(this.state.economy, 1000);
     espionage.append(this.makeActionButton(depositGuard.ok ? 'Bank 1000 silver' : depositGuard.reason ?? 'Unavailable', !depositGuard.ok, () => {
@@ -697,7 +731,7 @@ export class CityFoundationMode implements RenderModeController {
 
   private renderGovernancePage() {
     const page = document.createElement('section');
-    page.append(this.createViewHeader('Legislative Hub', 'Apply directives and monitor policy impact.'));
+    page.append(this.createViewHeader('Governance', 'Apply local policies and review effects.'));
     page.append(
       this.createBranchKpis([
         { label: 'Authority', value: 'EXARCH-IV' },
@@ -716,11 +750,18 @@ export class CityFoundationMode implements RenderModeController {
       const policy = CITY_ECONOMY_CONFIG.policies[policyId];
       const guard = canSetPolicy(this.state.economy, policyId);
       const card = document.createElement('article');
-      card.className = `city-stitch__directive-card${this.state.economy.activePolicy === policyId ? ' is-active' : ''}`;
+      card.className = `city-stitch__directive-card${this.state.economy.activePolicy === policyId ? ' is-active' : ''}${this.selectedPolicyId === policyId ? ' is-active' : ''}`;
       card.innerHTML = `<p class="city-stitch__unit-head">${this.state.economy.activePolicy === policyId ? 'Active' : 'Directive'}</p>
         <h4>${policy.name}</h4>
-        <p class="city-stitch__unit-meta">${policy.description}</p>`;
-      card.append(this.makeActionButton(guard.ok ? 'Apply' : 'Unavailable', !guard.ok, () => {
+        <p class="city-stitch__unit-meta">${policy.description}</p>
+        <p class="city-stitch__unit-meta">${formatPolicyEffects(policy)}</p>
+        <p class="city-stitch__unit-meta">${guard.ok ? 'Can be applied now' : guard.reason ?? 'Unavailable'}</p>`;
+      card.addEventListener('click', () => {
+        this.selectedPolicyId = policyId;
+        this.renderDetailPanel();
+        this.renderMainCanvas();
+      });
+      card.append(this.makeActionButton(guard.ok ? 'Apply policy' : guard.reason ?? 'Unavailable', !guard.ok, () => {
         const result = setCityPolicy(this.persistenceContext, policyId, Date.now());
         this.state.economy = result.state.economy;
         this.renderAll();
@@ -743,7 +784,7 @@ export class CityFoundationMode implements RenderModeController {
   private renderMarketPage() {
     const page = document.createElement('section');
     const derived = getCityDerivedStats(this.state.economy);
-    page.append(this.createViewHeader('Exchange Hub', 'Resource exchange controls and market efficiency.'));
+    page.append(this.createViewHeader('Market', 'Market efficiency status and runtime availability.'));
     page.append(
       this.createBranchKpis([
         { label: 'Efficiency', value: `+${derived.marketEfficiencyPct.toFixed(1)}%` },
@@ -754,24 +795,23 @@ export class CityFoundationMode implements RenderModeController {
 
     const marketPanel = document.createElement('section');
     marketPanel.className = 'city-stitch__ops-list';
-    marketPanel.innerHTML = `<h3>Exchange operations</h3>
-      <div class="city-stitch__ops-row"><p>Source resource</p><p>Select in UI</p><p>Live</p></div>
-      <div class="city-stitch__ops-row"><p>Target resource</p><p>Select in UI</p><p>Live</p></div>
-      <div class="city-stitch__ops-row"><p>Estimated efficiency</p><p>+${derived.marketEfficiencyPct.toFixed(1)}%</p><p>Computed</p></div>
-      <div class="city-stitch__ops-row"><p>Execution</p><p>Not implemented in runtime</p><p>Unavailable</p></div>`;
+    marketPanel.innerHTML = `<h3>Exchange runtime status</h3>
+      <div class="city-stitch__ops-row"><p>Trade execution</p><p>Not implemented</p><p>No buy/sell action in system</p></div>
+      <div class="city-stitch__ops-row"><p>Efficiency stat</p><p>+${derived.marketEfficiencyPct.toFixed(1)}%</p><p>Calculated from Market + research</p></div>
+      <div class="city-stitch__ops-row"><p>Current value to player</p><p>Building progression</p><p>Unlocks intel/governance prereqs</p></div>`;
 
     const disabled = document.createElement('div');
     disabled.className = 'city-stitch__ops-row';
-    disabled.innerHTML = '<p>Source → Target</p><p>Unavailable</p><p>Authorization blocked</p>';
-    disabled.append(this.makeActionButton('Confirm trade (Unavailable)', true, () => {}));
+    disabled.innerHTML = '<p>Trade controls</p><p>Disabled</p><p>UI intentionally disabled until runtime trade flow exists</p>';
+    disabled.append(this.makeActionButton('Trade action unavailable (not implemented)', true, () => {}));
     marketPanel.append(disabled);
 
     const presets = document.createElement('section');
     presets.className = 'city-stitch__ops-list';
-    presets.innerHTML = `<h3>Quick presets</h3>
-      <div class="city-stitch__ops-row"><p>ORE → STONE</p><p>Batch A</p><p>Unavailable</p></div>
-      <div class="city-stitch__ops-row"><p>STONE → IRON</p><p>Batch B</p><p>Unavailable</p></div>
-      <div class="city-stitch__ops-row"><p>IRON → ORE</p><p>Batch C</p><p>Unavailable</p></div>`;
+    presets.innerHTML = `<h3>Why this section is partial</h3>
+      <div class="city-stitch__ops-row"><p>What exists</p><p>Market efficiency stat</p><p>Affects derived city stats only</p></div>
+      <div class="city-stitch__ops-row"><p>What does not exist</p><p>Exchange transaction runtime</p><p>No source/target conversion API</p></div>
+      <div class="city-stitch__ops-row"><p>UI behavior</p><p>Informational</p><p>No fake interactive controls</p></div>`;
 
     const buildings = document.createElement('section');
     buildings.className = 'city-stitch__ops-list';
@@ -786,7 +826,7 @@ export class CityFoundationMode implements RenderModeController {
     const header = document.createElement('header');
     header.className = 'city-stitch__main-header';
     header.innerHTML = `<h1>${title}</h1>
-      <p>${this.state.planetId.toUpperCase()} • ${this.state.archetype.toUpperCase()} • OWNER ${this.state.owner}</p>
+      <p>Planet ${this.state.planetId.toUpperCase()} · ${this.state.archetype.toUpperCase()} · ${this.state.owner}</p>
       <p>${subtitle}</p>`;
     return header;
   }
@@ -847,6 +887,7 @@ export class CityFoundationMode implements RenderModeController {
     const guard = canStartConstruction(this.state.economy, buildingId);
     const unlocked = isBuildingUnlocked(this.state.economy, buildingId);
     const next = config.levels[level] ?? null;
+    const state = buildingStateLabel({ isUnlocked: unlocked, currentLevel: level, maxLevel: config.maxLevel, guard });
 
     const card = document.createElement('button');
     card.type = 'button';
@@ -863,8 +904,8 @@ export class CityFoundationMode implements RenderModeController {
     card.innerHTML = `<div class="city-stitch__card-top"><p class="city-stitch__card-name">${config.name}</p><p class="city-stitch__card-level">LVL ${level}</p></div>
       ${imageMarkup}
       <div class="city-stitch__card-bottom">
-        <p>${next ? `O ${next.resources.ore} · S ${next.resources.stone} · I ${next.resources.iron}` : 'MAX LEVEL'}</p>
-        <p>${guard.ok ? 'READY' : guard.reason ?? 'LOCKED'}</p>
+        <p>${next ? formatBundle(next.resources) : 'MAX LEVEL'}</p>
+        <p class="city-stitch__state city-stitch__state--${state.tone}">${state.label}</p>
       </div>`;
 
     card.addEventListener('click', () => {
@@ -932,11 +973,17 @@ export class CityFoundationMode implements RenderModeController {
     const panel = document.createElement('section');
     panel.className = 'city-stitch__detail-block';
     const durationSeconds = next ? getConstructionDurationSeconds(this.state.economy, this.selectedBuildingId, next.level) : null;
+    const currentEffect = level > 0 ? formatEffectList(config.levels[level - 1]?.effect ?? {}) : ['No effect at level 0'];
+    const nextEffect = next ? formatEffectList(next.effect) : [];
+    const requirementLines = this.getBuildingRequirementLines(this.selectedBuildingId);
     panel.innerHTML = `<h3>${config.name}</h3>
-      <p>Current level: ${level}/${config.maxLevel}</p>
-      <p>${this.getBuildingEffectText(this.selectedBuildingId, level)}</p>
-      <p>${next ? `Cost O ${next.resources.ore} · S ${next.resources.stone} · I ${next.resources.iron}` : 'Max level reached'}</p>
-      <p>${next && durationSeconds !== null ? `Build ${formatDuration(durationSeconds * 1000)}` : 'Build: —'}</p>`;
+      <p>Status: level ${level}/${config.maxLevel}</p>
+      <p>${buildingUnlockSummary(config)}</p>
+      <p>Requirements: ${requirementLines.join(' · ')}</p>
+      <p>Current effect: ${currentEffect.join(' · ')}</p>
+      <p>${next ? `Next level cost: ${formatBundle(next.resources)} · Population +${next.populationCost}` : 'Max level reached'}</p>
+      <p>${next && durationSeconds !== null ? `Construction time: ${formatDuration(durationSeconds * 1000)}` : 'Construction time: —'}</p>
+      <p>${nextEffect.length > 0 ? `Next level effect: ${nextEffect.join(' · ')}` : 'Next level effect: —'}</p>`;
 
     panel.append(this.makeActionButton(guard.ok ? 'Upgrade now' : guard.reason ?? 'Unavailable', !guard.ok, () => {
       const result = startCityBuildingUpgrade(this.persistenceContext, this.selectedBuildingId, Date.now());
@@ -950,11 +997,25 @@ export class CityFoundationMode implements RenderModeController {
   private renderMilitaryDetailPanel() {
     const panel = document.createElement('section');
     panel.className = 'city-stitch__detail-block';
-    panel.innerHTML = `<h3>Selected unit</h3>
+    if (this.selectedTroopId) {
+      const troop = CITY_ECONOMY_CONFIG.troops[this.selectedTroopId];
+      const guard = canStartTroopTraining(this.state.economy, this.selectedTroopId, 1);
+      panel.innerHTML = `<h3>${troop.name}</h3>
+        <p>Category: ${troop.category}</p>
+        <p>${formatTroopStats(troop)}</p>
+        <p>Cost: ${formatBundle(troop.cost)} · Population ${troop.populationCost}</p>
+        <p>Training: ${formatDuration(troop.trainingSeconds * 1000)} · Facility ${formatTroopProductionSite(troop)}</p>
+        <p>Requirement: ${troop.requiredResearch ? `research ${troop.requiredResearch}` : 'none'}</p>
+        <p>Owned: ${this.state.economy.troops[this.selectedTroopId]} · Queued: ${this.state.economy.trainingQueue.filter((entry) => entry.troopId === this.selectedTroopId).reduce((sum, entry) => sum + entry.quantity, 0)}</p>
+        <p>Role: ${troop.notes ?? 'No runtime notes'}</p>
+        <p>${guard.ok ? 'Available now' : `Blocked: ${guard.reason ?? 'Unavailable'}`}</p>`;
+      return panel;
+    }
+    panel.innerHTML = `<h3>Military overview</h3>
+      <p>Select a unit card to inspect full costs, stats, and exact requirements.</p>
       <p>Active batches: ${this.state.economy.trainingQueue.length}</p>
-      <p>Barracks level: ${getBuildingLevel(this.state.economy, 'barracks')}</p>
-      <p>Space dock level: ${getBuildingLevel(this.state.economy, 'space_dock')}</p>
-      <p>Citizen militia: ${isMilitiaActive(this.state.economy) ? `${this.state.economy.militia.currentMilitia} (local defense only)` : 'inactive'}</p>`;
+      <p>Barracks level: ${getBuildingLevel(this.state.economy, 'barracks')} · Space dock level: ${getBuildingLevel(this.state.economy, 'space_dock')}</p>
+      <p>Citizen militia: ${isMilitiaActive(this.state.economy) ? `${this.state.economy.militia.currentMilitia} active` : 'inactive'}</p>`;
     return panel;
   }
 
@@ -966,29 +1027,55 @@ export class CityFoundationMode implements RenderModeController {
       (sum, researchId) => sum + CITY_ECONOMY_CONFIG.research[researchId].researchPointsCost,
       0,
     );
+    if (this.selectedResearchId) {
+      const cfg = CITY_ECONOMY_CONFIG.research[this.selectedResearchId];
+      const guard = canStartResearch(this.state.economy, this.selectedResearchId);
+      panel.innerHTML = `<h3>${cfg.name}</h3>
+        <p>Effect: ${formatResearchEffect(cfg.effect)}</p>
+        <p>Cost: ${formatBundle(cfg.cost)} · RP ${cfg.researchPointsCost}</p>
+        <p>Requires research lab ${cfg.requiredBuildingLevel}</p>
+        <p>Status: ${this.state.economy.completedResearch.includes(this.selectedResearchId) ? 'Completed' : guard.ok ? 'Available' : `Blocked (${guard.reason ?? 'Unavailable'})`}</p>
+        <p>Points used: ${researchSpent}/${researchCapacity}</p>`;
+      return panel;
+    }
     panel.innerHTML = `<h3>Research status</h3>
       <p>Points used: ${researchSpent}/${researchCapacity}</p>
       <p>Completed: ${this.state.economy.completedResearch.length}</p>
-      <p>Lab level: ${getBuildingLevel(this.state.economy, 'research_lab')}</p>`;
+      <p>Lab level: ${getBuildingLevel(this.state.economy, 'research_lab')}</p>
+      <p>Select a research node for exact effects and blockers.</p>`;
     return panel;
   }
 
   private renderIntelDetailPanel() {
     const panel = document.createElement('section');
     panel.className = 'city-stitch__detail-block';
-    panel.innerHTML = `<h3>Intel status</h3>
+    panel.innerHTML = `<h3>${this.selectedIntelProject ? `${INTEL_PROJECT_LABELS[this.selectedIntelProject]} detail` : 'Intel status'}</h3>
       <p>Readiness: ${this.state.economy.intelReadiness.toFixed(1)}%</p>
       <p>Active projects: ${this.state.economy.intelProjects.length}</p>
-      <p>Center level: ${getBuildingLevel(this.state.economy, 'intelligence_center')}</p>`;
+      <p>Center level: ${getBuildingLevel(this.state.economy, 'intelligence_center')}</p>
+      <p>Vault silver: ${Math.floor(this.state.economy.spyVaultSilver)} / ${Number.isFinite(getSpyVaultCap(this.state.economy)) ? Math.floor(getSpyVaultCap(this.state.economy)) : '∞'}</p>
+      <p>Silver in flight: ${Math.floor(getSpySilverCommittedInTransit(this.state.economy))}</p>
+      <p>${this.selectedIntelProject ? 'Project details shown in main panel. One project may run at once.' : 'Select a project card for duration and readiness gain.'}</p>`;
     return panel;
   }
 
   private renderGovernanceDetailPanel() {
     const panel = document.createElement('section');
     panel.className = 'city-stitch__detail-block';
+    if (this.selectedPolicyId) {
+      const policy = CITY_ECONOMY_CONFIG.policies[this.selectedPolicyId];
+      const guard = canSetPolicy(this.state.economy, this.selectedPolicyId);
+      panel.innerHTML = `<h3>${policy.name}</h3>
+        <p>${policy.description}</p>
+        <p>Effects: ${formatPolicyEffects(policy)}</p>
+        <p>Requires council chamber ${policy.requiredCouncilLevel}</p>
+        <p>Status: ${this.state.economy.activePolicy === this.selectedPolicyId ? 'Active' : guard.ok ? 'Available' : `Blocked (${guard.reason ?? 'Unavailable'})`}</p>`;
+      return panel;
+    }
     panel.innerHTML = `<h3>Governance status</h3>
       <p>Active policy: ${this.state.economy.activePolicy ?? 'none'}</p>
-      <p>Council level: ${getBuildingLevel(this.state.economy, 'council_chamber')}</p>`;
+      <p>Council level: ${getBuildingLevel(this.state.economy, 'council_chamber')}</p>
+      <p>Select a directive to inspect exact effects and requirements.</p>`;
     return panel;
   }
 
@@ -1010,11 +1097,13 @@ export class CityFoundationMode implements RenderModeController {
   private createTopQueueModule() {
     const block = document.createElement('section');
     block.className = 'city-stitch__top-queue';
-    block.innerHTML = `<p class="city-stitch__queue-title">Construction queue</p>`;
+    block.innerHTML = `<p class="city-stitch__queue-title">Runtime queues</p>`;
 
     const builds = this.state.economy.queue.slice().sort((a, b) => a.endsAtMs - b.endsAtMs);
     if (builds.length === 0) {
-      block.append(this.createQueueLine(`Queue: 0/${QUEUE_CAP} · idle`));
+      block.append(this.createQueueLine(`Build 0/${QUEUE_CAP} · idle`));
+      block.append(this.createQueueLine(`Train ${this.state.economy.trainingQueue.length} · Research ${this.state.economy.completedResearch.length} done`));
+      block.append(this.createQueueLine(`Intel ${this.state.economy.intelProjects.length} · Missions ${this.state.economy.espionageMissions.length}`));
       return block;
     }
 
@@ -1027,27 +1116,32 @@ export class CityFoundationMode implements RenderModeController {
         progressPct: progressFromTimes(current.startedAtMs, current.endsAtMs, Date.now()),
         tone: 'cyan',
       }),
-      this.createQueueLine(`Queue: ${builds.length}/${QUEUE_CAP}`),
+      this.createQueueLine(`Build ${builds.length}/${QUEUE_CAP} · Train ${this.state.economy.trainingQueue.length}`),
+      this.createQueueLine(`Intel ${this.state.economy.intelProjects.length} · Spy missions ${this.state.economy.espionageMissions.length}`),
     );
     return block;
   }
 
-  private isClassifiedBranch(section: LocalCitySection) {
-    return CLASSIFIED_BRANCHES.has(section);
+  private getHudAlert() {
+    const pop = getPopulationSnapshot(this.state.economy);
+    if (this.state.economy.queue.length >= QUEUE_CAP) return 'Build queue full';
+    if (pop.free <= 0) return 'Population cap reached';
+    return 'Nominal';
   }
 
-  private renderClassifiedOverlays() {
-    const isClassifiedBranch = this.isClassifiedBranch(this.activeSection);
-    this.syncOverlay(this.mainCanvas, isClassifiedBranch, {
-      title: 'CLASSIFIED',
-      subtitle: 'ACCESS WITHHELD',
-      variant: 'panel',
+  private getSectionStatusBadge(section: LocalCitySection) {
+    if (section === 'market') return 'Partial';
+    if (section === 'research' || section === 'intelligence' || section === 'governance') return 'Live';
+    return 'Core';
+  }
+
+  private getBuildingRequirementLines(buildingId: EconomyBuildingId) {
+    const config = getBuildingConfig(buildingId);
+    const rows = [`HQ ${getBuildingLevel(this.state.economy, 'hq')}/${config.unlockAtHq}`];
+    (config.prerequisites ?? []).forEach((prereq) => {
+      rows.push(`${prereq.buildingId} ${getBuildingLevel(this.state.economy, prereq.buildingId)}/${prereq.minLevel}`);
     });
-    this.syncOverlay(this.detailPanel, isClassifiedBranch, {
-      title: 'CLASSIFIED',
-      subtitle: 'TACTICAL FILE SEALED',
-      variant: 'chip',
-    });
+    return rows;
   }
 
   private createOperationsModule() {
@@ -1059,35 +1153,6 @@ export class CityFoundationMode implements RenderModeController {
       <p class="city-stitch__queue-line">Intel: ${this.state.economy.intelProjects.length}</p>
       <p class="city-stitch__queue-line">Militia: ${isMilitiaActive(this.state.economy) ? `ACTIVE (${this.state.economy.militia.currentMilitia})` : 'Inactive'}</p>`;
     return ops;
-  }
-
-  private syncOverlay(
-    target: HTMLElement | null,
-    showOverlay: boolean,
-    content: { title: string; subtitle: string; variant: 'panel' | 'chip' },
-  ) {
-    if (!target) return;
-    const current = target.querySelector('.city-stitch__classified-overlay');
-    if (!showOverlay) {
-      target.classList.remove('is-classified');
-      if (current) current.remove();
-      return;
-    }
-
-    target.classList.add('is-classified');
-    if (current) return;
-
-    const overlay = document.createElement('section');
-    overlay.className = `city-stitch__classified-overlay city-stitch__classified-overlay--${content.variant}`;
-    if (content.variant === 'chip') {
-      overlay.innerHTML = `<div class="city-stitch__classified-chip">${content.title} · ${content.subtitle}</div>`;
-    } else {
-      overlay.innerHTML = `<div class="city-stitch__classified-card">
-        <p class="city-stitch__classified-title">${content.title}</p>
-        <p class="city-stitch__classified-subtitle">${content.subtitle}</p>
-      </div>`;
-    }
-    target.append(overlay);
   }
 
   private makeModeButton(label: string, mode: 'galaxy2d' | 'planet3d' | 'city3d', active: boolean) {
@@ -1231,4 +1296,11 @@ function modeToGlyph(mode: 'galaxy2d' | 'planet3d' | 'city3d') {
   if (mode === 'galaxy2d') return 'GX';
   if (mode === 'planet3d') return 'PL';
   return 'CT';
+}
+
+function formatResearchEffect(effect: { [key: string]: number | undefined }) {
+  const lines = Object.entries(effect)
+    .filter(([, value]) => typeof value === 'number' && value !== 0)
+    .map(([key, value]) => `${key} ${value && value > 0 ? '+' : ''}${value}%`);
+  return lines.length > 0 ? lines.join(' · ') : 'No direct numeric modifier in runtime';
 }

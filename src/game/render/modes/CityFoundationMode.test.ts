@@ -55,28 +55,28 @@ describe('CityFoundationMode stitch IA responsibilities', () => {
     expect(host.querySelectorAll('.city-stitch__card').length).toBeGreaterThan(5);
 
     host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Economy"]')?.click();
-    expect(host.textContent).toContain('Economic Core');
+    expect(host.textContent).toContain('Production, storage, and population usage');
     expect(host.textContent).toContain('Building intel');
 
     host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Military"]')?.click();
-    expect(host.textContent).toContain('Unit training');
+    expect(host.textContent).toContain('Train units and inspect combat stats');
 
     host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Research"]')?.click();
     expect(host.textContent).toContain('Research nodes');
 
     host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Market"]')?.click();
-    expect(host.textContent).toContain('Not implemented in runtime');
+    expect(host.textContent).toContain('Trade execution');
 
     mode.destroy();
     host.remove();
   });
 
-  it('applies classified overlay only on restricted branches and keeps market nav visible', () => {
+  it('keeps branches visible without classified overlays and shows runtime status badges', () => {
     const { host, mode } = mountMode();
 
     const marketButton = host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Market"]');
     expect(marketButton).not.toBeNull();
-    expect(marketButton?.textContent).toContain('Classified');
+    expect(marketButton?.textContent).toContain('Partial');
 
     const main = host.querySelector<HTMLElement>('.city-stitch__main');
     const right = host.querySelector<HTMLElement>('.city-stitch__right');
@@ -86,10 +86,10 @@ describe('CityFoundationMode stitch IA responsibilities', () => {
     expect(right?.classList.contains('is-classified')).toBe(false);
 
     host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Research"]')?.click();
-    expect(main?.classList.contains('is-classified')).toBe(true);
-    expect(right?.classList.contains('is-classified')).toBe(true);
-    expect(host.querySelectorAll('.city-stitch__classified-overlay').length).toBe(2);
-    expect(host.textContent).toContain('CLASSIFIED');
+    expect(main?.classList.contains('is-classified')).toBe(false);
+    expect(right?.classList.contains('is-classified')).toBe(false);
+    expect(host.querySelectorAll('.city-stitch__classified-overlay').length).toBe(0);
+    expect(host.textContent).toContain('Research nodes');
 
     host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Defense"]')?.click();
     expect(main?.classList.contains('is-classified')).toBe(false);
@@ -114,7 +114,7 @@ describe('CityFoundationMode stitch IA responsibilities', () => {
     host.querySelector<HTMLButtonElement>('.city-stitch__detail-block .city-stitch__line-btn')?.click();
 
     const text = host.textContent ?? '';
-    expect(text).toMatch(/Queue:? 2\/2/);
+    expect(text).toContain('Build 2/2');
     expect(text).toContain('Queue full (2/2)');
 
     mode.destroy();
