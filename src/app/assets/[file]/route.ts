@@ -11,13 +11,22 @@ const MIME_BY_EXT: Record<string, string> = {
 export async function GET(_: Request, context: { params: Promise<{ file: string }> }) {
   const { file } = await context.params;
   const safeFile = path.basename(file);
-  const assetPath = path.join(process.cwd(), 'assets', safeFile);
+  const lookupPaths = [path.join(process.cwd(), 'assets', safeFile), path.join(process.cwd(), 'assets', 'building', safeFile), path.join(process.cwd(), 'assets', 'troups', safeFile)];
 
   try {
-    const content = await fs.readFile(assetPath);
+    let content: Buffer | null = null;
+    for (const candidate of lookupPaths) {
+      try {
+        content = await fs.readFile(candidate);
+        break;
+      } catch {
+        continue;
+      }
+    }
+    if (!content) return new Response('Not found', { status: 404 });
+
     const ext = path.extname(safeFile).toLowerCase();
     const contentType = MIME_BY_EXT[ext] ?? 'application/octet-stream';
-
     return new Response(content, {
       headers: {
         'Content-Type': contentType,
