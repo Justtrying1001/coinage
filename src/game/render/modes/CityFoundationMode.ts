@@ -2,6 +2,8 @@ import {
   canSetPolicy,
   canStartConstruction,
   canStartIntelProject,
+  canStartEspionageMission,
+  canDepositSpySilver,
   canStartResearch,
   canStartTroopTraining,
   getBuildingConfig,
@@ -17,13 +19,17 @@ import {
   isMilitiaActive,
   getProductionPerHour,
   getStorageCaps,
+  getSpyVaultCap,
+  getSpySilverCommittedInTransit,
   isBuildingUnlocked,
   type CityEconomyState,
 } from '@/game/city/economy/cityEconomySystem';
 import {
   loadCityEconomyState,
   activateCityMilitia,
+  depositCitySpySilver,
   setCityPolicy,
+  sendCityEspionageMission,
   startCityBuildingUpgrade,
   startCityIntelProject,
   startCityResearch,
@@ -606,6 +612,7 @@ export class CityFoundationMode implements RenderModeController {
         { label: 'Readiness', value: `${this.state.economy.intelReadiness.toFixed(1)}%` },
         { label: 'Active projects', value: `${this.state.economy.intelProjects.length}` },
         { label: 'Center level', value: `LVL ${getBuildingLevel(this.state.economy, 'intelligence_center')}` },
+        { label: 'Vault silver', value: `${Math.floor(this.state.economy.spyVaultSilver)}` },
       ]),
     );
 
@@ -642,7 +649,56 @@ export class CityFoundationMode implements RenderModeController {
       });
     }
 
-    page.append(list, active);
+    const espionage = document.createElement('section');
+    espionage.className = 'city-stitch__ops-list';
+    const cap = getSpyVaultCap(this.state.economy);
+    const inFlight = getSpySilverCommittedInTransit(this.state.economy);
+    espionage.innerHTML = `<h3>Spy vault</h3>
+      <div class="city-stitch__ops-row"><p>Stored silver</p><p>${Math.floor(this.state.economy.spyVaultSilver)}</p><p>Iron locked as intel funds</p></div>
+      <div class="city-stitch__ops-row"><p>Capacity</p><p>${Number.isFinite(cap) ? Math.floor(cap) : '∞'}</p><p>In-flight silver ${Math.floor(inFlight)}</p></div>`;
+
+    const depositGuard = canDepositSpySilver(this.state.economy, 1000);
+    espionage.append(this.makeActionButton(depositGuard.ok ? 'Bank 1000 silver' : depositGuard.reason ?? 'Unavailable', !depositGuard.ok, () => {
+      const result = depositCitySpySilver(this.persistenceContext, 1000, Date.now());
+      this.state.economy = result.state.economy;
+      this.renderAll();
+    }));
+
+    const targetInput = document.createElement('input');
+    targetInput.placeholder = 'Target city id';
+    targetInput.value = 'planet-b';
+    const silverInput = document.createElement('input');
+    silverInput.type = 'number';
+    silverInput.value = '1000';
+    silverInput.min = '1000';
+    const sendButton = this.makeActionButton('Launch espionage', false, () => {
+      const silver = Number(silverInput.value || '0');
+      const guardMission = canStartEspionageMission(this.state.economy, targetInput.value.trim(), silver);
+      if (!guardMission.ok) {
+        sendButton.textContent = guardMission.reason ?? 'Unavailable';
+        return;
+      }
+      const result = sendCityEspionageMission(this.persistenceContext, targetInput.value.trim(), silver, Date.now());
+      this.state.economy = result.state.economy;
+      this.renderAll();
+    });
+    const controls = document.createElement('div');
+    controls.className = 'city-stitch__ops-row';
+    controls.append(targetInput, silverInput, sendButton);
+    espionage.append(controls);
+
+    const reports = document.createElement('section');
+    reports.className = 'city-stitch__ops-list';
+    reports.innerHTML = '<h3>Espionage reports</h3>';
+    if (this.state.economy.espionageReports.length === 0) {
+      reports.append(this.createQueueLine('No espionage reports yet'));
+    } else {
+      this.state.economy.espionageReports.slice(0, 6).forEach((entry) => {
+        reports.append(this.createQueueLine(`${entry.kind} · ${entry.sourceCityId} → ${entry.targetCityId} · silver ${entry.silverSent}`));
+      });
+    }
+
+    page.append(list, active, espionage, reports);
     return page;
   }
 
@@ -945,6 +1001,7 @@ export class CityFoundationMode implements RenderModeController {
     const militiaMultiplier = getMilitiaProductionMultiplier(this.state.economy);
     panel.innerHTML = `<h3>City effects</h3>
       <p>Defense +${derived.cityDefensePct.toFixed(1)}% · Mitigation +${derived.damageMitigationPct.toFixed(1)}%</p>
+      <p>Anti-air defense +${(derived.antiAirDefensePct ?? 0).toFixed(1)}%</p>
       <p>Training +${derived.trainingSpeedPct.toFixed(1)}% · Troop power +${derived.troopCombatPowerPct.toFixed(1)}%</p>
       <p>Detection +${derived.detectionPct.toFixed(1)}% · Counter-intel +${derived.counterIntelPct.toFixed(1)}%</p>
       <p>Research cap ${derived.researchCapacity} · Market +${derived.marketEfficiencyPct.toFixed(1)}%</p>
@@ -1100,7 +1157,9 @@ export class CityFoundationMode implements RenderModeController {
     if (effect.ironPerHour) return `+${effect.ironPerHour} Iron/h`;
     if (effect.storageCap) return `Storage cap O:${effect.storageCap.ore} S:${effect.storageCap.stone} I:${effect.storageCap.iron}`;
     if (effect.populationCapBonus) return `Population +${effect.populationCapBonus}`;
-    if (effect.cityDefensePct || effect.damageMitigationPct) return `Defense +${effect.cityDefensePct ?? 0}% / Mitigation +${effect.damageMitigationPct ?? 0}%`;
+    if (effect.cityDefensePct || effect.damageMitigationPct || effect.antiAirDefensePct) {
+      return `Defense +${effect.cityDefensePct ?? 0}% / Anti-air +${effect.antiAirDefensePct ?? 0}% / Mitigation +${effect.damageMitigationPct ?? 0}%`;
+    }
     if (effect.researchCapacity) return `Research capacity +${effect.researchCapacity}`;
     if (effect.marketEfficiencyPct) return `Market efficiency +${effect.marketEfficiencyPct}%`;
     if (effect.detectionPct || effect.counterIntelPct) return `Detection +${effect.detectionPct ?? 0}% / Counter-intel +${effect.counterIntelPct ?? 0}%`;

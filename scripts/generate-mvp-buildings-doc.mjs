@@ -48,6 +48,7 @@ function secondsToLabel(value) {
 
 function roleText(buildingId, building) {
   const firstEffect = building.levels.find((row) => Object.keys(row.effect).length > 0)?.effect ?? {};
+  if (buildingId === 'watch_tower') return 'Tour défensive anti-aérienne (équivalent mur défensif contre unités volantes).';
   if (firstEffect.orePerHour !== undefined) return 'Production de ore par heure.';
   if (firstEffect.stonePerHour !== undefined) return 'Production de stone par heure.';
   if (firstEffect.ironPerHour !== undefined) return 'Production de iron par heure.';

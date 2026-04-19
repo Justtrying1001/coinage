@@ -17,7 +17,7 @@ Note timing Grepolis: les `buildSeconds` hors `hq` sont stockés comme valeurs d
 | barracks | Barracks | military | 30 | hq >= 2 · refinery >= 1 · housing_complex >= 3 · mine >= 1 | trainingSpeedPct | source runtime |
 | space_dock | Space Dock | military | 30 | hq >= 14 · mine >= 15 · refinery >= 10 | trainingSpeedPct | source runtime |
 | defensive_wall | Defensive Wall | defense | 25 | hq >= 5 | cityDefensePct, damageMitigationPct, siegeResistancePct | source runtime |
-| watch_tower | Skyguard Tower | defense | 20 | hq >= 12 · defensive_wall >= 15 | cityDefensePct, counterIntelPct, detectionPct | source runtime |
+| watch_tower | Skyguard Tower | defense | 20 | hq >= 12 · defensive_wall >= 15 | antiAirDefensePct, cityDefensePct | source runtime |
 | armament_factory | Armament Factory | military | 36 | hq >= 8 · research_lab >= 10 · barracks >= 10 | trainingSpeedPct, troopCombatPowerPct, troopUpkeepEfficiencyPct | source runtime |
 | intelligence_center | Intelligence Center | intelligence | 10 | hq >= 10 · market >= 4 · warehouse >= 7 | counterIntelPct, detectionPct | source runtime |
 | research_lab | Research Lab | research | 36 | hq >= 8 · housing_complex >= 6 · barracks >= 5 | researchCapacity | source runtime |
@@ -429,32 +429,32 @@ Note timing Grepolis: les `buildSeconds` hors `hq` sont stockés comme valeurs d
 ### Skyguard Tower
 - **id**: `watch_tower`
 - **catégorie**: `defense`
-- **rôle gameplay**: Améliore la détection et la contre-intelligence.
+- **rôle gameplay**: Tour défensive anti-aérienne (équivalent mur défensif contre unités volantes).
 - **niveau max**: 20
 - **prérequis**: hq >= 12 · defensive_wall >= 15
 
-| Niveau | ore | stone | iron | buildSeconds | populationCost | cityDefensePct | counterIntelPct | detectionPct |
-| ---: | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 400 | 350 | 200 | 80 (1m 20s) | 2 | 2.20 | 1.40 | 1.80 |
-| 2 | 400 | 700 | 429 | 395 (6m 35s) | 4 | 4.50 | 2.80 | 3.60 |
-| 3 | 400 | 1050 | 670 | 1003 (16m 43s) | 7 | 6.80 | 4.20 | 5.40 |
-| 4 | 400 | 1400 | 919 | 1945 (32m 25s) | 10 | 9.30 | 5.60 | 7.20 |
-| 5 | 400 | 1750 | 1175 | 3249 (54m 09s) | 13 | 11.80 | 7 | 9 |
-| 6 | 400 | 2100 | 1435 | 4942 (1h 22m 22s) | 16 | 14.50 | 8.40 | 10.80 |
-| 7 | 400 | 2450 | 1701 | 7045 (1h 57m 25s) | 19 | 17.10 | 9.80 | 12.60 |
-| 8 | 400 | 2800 | 1970 | 9577 (2h 39m 37s) | 22 | 20 | 11.20 | 14.40 |
-| 9 | 400 | 3150 | 2242 | 12557 (3h 29m 17s) | 26 | 22.80 | 12.60 | 16.20 |
-| 10 | 400 | 3500 | 2515 | 16000 (4h 26m 40s) | 29 | 25.80 | 14 | 18 |
-| 11 | 400 | 3850 | 2796 | 20123 (5h 35m 23s) | 32 | 28.90 | 15.40 | 19.80 |
-| 12 | 400 | 4200 | 3077 | 22532 (6h 15m 32s) | 36 | 32.10 | 16.80 | 21.60 |
-| 13 | 400 | 4550 | 3360 | 25003 (6h 56m 43s) | 39 | 35.40 | 18.20 | 23.40 |
-| 14 | 400 | 4900 | 3646 | 27533 (7h 38m 53s) | 43 | 38.80 | 19.60 | 25.20 |
-| 15 | 400 | 5250 | 3933 | 30116 (8h 21m 56s) | 46 | 42.30 | 21 | 27 |
-| 16 | 400 | 5600 | 4222 | 32752 (9h 05m 52s) | 50 | 46 | 22.40 | 28.80 |
-| 17 | 400 | 5950 | 4514 | 35437 (9h 50m 37s) | 54 | 49.70 | 23.80 | 30.60 |
-| 18 | 400 | 6300 | 4807 | 38170 (10h 36m 10s) | 57 | 53.70 | 25.20 | 32.40 |
-| 19 | 400 | 6650 | 5101 | 40950 (11h 22m 30s) | 61 | 57.70 | 26.60 | 34.20 |
-| 20 | 400 | 7000 | 5397 | 43774 (12h 09m 34s) | 65 | 62 | 28 | 36 |
+| Niveau | ore | stone | iron | buildSeconds | populationCost | antiAirDefensePct | cityDefensePct |
+| ---: | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 400 | 350 | 200 | 80 (1m 20s) | 2 | 3.30 | 2.20 |
+| 2 | 400 | 700 | 429 | 395 (6m 35s) | 4 | 6.75 | 4.50 |
+| 3 | 400 | 1050 | 670 | 1003 (16m 43s) | 7 | 10.20 | 6.80 |
+| 4 | 400 | 1400 | 919 | 1945 (32m 25s) | 10 | 13.95 | 9.30 |
+| 5 | 400 | 1750 | 1175 | 3249 (54m 09s) | 13 | 17.70 | 11.80 |
+| 6 | 400 | 2100 | 1435 | 4942 (1h 22m 22s) | 16 | 21.75 | 14.50 |
+| 7 | 400 | 2450 | 1701 | 7045 (1h 57m 25s) | 19 | 25.65 | 17.10 |
+| 8 | 400 | 2800 | 1970 | 9577 (2h 39m 37s) | 22 | 30 | 20 |
+| 9 | 400 | 3150 | 2242 | 12557 (3h 29m 17s) | 26 | 34.20 | 22.80 |
+| 10 | 400 | 3500 | 2515 | 16000 (4h 26m 40s) | 29 | 38.70 | 25.80 |
+| 11 | 400 | 3850 | 2796 | 20123 (5h 35m 23s) | 32 | 43.35 | 28.90 |
+| 12 | 400 | 4200 | 3077 | 22532 (6h 15m 32s) | 36 | 48.15 | 32.10 |
+| 13 | 400 | 4550 | 3360 | 25003 (6h 56m 43s) | 39 | 53.10 | 35.40 |
+| 14 | 400 | 4900 | 3646 | 27533 (7h 38m 53s) | 43 | 58.20 | 38.80 |
+| 15 | 400 | 5250 | 3933 | 30116 (8h 21m 56s) | 46 | 63.45 | 42.30 |
+| 16 | 400 | 5600 | 4222 | 32752 (9h 05m 52s) | 50 | 69 | 46 |
+| 17 | 400 | 5950 | 4514 | 35437 (9h 50m 37s) | 54 | 74.55 | 49.70 |
+| 18 | 400 | 6300 | 4807 | 38170 (10h 36m 10s) | 57 | 80.55 | 53.70 |
+| 19 | 400 | 6650 | 5101 | 40950 (11h 22m 30s) | 61 | 86.55 | 57.70 |
+| 20 | 400 | 7000 | 5397 | 43774 (12h 09m 34s) | 65 | 93 | 62 |
 
 ### Armament Factory
 - **id**: `armament_factory`
