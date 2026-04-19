@@ -47,6 +47,16 @@ export interface IntelProjectEntry {
 }
 
 export type TroopCounts = Record<TroopId, number>;
+export interface CityMilitiaState {
+  isActive: boolean;
+  activatedAtMs: number | null;
+  expiresAtMs: number | null;
+  currentMilitia: number;
+  initialMilitia: number;
+  productionPenaltyPct: number;
+  sourceBuildingLevelSnapshot: number;
+  bonusPerLevel: number;
+}
 
 export interface CityEconomyState {
   cityId: string;
@@ -59,6 +69,7 @@ export interface CityEconomyState {
   researchQueue: ResearchQueueEntry[];
   completedResearch: ResearchId[];
   activePolicy: LocalPolicyId | null;
+  militia: CityMilitiaState;
   intelReadiness: number;
   intelProjects: IntelProjectEntry[];
   lastUpdatedAtMs: number;
@@ -70,15 +81,27 @@ export interface GuardResult {
 }
 
 const ZERO_TROOPS: TroopCounts = {
+  citizen_militia: 0,
   infantry: 0,
-  shield_guard: 0,
+  phalanx_lancer: 0,
   marksman: 0,
-  raider_cavalry: 0,
   assault: 0,
+  shield_guard: 0,
+  raider_cavalry: 0,
   breacher: 0,
+  assault_convoy: 0,
+  swift_carrier: 0,
   interception_sentinel: 0,
+  ember_drifter: 0,
   rapid_escort: 0,
+  bulwark_trireme: 0,
+  colonization_convoy: 0,
 };
+const MILITIA_DURATION_MS = 3 * 60 * 60 * 1000;
+const MILITIA_PENALTY_PCT = 50;
+const MILITIA_BASE_PER_LEVEL = 10;
+const MILITIA_BONUS_PER_LEVEL = 5;
+const MILITIA_LEVEL_CAP = 25;
 
 function getDefaultLevels(): Record<EconomyBuildingId, number> {
   return STANDARD_BUILDING_ORDER.reduce(
@@ -102,6 +125,16 @@ export function createInitialCityEconomyState(input: { cityId: string; owner: st
     researchQueue: [],
     completedResearch: [],
     activePolicy: null,
+    militia: {
+      isActive: false,
+      activatedAtMs: null,
+      expiresAtMs: null,
+      currentMilitia: 0,
+      initialMilitia: 0,
+      productionPenaltyPct: MILITIA_PENALTY_PCT,
+      sourceBuildingLevelSnapshot: 0,
+      bonusPerLevel: 0,
+    },
     intelReadiness: 0,
     intelProjects: [],
     lastUpdatedAtMs: input.nowMs ?? Date.now(),
@@ -168,6 +201,7 @@ function getBuildingPopulationUsage(state: CityEconomyState) {
 function getTroopPopulationUsage(state: CityEconomyState) {
   return (Object.keys(CITY_ECONOMY_CONFIG.troops) as TroopId[]).reduce((sum, troopId) => {
     const cfg = CITY_ECONOMY_CONFIG.troops[troopId];
+    if (cfg.category === 'militia') return sum;
     return sum + state.troops[troopId] * cfg.populationCost;
   }, 0);
 }
@@ -277,10 +311,11 @@ export function getProductionPerHour(state: CityEconomyState): ResourceBundle {
   const derived = getCityDerivedStats(state);
   const productionMultiplier = 1 + derived.productionPct / 100;
 
+  const penaltyMultiplier = getMilitiaProductionMultiplier(state);
   return {
-    ore: (mine?.effect.orePerHour ?? 0) * holdingMultiplier * productionMultiplier,
-    stone: (quarry?.effect.stonePerHour ?? 0) * holdingMultiplier * productionMultiplier,
-    iron: (refinery?.effect.ironPerHour ?? 0) * holdingMultiplier * productionMultiplier,
+    ore: (mine?.effect.orePerHour ?? 0) * holdingMultiplier * productionMultiplier * penaltyMultiplier,
+    stone: (quarry?.effect.stonePerHour ?? 0) * holdingMultiplier * productionMultiplier * penaltyMultiplier,
+    iron: (refinery?.effect.ironPerHour ?? 0) * holdingMultiplier * productionMultiplier * penaltyMultiplier,
   };
 }
 
@@ -288,15 +323,121 @@ export function applyClaimOnAccess(state: CityEconomyState, nowMs = Date.now()) 
   if (nowMs <= state.lastUpdatedAtMs) return;
 
   const elapsedHours = (nowMs - state.lastUpdatedAtMs) / (1000 * 60 * 60);
-  const prod = getProductionPerHour(state);
+  const holdingMultiplier = CITY_ECONOMY_CONFIG.holdingMultiplier;
+  const mine = getCurrentLevelRow(state, 'mine');
+  const quarry = getCurrentLevelRow(state, 'quarry');
+  const refinery = getCurrentLevelRow(state, 'refinery');
+  const derived = getCityDerivedStats(state);
+  const productionMultiplier = 1 + derived.productionPct / 100;
+  const baseProd = {
+    ore: (mine?.effect.orePerHour ?? 0) * holdingMultiplier * productionMultiplier,
+    stone: (quarry?.effect.stonePerHour ?? 0) * holdingMultiplier * productionMultiplier,
+    iron: (refinery?.effect.ironPerHour ?? 0) * holdingMultiplier * productionMultiplier,
+  };
+  const effectiveHours = getEffectiveProductionHours(state, state.lastUpdatedAtMs, nowMs, elapsedHours);
   const caps = getStorageCaps(state);
 
   (['ore', 'stone', 'iron'] as EconomyResource[]).forEach((resource) => {
-    const next = state.resources[resource] + prod[resource] * elapsedHours;
+    const next = state.resources[resource] + baseProd[resource] * effectiveHours;
     state.resources[resource] = Math.min(caps[resource], next);
   });
 
   state.lastUpdatedAtMs = nowMs;
+}
+
+export function getMilitiaFarmEquivalentLevel(state: CityEconomyState) {
+  return getBuildingLevel(state, 'housing_complex');
+}
+
+export function getMilitiaBonusPerLevel(state: CityEconomyState) {
+  return state.completedResearch.includes('war_protocols') ? MILITIA_BONUS_PER_LEVEL : 0;
+}
+
+export function getMilitiaMaxSize(state: CityEconomyState) {
+  const level = Math.min(MILITIA_LEVEL_CAP, getMilitiaFarmEquivalentLevel(state));
+  return level * (MILITIA_BASE_PER_LEVEL + getMilitiaBonusPerLevel(state));
+}
+
+export function isMilitiaActive(state: CityEconomyState, nowMs = Date.now()) {
+  return Boolean(state.militia.isActive && state.militia.expiresAtMs && state.militia.expiresAtMs > nowMs && state.militia.currentMilitia > 0);
+}
+
+export function getMilitiaProductionMultiplier(state: CityEconomyState, nowMs = Date.now()) {
+  return isMilitiaActive(state, nowMs) ? 1 - state.militia.productionPenaltyPct / 100 : 1;
+}
+
+function getEffectiveProductionHours(state: CityEconomyState, startMs: number, endMs: number, fallbackHours: number) {
+  const activatedAt = state.militia.activatedAtMs;
+  const expiresAt = state.militia.expiresAtMs;
+  if (!activatedAt || !expiresAt || state.militia.productionPenaltyPct <= 0) return fallbackHours;
+
+  const overlapMs = Math.max(0, Math.min(endMs, expiresAt) - Math.max(startMs, activatedAt));
+  if (overlapMs <= 0) return fallbackHours;
+  const totalMs = Math.max(0, endMs - startMs);
+  if (totalMs <= 0) return 0;
+
+  const overlapHours = overlapMs / (1000 * 60 * 60);
+  return fallbackHours - overlapHours * (state.militia.productionPenaltyPct / 100);
+}
+
+export function activateMilitia(state: CityEconomyState, nowMs = Date.now()): GuardResult {
+  resolveMilitiaExpiration(state, nowMs);
+  if (isMilitiaActive(state, nowMs)) {
+    return { ok: false, reason: 'Militia already active' };
+  }
+  const sourceLevel = getMilitiaFarmEquivalentLevel(state);
+  if (sourceLevel <= 0) {
+    return { ok: false, reason: 'Requires housing_complex 1' };
+  }
+
+  const maxMilitia = getMilitiaMaxSize(state);
+  state.militia = {
+    isActive: true,
+    activatedAtMs: nowMs,
+    expiresAtMs: nowMs + MILITIA_DURATION_MS,
+    currentMilitia: maxMilitia,
+    initialMilitia: maxMilitia,
+    productionPenaltyPct: MILITIA_PENALTY_PCT,
+    sourceBuildingLevelSnapshot: Math.min(MILITIA_LEVEL_CAP, sourceLevel),
+    bonusPerLevel: getMilitiaBonusPerLevel(state),
+  };
+  return { ok: true, reason: null };
+}
+
+export function applyMilitiaDefensiveLosses(state: CityEconomyState, losses: number, nowMs = Date.now()) {
+  resolveMilitiaExpiration(state, nowMs);
+  if (!isMilitiaActive(state, nowMs)) return 0;
+  const clampedLosses = Math.max(0, Math.floor(losses));
+  const applied = Math.min(clampedLosses, state.militia.currentMilitia);
+  state.militia.currentMilitia -= applied;
+  if (state.militia.currentMilitia <= 0) {
+    state.militia.currentMilitia = 0;
+  }
+  return applied;
+}
+
+export function resolveMilitiaExpiration(state: CityEconomyState, nowMs = Date.now()) {
+  if (!state.militia.isActive) return false;
+  if (!state.militia.expiresAtMs || state.militia.expiresAtMs > nowMs) return false;
+  state.militia = {
+    isActive: false,
+    activatedAtMs: null,
+    expiresAtMs: null,
+    currentMilitia: 0,
+    initialMilitia: 0,
+    productionPenaltyPct: MILITIA_PENALTY_PCT,
+    sourceBuildingLevelSnapshot: 0,
+    bonusPerLevel: 0,
+  };
+  return true;
+}
+
+export function canSendMilitiaOnAttack() {
+  return false;
+}
+
+export function canTransferMilitia() {
+  return false;
 }
 
 export function canStartConstruction(state: CityEconomyState, buildingId: EconomyBuildingId): GuardResult {
@@ -411,9 +552,15 @@ export function canStartTroopTraining(state: CityEconomyState, troopId: TroopId,
   if (!troop) {
     return { ok: false, reason: 'Unknown troop' };
   }
+  if (troop.category === 'militia') {
+    return { ok: false, reason: 'Militia cannot be trained in barracks/harbor queues' };
+  }
 
   if (getBuildingLevel(state, troop.requiredBuildingId) < troop.requiredBuildingLevel) {
     return { ok: false, reason: `Requires ${troop.requiredBuildingId} ${troop.requiredBuildingLevel}` };
+  }
+  if (CITY_ECONOMY_CONFIG.troopResearchEnforcementEnabled && troop.requiredResearch && !state.completedResearch.includes(troop.requiredResearch)) {
+    return { ok: false, reason: `Requires research ${troop.requiredResearch}` };
   }
 
   const totalCost = {

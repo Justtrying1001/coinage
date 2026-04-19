@@ -7,10 +7,18 @@ import {
   canStartConstruction,
   canStartResearch,
   canStartTroopTraining,
+  activateMilitia,
+  applyMilitiaDefensiveLosses,
+  canSendMilitiaOnAttack,
+  canTransferMilitia,
   createInitialCityEconomyState,
   getCityDerivedStats,
   getEconomyBuildingOrder,
+  getMilitiaMaxSize,
+  getMilitiaProductionMultiplier,
   getMilitaryBuildingOrder,
+  isMilitiaActive,
+  resolveMilitiaExpiration,
   resolveCompletedIntelProjects,
   resolveCompletedResearch,
   resolveCompletedTraining,
@@ -55,6 +63,15 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     expect(resolveCompletedTraining(state, entry.endsAtMs - 1)).toBe(false);
     expect(resolveCompletedTraining(state, entry.endsAtMs)).toBe(true);
     expect(state.troops.infantry).toBe(2);
+  });
+
+  it('keeps requiredResearch metadata non-blocking while enforcement flag is disabled', () => {
+    const state = createInitialCityEconomyState({ cityId: 'c-r', owner: 'p1', nowMs: 0 });
+    state.resources = { ore: 9999, stone: 9999, iron: 9999 };
+    state.levels.barracks = 1;
+
+    expect(CITY_ECONOMY_CONFIG.troopResearchEnforcementEnabled).toBe(false);
+    expect(canStartTroopTraining(state, 'phalanx_lancer', 1).ok).toBe(true);
   });
 
   it('supports research queue persistence model and bonuses', () => {
@@ -131,24 +148,71 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
   });
 
   it('keeps troop category and production-building wiring coherent', () => {
-    const groundTroops = ['infantry', 'shield_guard', 'marksman', 'raider_cavalry', 'assault', 'breacher'] as const;
+    const groundTroops = ['infantry', 'phalanx_lancer', 'marksman', 'assault', 'shield_guard', 'raider_cavalry', 'breacher'] as const;
     groundTroops.forEach((troopId) => {
       const troop = CITY_ECONOMY_CONFIG.troops[troopId];
       expect(troop.category).toBe('ground');
-      expect(['barracks', 'armament_factory']).toContain(troop.requiredBuildingId);
+      expect(troop.requiredBuildingId).toBe('barracks');
+      expect(troop.attackType === 'blunt' || troop.attackType === 'sharp' || troop.attackType === 'distance').toBe(true);
       expect(troop.trainingSeconds).toBeGreaterThan(0);
       expect(troop.populationCost).toBeGreaterThan(0);
       expect(troop.cost.ore + troop.cost.stone + troop.cost.iron).toBeGreaterThan(0);
     });
 
-    const airTroops = ['interception_sentinel', 'rapid_escort'] as const;
-    airTroops.forEach((troopId) => {
+    const navalTroops = [
+      'assault_convoy',
+      'swift_carrier',
+      'interception_sentinel',
+      'ember_drifter',
+      'rapid_escort',
+      'bulwark_trireme',
+      'colonization_convoy',
+    ] as const;
+    navalTroops.forEach((troopId) => {
       const troop = CITY_ECONOMY_CONFIG.troops[troopId];
-      expect(troop.category).toBe('air');
+      expect(troop.category).toBe('naval');
       expect(troop.requiredBuildingId).toBe('space_dock');
       expect(troop.trainingSeconds).toBeGreaterThan(0);
       expect(troop.populationCost).toBeGreaterThan(0);
-      expect(troop.cost.ore + troop.cost.stone + troop.cost.iron).toBeGreaterThan(0);
     });
+
+    expect(CITY_ECONOMY_CONFIG.troops.citizen_militia.category).toBe('militia');
+    expect(canStartTroopTraining(createInitialCityEconomyState({ cityId: 'm1', owner: 'p1', nowMs: 0 }), 'citizen_militia', 1).ok).toBe(false);
+  });
+
+  it('activates militia from housing_complex and applies capped size formula', () => {
+    const state = createInitialCityEconomyState({ cityId: 'm2', owner: 'p1', nowMs: 0 });
+    state.levels.housing_complex = 30;
+    expect(getMilitiaMaxSize(state)).toBe(250);
+    expect(activateMilitia(state, 100).ok).toBe(true);
+    expect(state.militia.initialMilitia).toBe(250);
+    expect(state.militia.sourceBuildingLevelSnapshot).toBe(25);
+    expect(activateMilitia(state, 101)).toEqual({ ok: false, reason: 'Militia already active' });
+  });
+
+  it('applies production malus and resolves militia expiration/losses', () => {
+    const state = createInitialCityEconomyState({ cityId: 'm3', owner: 'p1', nowMs: 0 });
+    state.levels.housing_complex = 10;
+    expect(activateMilitia(state, 1_000).ok).toBe(true);
+    expect(isMilitiaActive(state, 1_500)).toBe(true);
+    expect(getMilitiaProductionMultiplier(state, 1_500)).toBe(0.5);
+    expect(applyMilitiaDefensiveLosses(state, 12, 2_000)).toBe(12);
+    expect(state.militia.currentMilitia).toBe(88);
+    expect(resolveMilitiaExpiration(state, 1_000 + 3 * 60 * 60 * 1000 + 1)).toBe(true);
+    expect(isMilitiaActive(state, 1_000 + 3 * 60 * 60 * 1000 + 1)).toBe(false);
+    expect(state.militia.currentMilitia).toBe(0);
+  });
+
+  it('never allows militia attack/transfer usage', () => {
+    expect(canSendMilitiaOnAttack()).toBe(false);
+    expect(canTransferMilitia()).toBe(false);
+  });
+
+  it('supports militia bonus hook without requiring full research-lab completion flow', () => {
+    const state = createInitialCityEconomyState({ cityId: 'm4', owner: 'p1', nowMs: 0 });
+    state.levels.housing_complex = 10;
+    expect(getMilitiaMaxSize(state)).toBe(100);
+    state.completedResearch.push('war_protocols');
+    expect(getMilitiaMaxSize(state)).toBe(150);
   });
 });
