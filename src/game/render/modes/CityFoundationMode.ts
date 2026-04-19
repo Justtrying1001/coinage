@@ -10,6 +10,10 @@ import {
   getConstructionQueueSlots,
   getEconomyBuildingOrder,
   getPopulationSnapshot,
+  getMilitiaMaxSize,
+  getMilitiaFarmEquivalentLevel,
+  getMilitiaProductionMultiplier,
+  isMilitiaActive,
   getProductionPerHour,
   getStorageCaps,
   isBuildingUnlocked,
@@ -17,6 +21,7 @@ import {
 } from '@/game/city/economy/cityEconomySystem';
 import {
   loadCityEconomyState,
+  activateCityMilitia,
   setCityPolicy,
   startCityBuildingUpgrade,
   startCityIntelProject,
@@ -345,7 +350,24 @@ export class CityFoundationMode implements RenderModeController {
     intel.innerHTML = '<h3>Building intel</h3>';
     ECONOMY_BUILDINGS.forEach((id) => intel.append(this.createBuildingLinkRow(id)));
 
-    split.append(throughput, intel);
+    const militia = document.createElement('section');
+    militia.className = 'city-stitch__ops-list';
+    const militiaActive = isMilitiaActive(this.state.economy);
+    const militiaMax = getMilitiaMaxSize(this.state.economy);
+    const remaining = this.state.economy.militia.expiresAtMs ? Math.max(0, this.state.economy.militia.expiresAtMs - Date.now()) : 0;
+    militia.innerHTML = `<h3>Citizen Militia protocol</h3>
+      <div class="city-stitch__ops-row"><p>Status</p><p>${militiaActive ? 'ACTIVE' : 'INACTIVE'}</p><p>Housing LVL ${getMilitiaFarmEquivalentLevel(this.state.economy)}</p></div>
+      <div class="city-stitch__ops-row"><p>Current / max</p><p>${this.state.economy.militia.currentMilitia}/${militiaMax}</p><p>Local defense only</p></div>
+      <div class="city-stitch__ops-row"><p>Economic malus</p><p>${militiaActive ? '-50% production' : 'No malus'}</p><p>${militiaActive ? formatDuration(remaining) : '—'}</p></div>`;
+    militia.append(
+      this.makeActionButton(militiaActive ? 'Militia active' : 'Activate militia (3h)', militiaActive, () => {
+        const result = activateCityMilitia(this.persistenceContext, Date.now());
+        this.state.economy = result.state.economy;
+        this.renderAll();
+      }),
+    );
+
+    split.append(throughput, intel, militia);
     page.append(primary, split);
     return page;
   }
@@ -360,10 +382,11 @@ export class CityFoundationMode implements RenderModeController {
 
     (Object.keys(CITY_ECONOMY_CONFIG.troops) as TroopId[]).forEach((troopId) => {
       const troop = CITY_ECONOMY_CONFIG.troops[troopId];
+      if (troop.category === 'militia') return;
       const guard = canStartTroopTraining(this.state.economy, troopId, 1);
       const row = document.createElement('div');
       row.className = 'city-stitch__ops-row';
-      row.innerHTML = `<p>${troop.name}</p><p>${guard.ok ? `${troop.trainingSeconds}s` : guard.reason ?? 'Unavailable'}</p><p>${troop.category === 'air' ? 'Air' : 'Ground'}</p>`;
+      row.innerHTML = `<p>${troop.name}</p><p>${guard.ok ? `${troop.trainingSeconds}s` : guard.reason ?? 'Unavailable'}</p><p>${troop.category === 'naval' ? 'Naval' : 'Ground'}</p>`;
       row.append(this.makeActionButton(guard.ok ? 'Train x1' : 'Unavailable', !guard.ok, () => {
         const result = startCityTroopTraining(this.persistenceContext, troopId, 1, Date.now());
         this.state.economy = result.state.economy;
@@ -412,10 +435,12 @@ export class CityFoundationMode implements RenderModeController {
 
     const hardening = document.createElement('section');
     hardening.className = 'city-stitch__ops-list';
+    const militiaActive = isMilitiaActive(this.state.economy);
     hardening.innerHTML = `<h3>Hardening overview</h3>
       <div class="city-stitch__ops-row"><p>Wall integrity</p><p>${Math.min(100, 40 + derived.cityDefensePct).toFixed(1)}%</p><p>Stable</p></div>
       <div class="city-stitch__ops-row"><p>Reactive plating</p><p>+${derived.damageMitigationPct.toFixed(1)}%</p><p>Active</p></div>
-      <div class="city-stitch__ops-row"><p>Breach risk</p><p>${Math.max(2, 30 - derived.siegeResistancePct * 0.2).toFixed(1)}%</p><p>Monitored</p></div>`;
+      <div class="city-stitch__ops-row"><p>Breach risk</p><p>${Math.max(2, 30 - derived.siegeResistancePct * 0.2).toFixed(1)}%</p><p>Monitored</p></div>
+      <div class="city-stitch__ops-row"><p>Citizen militia</p><p>${militiaActive ? this.state.economy.militia.currentMilitia : 0}</p><p>${militiaActive ? 'Active local defenders' : 'Inactive'}</p></div>`;
 
     page.append(metrics, hardening, structures);
     return page;
@@ -715,7 +740,8 @@ export class CityFoundationMode implements RenderModeController {
     panel.innerHTML = `<h3>Selected unit</h3>
       <p>Active batches: ${this.state.economy.trainingQueue.length}</p>
       <p>Barracks level: ${getBuildingLevel(this.state.economy, 'barracks')}</p>
-      <p>Space dock level: ${getBuildingLevel(this.state.economy, 'space_dock')}</p>`;
+      <p>Space dock level: ${getBuildingLevel(this.state.economy, 'space_dock')}</p>
+      <p>Citizen militia: ${isMilitiaActive(this.state.economy) ? `${this.state.economy.militia.currentMilitia} (local defense only)` : 'inactive'}</p>`;
     return panel;
   }
 
@@ -752,11 +778,13 @@ export class CityFoundationMode implements RenderModeController {
     const derived = getCityDerivedStats(this.state.economy);
     const panel = document.createElement('section');
     panel.className = 'city-stitch__detail-block';
+    const militiaMultiplier = getMilitiaProductionMultiplier(this.state.economy);
     panel.innerHTML = `<h3>City effects</h3>
       <p>Defense +${derived.cityDefensePct.toFixed(1)}% · Mitigation +${derived.damageMitigationPct.toFixed(1)}%</p>
       <p>Training +${derived.trainingSpeedPct.toFixed(1)}% · Troop power +${derived.troopCombatPowerPct.toFixed(1)}%</p>
       <p>Detection +${derived.detectionPct.toFixed(1)}% · Counter-intel +${derived.counterIntelPct.toFixed(1)}%</p>
-      <p>Research cap ${derived.researchCapacity} · Market +${derived.marketEfficiencyPct.toFixed(1)}%</p>`;
+      <p>Research cap ${derived.researchCapacity} · Market +${derived.marketEfficiencyPct.toFixed(1)}%</p>
+      <p>Militia production modifier x${militiaMultiplier.toFixed(2)}</p>`;
     return panel;
   }
 
@@ -779,7 +807,8 @@ export class CityFoundationMode implements RenderModeController {
     ops.innerHTML = `<p class="city-stitch__queue-title">Operations</p>
       <p class="city-stitch__queue-line">Training: ${this.state.economy.trainingQueue.length}</p>
       <p class="city-stitch__queue-line">Research: ${this.state.economy.researchQueue.length}</p>
-      <p class="city-stitch__queue-line">Intel: ${this.state.economy.intelProjects.length}</p>`;
+      <p class="city-stitch__queue-line">Intel: ${this.state.economy.intelProjects.length}</p>
+      <p class="city-stitch__queue-line">Militia: ${isMilitiaActive(this.state.economy) ? `ACTIVE (${this.state.economy.militia.currentMilitia})` : 'Inactive'}</p>`;
 
     const status = document.createElement('div');
     status.className = 'city-stitch__queue';

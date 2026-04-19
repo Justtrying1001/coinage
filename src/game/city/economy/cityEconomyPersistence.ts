@@ -8,7 +8,10 @@ import {
   resolveCompletedIntelProjects,
   resolveCompletedResearch,
   resolveCompletedTraining,
+  resolveMilitiaExpiration,
   setActivePolicy,
+  activateMilitia,
+  applyMilitiaDefensiveLosses,
   startConstruction,
   startIntelProject,
   startResearch,
@@ -34,6 +37,7 @@ interface PersistedCityEconomyRecord {
   researchQueue: CityEconomyState['researchQueue'];
   completedResearch: CityEconomyState['completedResearch'];
   activePolicy: CityEconomyState['activePolicy'];
+  militia: CityEconomyState['militia'];
   intelReadiness: number;
   intelProjects: CityEconomyState['intelProjects'];
 }
@@ -108,6 +112,7 @@ function cloneEconomyState(state: CityEconomyState): CityEconomyState {
     researchQueue: state.researchQueue.map((item) => ({ ...item, costPaid: { ...item.costPaid } })),
     completedResearch: [...state.completedResearch],
     activePolicy: state.activePolicy,
+    militia: { ...state.militia },
     intelReadiness: state.intelReadiness,
     intelProjects: state.intelProjects.map((item) => ({ ...item })),
   };
@@ -142,6 +147,7 @@ function toEconomyState(record: PersistedCityEconomyRecord): CityEconomyState {
     researchQueue: (record.researchQueue ?? []).map((item) => ({ ...item, costPaid: { ...item.costPaid } })),
     completedResearch: [...(record.completedResearch ?? [])],
     activePolicy: record.activePolicy ?? null,
+    militia: { ...defaults.militia, ...(record.militia ?? {}) },
     intelReadiness: record.intelReadiness ?? 0,
     intelProjects: (record.intelProjects ?? []).map((item) => ({ ...item })),
     lastUpdatedAtMs: record.lastResourceUpdateAtMs,
@@ -163,6 +169,7 @@ function fromEconomyState(context: CityPersistenceContext, state: CityEconomySta
     researchQueue: state.researchQueue.map((item) => ({ ...item, costPaid: { ...item.costPaid } })),
     completedResearch: [...state.completedResearch],
     activePolicy: state.activePolicy,
+    militia: { ...state.militia },
     intelReadiness: state.intelReadiness,
     intelProjects: state.intelProjects.map((item) => ({ ...item })),
   };
@@ -210,6 +217,7 @@ export function loadCityEconomyState(context: CityPersistenceContext, nowMs = Da
   resolveCompletedConstruction(mutable, nowMs);
   resolveCompletedTraining(mutable, nowMs);
   resolveCompletedResearch(mutable, nowMs);
+  resolveMilitiaExpiration(mutable, nowMs);
   resolveCompletedIntelProjects(mutable, nowMs);
 
   const persisted = fromEconomyState(context, mutable);
@@ -253,6 +261,24 @@ export function startCityTroopTraining(
     state: buildSnapshot(persisted),
     guard,
   };
+}
+
+export function activateCityMilitia(context: CityPersistenceContext, nowMs = Date.now()) {
+  const loaded = loadCityEconomyState(context, nowMs);
+  const mutable = cloneEconomyState(loaded.economy);
+  const guard = activateMilitia(mutable, nowMs);
+  const persisted = fromEconomyState(context, mutable);
+  saveRecord(persisted);
+  return { state: buildSnapshot(persisted), guard };
+}
+
+export function applyCityMilitiaDefensiveLosses(context: CityPersistenceContext, losses: number, nowMs = Date.now()) {
+  const loaded = loadCityEconomyState(context, nowMs);
+  const mutable = cloneEconomyState(loaded.economy);
+  const applied = applyMilitiaDefensiveLosses(mutable, losses, nowMs);
+  const persisted = fromEconomyState(context, mutable);
+  saveRecord(persisted);
+  return { state: buildSnapshot(persisted), applied };
 }
 
 export function startCityResearch(context: CityPersistenceContext, researchId: ResearchId, nowMs = Date.now()) {

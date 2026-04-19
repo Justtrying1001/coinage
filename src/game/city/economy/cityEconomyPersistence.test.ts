@@ -3,6 +3,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CITY_ECONOMY_CONFIG } from '@/game/city/economy/cityEconomyConfig';
 import {
+  activateCityMilitia,
+  applyCityMilitiaDefensiveLosses,
   clearCityEconomyPersistenceForTests,
   loadCityEconomyState,
   startCityBuildingUpgrade,
@@ -36,6 +38,25 @@ describe('cityEconomyPersistence MVP MICRO flow', () => {
     expect(snapshot.economy.activePolicy).toBeNull();
     expect(snapshot.economy.intelProjects).toEqual([]);
     expect(snapshot.economy.intelReadiness).toBe(0);
+    expect(snapshot.economy.militia.isActive).toBe(false);
+  });
+
+  it('persists active militia timer across reload and cleans post-expiration', () => {
+    const activation = activateCityMilitia(context, 10_100);
+    expect(activation.guard.ok).toBe(true);
+    expect(activation.state.economy.militia.isActive).toBe(true);
+
+    const mid = loadCityEconomyState(context, 10_100 + 60 * 60 * 1000);
+    expect(mid.economy.militia.isActive).toBe(true);
+    expect(mid.economy.militia.currentMilitia).toBeGreaterThan(0);
+
+    const applied = applyCityMilitiaDefensiveLosses(context, 15, 10_100 + 90 * 60 * 1000);
+    expect(applied.applied).toBe(Math.min(15, mid.economy.militia.currentMilitia));
+    expect(applied.state.economy.militia.currentMilitia).toBe(mid.economy.militia.currentMilitia - applied.applied);
+
+    const expired = loadCityEconomyState(context, 10_100 + 3 * 60 * 60 * 1000 + 1);
+    expect(expired.economy.militia.isActive).toBe(false);
+    expect(expired.economy.militia.currentMilitia).toBe(0);
   });
 
   it('persists construction queue updates across reloads', () => {
@@ -91,14 +112,21 @@ describe('cityEconomyPersistence MVP MICRO flow', () => {
             },
           ],
           troops: {
+            citizen_militia: 0,
             infantry: 0,
-            shield_guard: 0,
+            phalanx_lancer: 0,
             marksman: 0,
-            raider_cavalry: 0,
             assault: 0,
+            shield_guard: 0,
+            raider_cavalry: 0,
             breacher: 0,
+            assault_convoy: 0,
+            swift_carrier: 0,
             interception_sentinel: 0,
+            ember_drifter: 0,
             rapid_escort: 0,
+            bulwark_trireme: 0,
+            colonization_convoy: 0,
           },
           trainingQueue: [],
           researchQueue: [],
