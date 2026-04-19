@@ -42,7 +42,7 @@ Paliers centrés sur attaque/défense individuelles et collectives, mobilisation
 
 ## Branche Diplomatique — 20 paliers
 
-Paliers centrés sur slots du territoire principal, pactes, alliances, traités, reddition, analyse de faction.
+Paliers centrés sur gestion des territoires contestés, pactes, alliances, traités, reddition, analyse de faction.
 
 # Gouvernance de faction
 
@@ -89,14 +89,14 @@ Tous les secteurs sont générés à partir de `WORLD_SEED` et démarrent neutre
 | Colonisation | Slot libre via convoi de colonisation |
 | Multi-slots | Autorisé |
 
-## Attribution territoire principal
+## Spawn, occupation et contestation
 
-Premier joueur d'un token :
+Règles canoniques :
 
-1. attribution d'un secteur neutre
-2. ce secteur devient territoire principal
-3. ville du joueur créée
-4. protection hors guerre officielle
+1. L’arrivée d’un joueur crée sa ville sur un slot valide, sans souveraineté automatique.
+2. Un secteur peut accueillir des joueurs de plusieurs factions dès le début.
+3. L’occupation multi-factions est valide : le secteur est alors contesté (mixte).
+4. Aucun spawn n’accorde de protection territoriale exclusive.
 
 ## Passage en territoire contrôlé
 
@@ -104,7 +104,11 @@ Un secteur neutre devient territoire contrôlé quand tous ses slots sont déten
 
 ## Perte du statut contrôlé
 
-Si un slot est repris par une autre faction en guerre officielle, le secteur redevient neutre immédiatement.
+Si un slot est repris par une autre faction en guerre officielle, le secteur redevient contesté tant que plusieurs factions y coexistent.
+
+## Déverrouillage de gouvernance territoriale
+
+La gouvernance territoriale n’est active qu’après contrôle complet du secteur par une faction.
 
 # Alliances
 

@@ -17,7 +17,7 @@ Version 2.2 — Avril 2026
 | Branche Diplomatique palier 3 | Déclaration de guerre officielle |
 | Branche Militaire palier 3 | Armée collective active |
 
-Sans ces deux prérequis, une faction peut raider les secteurs neutres mais pas déclarer de guerre officielle à un territoire principal.
+Sans ces deux prérequis, une faction peut raider les secteurs neutres ou contestés mais pas déclarer de guerre officielle contre des territoires ennemis contrôlés/gouvernés.
 
 ## Armée collective
 
@@ -47,7 +47,7 @@ Pas de timer fixe : la guerre dure jusqu'à condition de fin.
 
 ## Objectifs de guerre
 
-Les cibles sont les villes des territoires principaux et territoires contrôlés ennemis.
+Les cibles sont les villes situées sur des territoires ennemis contrôlés ou gouvernés.
 
 ### Séquence de capture (mécanique inchangée)
 
@@ -60,7 +60,7 @@ Les cibles sont les villes des territoires principaux et territoires contrôlés
 
 ## Règle des 75% — chute d'un territoire
 
-Si 75% des villes d'un territoire spécifique passent sous contrôle d'une même faction ennemie, ce territoire bascule.
+Si 75% des villes d'un territoire spécifique passent sous contrôle d'une même faction ennemie, ce territoire bascule au profit de cette faction.
 
 La guerre peut continuer sur les autres territoires de la faction perdante.
 
