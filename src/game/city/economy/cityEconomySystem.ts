@@ -296,6 +296,15 @@ function getResearchEffectTotals(state: CityEconomyState) {
   );
 }
 
+function getResearchPointsCapacity(state: CityEconomyState) {
+  // Grepolis rule: 4 points per Academy level (Coinage: research_lab as Academy equivalent).
+  return getBuildingLevel(state, 'research_lab') * 4;
+}
+
+function getResearchPointsSpent(state: CityEconomyState) {
+  return state.completedResearch.reduce((sum, researchId) => sum + CITY_ECONOMY_CONFIG.research[researchId].researchPointsCost, 0);
+}
+
 function getPolicyEffect(state: CityEconomyState) {
   if (!state.activePolicy) return null;
   return CITY_ECONOMY_CONFIG.policies[state.activePolicy]?.effect ?? null;
@@ -398,7 +407,7 @@ export function getMilitiaFarmEquivalentLevel(state: CityEconomyState) {
 }
 
 export function getMilitiaBonusPerLevel(state: CityEconomyState) {
-  return state.completedResearch.includes('war_protocols') ? MILITIA_BONUS_PER_LEVEL : 0;
+  return state.completedResearch.includes('city_guard') ? MILITIA_BONUS_PER_LEVEL : 0;
 }
 
 export function getMilitiaMaxSize(state: CityEconomyState) {
@@ -680,12 +689,13 @@ export function resolveCompletedTraining(state: CityEconomyState, nowMs = Date.n
 
 export function canStartResearch(state: CityEconomyState, researchId: ResearchId): GuardResult {
   if (state.completedResearch.includes(researchId)) return { ok: false, reason: 'Already researched' };
-  if (state.researchQueue.length > 0) return { ok: false, reason: 'Research queue busy' };
   if (getBuildingLevel(state, 'research_lab') < CITY_ECONOMY_CONFIG.research[researchId].requiredBuildingLevel) {
     return { ok: false, reason: `Requires research_lab ${CITY_ECONOMY_CONFIG.research[researchId].requiredBuildingLevel}` };
   }
-  const derived = getCityDerivedStats(state);
-  if (derived.researchCapacity <= state.completedResearch.length * 6) return { ok: false, reason: 'Not enough research capacity' };
+  const capacity = getResearchPointsCapacity(state);
+  const spent = getResearchPointsSpent(state);
+  const nextCost = CITY_ECONOMY_CONFIG.research[researchId].researchPointsCost;
+  if (spent + nextCost > capacity) return { ok: false, reason: 'Not enough research points' };
   const cost = CITY_ECONOMY_CONFIG.research[researchId].cost;
   if (state.resources.ore < cost.ore || state.resources.stone < cost.stone || state.resources.iron < cost.iron) {
     return { ok: false, reason: 'Not enough resources' };
@@ -694,31 +704,21 @@ export function canStartResearch(state: CityEconomyState, researchId: ResearchId
 }
 
 export function startResearch(state: CityEconomyState, researchId: ResearchId, nowMs = Date.now()): GuardResult {
+  void nowMs;
   const guard = canStartResearch(state, researchId);
   if (!guard.ok) return guard;
   const cfg = CITY_ECONOMY_CONFIG.research[researchId];
   state.resources.ore -= cfg.cost.ore;
   state.resources.stone -= cfg.cost.stone;
   state.resources.iron -= cfg.cost.iron;
-  state.researchQueue.push({ researchId, startedAtMs: nowMs, endsAtMs: nowMs + cfg.durationSeconds * 1000, costPaid: { ...cfg.cost } });
+  state.completedResearch.push(researchId);
   return { ok: true, reason: null };
 }
 
 export function resolveCompletedResearch(state: CityEconomyState, nowMs = Date.now()) {
-  let changed = false;
-  const nextQueue: ResearchQueueEntry[] = [];
-  state.researchQueue.forEach((entry) => {
-    if (entry.endsAtMs > nowMs) {
-      nextQueue.push(entry);
-      return;
-    }
-    if (!state.completedResearch.includes(entry.researchId)) {
-      state.completedResearch.push(entry.researchId);
-      changed = true;
-    }
-  });
-  state.researchQueue = nextQueue;
-  return changed;
+  void state;
+  void nowMs;
+  return false;
 }
 
 export function canSetPolicy(state: CityEconomyState, policyId: LocalPolicyId): GuardResult {

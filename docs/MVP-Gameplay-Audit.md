@@ -20,7 +20,7 @@ All **standard non-special** buildings are active:
 1. Construction/upgrade loop for all 17 standard buildings.
 2. Troop training queue and unit unlocks via military branch.
 3. Local defense derivation (wall/tower effects).
-4. Local research queue/projects with persistent completion state.
+4. Local city-based research points + persistent completed research state (no timer queue).
 5. Local intelligence readiness/projects with persistent state.
 6. Local governance policy selection with persistent city-level effects.
 7. Local market/logistics modifiers active at city level.

@@ -20,7 +20,7 @@ MVP MICRO is now the **full city loop** with all standard non-special buildings.
 3. Construction queue (F2P slots only, premium queue disabled).
 4. Troop training queue and unlocks.
 5. Local defense stats (defense/mitigation/siege resistance).
-6. Local research queue and completed research effects.
+6. Local city-based research points spend + completed research effects (instant completion, no timer queue).
 7. Local intelligence readiness and intel projects.
 8. Local governance policies via council chamber.
 9. Local market/logistics modifiers.

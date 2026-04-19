@@ -548,11 +548,16 @@ export class CityFoundationMode implements RenderModeController {
 
   private renderResearchPage() {
     const page = document.createElement('section');
-    page.append(this.createViewHeader('Research Lab', 'Research nodes, queue, and progression gating.'));
+    page.append(this.createViewHeader('Research Lab', 'Research nodes and RP-gated progression.'));
+    const researchCapacity = getBuildingLevel(this.state.economy, 'research_lab') * 4;
+    const researchSpent = this.state.economy.completedResearch.reduce(
+      (sum, researchId) => sum + CITY_ECONOMY_CONFIG.research[researchId].researchPointsCost,
+      0,
+    );
     page.append(
       this.createBranchKpis([
         { label: 'Completed', value: `${this.state.economy.completedResearch.length}` },
-        { label: 'Queue', value: `${this.state.economy.researchQueue.length}/1` },
+        { label: 'Points', value: `${researchSpent}/${researchCapacity}` },
         { label: 'Lab level', value: `LVL ${getBuildingLevel(this.state.economy, 'research_lab')}` },
       ]),
     );
@@ -570,7 +575,7 @@ export class CityFoundationMode implements RenderModeController {
       node.className = `city-stitch__node-card${completed ? ' is-complete' : ''}`;
       node.innerHTML = `<p class="city-stitch__unit-head">${completed ? 'Complete' : guard.ok ? 'Ready' : 'Locked'}</p>
         <h4>${cfg.name}</h4>
-        <p class="city-stitch__unit-meta">Duration ${cfg.durationSeconds}s</p>
+        <p class="city-stitch__unit-meta">Academy lvl ${cfg.requiredBuildingLevel} · ${cfg.researchPointsCost} pts</p>
         <p class="city-stitch__unit-meta">Cost O${cfg.cost.ore} S${cfg.cost.stone} I${cfg.cost.iron}</p>`;
       node.append(this.makeActionButton(guard.ok ? 'Start' : 'Unavailable', !guard.ok, () => {
         const result = startCityResearch(this.persistenceContext, researchId, Date.now());
@@ -581,19 +586,7 @@ export class CityFoundationMode implements RenderModeController {
     });
     list.append(nodeGrid);
 
-    const queue = document.createElement('section');
-    queue.className = 'city-stitch__ops-list';
-    queue.innerHTML = `<h3>Queue ${this.state.economy.researchQueue.length}/1</h3>`;
-    if (this.state.economy.researchQueue.length === 0) {
-      queue.append(this.createQueueLine('No active research node'));
-    } else {
-      this.state.economy.researchQueue.forEach((entry) => {
-        const researchName = CITY_ECONOMY_CONFIG.research[entry.researchId].name;
-        queue.append(this.createQueueLine(`${researchName} · ${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))}`));
-      });
-    }
-
-    page.append(list, queue);
+    page.append(list);
     return page;
   }
 
@@ -912,8 +905,13 @@ export class CityFoundationMode implements RenderModeController {
   private renderResearchDetailPanel() {
     const panel = document.createElement('section');
     panel.className = 'city-stitch__detail-block';
+    const researchCapacity = getBuildingLevel(this.state.economy, 'research_lab') * 4;
+    const researchSpent = this.state.economy.completedResearch.reduce(
+      (sum, researchId) => sum + CITY_ECONOMY_CONFIG.research[researchId].researchPointsCost,
+      0,
+    );
     panel.innerHTML = `<h3>Research status</h3>
-      <p>Queue: ${this.state.economy.researchQueue.length}/1</p>
+      <p>Points used: ${researchSpent}/${researchCapacity}</p>
       <p>Completed: ${this.state.economy.completedResearch.length}</p>
       <p>Lab level: ${getBuildingLevel(this.state.economy, 'research_lab')}</p>`;
     return panel;
