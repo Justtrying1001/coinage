@@ -66,30 +66,30 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     expect(state.troops.infantry).toBe(2);
   });
 
-  it('keeps requiredResearch metadata non-blocking while enforcement flag is disabled', () => {
+  it('enforces troop research requirements', () => {
     const state = createInitialCityEconomyState({ cityId: 'c-r', owner: 'p1', nowMs: 0 });
     state.resources = { ore: 9999, stone: 9999, iron: 9999 };
     state.levels.barracks = 1;
 
-    expect(CITY_ECONOMY_CONFIG.troopResearchEnforcementEnabled).toBe(false);
-    expect(canStartTroopTraining(state, 'phalanx_lancer', 1).ok).toBe(true);
+    expect(CITY_ECONOMY_CONFIG.troopResearchEnforcementEnabled).toBe(true);
+    expect(canStartTroopTraining(state, 'phalanx_lancer', 1).ok).toBe(false);
   });
 
-  it('supports research queue persistence model and bonuses', () => {
+  it('researches instantly and spends academy research points', () => {
     const state = createInitialCityEconomyState({ cityId: 'c-1', owner: 'p1', nowMs: 0 });
     state.resources = { ore: 9999, stone: 9999, iron: 9999 };
     state.levels.hq = 4;
     state.levels.warehouse = 4;
-    state.levels.research_lab = 6;
+    state.levels.research_lab = 7;
 
-    expect(canStartResearch(state, 'economy_drills').ok).toBe(true);
-    expect(startResearch(state, 'economy_drills', 0).ok).toBe(true);
-    const entry = state.researchQueue[0];
-    expect(resolveCompletedResearch(state, entry.endsAtMs)).toBe(true);
-    expect(state.completedResearch).toContain('economy_drills');
+    expect(canStartResearch(state, 'diplomacy').ok).toBe(true);
+    expect(startResearch(state, 'diplomacy', 0).ok).toBe(true);
+    expect(state.completedResearch).toContain('diplomacy');
+    expect(state.researchQueue).toEqual([]);
 
     const stats = getCityDerivedStats(state);
     expect(stats.productionPct).toBeGreaterThan(0);
+    expect(resolveCompletedResearch(state, 0)).toBe(false);
   });
 
   it('supports governance policy persistence and bonuses', () => {
@@ -225,7 +225,7 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     const state = createInitialCityEconomyState({ cityId: 'm4', owner: 'p1', nowMs: 0 });
     state.levels.housing_complex = 10;
     expect(getMilitiaMaxSize(state)).toBe(100);
-    state.completedResearch.push('war_protocols');
+    state.completedResearch.push('city_guard');
     expect(getMilitiaMaxSize(state)).toBe(150);
   });
 });
