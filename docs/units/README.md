@@ -4,21 +4,21 @@ Documentation générée automatiquement depuis la config runtime et la logique 
 
 | ID | Nom affiché | Catégorie / branche | Rôle principal | Lien |
 |---|---|---|---|---|
-| citizen_militia | Citizen Militia | militia | Défense locale temporaire uniquement. | [voir](./citizen_militia.md) |
-| infantry | Infantry | ground | Unité terrestre de combat. | [voir](./infantry.md) |
-| phalanx_lancer | Phalanx Lancer | ground | Unité terrestre de combat. | [voir](./phalanx_lancer.md) |
-| marksman | Marksman | ground | Unité terrestre de combat. | [voir](./marksman.md) |
-| assault | Assault | ground | Unité terrestre de combat. | [voir](./assault.md) |
-| shield_guard | Shield Guard | ground | Unité terrestre de combat. | [voir](./shield_guard.md) |
-| raider_cavalry | Raider Cavalry | ground | Unité terrestre de combat. | [voir](./raider_cavalry.md) |
-| breacher | Breacher | ground | Siège terrestre lent à forte pression structurelle (intent config). | [voir](./breacher.md) |
-| assault_convoy | Assault Convoy | naval | Transport logistique/naval. | [voir](./assault_convoy.md) |
-| swift_carrier | Swift Carrier | naval | Transport logistique/naval. | [voir](./swift_carrier.md) |
-| interception_sentinel | Interception Sentinel | naval | Combat naval (stat configurée; résolution absente du runtime). | [voir](./interception_sentinel.md) |
-| ember_drifter | Ember Drifter | naval | Combat naval (stat configurée; résolution absente du runtime). | [voir](./ember_drifter.md) |
-| rapid_escort | Rapid Escort | naval | Combat naval (stat configurée; résolution absente du runtime). | [voir](./rapid_escort.md) |
-| bulwark_trireme | Bulwark Trireme | naval | Combat naval (stat configurée; résolution absente du runtime). | [voir](./bulwark_trireme.md) |
-| colonization_convoy | Colonization Convoy | naval | Colonisation/conquête (selon notes), avec consommation attendue mais non implémentée ici. | [voir](./colonization_convoy.md) |
+| citizen_militia | Citizen Militia | militia | Défense locale temporaire uniquement. | [voir](./terrestre/citizen_militia.md) |
+| infantry | Infantry | ground | Unité terrestre de combat. | [voir](./terrestre/infantry.md) |
+| phalanx_lancer | Phalanx Lancer | ground | Unité terrestre de combat. | [voir](./terrestre/phalanx_lancer.md) |
+| marksman | Marksman | ground | Unité terrestre de combat. | [voir](./terrestre/marksman.md) |
+| assault | Assault | ground | Unité terrestre de combat. | [voir](./terrestre/assault.md) |
+| shield_guard | Shield Guard | ground | Unité terrestre de combat. | [voir](./terrestre/shield_guard.md) |
+| raider_cavalry | Raider Cavalry | ground | Unité terrestre de combat. | [voir](./terrestre/raider_cavalry.md) |
+| breacher | Breacher | ground | Siège terrestre lent à forte pression structurelle (intent config). | [voir](./terrestre/breacher.md) |
+| assault_convoy | Assault Convoy | naval | Transport logistique/naval. | [voir](./air/assault_convoy.md) |
+| swift_carrier | Swift Carrier | naval | Transport logistique/naval. | [voir](./air/swift_carrier.md) |
+| interception_sentinel | Interception Sentinel | naval | Combat naval (stat configurée; résolution absente du runtime). | [voir](./air/interception_sentinel.md) |
+| ember_drifter | Ember Drifter | naval | Combat naval (stat configurée; résolution absente du runtime). | [voir](./air/ember_drifter.md) |
+| rapid_escort | Rapid Escort | naval | Combat naval (stat configurée; résolution absente du runtime). | [voir](./air/rapid_escort.md) |
+| bulwark_trireme | Bulwark Trireme | naval | Combat naval (stat configurée; résolution absente du runtime). | [voir](./air/bulwark_trireme.md) |
+| colonization_convoy | Colonization Convoy | naval | Colonisation/conquête (selon notes), avec consommation attendue mais non implémentée ici. | [voir](./air/colonization_convoy.md) |
 
 ## Régénération
 

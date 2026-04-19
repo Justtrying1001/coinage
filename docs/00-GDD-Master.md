@@ -109,9 +109,9 @@ Règle stricte : pas d’achat direct de puissance brute (ressources de base, un
 | Document | Objet |
 | --- | --- |
 | 01 | Lexique & Ressources |
-| 02 | Bâtiments & Construction |
 | 03 | Gameplay Micro |
 | 04 | Gameplay Macro |
 | 05 | Guerres & End Game |
 | 06 | Stack Technique |
 | 07 | Roadmap Build |
+| 11 | Vault Warfare System |
