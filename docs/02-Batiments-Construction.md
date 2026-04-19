@@ -2,6 +2,8 @@
 
 Documentation générée automatiquement depuis le runtime (`src/game/city/economy/cityEconomyConfig.ts`).
 
+Note timing Grepolis: les `buildSeconds` hors `hq` sont stockés comme valeurs de référence (monde vitesse 1, Senate niveau 15). Le runtime applique ensuite la normalisation de vitesse selon le niveau de `hq` et `worldSpeed`.
+
 ## Vue d’ensemble
 
 | ID | Nom affiché | Catégorie | Niveau max | Prérequis de déblocage | Effet principal | Notes |

@@ -152,6 +152,10 @@ export interface LocalPolicyConfig {
 
 export interface CityEconomyConfig {
   queueSlots: number;
+  construction: {
+    worldSpeed: number;
+    referenceSenateLevel: number;
+  };
   troopResearchEnforcementEnabled: boolean;
   premiumQueueEnabled: false;
   holdingMultiplierEnabled: false;
@@ -174,6 +178,10 @@ import { CITY_BUILDING_LEVEL_TABLES } from './cityBuildingLevelTables';
 
 export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
   queueSlots: 2,
+  construction: {
+    worldSpeed: 1,
+    referenceSenateLevel: 15,
+  },
   troopResearchEnforcementEnabled: false,
   premiumQueueEnabled: false,
   holdingMultiplierEnabled: false,

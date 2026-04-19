@@ -88,6 +88,8 @@ function renderEffectValue(effect, key) {
 
 let doc = '# Bâtiments\n\n';
 doc += 'Documentation générée automatiquement depuis le runtime (`src/game/city/economy/cityEconomyConfig.ts`).\n\n';
+doc +=
+  'Note timing Grepolis: les `buildSeconds` hors `hq` sont stockés comme valeurs de référence (monde vitesse 1, Senate niveau 15). Le runtime applique ensuite la normalisation de vitesse selon le niveau de `hq` et `worldSpeed`.\n\n';
 doc += '## Vue d’ensemble\n\n';
 doc += '| ID | Nom affiché | Catégorie | Niveau max | Prérequis de déblocage | Effet principal | Notes |\n';
 doc += '|---|---|---|---:|---|---|---|\n';

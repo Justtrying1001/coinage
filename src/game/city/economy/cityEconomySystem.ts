@@ -102,6 +102,33 @@ const MILITIA_PENALTY_PCT = 50;
 const MILITIA_BASE_PER_LEVEL = 10;
 const MILITIA_BONUS_PER_LEVEL = 5;
 const MILITIA_LEVEL_CAP = 25;
+const SENATE_BUILD_TIME_PCT_BY_LEVEL: Record<number, number> = {
+  1: 100.0,
+  2: 98.6,
+  3: 97.0,
+  4: 95.3,
+  5: 93.5,
+  6: 91.5,
+  7: 89.5,
+  8: 87.4,
+  9: 85.3,
+  10: 83.0,
+  11: 80.8,
+  12: 78.4,
+  13: 76.1,
+  14: 73.7,
+  15: 71.2,
+  16: 68.7,
+  17: 66.1,
+  18: 63.6,
+  19: 60.9,
+  20: 58.3,
+  21: 55.6,
+  22: 52.9,
+  23: 50.1,
+  24: 47.4,
+  25: 44.5,
+};
 
 function getDefaultLevels(): Record<EconomyBuildingId, number> {
   return STANDARD_BUILDING_ORDER.reduce(
@@ -181,6 +208,27 @@ export function getUpgradeLevelCost(buildingId: EconomyBuildingId, targetLevel: 
     throw new Error(`Invalid target level ${targetLevel} for ${buildingId}`);
   }
   return row;
+}
+
+function getSenateBuildTimePct(level: number) {
+  if (level <= 1) return SENATE_BUILD_TIME_PCT_BY_LEVEL[1];
+  if (level >= 25) return SENATE_BUILD_TIME_PCT_BY_LEVEL[25];
+  return SENATE_BUILD_TIME_PCT_BY_LEVEL[level] ?? SENATE_BUILD_TIME_PCT_BY_LEVEL[1];
+}
+
+export function getConstructionDurationSeconds(state: CityEconomyState, buildingId: EconomyBuildingId, targetLevel: number) {
+  const levelCost = getUpgradeLevelCost(buildingId, targetLevel);
+  const worldSpeed = CITY_ECONOMY_CONFIG.construction.worldSpeed;
+  const derived = getCityDerivedStats(state);
+
+  const hqLevel = getBuildingLevel(state, 'hq');
+  const currentSenatePct = getSenateBuildTimePct(hqLevel);
+  const referencePct = getSenateBuildTimePct(CITY_ECONOMY_CONFIG.construction.referenceSenateLevel);
+
+  const senateMultiplier = buildingId === 'hq' ? 1 : currentSenatePct / referencePct;
+  const policyMultiplier = Math.max(0.4, 1 - derived.buildSpeedPct / 100);
+  const worldMultiplier = 1 / Math.max(1, worldSpeed);
+  return Math.ceil(levelCost.buildSeconds * senateMultiplier * policyMultiplier * worldMultiplier);
 }
 
 export function getStorageCaps(state: CityEconomyState): ResourceBundle {
@@ -500,7 +548,6 @@ export function startConstruction(state: CityEconomyState, buildingId: EconomyBu
   const currentLevel = getBuildingLevel(state, buildingId);
   const targetLevel = currentLevel + 1;
   const levelCost = getUpgradeLevelCost(buildingId, targetLevel);
-  const derived = getCityDerivedStats(state);
   const costMultiplier = 1;
   const adjustedCost = {
     ore: Math.ceil(levelCost.resources.ore * costMultiplier),
@@ -512,13 +559,13 @@ export function startConstruction(state: CityEconomyState, buildingId: EconomyBu
   state.resources.stone = Math.max(0, state.resources.stone - adjustedCost.stone);
   state.resources.iron = Math.max(0, state.resources.iron - adjustedCost.iron);
 
-  const durationMultiplier = Math.max(0.4, 1 - derived.buildSpeedPct / 100);
+  const durationSeconds = getConstructionDurationSeconds(state, buildingId, targetLevel);
 
   state.queue.push({
     buildingId,
     targetLevel,
     startedAtMs: nowMs,
-    endsAtMs: nowMs + Math.ceil(levelCost.buildSeconds * durationMultiplier) * 1000,
+    endsAtMs: nowMs + durationSeconds * 1000,
     costPaid: adjustedCost,
     populationCostPaid: levelCost.populationCost,
   });
