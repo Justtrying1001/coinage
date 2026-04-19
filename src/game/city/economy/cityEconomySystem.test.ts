@@ -13,6 +13,7 @@ import {
   canTransferMilitia,
   createInitialCityEconomyState,
   getCityDerivedStats,
+  getConstructionDurationSeconds,
   getEconomyBuildingOrder,
   getMilitiaMaxSize,
   getMilitiaProductionMultiplier,
@@ -145,6 +146,18 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
       { buildingId: 'market', minLevel: 4 },
       { buildingId: 'warehouse', minLevel: 7 },
     ]);
+  });
+
+  it('applies Senate construction-speed normalization from reference level 15 tables', () => {
+    const state = createInitialCityEconomyState({ cityId: 'c-speed', owner: 'p1', nowMs: 0 });
+    state.levels.hq = 15;
+    expect(getConstructionDurationSeconds(state, 'barracks', 1)).toBe(CITY_ECONOMY_CONFIG.buildings.barracks.levels[0].buildSeconds);
+
+    state.levels.hq = 1;
+    expect(getConstructionDurationSeconds(state, 'barracks', 1)).toBe(891);
+
+    state.levels.hq = 25;
+    expect(getConstructionDurationSeconds(state, 'barracks', 1)).toBe(397);
   });
 
   it('keeps troop category and production-building wiring coherent', () => {

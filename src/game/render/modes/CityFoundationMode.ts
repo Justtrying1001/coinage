@@ -7,6 +7,7 @@ import {
   getBuildingConfig,
   getBuildingLevel,
   getCityDerivedStats,
+  getConstructionDurationSeconds,
   getConstructionQueueSlots,
   getEconomyBuildingOrder,
   getPopulationSnapshot,
@@ -881,11 +882,12 @@ export class CityFoundationMode implements RenderModeController {
 
     const panel = document.createElement('section');
     panel.className = 'city-stitch__detail-block';
+    const durationSeconds = next ? getConstructionDurationSeconds(this.state.economy, this.selectedBuildingId, next.level) : null;
     panel.innerHTML = `<h3>${config.name}</h3>
       <p>Current level: ${level}/${config.maxLevel}</p>
       <p>${this.getBuildingEffectText(this.selectedBuildingId, level)}</p>
       <p>${next ? `Cost O ${next.resources.ore} · S ${next.resources.stone} · I ${next.resources.iron}` : 'Max level reached'}</p>
-      <p>${next ? `Build ${formatDuration(next.buildSeconds * 1000)}` : 'Build: —'}</p>`;
+      <p>${next && durationSeconds !== null ? `Build ${formatDuration(durationSeconds * 1000)}` : 'Build: —'}</p>`;
 
     panel.append(this.makeActionButton(guard.ok ? 'Upgrade now' : guard.reason ?? 'Unavailable', !guard.ok, () => {
       const result = startCityBuildingUpgrade(this.persistenceContext, this.selectedBuildingId, Date.now());
@@ -1012,10 +1014,12 @@ export class CityFoundationMode implements RenderModeController {
     if (!target) return;
     const current = target.querySelector('.city-stitch__classified-overlay');
     if (!showOverlay) {
+      target.classList.remove('is-classified');
       if (current) current.remove();
       return;
     }
 
+    target.classList.add('is-classified');
     if (current) return;
 
     const overlay = document.createElement('section');
