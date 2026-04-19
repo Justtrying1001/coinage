@@ -6,7 +6,9 @@ import {
   activateCityMilitia,
   applyCityMilitiaDefensiveLosses,
   clearCityEconomyPersistenceForTests,
+  depositCitySpySilver,
   loadCityEconomyState,
+  sendCityEspionageMission,
   startCityBuildingUpgrade,
   startCityIntelProject,
   startCityResearch,
@@ -18,6 +20,12 @@ const context = {
   ownerId: 'user-1',
   planetId: 'planet-a',
   sectorId: 'sector-planet-a',
+};
+const rivalContext = {
+  cityId: 'planet-b',
+  ownerId: 'user-2',
+  planetId: 'planet-b',
+  sectorId: 'sector-planet-b',
 };
 const STORAGE_KEY = 'coinage.mvp.cityEconomy.v2';
 
@@ -38,7 +46,56 @@ describe('cityEconomyPersistence MVP MICRO flow', () => {
     expect(snapshot.economy.activePolicy).toBeNull();
     expect(snapshot.economy.intelProjects).toEqual([]);
     expect(snapshot.economy.intelReadiness).toBe(0);
+    expect(snapshot.economy.spyVaultSilver).toBe(0);
+    expect(snapshot.economy.espionageMissions).toEqual([]);
+    expect(snapshot.economy.espionageReports).toEqual([]);
     expect(snapshot.economy.militia.isActive).toBe(false);
+  });
+
+  it('resolves espionage with Grepolis-like silver comparison and cave depletion on failure', () => {
+    const baseLevels = {
+      hq: 10,
+      mine: 1,
+      quarry: 1,
+      refinery: 1,
+      warehouse: 7,
+      housing_complex: 1,
+      barracks: 0,
+      space_dock: 0,
+      defensive_wall: 0,
+      watch_tower: 0,
+      armament_factory: 0,
+      intelligence_center: 2,
+      research_lab: 0,
+      market: 4,
+      council_chamber: 0,
+    };
+    const emptyTroops = {
+      citizen_militia: 0, infantry: 0, phalanx_lancer: 0, marksman: 0, assault: 0, shield_guard: 0, raider_cavalry: 0, breacher: 0,
+      assault_convoy: 0, swift_carrier: 0, interception_sentinel: 0, ember_drifter: 0, rapid_escort: 0, bulwark_trireme: 0, colonization_convoy: 0,
+    };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      [context.cityId]: {
+        cityId: context.cityId, ownerId: context.ownerId, planetId: context.planetId, sectorId: context.sectorId,
+        resources: { ore: 3_000, stone: 3_000, iron: 3_000 }, lastResourceUpdateAtMs: 1_000, levels: baseLevels, queue: [], troops: emptyTroops,
+        trainingQueue: [], researchQueue: [], completedResearch: [], activePolicy: null, militia: null, intelReadiness: 0, intelProjects: [], spyVaultSilver: 0, espionageMissions: [], espionageReports: [],
+      },
+      [rivalContext.cityId]: {
+        cityId: rivalContext.cityId, ownerId: rivalContext.ownerId, planetId: rivalContext.planetId, sectorId: rivalContext.sectorId,
+        resources: { ore: 3_000, stone: 3_000, iron: 3_000 }, lastResourceUpdateAtMs: 1_000, levels: baseLevels, queue: [], troops: emptyTroops,
+        trainingQueue: [], researchQueue: [], completedResearch: [], activePolicy: null, militia: null, intelReadiness: 0, intelProjects: [], spyVaultSilver: 0, espionageMissions: [], espionageReports: [],
+      },
+    }));
+
+    depositCitySpySilver(context, 1_500, 100_100);
+    depositCitySpySilver(rivalContext, 1_200, 100_100);
+    sendCityEspionageMission(context, rivalContext.cityId, 1_000, 100_200);
+
+    const atkResolved = loadCityEconomyState(context, 100_200 + 16 * 60 * 1000);
+    const defResolved = loadCityEconomyState(rivalContext, 100_200 + 16 * 60 * 1000);
+    expect(atkResolved.economy.espionageReports[0].kind).toBe('attack_failed');
+    expect(defResolved.economy.spyVaultSilver).toBe(200);
+    expect(defResolved.economy.espionageReports[0].kind).toBe('defense_failed_attempt');
   });
 
   it('persists active militia timer across reload and cleans post-expiration', () => {

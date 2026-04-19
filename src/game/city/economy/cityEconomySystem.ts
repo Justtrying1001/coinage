@@ -46,6 +46,25 @@ export interface IntelProjectEntry {
   readinessGain: number;
 }
 
+export interface EspionageMissionEntry {
+  id: string;
+  targetCityId: string;
+  silverCommitted: number;
+  startedAtMs: number;
+  endsAtMs: number;
+}
+
+export interface EspionageReportEntry {
+  id: string;
+  createdAtMs: number;
+  kind: 'attack_success' | 'attack_failed' | 'defense_failed_attempt' | 'defense_breached';
+  sourceCityId: string;
+  targetCityId: string;
+  silverSent: number;
+  targetSilverAtResolution: number;
+  wasCryptographyApplied: boolean;
+}
+
 export type TroopCounts = Record<TroopId, number>;
 export interface CityMilitiaState {
   isActive: boolean;
@@ -72,6 +91,9 @@ export interface CityEconomyState {
   militia: CityMilitiaState;
   intelReadiness: number;
   intelProjects: IntelProjectEntry[];
+  spyVaultSilver: number;
+  espionageMissions: EspionageMissionEntry[];
+  espionageReports: EspionageReportEntry[];
   lastUpdatedAtMs: number;
 }
 
@@ -102,6 +124,7 @@ const MILITIA_PENALTY_PCT = 50;
 const MILITIA_BASE_PER_LEVEL = 10;
 const MILITIA_BONUS_PER_LEVEL = 5;
 const MILITIA_LEVEL_CAP = 25;
+const MIN_SPY_SILVER = 1000;
 const SENATE_BUILD_TIME_PCT_BY_LEVEL: Record<number, number> = {
   1: 100.0,
   2: 98.6,
@@ -164,6 +187,9 @@ export function createInitialCityEconomyState(input: { cityId: string; owner: st
     },
     intelReadiness: 0,
     intelProjects: [],
+    spyVaultSilver: 0,
+    espionageMissions: [],
+    espionageReports: [],
     lastUpdatedAtMs: input.nowMs ?? Date.now(),
   };
 }
@@ -287,12 +313,13 @@ function getResearchEffectTotals(state: CityEconomyState) {
       acc.productionPct += effect.productionPct ?? 0;
       acc.trainingSpeedPct += effect.trainingSpeedPct ?? 0;
       acc.defensePct += effect.defensePct ?? 0;
+      acc.antiAirDefensePct += effect.antiAirDefensePct ?? 0;
       acc.marketEfficiencyPct += effect.marketEfficiencyPct ?? 0;
       acc.detectionPct += effect.detectionPct ?? 0;
       acc.counterIntelPct += effect.counterIntelPct ?? 0;
       return acc;
     },
-    { productionPct: 0, trainingSpeedPct: 0, defensePct: 0, marketEfficiencyPct: 0, detectionPct: 0, counterIntelPct: 0 },
+    { productionPct: 0, trainingSpeedPct: 0, defensePct: 0, antiAirDefensePct: 0, marketEfficiencyPct: 0, detectionPct: 0, counterIntelPct: 0 },
   );
 }
 
@@ -345,12 +372,10 @@ export function getCityDerivedStats(state: CityEconomyState) {
     cityDefensePct,
     damageMitigationPct: wall?.effect.damageMitigationPct ?? 0,
     siegeResistancePct: wall?.effect.siegeResistancePct ?? 0,
+    antiAirDefensePct: (tower?.effect.antiAirDefensePct ?? 0) + research.antiAirDefensePct,
     detectionPct:
-      (tower?.effect.detectionPct ?? 0) +
-      (intelCenter?.effect.detectionPct ?? 0) +
-      research.detectionPct +
-      (policy?.detectionPct ?? 0),
-    counterIntelPct: (tower?.effect.counterIntelPct ?? 0) + (intelCenter?.effect.counterIntelPct ?? 0) + research.counterIntelPct,
+      (intelCenter?.effect.detectionPct ?? 0) + research.detectionPct + (policy?.detectionPct ?? 0),
+    counterIntelPct: (intelCenter?.effect.counterIntelPct ?? 0) + research.counterIntelPct,
     researchCapacity: lab?.effect.researchCapacity ?? 0,
     marketEfficiencyPct: (market?.effect.marketEfficiencyPct ?? 0) + research.marketEfficiencyPct,
     buildCostReductionPct: 0,
@@ -740,6 +765,74 @@ export function setActivePolicy(state: CityEconomyState, policyId: LocalPolicyId
 export function canStartIntelProject(state: CityEconomyState): GuardResult {
   if (getBuildingLevel(state, 'intelligence_center') <= 0) return { ok: false, reason: 'Requires intelligence_center 1' };
   if (state.intelProjects.length >= 1) return { ok: false, reason: 'Intel project busy' };
+  return { ok: true, reason: null };
+}
+
+export function getSpyVaultCap(state: CityEconomyState) {
+  const level = getBuildingLevel(state, 'intelligence_center');
+  if (level >= 10) return Number.POSITIVE_INFINITY;
+  return Math.max(0, level * 1000);
+}
+
+export function getSpySilverCommittedInTransit(state: CityEconomyState) {
+  return state.espionageMissions.reduce((sum, mission) => sum + mission.silverCommitted, 0);
+}
+
+export function canDepositSpySilver(state: CityEconomyState, amount: number): GuardResult {
+  if (!Number.isFinite(amount) || amount <= 0) return { ok: false, reason: 'Invalid silver amount' };
+  if (getBuildingLevel(state, 'intelligence_center') <= 0) return { ok: false, reason: 'Requires intelligence_center 1' };
+  if (state.espionageMissions.length > 0) return { ok: false, reason: 'Cannot refill vault while mission is active' };
+  if (state.resources.iron < amount) return { ok: false, reason: 'Not enough iron' };
+
+  const next = state.spyVaultSilver + amount;
+  const cap = getSpyVaultCap(state);
+  if (Number.isFinite(cap) && next + getSpySilverCommittedInTransit(state) > cap) {
+    return { ok: false, reason: 'Vault capacity reached' };
+  }
+  return { ok: true, reason: null };
+}
+
+export function depositSpySilver(state: CityEconomyState, amount: number): GuardResult {
+  const guard = canDepositSpySilver(state, amount);
+  if (!guard.ok) return guard;
+  const rounded = Math.floor(amount);
+  state.resources.iron = Math.max(0, state.resources.iron - rounded);
+  state.spyVaultSilver += rounded;
+  return { ok: true, reason: null };
+}
+
+export function canStartEspionageMission(
+  state: CityEconomyState,
+  targetCityId: string,
+  silverToCommit: number,
+): GuardResult {
+  if (!targetCityId) return { ok: false, reason: 'Target city required' };
+  if (targetCityId === state.cityId) return { ok: false, reason: 'Cannot target own city' };
+  if (getBuildingLevel(state, 'intelligence_center') <= 0) return { ok: false, reason: 'Requires intelligence_center 1' };
+  if (state.espionageMissions.length > 0) return { ok: false, reason: 'Spy is already on mission' };
+  if (!Number.isFinite(silverToCommit) || silverToCommit < MIN_SPY_SILVER) return { ok: false, reason: 'Minimum 1000 silver required' };
+  if (state.spyVaultSilver < silverToCommit) return { ok: false, reason: 'Not enough vault silver' };
+  return { ok: true, reason: null };
+}
+
+export function startEspionageMission(
+  state: CityEconomyState,
+  targetCityId: string,
+  silverToCommit: number,
+  nowMs = Date.now(),
+  travelMs = 15 * 60 * 1000,
+): GuardResult {
+  const guard = canStartEspionageMission(state, targetCityId, silverToCommit);
+  if (!guard.ok) return guard;
+  const rounded = Math.floor(silverToCommit);
+  state.spyVaultSilver -= rounded;
+  state.espionageMissions.push({
+    id: `esp-${state.cityId}-${targetCityId}-${nowMs}`,
+    targetCityId,
+    silverCommitted: rounded,
+    startedAtMs: nowMs,
+    endsAtMs: nowMs + travelMs,
+  });
   return { ok: true, reason: null };
 }
 

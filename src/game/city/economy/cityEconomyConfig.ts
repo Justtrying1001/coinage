@@ -95,6 +95,7 @@ export interface BuildingLevelEffect {
   troopCombatPowerPct?: number;
   troopUpkeepEfficiencyPct?: number;
   cityDefensePct?: number;
+  antiAirDefensePct?: number;
   damageMitigationPct?: number;
   siegeResistancePct?: number;
   detectionPct?: number;
@@ -166,6 +167,7 @@ export interface ResearchConfig {
     productionPct?: number;
     trainingSpeedPct?: number;
     defensePct?: number;
+    antiAirDefensePct?: number;
     marketEfficiencyPct?: number;
     detectionPct?: number;
     counterIntelPct?: number;
@@ -181,6 +183,7 @@ export interface LocalPolicyConfig {
     productionPct?: number;
     trainingSpeedPct?: number;
     defensePct?: number;
+    antiAirDefensePct?: number;
     detectionPct?: number;
   };
 }

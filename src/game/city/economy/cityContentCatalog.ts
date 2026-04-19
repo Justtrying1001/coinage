@@ -609,8 +609,8 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     definitionStatus: 'partially_defined',
     gameplayImplemented: false,
     maxLevel: 20,
-    role: 'Defensive/scouting support for incoming military visibility and local resilience.',
-    primarySystems: ['defense', 'intel_support'],
+    role: 'Anti-air defensive tower that reinforces city defense against flying threats.',
+    primarySystems: ['defense', 'anti_air'],
     unlock: [
       { type: 'hq', targetId: 'hq', minLevel: 5 },
       { type: 'building', targetId: 'defensive_wall', minLevel: 2 },
@@ -648,10 +648,10 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       effects: 'partially_defined',
     },
     operationalEffectsByBand: [
-      { minLevel: 1, maxLevel: 5, effects: ['Incoming attack warning window +4% per level', 'Scout report freshness retention +2% per level'] },
-      { minLevel: 6, maxLevel: 10, effects: ['Projection interception coefficient +1.7% per level', 'False-signal suppression +1.0% per level'] },
-      { minLevel: 11, maxLevel: 15, effects: ['Counter-raid readiness bonus +1.5% per level', 'Defender response mobilization +1.2% per level'] },
-      { minLevel: 16, maxLevel: 20, effects: ['Anti-stealth detection +1.8% per level', 'Enemy approach ETA variance -2% per level'] },
+      { minLevel: 1, maxLevel: 5, effects: ['City anti-air shield +3.3% per level', 'Garrison resilience +1.4% per level'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Flying hostile interception +1.8% per level', 'Defensive volley stability +1.1% per level'] },
+      { minLevel: 11, maxLevel: 15, effects: ['High-altitude defense hardening +1.6% per level', 'Emergency anti-air response +1.2% per level'] },
+      { minLevel: 16, maxLevel: 20, effects: ['Air-lane denial strength +1.9% per level', 'Strike-wing attrition pressure +1.4% per level'] },
     ],
     provisionalLevels: buildProvisionalLevels({
       baseCost: { ore: 145, stone: 180, iron: 95 },
@@ -659,8 +659,8 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       baseSeconds: 48,
       populationCostByLevel: (level) => populationBand(level, 1, 2, 2),
       effectByLevel: (level) => [
-        `Incoming attack early-warning +${Math.round(10 + level * 2.2)}%`,
-        `Garrison interception efficiency +${Math.round(3 + level * 1.3)}%`,
+        `Anti-air shield strength +${Math.round(6 + level * 2.0)}%`,
+        `Flying hostile interception +${Math.round(4 + level * 1.4)}%`,
       ],
     }),
   },

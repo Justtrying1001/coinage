@@ -11,7 +11,10 @@ import {
   applyMilitiaDefensiveLosses,
   canSendMilitiaOnAttack,
   canTransferMilitia,
+  canStartEspionageMission,
+  canDepositSpySilver,
   createInitialCityEconomyState,
+  depositSpySilver,
   getCityDerivedStats,
   getConstructionDurationSeconds,
   getEconomyBuildingOrder,
@@ -23,6 +26,7 @@ import {
   resolveCompletedIntelProjects,
   resolveCompletedResearch,
   resolveCompletedTraining,
+  startEspionageMission,
   setActivePolicy,
   startIntelProject,
   startResearch,
@@ -107,7 +111,7 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     expect(stats.cityDefensePct).toBeGreaterThan(0);
   });
 
-  it('supports intelligence readiness projects with derived detection/counter-intel', () => {
+  it('keeps espionage modifiers on intelligence_center (not watch_tower)', () => {
     const state = createInitialCityEconomyState({ cityId: 'c-1', owner: 'p1', nowMs: 0 });
     state.levels.hq = 6;
     state.levels.defensive_wall = 2;
@@ -124,6 +128,28 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     const stats = getCityDerivedStats(state);
     expect(stats.detectionPct).toBeGreaterThan(0);
     expect(stats.counterIntelPct).toBeGreaterThan(0);
+    const withoutIntelCenter = createInitialCityEconomyState({ cityId: 'c-2', owner: 'p2', nowMs: 0 });
+    withoutIntelCenter.levels.watch_tower = 6;
+    const towerOnlyStats = getCityDerivedStats(withoutIntelCenter);
+    expect(towerOnlyStats.detectionPct).toBe(0);
+    expect(towerOnlyStats.counterIntelPct).toBe(0);
+    expect(towerOnlyStats.antiAirDefensePct).toBeGreaterThan(0);
+  });
+
+  it('supports cave-like silver vault deposits and dispatch guardrails', () => {
+    const state = createInitialCityEconomyState({ cityId: 'atk', owner: 'p1', nowMs: 0 });
+    state.resources.iron = 15_000;
+    state.levels.intelligence_center = 3;
+
+    expect(canDepositSpySilver(state, 3_000).ok).toBe(true);
+    expect(depositSpySilver(state, 3_000).ok).toBe(true);
+    expect(state.spyVaultSilver).toBe(3_000);
+    expect(state.resources.iron).toBe(12_000);
+
+    expect(canStartEspionageMission(state, 'def', 999)).toEqual({ ok: false, reason: 'Minimum 1000 silver required' });
+    expect(startEspionageMission(state, 'def', 1_200, 0).ok).toBe(true);
+    expect(state.spyVaultSilver).toBe(1_800);
+    expect(canDepositSpySilver(state, 100)).toEqual({ ok: false, reason: 'Cannot refill vault while mission is active' });
   });
 
   it('exposes all military branch buildings in order helper', () => {
