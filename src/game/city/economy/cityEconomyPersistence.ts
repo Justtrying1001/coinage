@@ -76,6 +76,9 @@ export interface CityStartTrainingResult {
 
 const fallbackMemoryStore = new Map<string, string>();
 const ESPIONAGE_TRAVEL_MS = 15 * 60 * 1000;
+const LEGACY_RESEARCH_ID_MAP: Partial<Record<string, ResearchId>> = {
+  signals_intel: 'cryptography',
+};
 
 function getStorage() {
   if (typeof window !== 'undefined' && window.localStorage) return window.localStorage;
@@ -203,7 +206,7 @@ function fromEconomyState(context: CityPersistenceContext, state: CityEconomySta
 }
 
 function hasCryptographyLikeBonus(state: CityEconomyState) {
-  return state.completedResearch.includes('signals_intel');
+  return state.completedResearch.includes('cryptography');
 }
 
 function resolveGlobalEspionage(map: PersistedCityEconomyMap, nowMs: number) {
