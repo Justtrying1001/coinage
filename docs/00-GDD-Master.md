@@ -35,8 +35,9 @@ Le système de jeu reste identique : expansion territoriale, guerre, diplomatie,
 | --- | --- |
 | Secteur | Zone territoriale sur la carte 2D |
 | Secteur neutre | Secteur sans contrôle de faction |
-| Territoire principal | Premier secteur attribué à une faction |
-| Territoire contrôlé | Secteur détenu par une faction (hors territoire principal inclus) |
+| Territoire contesté (mixte) | Secteur avec présence de plusieurs factions |
+| Territoire contrôlé | Secteur dont tous les slots sont unifiés sous une même faction |
+| Territoire gouverné | Territoire contrôlé avec gouvernance active de la faction |
 | Faction | Communauté de joueurs liée à un token |
 | Déplacement | Trajet d’unités entre secteurs via zones vides |
 | Unités | Forces militaires entraînées en ville |
@@ -48,7 +49,9 @@ Le système de jeu reste identique : expansion territoriale, guerre, diplomatie,
 1. La carte est générée depuis `WORLD_SEED`.
 2. Tous les secteurs démarrent en statut neutre.
 3. Aucun token n’est présent au lancement.
-4. Lorsqu’un token envoie son premier joueur, un secteur neutre devient son territoire principal.
+4. Les premiers joueurs peuvent apparaître dans des secteurs déjà occupés par d’autres factions.
+5. Un secteur devient contrôlé uniquement quand tous ses slots appartiennent à une seule faction.
+6. La gouvernance territoriale ne s’active qu’après contrôle complet du secteur.
 
 # Architecture gameplay
 

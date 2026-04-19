@@ -17,8 +17,9 @@ Version 2.0 — Avril 2026
 | Ville | Base individuelle d’un joueur |
 | Secteur | Zone occupable de la world map 2D |
 | Secteur neutre | Secteur sans faction contrôleuse |
-| Territoire principal | Premier secteur attribué à une faction |
-| Territoire contrôlé | Secteur détenu par une faction |
+| Territoire contesté (mixte) | Secteur où coexistent des slots de plusieurs factions |
+| Territoire contrôlé | Secteur dont tous les slots appartiennent à une seule faction |
+| Territoire gouverné | Territoire contrôlé où les règles de gouvernance de faction sont actives |
 | Cluster | Groupe naturel de secteurs proches |
 
 ## Actions territoriales

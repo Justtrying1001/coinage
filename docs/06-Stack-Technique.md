@@ -46,8 +46,10 @@ Version 2.0 — Avril 2026
 ## Règles métier de carte
 
 - Tous les `Sector` démarrent en statut `NEUTRAL`
-- Un `Sector` passe en `CORE` à la première activation de faction
-- Un `Sector` passe en `CONTROLLED` après capture/colonisation validée
+- Un `Sector` passe en `CONTESTED` dès que plusieurs factions y occupent des slots
+- Un `Sector` passe en `CONTROLLED` uniquement quand tous ses slots sont unifiés sous une faction
+- Un `Sector` passe en `GOVERNED` quand la gouvernance territoriale est activée après contrôle complet
+- Toute perte d’unification des slots fait revenir le secteur en `CONTESTED`
 
 # Pipeline on-chain
 
