@@ -71,8 +71,8 @@ describe('cityEconomyPersistence MVP MICRO flow', () => {
       council_chamber: 0,
     };
     const emptyTroops = {
-      citizen_militia: 0, infantry: 0, phalanx_lancer: 0, marksman: 0, assault: 0, shield_guard: 0, raider_cavalry: 0, breacher: 0,
-      assault_convoy: 0, swift_carrier: 0, interception_sentinel: 0, ember_drifter: 0, rapid_escort: 0, bulwark_trireme: 0, colonization_convoy: 0,
+      citizen_militia: 0, line_infantry: 0, phalanx_lanceguard: 0, rail_marksman: 0, assault_legionnaire: 0, aegis_shieldguard: 0, raider_hoverbike: 0, siege_breacher: 0,
+      assault_dropship: 0, swift_carrier: 0, interceptor_sentinel: 0, ember_drifter: 0, rapid_escort: 0, bulwark_trireme: 0, colonization_arkship: 0,
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
       [context.cityId]: {
@@ -126,7 +126,7 @@ describe('cityEconomyPersistence MVP MICRO flow', () => {
   });
 
   it('keeps guards active for locked troop/research/intel actions until unlocked', () => {
-    const training = startCityTroopTraining(context, 'infantry', 1, 3_000);
+    const training = startCityTroopTraining(context, 'line_infantry', 1, 3_000);
     expect(training.guard.ok).toBe(false);
 
     const research = startCityResearch(context, 'diplomacy', 3_000);
@@ -170,20 +170,20 @@ describe('cityEconomyPersistence MVP MICRO flow', () => {
           ],
           troops: {
             citizen_militia: 0,
-            infantry: 0,
-            phalanx_lancer: 0,
-            marksman: 0,
-            assault: 0,
-            shield_guard: 0,
-            raider_cavalry: 0,
-            breacher: 0,
-            assault_convoy: 0,
+            line_infantry: 0,
+            phalanx_lanceguard: 0,
+            rail_marksman: 0,
+            assault_legionnaire: 0,
+            aegis_shieldguard: 0,
+            raider_hoverbike: 0,
+            siege_breacher: 0,
+            assault_dropship: 0,
             swift_carrier: 0,
-            interception_sentinel: 0,
+            interceptor_sentinel: 0,
             ember_drifter: 0,
             rapid_escort: 0,
             bulwark_trireme: 0,
-            colonization_convoy: 0,
+            colonization_arkship: 0,
           },
           trainingQueue: [],
           researchQueue: [],

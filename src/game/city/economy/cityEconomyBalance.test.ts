@@ -191,8 +191,8 @@ describe('city economy rebalance validation', () => {
       space_dock: 0,
       armament_factory: 0,
     };
-    economy.troops.infantry = 70;
-    economy.troops.marksman = 20;
+    economy.troops.line_infantry = 70;
+    economy.troops.rail_marksman = 20;
 
     const economyPop = getPopulationSnapshot(economy);
     expect(economyPop.free).toBeGreaterThanOrEqual(0);
@@ -210,10 +210,10 @@ describe('city economy rebalance validation', () => {
       space_dock: 5,
       armament_factory: 6,
     };
-    military.troops.infantry = 80;
-    military.troops.shield_guard = 40;
-    military.troops.assault = 30;
-    military.troops.interception_sentinel = 15;
+    military.troops.line_infantry = 80;
+    military.troops.aegis_shieldguard = 40;
+    military.troops.assault_legionnaire = 30;
+    military.troops.interceptor_sentinel = 15;
 
     const militaryPop = getPopulationSnapshot(military);
     expect(militaryPop.free).toBeGreaterThanOrEqual(0);
@@ -231,10 +231,10 @@ describe('city economy rebalance validation', () => {
       space_dock: 3,
       armament_factory: 4,
     };
-    mixed.troops.infantry = 60;
-    mixed.troops.marksman = 25;
-    mixed.troops.shield_guard = 20;
-    mixed.troops.assault = 15;
+    mixed.troops.line_infantry = 60;
+    mixed.troops.rail_marksman = 25;
+    mixed.troops.aegis_shieldguard = 20;
+    mixed.troops.assault_legionnaire = 15;
 
     const mixedPop = getPopulationSnapshot(mixed);
     expect(mixedPop.free).toBeGreaterThanOrEqual(0);

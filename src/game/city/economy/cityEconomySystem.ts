@@ -104,20 +104,20 @@ export interface GuardResult {
 
 const ZERO_TROOPS: TroopCounts = {
   citizen_militia: 0,
-  infantry: 0,
-  phalanx_lancer: 0,
-  marksman: 0,
-  assault: 0,
-  shield_guard: 0,
-  raider_cavalry: 0,
-  breacher: 0,
-  assault_convoy: 0,
+  line_infantry: 0,
+  phalanx_lanceguard: 0,
+  rail_marksman: 0,
+  assault_legionnaire: 0,
+  aegis_shieldguard: 0,
+  raider_hoverbike: 0,
+  siege_breacher: 0,
+  assault_dropship: 0,
   swift_carrier: 0,
-  interception_sentinel: 0,
+  interceptor_sentinel: 0,
   ember_drifter: 0,
   rapid_escort: 0,
   bulwark_trireme: 0,
-  colonization_convoy: 0,
+  colonization_arkship: 0,
 };
 const MILITIA_DURATION_MS = 3 * 60 * 60 * 1000;
 const MILITIA_PENALTY_PCT = 50;

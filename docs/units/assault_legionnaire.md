@@ -1,11 +1,11 @@
-# Infantry
+# Assault Legionnaire
 
 ## 1. Résumé
-- ID technique: `infantry`
+- ID technique: `assault_legionnaire`
 - Catégorie: `ground`
 - Bâtiment requis: `barracks`
 - Niveau du bâtiment requis: 1
-- Recherche requise: aucune
+- Recherche requise: city_guard
 - Statut dans le code: partiel (recrutement branché; combat/déplacement/transport/conquête non implémentés dans ce runtime)
 - Rôle gameplay réel: Unité terrestre de combat.
 - Réellement recrutable / utilisable dans le runtime actuel: partiel
@@ -13,7 +13,7 @@
 ## 2. Déblocage et accès
 - Bâtiment requis: `barracks`
 - Niveau requis: 1
-- Recherche requise éventuelle: aucune
+- Recherche requise éventuelle: city_guard
 - Branche concernée: ground / barracks
 - Conditions spécifiques: vérification ressources + population + prereqs via canStartTroopTraining.
 - Passe par la queue standard: oui
@@ -21,11 +21,11 @@
 ## 3. Fiche de stats complète
 | Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Infantry | infantry | ground | 95 | 0 | 85 | 0 | 1080 | 1 | 5 | blunt | 14 | 8 | 30 | 8 | 16 | 0 | Frontline defensive infantry anchor. |
+| Assault Legionnaire | assault_legionnaire | ground | 120 | 0 | 75 | 0 | 1087 | 1 | 8 | distance | 7 | 25 | 13 | 12 | 24 | 0 | Ranged anti-sharp / utility profile. |
 
 ## 4. Rôle gameplay réel
 - Unité terrestre de combat.
-- Interprétation limitée au code: note config présente (`Frontline defensive infantry anchor.`); pas d’extrapolation hors runtime.
+- Interprétation limitée au code: note config présente (`Ranged anti-sharp / utility profile.`); pas d’extrapolation hors runtime.
 
 ## 5. Comment elle est réellement utilisée dans le code
 - `canStartTroopTraining` vérifie quantité entière positive, bâtiment requis, recherche requise (enforcement activé), ressources et population libre.
@@ -36,11 +36,11 @@
 
 ## 6. Pré requis et dépendances liées
 - Bâtiment source: `barracks`
-- Recherche source: aucune
+- Recherche source: city_guard
 - Interaction avec armament/barracks/space_dock/research_lab: temps d’entraînement dépend de trainingSpeedPct dérivé (barracks + space_dock + armament_factory + recherches + politique).
 
 ## 7. Cas spéciaux / edge cases
-- Unité avec `attackType: blunt`.
+- Unité avec `attackType: distance`.
 - Aucun edge case supplémentaire détecté au runtime.
 - Colonisation: non concernée.
 

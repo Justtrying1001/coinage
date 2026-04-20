@@ -1,19 +1,19 @@
-# Breacher
+# Phalanx Lanceguard
 
 ## 1. Résumé
-- ID technique: `breacher`
+- ID technique: `phalanx_lanceguard`
 - Catégorie: `ground`
 - Bâtiment requis: `barracks`
-- Niveau du bâtiment requis: 5
-- Recherche requise: catapult
+- Niveau du bâtiment requis: 1
+- Recherche requise: hoplite
 - Statut dans le code: partiel (recrutement branché; combat/déplacement/transport/conquête non implémentés dans ce runtime)
-- Rôle gameplay réel: Siège terrestre lent à forte pression structurelle (intent config).
+- Rôle gameplay réel: Unité terrestre de combat.
 - Réellement recrutable / utilisable dans le runtime actuel: partiel
 
 ## 2. Déblocage et accès
 - Bâtiment requis: `barracks`
-- Niveau requis: 5
-- Recherche requise éventuelle: catapult
+- Niveau requis: 1
+- Recherche requise éventuelle: hoplite
 - Branche concernée: ground / barracks
 - Conditions spécifiques: vérification ressources + population + prereqs via canStartTroopTraining.
 - Passe par la queue standard: oui
@@ -21,11 +21,11 @@
 ## 3. Fiche de stats complète
 | Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Breacher | breacher | ground | 700 | 700 | 700 | 0 | 17662 | 15 | 100 | distance | 30 | 30 | 30 | 2 | 400 | 0 | Slow siege platform with high structure pressure. |
+| Phalanx Lanceguard | phalanx_lanceguard | ground | 0 | 75 | 150 | 0 | 1316 | 1 | 16 | sharp | 18 | 12 | 7 | 6 | 8 | 0 | Anti-blunt spear line. |
 
 ## 4. Rôle gameplay réel
-- Siège terrestre lent à forte pression structurelle (intent config).
-- Interprétation limitée au code: note config présente (`Slow siege platform with high structure pressure.`); pas d’extrapolation hors runtime.
+- Unité terrestre de combat.
+- Interprétation limitée au code: note config présente (`Anti-blunt spear line.`); pas d’extrapolation hors runtime.
 
 ## 5. Comment elle est réellement utilisée dans le code
 - `canStartTroopTraining` vérifie quantité entière positive, bâtiment requis, recherche requise (enforcement activé), ressources et population libre.
@@ -36,11 +36,11 @@
 
 ## 6. Pré requis et dépendances liées
 - Bâtiment source: `barracks`
-- Recherche source: catapult
+- Recherche source: hoplite
 - Interaction avec armament/barracks/space_dock/research_lab: temps d’entraînement dépend de trainingSpeedPct dérivé (barracks + space_dock + armament_factory + recherches + politique).
 
 ## 7. Cas spéciaux / edge cases
-- Unité avec `attackType: distance`.
+- Unité avec `attackType: sharp`.
 - Aucun edge case supplémentaire détecté au runtime.
 - Colonisation: non concernée.
 
@@ -48,7 +48,7 @@
 - Config: présente dans CITY_ECONOMY_CONFIG.troops.
 - Branché runtime: oui pour entraînement/stockage; non pour combat/déplacement/conquête/transport
 - Exposé au joueur: oui dans la liste training UI (si guard ok)
-- Divergence catalogue: catalog: phase=v0, gameplayImplemented=true, definitionStatus=fully_defined
+- Divergence catalogue: pas d’entrée dans FULL_UNIT_CATALOG
 
 ## 9. Sources de vérité utilisées
 - src/game/city/economy/cityEconomyConfig.ts

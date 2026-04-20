@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Image from 'next/image';
 import { GameRenderViewport } from '@/components/game/GameRenderViewport';
 import type { RenderMode, SelectedPlanetRef } from '@/game/render/types';
 import { generateGalaxyData, selectPrimaryPlanet } from '@/game/world/galaxyGenerator';
@@ -13,10 +14,10 @@ export function GameShell() {
 
   const [mode, setMode] = useState<RenderMode>('galaxy2d');
   const [selectedPlanet, setSelectedPlanet] = useState<SelectedPlanetRef>(initialSelectedPlanet);
-  const modeButtons: Array<{ mode: RenderMode; label: string; glyph: string }> = [
-    { mode: 'galaxy2d', label: 'Galaxy', glyph: 'GX' },
-    { mode: 'planet3d', label: 'Planet', glyph: 'PL' },
-    { mode: 'city3d', label: 'City', glyph: 'CT' },
+  const modeButtons: Array<{ mode: RenderMode; label: string; icon: string }> = [
+    { mode: 'galaxy2d', label: 'Galaxy', icon: '/assets/cg_hud_mode_galaxy_20.svg' },
+    { mode: 'planet3d', label: 'Planet', icon: '/assets/cg_hud_mode_planet_20.svg' },
+    { mode: 'city3d', label: 'City', icon: '/assets/cg_hud_mode_city_20.svg' },
   ];
 
   return (
@@ -32,9 +33,12 @@ export function GameShell() {
                   className={`city-stitch__top-btn${mode === entry.mode ? ' is-active' : ''}`}
                   onClick={() => setMode(entry.mode)}
                   aria-label={`Open ${entry.label} view`}
+                  title={entry.label}
+                  data-tooltip={entry.label}
                 >
-                  <span className="city-stitch__top-btn-glyph">{entry.glyph}</span>
-                  <span className="city-stitch__top-btn-label">{entry.label}</span>
+                  <span className="city-stitch__top-btn-glyph" aria-hidden="true">
+                    <Image src={entry.icon} alt="" width={16} height={16} />
+                  </span>
                 </button>
               ))}
             </section>

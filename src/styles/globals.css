@@ -2087,6 +2087,11 @@ canvas {
   font: 700 8px/1 var(--cg-font-display);
   letter-spacing: .08em;
 }
+.city-stitch__resource-icon img {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
 .city-stitch__resource-name,
 .city-stitch__resource-amount,
 .city-stitch__resource-rate,
@@ -2126,6 +2131,27 @@ canvas {
   height: 100%;
   background: linear-gradient(90deg, rgba(242, 202, 80, 0.75), rgba(134, 228, 255, 0.9));
 }
+.city-stitch__resource[data-tooltip] {
+  position: relative;
+}
+.city-stitch__resource[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(7, 20, 32, 0.96);
+  border: 1px solid var(--cg-stroke-2);
+  border-radius: 4px;
+  color: var(--cg-text-1);
+  padding: 2px 6px;
+  font: 600 9px/1.2 var(--cg-font-display);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 30;
+}
 .city-stitch__metric {
   font-family: var(--cg-font-mono);
   font-variant-numeric: tabular-nums;
@@ -2134,9 +2160,9 @@ canvas {
   border: 1px solid var(--cg-stroke-2);
   background: rgba(9, 25, 39, 0.82);
   color: var(--cg-text-2);
-  min-width: 56px;
+  min-width: 36px;
   height: 30px;
-  padding: 2px 6px;
+  padding: 2px 4px;
   border-radius: var(--cg-r-1);
   font: 600 10px/1 var(--cg-font-display);
   text-transform: uppercase;
@@ -2149,6 +2175,32 @@ canvas {
 .city-stitch__top-btn-glyph {
   font: 700 10px/1 var(--cg-font-display);
   letter-spacing: .08em;
+}
+.city-stitch__top-btn-glyph img {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+.city-stitch__top-btn[data-tooltip] {
+  position: relative;
+}
+.city-stitch__top-btn[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(7, 20, 32, 0.96);
+  border: 1px solid var(--cg-stroke-2);
+  border-radius: 4px;
+  color: var(--cg-text-1);
+  padding: 2px 6px;
+  font: 600 9px/1.2 var(--cg-font-display);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 30;
 }
 .city-stitch__top-btn-label {
   font: 600 7px/1 var(--cg-font-display);
@@ -2221,6 +2273,27 @@ canvas {
   cursor: pointer;
   transition: border-color var(--cg-dur-hover) var(--cg-ease-hover), transform var(--cg-dur-hover) var(--cg-ease-hover), box-shadow var(--cg-dur-hover) var(--cg-ease-hover);
 }
+.city-stitch__nav-btn[data-tooltip] {
+  position: relative;
+}
+.city-stitch__nav-btn[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(7, 20, 32, 0.96);
+  border: 1px solid var(--cg-stroke-2);
+  border-radius: 4px;
+  color: var(--cg-text-1);
+  padding: 3px 7px;
+  font: 600 9px/1.2 var(--cg-font-display);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 30;
+}
 .city-stitch__nav-lock {
   margin-top: 1px;
   color: rgba(243, 216, 165, 0.86);
@@ -2243,6 +2316,11 @@ canvas {
   color: var(--cg-cyan-300);
   font: 700 10px/1 var(--cg-font-display);
   letter-spacing: 0.02em;
+}
+.city-stitch__nav-icon img {
+  width: 14px;
+  height: 14px;
+  display: block;
 }
 .city-stitch__nav-label {
   font: 600 8px/1.15 var(--cg-font-display);

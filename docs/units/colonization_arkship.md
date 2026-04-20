@@ -1,31 +1,31 @@
-# Raider Cavalry
+# Colonization Arkship
 
 ## 1. Résumé
-- ID technique: `raider_cavalry`
-- Catégorie: `ground`
-- Bâtiment requis: `barracks`
+- ID technique: `colonization_arkship`
+- Catégorie: `naval`
+- Bâtiment requis: `space_dock`
 - Niveau du bâtiment requis: 10
-- Recherche requise: chariot
+- Recherche requise: colony_ship
 - Statut dans le code: partiel (recrutement branché; combat/déplacement/transport/conquête non implémentés dans ce runtime)
-- Rôle gameplay réel: Unité terrestre de combat.
+- Rôle gameplay réel: Support non-combattant (dans cette base de code).
 - Réellement recrutable / utilisable dans le runtime actuel: partiel
 
 ## 2. Déblocage et accès
-- Bâtiment requis: `barracks`
+- Bâtiment requis: `space_dock`
 - Niveau requis: 10
-- Recherche requise éventuelle: chariot
-- Branche concernée: ground / barracks
+- Recherche requise éventuelle: colony_ship
+- Branche concernée: naval / space_dock
 - Conditions spécifiques: vérification ressources + population + prereqs via canStartTroopTraining.
 - Passe par la queue standard: oui
 
 ## 3. Fiche de stats complète
 | Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Raider Cavalry | raider_cavalry | ground | 240 | 120 | 360 | 0 | 3835 | 3 | 60 | blunt | 18 | 1 | 24 | 22 | 72 | 0 | Fast raider cavalry for burst and loot. |
+| Colonization Arkship | colonization_arkship | naval | 10000 | 10000 | 10000 | 0 | 57535 | 170 | 0 | none | 0 | 0 | 0 | 3 | 0 | 0 | Colonization ship; consumed on successful city foundation/conquest and constrained by conquest travel rules. |
 
 ## 4. Rôle gameplay réel
-- Unité terrestre de combat.
-- Interprétation limitée au code: note config présente (`Fast raider cavalry for burst and loot.`); pas d’extrapolation hors runtime.
+- Support non-combattant (dans cette base de code).
+- Interprétation limitée au code: note config présente (`Colonization ship; consumed on successful city foundation/conquest and constrained by conquest travel rules.`); pas d’extrapolation hors runtime.
 
 ## 5. Comment elle est réellement utilisée dans le code
 - `canStartTroopTraining` vérifie quantité entière positive, bâtiment requis, recherche requise (enforcement activé), ressources et population libre.
@@ -35,12 +35,12 @@
 - Les stats de combat (`attack`, `attackType`, défenses) sont configurées mais aucune résolution de combat n’est branchée ici.
 
 ## 6. Pré requis et dépendances liées
-- Bâtiment source: `barracks`
-- Recherche source: chariot
+- Bâtiment source: `space_dock`
+- Recherche source: colony_ship
 - Interaction avec armament/barracks/space_dock/research_lab: temps d’entraînement dépend de trainingSpeedPct dérivé (barracks + space_dock + armament_factory + recherches + politique).
 
 ## 7. Cas spéciaux / edge cases
-- Unité avec `attackType: blunt`.
+- Unité avec `attackType: none`.
 - Aucun edge case supplémentaire détecté au runtime.
 - Colonisation: non concernée.
 
@@ -48,7 +48,7 @@
 - Config: présente dans CITY_ECONOMY_CONFIG.troops.
 - Branché runtime: oui pour entraînement/stockage; non pour combat/déplacement/conquête/transport
 - Exposé au joueur: oui dans la liste training UI (si guard ok)
-- Divergence catalogue: catalog: phase=v0, gameplayImplemented=true, definitionStatus=fully_defined
+- Divergence catalogue: catalog: phase=later, gameplayImplemented=false, definitionStatus=partially_defined
 
 ## 9. Sources de vérité utilisées
 - src/game/city/economy/cityEconomyConfig.ts

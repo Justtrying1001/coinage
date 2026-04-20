@@ -19,20 +19,20 @@ export type EconomyBuildingId =
 
 export type TroopId =
   | 'citizen_militia'
-  | 'infantry'
-  | 'phalanx_lancer'
-  | 'marksman'
-  | 'assault'
-  | 'shield_guard'
-  | 'raider_cavalry'
-  | 'breacher'
-  | 'assault_convoy'
+  | 'line_infantry'
+  | 'phalanx_lanceguard'
+  | 'rail_marksman'
+  | 'assault_legionnaire'
+  | 'aegis_shieldguard'
+  | 'raider_hoverbike'
+  | 'siege_breacher'
+  | 'assault_dropship'
   | 'swift_carrier'
-  | 'interception_sentinel'
+  | 'interceptor_sentinel'
   | 'ember_drifter'
   | 'rapid_escort'
   | 'bulwark_trireme'
-  | 'colonization_convoy';
+  | 'colonization_arkship';
 
 export type TroopCategory = 'militia' | 'ground' | 'naval';
 export type TroopAttackType = 'blunt' | 'sharp' | 'distance' | 'naval' | 'none';
@@ -359,9 +359,9 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       transportCapacity: 0,
       notes: 'Emergency call-up defenders; not recruitable through standard queues.',
     },
-    infantry: {
-      id: 'infantry',
-      name: 'Infantry',
+    line_infantry: {
+      id: 'line_infantry',
+      name: 'Line Infantry',
       category: 'ground',
       requiredBuildingId: 'barracks',
       requiredBuildingLevel: 1,
@@ -378,11 +378,11 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       speed: 8,
       booty: 16,
       transportCapacity: 0,
-      notes: 'Frontline defensive infantry anchor.',
+      notes: 'Frontline defensive line infantry anchor.',
     },
-    phalanx_lancer: {
-      id: 'phalanx_lancer',
-      name: 'Phalanx Lancer',
+    phalanx_lanceguard: {
+      id: 'phalanx_lanceguard',
+      name: 'Phalanx Lanceguard',
       category: 'ground',
       requiredBuildingId: 'barracks',
       requiredBuildingLevel: 1,
@@ -401,9 +401,9 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       transportCapacity: 0,
       notes: 'Anti-blunt spear line.',
     },
-    marksman: {
-      id: 'marksman',
-      name: 'Marksman',
+    rail_marksman: {
+      id: 'rail_marksman',
+      name: 'Rail Marksman',
       category: 'ground',
       requiredBuildingId: 'barracks',
       requiredBuildingLevel: 1,
@@ -422,9 +422,9 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       transportCapacity: 0,
       notes: 'Ranged glass-cannon damage dealer.',
     },
-    assault: {
-      id: 'assault',
-      name: 'Assault',
+    assault_legionnaire: {
+      id: 'assault_legionnaire',
+      name: 'Assault Legionnaire',
       category: 'ground',
       requiredBuildingId: 'barracks',
       requiredBuildingLevel: 1,
@@ -443,9 +443,9 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       transportCapacity: 0,
       notes: 'Ranged anti-sharp / utility profile.',
     },
-    shield_guard: {
-      id: 'shield_guard',
-      name: 'Shield Guard',
+    aegis_shieldguard: {
+      id: 'aegis_shieldguard',
+      name: 'Aegis Shieldguard',
       category: 'ground',
       requiredBuildingId: 'barracks',
       requiredBuildingLevel: 15,
@@ -464,9 +464,9 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       transportCapacity: 0,
       notes: 'Elite heavy ground unit.',
     },
-    raider_cavalry: {
-      id: 'raider_cavalry',
-      name: 'Raider Cavalry',
+    raider_hoverbike: {
+      id: 'raider_hoverbike',
+      name: 'Raider Hoverbike',
       category: 'ground',
       requiredBuildingId: 'barracks',
       requiredBuildingLevel: 10,
@@ -483,11 +483,11 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       speed: 22,
       booty: 72,
       transportCapacity: 0,
-      notes: 'Fast raider cavalry for burst and loot.',
+      notes: 'Fast raider hoverbike for burst and loot.',
     },
-    breacher: {
-      id: 'breacher',
-      name: 'Breacher',
+    siege_breacher: {
+      id: 'siege_breacher',
+      name: 'Siege Breacher',
       category: 'ground',
       requiredBuildingId: 'barracks',
       requiredBuildingLevel: 5,
@@ -506,9 +506,9 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       transportCapacity: 0,
       notes: 'Slow siege platform with high structure pressure.',
     },
-    assault_convoy: {
-      id: 'assault_convoy',
-      name: 'Assault Convoy',
+    assault_dropship: {
+      id: 'assault_dropship',
+      name: 'Assault Dropship',
       category: 'naval',
       requiredBuildingId: 'space_dock',
       requiredBuildingLevel: 1,
@@ -548,9 +548,9 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       transportCapacity: 10,
       notes: 'Fast transport ship.',
     },
-    interception_sentinel: {
-      id: 'interception_sentinel',
-      name: 'Interception Sentinel',
+    interceptor_sentinel: {
+      id: 'interceptor_sentinel',
+      name: 'Interceptor Sentinel',
       category: 'naval',
       requiredBuildingId: 'space_dock',
       requiredBuildingLevel: 1,
@@ -632,9 +632,9 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       transportCapacity: 0,
       notes: 'Heavy naval ship.',
     },
-    colonization_convoy: {
-      id: 'colonization_convoy',
-      name: 'Colonization Convoy',
+    colonization_arkship: {
+      id: 'colonization_arkship',
+      name: 'Colonization Arkship',
       category: 'naval',
       requiredBuildingId: 'space_dock',
       requiredBuildingLevel: 10,
