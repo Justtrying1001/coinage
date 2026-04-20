@@ -1,19 +1,19 @@
-# Assault
+# Siege Breacher
 
 ## 1. Résumé
-- ID technique: `assault`
+- ID technique: `siege_breacher`
 - Catégorie: `ground`
 - Bâtiment requis: `barracks`
-- Niveau du bâtiment requis: 1
-- Recherche requise: city_guard
+- Niveau du bâtiment requis: 5
+- Recherche requise: catapult
 - Statut dans le code: partiel (recrutement branché; combat/déplacement/transport/conquête non implémentés dans ce runtime)
 - Rôle gameplay réel: Unité terrestre de combat.
 - Réellement recrutable / utilisable dans le runtime actuel: partiel
 
 ## 2. Déblocage et accès
 - Bâtiment requis: `barracks`
-- Niveau requis: 1
-- Recherche requise éventuelle: city_guard
+- Niveau requis: 5
+- Recherche requise éventuelle: catapult
 - Branche concernée: ground / barracks
 - Conditions spécifiques: vérification ressources + population + prereqs via canStartTroopTraining.
 - Passe par la queue standard: oui
@@ -21,11 +21,11 @@
 ## 3. Fiche de stats complète
 | Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Assault | assault | ground | 120 | 0 | 75 | 0 | 1087 | 1 | 8 | distance | 7 | 25 | 13 | 12 | 24 | 0 | Ranged anti-sharp / utility profile. |
+| Siege Breacher | siege_breacher | ground | 700 | 700 | 700 | 0 | 17662 | 15 | 100 | distance | 30 | 30 | 30 | 2 | 400 | 0 | Slow siege platform with high structure pressure. |
 
 ## 4. Rôle gameplay réel
 - Unité terrestre de combat.
-- Interprétation limitée au code: note config présente (`Ranged anti-sharp / utility profile.`); pas d’extrapolation hors runtime.
+- Interprétation limitée au code: note config présente (`Slow siege platform with high structure pressure.`); pas d’extrapolation hors runtime.
 
 ## 5. Comment elle est réellement utilisée dans le code
 - `canStartTroopTraining` vérifie quantité entière positive, bâtiment requis, recherche requise (enforcement activé), ressources et population libre.
@@ -36,7 +36,7 @@
 
 ## 6. Pré requis et dépendances liées
 - Bâtiment source: `barracks`
-- Recherche source: city_guard
+- Recherche source: catapult
 - Interaction avec armament/barracks/space_dock/research_lab: temps d’entraînement dépend de trainingSpeedPct dérivé (barracks + space_dock + armament_factory + recherches + politique).
 
 ## 7. Cas spéciaux / edge cases

@@ -62,12 +62,12 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     state.levels.housing_complex = 2;
     state.levels.barracks = 1;
 
-    expect(canStartTroopTraining(state, 'infantry', 2).ok).toBe(true);
-    expect(startTroopTraining(state, 'infantry', 2, 0).ok).toBe(true);
+    expect(canStartTroopTraining(state, 'line_infantry', 2).ok).toBe(true);
+    expect(startTroopTraining(state, 'line_infantry', 2, 0).ok).toBe(true);
     const entry = state.trainingQueue[0];
     expect(resolveCompletedTraining(state, entry.endsAtMs - 1)).toBe(false);
     expect(resolveCompletedTraining(state, entry.endsAtMs)).toBe(true);
-    expect(state.troops.infantry).toBe(2);
+    expect(state.troops.line_infantry).toBe(2);
   });
 
   it('enforces troop research requirements', () => {
@@ -76,7 +76,7 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     state.levels.barracks = 1;
 
     expect(CITY_ECONOMY_CONFIG.troopResearchEnforcementEnabled).toBe(true);
-    expect(canStartTroopTraining(state, 'phalanx_lancer', 1).ok).toBe(false);
+    expect(canStartTroopTraining(state, 'phalanx_lanceguard', 1).ok).toBe(false);
   });
 
   it('researches instantly and spends academy research points', () => {
@@ -187,7 +187,7 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
   });
 
   it('keeps troop category and production-building wiring coherent', () => {
-    const groundTroops = ['infantry', 'phalanx_lancer', 'marksman', 'assault', 'shield_guard', 'raider_cavalry', 'breacher'] as const;
+    const groundTroops = ['line_infantry', 'phalanx_lanceguard', 'rail_marksman', 'assault_legionnaire', 'aegis_shieldguard', 'raider_hoverbike', 'siege_breacher'] as const;
     groundTroops.forEach((troopId) => {
       const troop = CITY_ECONOMY_CONFIG.troops[troopId];
       expect(troop.category).toBe('ground');
@@ -199,13 +199,13 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     });
 
     const navalTroops = [
-      'assault_convoy',
+      'assault_dropship',
       'swift_carrier',
-      'interception_sentinel',
+      'interceptor_sentinel',
       'ember_drifter',
       'rapid_escort',
       'bulwark_trireme',
-      'colonization_convoy',
+      'colonization_arkship',
     ] as const;
     navalTroops.forEach((troopId) => {
       const troop = CITY_ECONOMY_CONFIG.troops[troopId];

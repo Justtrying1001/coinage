@@ -1,7 +1,7 @@
-# Interception Sentinel
+# Interceptor Sentinel
 
 ## 1. Résumé
-- ID technique: `interception_sentinel`
+- ID technique: `interceptor_sentinel`
 - Catégorie: `naval`
 - Bâtiment requis: `space_dock`
 - Niveau du bâtiment requis: 1
@@ -21,7 +21,7 @@
 ## 3. Fiche de stats complète
 | Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Interception Sentinel | interception_sentinel | naval | 800 | 700 | 180 | 0 | 9900 | 8 | 24 | naval | 0 | 0 | 0 | 15 | 0 | 0 | Defensive interceptor ship. |
+| Interceptor Sentinel | interceptor_sentinel | naval | 800 | 700 | 180 | 0 | 9900 | 8 | 24 | naval | 0 | 0 | 0 | 15 | 0 | 0 | Defensive interceptor ship. |
 
 ## 4. Rôle gameplay réel
 - Combat naval (stat configurée; résolution absente du runtime).

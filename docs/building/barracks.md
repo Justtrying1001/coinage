@@ -59,13 +59,13 @@
 - `research_lab`
 
 ### Unités liées
-- `infantry`
-- `phalanx_lancer`
-- `marksman`
-- `assault`
-- `shield_guard`
-- `raider_cavalry`
-- `breacher`
+- `line_infantry`
+- `phalanx_lanceguard`
+- `rail_marksman`
+- `assault_legionnaire`
+- `aegis_shieldguard`
+- `raider_hoverbike`
+- `siege_breacher`
 
 ### Recherches liées
 - aucune liaison directe hors gate global research_lab

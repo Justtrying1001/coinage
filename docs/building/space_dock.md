@@ -58,13 +58,13 @@
 - aucun bâtiment ne référence ce bâtiment comme prérequis direct
 
 ### Unités liées
-- `assault_convoy`
+- `assault_dropship`
 - `swift_carrier`
-- `interception_sentinel`
+- `interceptor_sentinel`
 - `ember_drifter`
 - `rapid_escort`
 - `bulwark_trireme`
-- `colonization_convoy`
+- `colonization_arkship`
 
 ### Recherches liées
 - aucune liaison directe hors gate global research_lab

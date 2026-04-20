@@ -429,7 +429,7 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       { minLevel: 1, maxLevel: 5, effects: ['Ground-line training speed +2% per level (provisional)'] },
       { minLevel: 6, maxLevel: 10, effects: ['Ground recruitment batch cap +1 every 2 levels (provisional)'] },
       { minLevel: 11, maxLevel: 15, effects: ['Barracks queue latency reduction +1.5% per level (provisional)'] },
-      { minLevel: 16, maxLevel: 20, effects: ['Infantry/marksman upkeep efficiency +1% per level (provisional)'] },
+      { minLevel: 16, maxLevel: 20, effects: ['Line infantry/rail marksman upkeep efficiency +1% per level (provisional)'] },
     ],
   },
   {
@@ -1098,13 +1098,13 @@ export const DEFERRED_BUILDING_CATALOG: BuildingCatalogEntry[] = [
 
 export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
   {
-    id: 'infantry',
-    name: 'Infantry',
+    id: 'line_infantry',
+    name: 'Line Infantry',
     category: 'ground_line',
     phase: 'v0',
     definitionStatus: 'fully_defined',
     gameplayImplemented: true,
-    role: 'Base line infantry.',
+    role: 'Base line infantry unit.',
     unlock: [{ type: 'building', targetId: 'barracks', minLevel: 1 }],
     valueCompleteness: {
       costs: 'fully_defined',
@@ -1127,8 +1127,8 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
     },
   },
   {
-    id: 'shield_guard',
-    name: 'Shield Guard',
+    id: 'aegis_shieldguard',
+    name: 'Aegis Shieldguard',
     category: 'ground_line',
     phase: 'v0',
     definitionStatus: 'fully_defined',
@@ -1156,8 +1156,8 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
     },
   },
   {
-    id: 'marksman',
-    name: 'Marksman',
+    id: 'rail_marksman',
+    name: 'Rail Marksman',
     category: 'ground_line',
     phase: 'v0',
     definitionStatus: 'fully_defined',
@@ -1185,8 +1185,8 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
     },
   },
   {
-    id: 'raider_cavalry',
-    name: 'Raider Cavalry',
+    id: 'raider_hoverbike',
+    name: 'Raider Hoverbike',
     category: 'ground_line',
     phase: 'v0',
     definitionStatus: 'fully_defined',
@@ -1214,13 +1214,13 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
     },
   },
   {
-    id: 'assault',
-    name: 'Assault',
+    id: 'assault_legionnaire',
+    name: 'Assault Legionnaire',
     category: 'ground_line',
     phase: 'v0',
     definitionStatus: 'fully_defined',
     gameplayImplemented: true,
-    role: 'Advanced assault line unit.',
+    role: 'Advanced assault_legionnaire line unit.',
     unlock: [{ type: 'building', targetId: 'combat_forge', minLevel: 1 }],
     valueCompleteness: {
       costs: 'fully_defined',
@@ -1243,8 +1243,8 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
     },
   },
   {
-    id: 'breacher',
-    name: 'Breacher',
+    id: 'siege_breacher',
+    name: 'Siege Breacher',
     category: 'ground_line',
     phase: 'v0',
     definitionStatus: 'fully_defined',
@@ -1272,8 +1272,8 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
     },
   },
   {
-    id: 'interception_sentinel',
-    name: 'Interception Sentinel',
+    id: 'interceptor_sentinel',
+    name: 'Interceptor Sentinel',
     category: 'projection',
     phase: 'v0',
     definitionStatus: 'fully_defined',
@@ -1330,13 +1330,13 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
     },
   },
   {
-    id: 'assault_convoy',
-    name: 'Assault Convoy',
+    id: 'assault_dropship',
+    name: 'Assault Dropship',
     category: 'projection',
     phase: 'later',
     definitionStatus: 'partially_defined',
     gameplayImplemented: false,
-    role: 'Required transport to project assault troops inter-sector.',
+    role: 'Required transport to project assault_legionnaire troops inter-sector.',
     unlock: [{ type: 'building', targetId: 'space_dock', minLevel: 10 }],
     valueCompleteness: {
       costs: 'partially_defined',
@@ -1397,8 +1397,8 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
     notes: ['Anti-structure role is defined; structure-damage coefficients still require combat-model arbitration.'],
   },
   {
-    id: 'colonization_convoy',
-    name: 'Colonization Convoy',
+    id: 'colonization_arkship',
+    name: 'Colonization Arkship',
     category: 'colonization',
     phase: 'later',
     definitionStatus: 'partially_defined',
