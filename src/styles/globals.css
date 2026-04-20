@@ -2087,6 +2087,11 @@ canvas {
   font: 700 8px/1 var(--cg-font-display);
   letter-spacing: .08em;
 }
+.city-stitch__resource-icon img {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
 .city-stitch__resource-name,
 .city-stitch__resource-amount,
 .city-stitch__resource-rate,
@@ -2149,6 +2154,11 @@ canvas {
 .city-stitch__top-btn-glyph {
   font: 700 10px/1 var(--cg-font-display);
   letter-spacing: .08em;
+}
+.city-stitch__top-btn-glyph img {
+  width: 14px;
+  height: 14px;
+  display: block;
 }
 .city-stitch__top-btn-label {
   font: 600 7px/1 var(--cg-font-display);
@@ -2243,6 +2253,11 @@ canvas {
   color: var(--cg-cyan-300);
   font: 700 10px/1 var(--cg-font-display);
   letter-spacing: 0.02em;
+}
+.city-stitch__nav-icon img {
+  width: 14px;
+  height: 14px;
+  display: block;
 }
 .city-stitch__nav-label {
   font: 600 8px/1.15 var(--cg-font-display);

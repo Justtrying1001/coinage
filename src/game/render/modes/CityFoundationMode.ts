@@ -83,10 +83,10 @@ const RESOURCE_LABELS: Record<EconomyResource, string> = {
   stone: 'Stone',
   iron: 'Iron',
 };
-const RESOURCE_GLYPHS: Record<EconomyResource, string> = {
-  ore: 'OR',
-  stone: 'ST',
-  iron: 'IR',
+const RESOURCE_ICONS: Record<EconomyResource, string> = {
+  ore: '/assets/cg_resource_ore_20.svg',
+  stone: '/assets/cg_resource_stone_20.svg',
+  iron: '/assets/cg_resource_iron_20.svg',
 };
 
 const BUILDING_ASSETS: Partial<Record<EconomyBuildingId, string>> = {
@@ -271,7 +271,7 @@ export class CityFoundationMode implements RenderModeController {
       item.className = 'city-stitch__resource city-stitch__resource--compact';
       const resourcePct = Math.max(0, Math.min(100, (this.state.economy.resources[resource] / Math.max(1, storage[resource])) * 100));
       item.innerHTML = `<p class="city-stitch__resource-name">${RESOURCE_LABELS[resource]}</p>
-      <p class="city-stitch__resource-icon">${RESOURCE_GLYPHS[resource]}</p>
+      <p class="city-stitch__resource-icon"><img src="${RESOURCE_ICONS[resource]}" alt="${RESOURCE_LABELS[resource]}" /></p>
       <p class="city-stitch__resource-amount city-stitch__metric">${Math.floor(this.state.economy.resources[resource]).toLocaleString()}</p>
       <p class="city-stitch__resource-rate city-stitch__metric">+${Math.round(production[resource]).toLocaleString()}/h</p>
       <div class="city-stitch__resource-fill"><span style="width:${resourcePct.toFixed(1)}%"></span></div>`;
@@ -1159,7 +1159,14 @@ export class CityFoundationMode implements RenderModeController {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `city-stitch__top-btn${active ? ' is-active' : ''}`;
-    button.innerHTML = `<span class="city-stitch__top-btn-glyph">${modeToGlyph(mode)}</span><span class="city-stitch__top-btn-label">${label}</span>`;
+    const glyph = document.createElement('span');
+    glyph.className = 'city-stitch__top-btn-glyph';
+    glyph.setAttribute('aria-hidden', 'true');
+    glyph.innerHTML = `<img src="${modeToIcon(mode)}" alt="" />`;
+    const text = document.createElement('span');
+    text.className = 'city-stitch__top-btn-label';
+    text.textContent = label;
+    button.append(glyph, text);
     button.setAttribute('aria-label', `Open ${label} view`);
     button.disabled = active;
     button.addEventListener('click', () => this.context.onRequestMode(mode));
@@ -1170,7 +1177,7 @@ export class CityFoundationMode implements RenderModeController {
     const span = document.createElement('span');
     span.className = 'city-stitch__nav-icon';
     span.setAttribute('aria-hidden', 'true');
-    span.textContent = iconToGlyph(icon);
+    span.innerHTML = `<img src="${iconToAsset(icon)}" alt="" />`;
     return span;
   }
 
@@ -1280,22 +1287,22 @@ function progressFromTimes(startedAtMs: number, endsAtMs: number, nowMs: number)
   return Math.max(0, Math.min(100, (elapsed / duration) * 100));
 }
 
-function iconToGlyph(icon: string) {
-  if (icon === 'home') return 'CM';
-  if (icon === 'payments') return 'EC';
-  if (icon === 'military_tech') return 'MI';
-  if (icon === 'shield') return 'DF';
-  if (icon === 'science') return 'RS';
-  if (icon === 'visibility') return 'IN';
-  if (icon === 'account_balance') return 'GV';
-  if (icon === 'currency_exchange') return 'MK';
-  return '--';
+function iconToAsset(icon: string) {
+  if (icon === 'home') return '/assets/cg_city_nav_command_18.svg';
+  if (icon === 'payments') return '/assets/cg_city_nav_economy_18.svg';
+  if (icon === 'military_tech') return '/assets/cg_city_nav_military_18.svg';
+  if (icon === 'shield') return '/assets/cg_city_nav_defense_18.svg';
+  if (icon === 'science') return '/assets/cg_city_nav_research_18.svg';
+  if (icon === 'visibility') return '/assets/cg_city_nav_intelligence_18.svg';
+  if (icon === 'account_balance') return '/assets/cg_city_nav_governance_18.svg';
+  if (icon === 'currency_exchange') return '/assets/cg_city_nav_market_18.svg';
+  return '/assets/cg_token_slot_placeholder_64.svg';
 }
 
-function modeToGlyph(mode: 'galaxy2d' | 'planet3d' | 'city3d') {
-  if (mode === 'galaxy2d') return 'GX';
-  if (mode === 'planet3d') return 'PL';
-  return 'CT';
+function modeToIcon(mode: 'galaxy2d' | 'planet3d' | 'city3d') {
+  if (mode === 'galaxy2d') return '/assets/cg_hud_mode_galaxy_20.svg';
+  if (mode === 'planet3d') return '/assets/cg_hud_mode_planet_20.svg';
+  return '/assets/cg_hud_mode_city_20.svg';
 }
 
 function formatResearchEffect(effect: { [key: string]: number | undefined }) {
