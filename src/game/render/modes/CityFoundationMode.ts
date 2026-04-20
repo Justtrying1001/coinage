@@ -269,9 +269,10 @@ export class CityFoundationMode implements RenderModeController {
     (Object.keys(RESOURCE_LABELS) as EconomyResource[]).forEach((resource) => {
       const item = document.createElement('article');
       item.className = 'city-stitch__resource city-stitch__resource--compact';
+      item.title = RESOURCE_LABELS[resource];
+      item.setAttribute('data-tooltip', RESOURCE_LABELS[resource]);
       const resourcePct = Math.max(0, Math.min(100, (this.state.economy.resources[resource] / Math.max(1, storage[resource])) * 100));
-      item.innerHTML = `<p class="city-stitch__resource-name">${RESOURCE_LABELS[resource]}</p>
-      <p class="city-stitch__resource-icon"><img src="${RESOURCE_ICONS[resource]}" alt="${RESOURCE_LABELS[resource]}" /></p>
+      item.innerHTML = `<p class="city-stitch__resource-icon"><img src="${RESOURCE_ICONS[resource]}" alt="${RESOURCE_LABELS[resource]}" /></p>
       <p class="city-stitch__resource-amount city-stitch__metric">${Math.floor(this.state.economy.resources[resource]).toLocaleString()}</p>
       <p class="city-stitch__resource-rate city-stitch__metric">+${Math.round(production[resource]).toLocaleString()}/h</p>
       <div class="city-stitch__resource-fill"><span style="width:${resourcePct.toFixed(1)}%"></span></div>`;
@@ -279,7 +280,9 @@ export class CityFoundationMode implements RenderModeController {
     });
     const meta = document.createElement('article');
     meta.className = 'city-stitch__resource city-stitch__resource--compact city-stitch__resource--meta';
-    meta.innerHTML = `<p class="city-stitch__resource-name">Population</p>
+    meta.title = 'Population';
+    meta.setAttribute('data-tooltip', 'Population');
+    meta.innerHTML = `<p class="city-stitch__resource-icon"><img src="/assets/cg_resource_population_20.svg" alt="Population" /></p>
       <p class="city-stitch__resource-amount city-stitch__metric">${pop.used.toLocaleString()} / ${pop.cap.toLocaleString()}</p>
       <p class="city-stitch__resource-rate city-stitch__metric">Storage ${storagePct.toFixed(1)}% · ${this.getHudAlert()}</p>`;
     resources.append(meta);
@@ -305,14 +308,13 @@ export class CityFoundationMode implements RenderModeController {
       button.className = 'city-stitch__nav-btn';
       if (this.activeSection === section.id) button.classList.add('is-active');
       button.setAttribute('aria-label', section.label);
+      button.title = section.label;
+      button.setAttribute('data-tooltip', section.label);
       const icon = this.createNavIcon(section.icon);
-      const label = document.createElement('span');
-      label.className = 'city-stitch__nav-label';
-      label.textContent = section.label;
       const subLabel = document.createElement('span');
       subLabel.className = 'city-stitch__nav-sub';
       subLabel.textContent = this.getSectionSubLabel(section.id);
-      button.append(icon, label, subLabel);
+      button.append(icon, subLabel);
       const lock = document.createElement('span');
       lock.className = 'city-stitch__nav-lock';
       lock.textContent = this.getSectionStatusBadge(section.id);
@@ -1163,11 +1165,10 @@ export class CityFoundationMode implements RenderModeController {
     glyph.className = 'city-stitch__top-btn-glyph';
     glyph.setAttribute('aria-hidden', 'true');
     glyph.innerHTML = `<img src="${modeToIcon(mode)}" alt="" />`;
-    const text = document.createElement('span');
-    text.className = 'city-stitch__top-btn-label';
-    text.textContent = label;
-    button.append(glyph, text);
+    button.append(glyph);
     button.setAttribute('aria-label', `Open ${label} view`);
+    button.title = label;
+    button.setAttribute('data-tooltip', label);
     button.disabled = active;
     button.addEventListener('click', () => this.context.onRequestMode(mode));
     return button;

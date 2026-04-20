@@ -36,7 +36,7 @@ describe('CityFoundationMode stitch IA responsibilities', () => {
     expect(host.querySelector('.citycmd')).toBeNull();
 
     ['Command', 'Economy', 'Military', 'Defense', 'Research', 'Intelligence', 'Governance', 'Market'].forEach((section) => {
-      expect(host.textContent).toContain(section);
+      expect(host.querySelector(`.city-stitch__nav-btn[aria-label="${section}"]`)).not.toBeNull();
     });
     ['payments', 'military_tech', 'shield', 'science', 'visibility', 'account_balance', 'currency_exchange'].forEach((technicalLabel) => {
       expect(host.textContent).not.toContain(technicalLabel);

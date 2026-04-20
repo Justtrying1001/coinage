@@ -33,11 +33,12 @@ export function GameShell() {
                   className={`city-stitch__top-btn${mode === entry.mode ? ' is-active' : ''}`}
                   onClick={() => setMode(entry.mode)}
                   aria-label={`Open ${entry.label} view`}
+                  title={entry.label}
+                  data-tooltip={entry.label}
                 >
                   <span className="city-stitch__top-btn-glyph" aria-hidden="true">
                     <Image src={entry.icon} alt="" width={16} height={16} />
                   </span>
-                  <span className="city-stitch__top-btn-label">{entry.label}</span>
                 </button>
               ))}
             </section>
