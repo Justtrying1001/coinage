@@ -63,7 +63,7 @@ describe('cityEconomyPersistence MVP MICRO flow', () => {
       barracks: 0,
       space_dock: 0,
       defensive_wall: 0,
-      watch_tower: 0,
+      skyshield_battery: 0,
       armament_factory: 0,
       intelligence_center: 2,
       research_lab: 0,
@@ -116,6 +116,70 @@ describe('cityEconomyPersistence MVP MICRO flow', () => {
     expect(expired.economy.militia.currentMilitia).toBe(0);
   });
 
+  it('keeps militia guard blocked when loaded housing_complex is level 0', () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        [context.cityId]: {
+          cityId: context.cityId,
+          ownerId: context.ownerId,
+          planetId: context.planetId,
+          sectorId: context.sectorId,
+          resources: { ore: 0, stone: 0, iron: 0 },
+          lastResourceUpdateAtMs: 10_000,
+          levels: {
+            hq: 1,
+            mine: 1,
+            quarry: 1,
+            refinery: 0,
+            warehouse: 1,
+            housing_complex: 0,
+            barracks: 0,
+            space_dock: 0,
+            defensive_wall: 0,
+            skyshield_battery: 0,
+            armament_factory: 0,
+            intelligence_center: 0,
+            research_lab: 0,
+            market: 0,
+            council_chamber: 0,
+          },
+          queue: [],
+          troops: {
+            citizen_militia: 0,
+            line_infantry: 0,
+            phalanx_lanceguard: 0,
+            rail_marksman: 0,
+            assault_legionnaire: 0,
+            aegis_shieldguard: 0,
+            raider_hoverbike: 0,
+            siege_breacher: 0,
+            assault_dropship: 0,
+            swift_carrier: 0,
+            interceptor_sentinel: 0,
+            ember_drifter: 0,
+            rapid_escort: 0,
+            bulwark_trireme: 0,
+            colonization_arkship: 0,
+          },
+          trainingQueue: [],
+          researchQueue: [],
+          completedResearch: [],
+          activePolicy: null,
+          militia: null,
+          intelReadiness: 0,
+          intelProjects: [],
+          spyVaultSilver: 0,
+          espionageMissions: [],
+          espionageReports: [],
+        },
+      }),
+    );
+
+    const activation = activateCityMilitia(context, 10_100);
+    expect(activation.guard).toEqual({ ok: false, reason: 'Requires housing_complex 1' });
+  });
+
   it('persists construction queue updates across reloads', () => {
     const started = startCityBuildingUpgrade(context, 'mine', 2_000);
     expect(started.guard.ok).toBe(true);
@@ -135,6 +199,137 @@ describe('cityEconomyPersistence MVP MICRO flow', () => {
     const intel = startCityIntelProject(context, 'sweep', 3_000);
     expect(intel.guard.ok).toBe(false);
   });
+
+
+  it('clamps loaded resources to warehouse-derived storage caps', () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        [context.cityId]: {
+          cityId: context.cityId,
+          ownerId: context.ownerId,
+          planetId: context.planetId,
+          sectorId: context.sectorId,
+          resources: { ore: 9_999, stone: 9_999, iron: 9_999 },
+          lastResourceUpdateAtMs: 1_000,
+          levels: {
+            hq: 1,
+            mine: 1,
+            quarry: 1,
+            refinery: 0,
+            warehouse: 2,
+            housing_complex: 1,
+            barracks: 0,
+            space_dock: 0,
+            defensive_wall: 0,
+            skyshield_battery: 0,
+            armament_factory: 0,
+            intelligence_center: 0,
+            research_lab: 0,
+            market: 0,
+            council_chamber: 0,
+          },
+          queue: [],
+          troops: {
+            citizen_militia: 0,
+            line_infantry: 0,
+            phalanx_lanceguard: 0,
+            rail_marksman: 0,
+            assault_legionnaire: 0,
+            aegis_shieldguard: 0,
+            raider_hoverbike: 0,
+            siege_breacher: 0,
+            assault_dropship: 0,
+            swift_carrier: 0,
+            interceptor_sentinel: 0,
+            ember_drifter: 0,
+            rapid_escort: 0,
+            bulwark_trireme: 0,
+            colonization_arkship: 0,
+          },
+          trainingQueue: [],
+          researchQueue: [],
+          completedResearch: [],
+          activePolicy: null,
+          militia: null,
+          intelReadiness: 0,
+          intelProjects: [],
+          spyVaultSilver: 0,
+          espionageMissions: [],
+          espionageReports: [],
+        },
+      }),
+    );
+
+    const snapshot = loadCityEconomyState(context, 2_000);
+    expect(snapshot.economy.resources).toEqual({ ore: 711, stone: 711, iron: 711 });
+  });
+
+  it('migrates legacy persisted watch_tower level into skyshield_battery', () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        [context.cityId]: {
+          cityId: context.cityId,
+          ownerId: context.ownerId,
+          planetId: context.planetId,
+          sectorId: context.sectorId,
+          resources: { ore: 0, stone: 0, iron: 0 },
+          lastResourceUpdateAtMs: 5_000,
+          levels: {
+            hq: 12,
+            mine: 1,
+            quarry: 1,
+            refinery: 1,
+            warehouse: 1,
+            housing_complex: 1,
+            barracks: 1,
+            space_dock: 3,
+            defensive_wall: 0,
+            watch_tower: 4,
+            skyshield_battery: 0,
+            armament_factory: 0,
+            intelligence_center: 0,
+            research_lab: 0,
+            market: 0,
+            council_chamber: 0,
+          },
+          queue: [],
+          troops: {
+            citizen_militia: 0,
+            line_infantry: 0,
+            phalanx_lanceguard: 0,
+            rail_marksman: 0,
+            assault_legionnaire: 0,
+            aegis_shieldguard: 0,
+            raider_hoverbike: 0,
+            siege_breacher: 0,
+            assault_dropship: 0,
+            swift_carrier: 0,
+            interceptor_sentinel: 0,
+            ember_drifter: 0,
+            rapid_escort: 0,
+            bulwark_trireme: 0,
+            colonization_arkship: 0,
+          },
+          trainingQueue: [],
+          researchQueue: [],
+          completedResearch: [],
+          activePolicy: null,
+          militia: null,
+          intelReadiness: 0,
+          intelProjects: [],
+          spyVaultSilver: 0,
+          espionageMissions: [],
+          espionageReports: [],
+        },
+      }),
+    );
+
+    const snapshot = loadCityEconomyState(context, 6_000);
+    expect(snapshot.economy.levels.skyshield_battery).toBe(4);
+  });
+
 
   it('sanitizes legacy saves that still reference removed building ids', () => {
     window.localStorage.setItem(

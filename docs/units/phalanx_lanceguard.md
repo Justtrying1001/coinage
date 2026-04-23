@@ -1,4 +1,4 @@
-# Phalanx Lanceguard
+# Bulwark Trooper
 
 ## 1. Résumé
 - ID technique: `phalanx_lanceguard`
@@ -21,7 +21,7 @@
 ## 3. Fiche de stats complète
 | Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Phalanx Lanceguard | phalanx_lanceguard | ground | 0 | 75 | 150 | 0 | 1316 | 1 | 16 | sharp | 18 | 12 | 7 | 6 | 8 | 0 | Anti-blunt spear line. |
+| Bulwark Trooper | phalanx_lanceguard | ground | 0 | 75 | 150 | 0 | 1316 | 1 | 16 | sharp | 18 | 12 | 7 | 6 | 8 | 0 | Anti-blunt spear line. |
 
 ## 4. Rôle gameplay réel
 - Unité terrestre de combat.

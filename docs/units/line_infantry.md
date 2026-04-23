@@ -1,4 +1,4 @@
-# Line Infantry
+# Frontline Trooper
 
 ## 1. Résumé
 - ID technique: `line_infantry`
@@ -21,7 +21,7 @@
 ## 3. Fiche de stats complète
 | Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Line Infantry | line_infantry | ground | 95 | 0 | 85 | 0 | 1080 | 1 | 5 | blunt | 14 | 8 | 30 | 8 | 16 | 0 | Frontline defensive line infantry anchor. |
+| Frontline Trooper | line_infantry | ground | 95 | 0 | 85 | 0 | 1080 | 1 | 5 | blunt | 14 | 8 | 30 | 8 | 16 | 0 | Frontline defensive line infantry anchor. |
 
 ## 4. Rôle gameplay réel
 - Unité terrestre de combat.

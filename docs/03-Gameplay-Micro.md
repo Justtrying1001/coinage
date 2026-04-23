@@ -7,7 +7,7 @@ MVP MICRO is now the **full city loop** with all standard non-special buildings.
 ### Included standard buildings
 - Economy/logistics: `hq`, `mine`, `quarry`, `refinery`, `warehouse`, `housing_complex`, `market`
 - Military: `barracks`, `combat_forge`, `space_dock`, `military_academy`, `armament_factory`
-- Defense: `defensive_wall`, `watch_tower`
+- Defense: `defensive_wall`, `skyshield_battery`
 - Research/intel/governance: `research_lab`, `intelligence_center`, `council_chamber`
 
 ### Deferred

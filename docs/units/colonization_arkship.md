@@ -1,4 +1,4 @@
-# Colonization Arkship
+# Colony Ark
 
 ## 1. Résumé
 - ID technique: `colonization_arkship`
@@ -21,7 +21,7 @@
 ## 3. Fiche de stats complète
 | Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Colonization Arkship | colonization_arkship | naval | 10000 | 10000 | 10000 | 0 | 57535 | 170 | 0 | none | 0 | 0 | 0 | 3 | 0 | 0 | Colonization ship; consumed on successful city foundation/conquest and constrained by conquest travel rules. |
+| Colony Ark | colonization_arkship | naval | 10000 | 10000 | 10000 | 0 | 57535 | 170 | 0 | none | 0 | 0 | 0 | 3 | 0 | 0 | Colonization ship; consumed on successful city foundation/conquest and constrained by conquest travel rules. |
 
 ## 4. Rôle gameplay réel
 - Support non-combattant (dans cette base de code).

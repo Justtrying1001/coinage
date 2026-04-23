@@ -17,7 +17,7 @@ This document describes the **actual runtime espionage logic** implemented in Co
 - Capacity check includes both:
   - silver currently in vault,
   - silver currently committed in active in-flight mission(s).
-- Skyguard Tower is intentionally **not** part of espionage math; it is reserved for defensive/anti-air role.
+- Skyshield Battery is intentionally **not** part of espionage math; it is reserved for defensive/anti-air role.
 
 ## Mission resolution
 - Mission launch consumes committed silver from the source vault immediately.

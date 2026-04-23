@@ -7,6 +7,7 @@ import {
   canStartResearch,
   canStartTroopTraining,
   getBuildingConfig,
+  getConstructionCostResources,
   getBuildingLevel,
   getCityDerivedStats,
   getConstructionDurationSeconds,
@@ -91,28 +92,28 @@ const RESOURCE_ICONS: Record<EconomyResource, string> = {
 
 const BUILDING_ASSETS: Partial<Record<EconomyBuildingId, string>> = {
   hq: '/assets/HQ.png',
-  mine: '/assets/stone.png',
   quarry: '/assets/stone.png',
-  refinery: '/assets/refeniry.png',
+  refinery: '/assets/refinery.png',
   warehouse: '/assets/warehouse.png',
   housing_complex: '/assets/housing.png',
-  barracks: '/assets/barrack.png',
-  space_dock: '/assets/spacedock.png',
+  barracks: '/assets/barracks.png',
+  space_dock: '/assets/building/spacedock.png',
   defensive_wall: '/assets/walls.png',
-  watch_tower: '/assets/watchtower.png',
+  skyshield_battery: '/assets/watchtower.png',
+  armament_factory: '/assets/cg_token_slot_placeholder_64.svg',
   intelligence_center: '/assets/spycenter.png',
   research_lab: '/assets/researchlabs.png',
   market: '/assets/market.png',
-  council_chamber: '/assets/councill.png',
+  council_chamber: '/assets/council_chamber.png',
 };
 
 const ALL_BUILDINGS = getEconomyBuildingOrder();
 const COMMAND_CORE_BUILDINGS: EconomyBuildingId[] = ['hq', 'housing_complex', 'research_lab'];
 const COMMAND_EXTRACTION_BUILDINGS: EconomyBuildingId[] = ['mine', 'quarry', 'refinery', 'warehouse'];
-const COMMAND_TACTICAL_BUILDINGS: EconomyBuildingId[] = ['barracks', 'space_dock', 'armament_factory', 'watch_tower', 'defensive_wall'];
+const COMMAND_TACTICAL_BUILDINGS: EconomyBuildingId[] = ['barracks', 'space_dock', 'armament_factory', 'skyshield_battery', 'defensive_wall'];
 const COMMAND_SUPPORT_BUILDINGS: EconomyBuildingId[] = ['intelligence_center', 'market', 'council_chamber'];
 const ECONOMY_BUILDINGS: EconomyBuildingId[] = ['mine', 'quarry', 'refinery', 'warehouse', 'housing_complex'];
-const DEFENSE_BUILDINGS: EconomyBuildingId[] = ['defensive_wall', 'watch_tower'];
+const DEFENSE_BUILDINGS: EconomyBuildingId[] = ['defensive_wall', 'skyshield_battery'];
 const MARKET_BUILDINGS: EconomyBuildingId[] = ['market', 'warehouse'];
 const INTEL_PROJECT_LABELS: Record<'sweep' | 'network' | 'cipher', string> = {
   sweep: 'Signal Sweep',
@@ -415,10 +416,12 @@ export class CityFoundationMode implements RenderModeController {
         {
           label: 'Storage',
           value: `${Math.round(
-            Math.max(
-              (this.state.economy.resources.ore / Math.max(1, storage.ore)) * 100,
-              (this.state.economy.resources.stone / Math.max(1, storage.stone)) * 100,
-              (this.state.economy.resources.iron / Math.max(1, storage.iron)) * 100,
+            clampPercent(
+              Math.max(
+                (this.state.economy.resources.ore / Math.max(1, storage.ore)) * 100,
+                (this.state.economy.resources.stone / Math.max(1, storage.stone)) * 100,
+                (this.state.economy.resources.iron / Math.max(1, storage.iron)) * 100,
+              ),
             ),
           )}%`,
         },
@@ -440,7 +443,7 @@ export class CityFoundationMode implements RenderModeController {
       row.className = 'city-stitch__ops-row';
       row.innerHTML = `<p>${RESOURCE_LABELS[resource]} pipeline</p>
       <p>+${Math.round(production[resource]).toLocaleString()}/h</p>
-      <p>${Math.round((this.state.economy.resources[resource] / Math.max(1, storage[resource])) * 100)}% cap</p>`;
+      <p>${Math.round(clampPercent((this.state.economy.resources[resource] / Math.max(1, storage[resource])) * 100))}% cap</p>`;
       throughput.append(row);
     });
 
@@ -983,7 +986,7 @@ export class CityFoundationMode implements RenderModeController {
       <p>${buildingUnlockSummary(config)}</p>
       <p>Requirements: ${requirementLines.join(' · ')}</p>
       <p>Current effect: ${currentEffect.join(' · ')}</p>
-      <p>${next ? `Next level cost: ${formatBundle(next.resources)} · Population +${next.populationCost}` : 'Max level reached'}</p>
+      <p>${next ? `Next level cost: ${formatBundle(getConstructionCostResources(this.state.economy, this.selectedBuildingId, next.level))} · Population +${Math.max(0, next.populationCost - (level > 0 ? config.levels[level - 1]?.populationCost ?? 0 : 0))}` : 'Max level reached'}</p>
       <p>${next && durationSeconds !== null ? `Construction time: ${formatDuration(durationSeconds * 1000)}` : 'Construction time: —'}</p>
       <p>${nextEffect.length > 0 ? `Next level effect: ${nextEffect.join(' · ')}` : 'Next level effect: —'}</p>`;
 
@@ -1089,7 +1092,8 @@ export class CityFoundationMode implements RenderModeController {
     panel.innerHTML = `<h3>City effects</h3>
       <p>Defense +${derived.cityDefensePct.toFixed(1)}% · Mitigation +${derived.damageMitigationPct.toFixed(1)}%</p>
       <p>Anti-air defense +${(derived.antiAirDefensePct ?? 0).toFixed(1)}%</p>
-      <p>Training +${derived.trainingSpeedPct.toFixed(1)}% · Troop power +${derived.troopCombatPowerPct.toFixed(1)}%</p>
+      <p>Training +${derived.trainingSpeedPct.toFixed(1)}% · Ground ATK +${derived.groundAttackPct.toFixed(1)}% · Ground DEF +${derived.groundDefensePct.toFixed(1)}%</p>
+      <p>Air ATK +${derived.airAttackPct.toFixed(1)}% · Air DEF +${derived.airDefensePct.toFixed(1)}%</p>
       <p>Detection +${derived.detectionPct.toFixed(1)}% · Counter-intel +${derived.counterIntelPct.toFixed(1)}%</p>
       <p>Research cap ${derived.researchCapacity} · Market +${derived.marketEfficiencyPct.toFixed(1)}%</p>
       <p>Militia production modifier x${militiaMultiplier.toFixed(2)}</p>`;
@@ -1133,8 +1137,8 @@ export class CityFoundationMode implements RenderModeController {
 
   private getSectionStatusBadge(section: LocalCitySection) {
     if (section === 'market') return 'Partial';
-    if (section === 'research' || section === 'intelligence' || section === 'governance') return 'Live';
-    return 'Core';
+    if (section === 'research') return 'Instant';
+    return 'Runtime';
   }
 
   private getBuildingRequirementLines(buildingId: EconomyBuildingId) {
@@ -1151,7 +1155,7 @@ export class CityFoundationMode implements RenderModeController {
     ops.className = 'city-stitch__queue';
     ops.innerHTML = `<p class="city-stitch__queue-title">Operations</p>
       <p class="city-stitch__queue-line">Training: ${this.state.economy.trainingQueue.length}</p>
-      <p class="city-stitch__queue-line">Research: ${this.state.economy.researchQueue.length}</p>
+      <p class="city-stitch__queue-line">Research: instant (${this.state.economy.completedResearch.length} completed)</p>
       <p class="city-stitch__queue-line">Intel: ${this.state.economy.intelProjects.length}</p>
       <p class="city-stitch__queue-line">Militia: ${isMilitiaActive(this.state.economy) ? `ACTIVE (${this.state.economy.militia.currentMilitia})` : 'Inactive'}</p>`;
     return ops;
@@ -1212,7 +1216,7 @@ export class CityFoundationMode implements RenderModeController {
     if (section === 'economy') return `${ECONOMY_BUILDINGS.filter((id) => getBuildingLevel(this.state.economy, id) > 0).length} nodes`;
     if (section === 'military') return `${this.state.economy.trainingQueue.length} active`;
     if (section === 'defense') return `${DEFENSE_BUILDINGS.filter((id) => getBuildingLevel(this.state.economy, id) > 0).length} fortified`;
-    if (section === 'research') return `${this.state.economy.researchQueue.length}/1 queue`;
+    if (section === 'research') return `${this.state.economy.completedResearch.length} completed`;
     if (section === 'intelligence') return `${this.state.economy.intelProjects.length} ops`;
     if (section === 'governance') return this.state.economy.activePolicy ? 'policy active' : 'policy idle';
     return `+${getCityDerivedStats(this.state.economy).marketEfficiencyPct.toFixed(0)}%`;
@@ -1228,14 +1232,24 @@ export class CityFoundationMode implements RenderModeController {
     if (effect.ironPerHour) return `+${effect.ironPerHour} Iron/h`;
     if (effect.storageCap) return `Storage cap O:${effect.storageCap.ore} S:${effect.storageCap.stone} I:${effect.storageCap.iron}`;
     if (effect.populationCapBonus) return `Population +${effect.populationCapBonus}`;
-    if (effect.cityDefensePct || effect.damageMitigationPct || effect.antiAirDefensePct) {
-      return `Defense +${effect.cityDefensePct ?? 0}% / Anti-air +${effect.antiAirDefensePct ?? 0}% / Mitigation +${effect.damageMitigationPct ?? 0}%`;
+    if (
+      effect.cityDefensePct ||
+      effect.groundWallDefensePct ||
+      effect.groundWallBaseDefense ||
+      effect.airWallDefensePct ||
+      effect.airWallBaseDefense ||
+      effect.damageMitigationPct ||
+      effect.antiAirDefensePct
+    ) {
+      return `Defense +${effect.cityDefensePct ?? 0}% / Ground wall +${effect.groundWallDefensePct ?? 0}% (+${effect.groundWallBaseDefense ?? 0}) / Air wall +${effect.airWallDefensePct ?? 0}% (+${effect.airWallBaseDefense ?? 0}) / Anti-air +${effect.antiAirDefensePct ?? 0}% / Mitigation +${effect.damageMitigationPct ?? 0}%`;
     }
     if (effect.researchCapacity) return `Research capacity +${effect.researchCapacity}`;
     if (effect.marketEfficiencyPct) return `Market efficiency +${effect.marketEfficiencyPct}%`;
     if (effect.detectionPct || effect.counterIntelPct) return `Detection +${effect.detectionPct ?? 0}% / Counter-intel +${effect.counterIntelPct ?? 0}%`;
     if (effect.trainingSpeedPct) return `Training speed +${effect.trainingSpeedPct}%`;
-    if (effect.troopCombatPowerPct) return `Troop power +${effect.troopCombatPowerPct}%`;
+    if (effect.groundAttackPct || effect.groundDefensePct || effect.airAttackPct || effect.airDefensePct) {
+      return `Ground ATK +${effect.groundAttackPct ?? 0}% / Ground DEF +${effect.groundDefensePct ?? 0}% / Air ATK +${effect.airAttackPct ?? 0}% / Air DEF +${effect.airDefensePct ?? 0}%`;
+    }
     return 'Local branch unlock and progression node';
   }
 
@@ -1286,6 +1300,10 @@ function progressFromTimes(startedAtMs: number, endsAtMs: number, nowMs: number)
   const duration = Math.max(1, endsAtMs - startedAtMs);
   const elapsed = Math.max(0, nowMs - startedAtMs);
   return Math.max(0, Math.min(100, (elapsed / duration) * 100));
+}
+
+function clampPercent(value: number) {
+  return Math.max(0, Math.min(100, value));
 }
 
 function iconToAsset(icon: string) {

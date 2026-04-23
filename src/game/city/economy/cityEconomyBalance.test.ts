@@ -14,7 +14,7 @@ describe('city economy rebalance validation', () => {
       'barracks',
       'space_dock',
       'defensive_wall',
-      'watch_tower',
+      'skyshield_battery',
       'armament_factory',
       'intelligence_center',
       'research_lab',
@@ -99,6 +99,35 @@ describe('city economy rebalance validation', () => {
 
     const spaceDock = CITY_ECONOMY_CONFIG.buildings.space_dock.levels;
     expect(spaceDock[0].resources).toEqual({ ore: 400, stone: 200, iron: 100 });
+  });
+
+  it('keeps corrected space_dock progression monotonic at formerly duplicated anchors', () => {
+    const rows = CITY_ECONOMY_CONFIG.buildings.space_dock.levels;
+
+    const l6 = rows[5];
+    const l7 = rows[6];
+    expect(l6.resources).toEqual({ ore: 2006, stone: 1158, iron: 718 });
+    expect(l7.resources).toEqual({ ore: 2303, stone: 1347, iron: 852 });
+    expect(l7.resources.ore).toBeGreaterThan(l6.resources.ore);
+    expect(l7.resources.stone).toBeGreaterThan(l6.resources.stone);
+    expect(l7.resources.iron).toBeGreaterThan(l6.resources.iron);
+    expect(l7.buildSeconds).toBeGreaterThan(l6.buildSeconds);
+
+    const l26 = rows[25];
+    const l27 = rows[26];
+    expect(l26.resources).toEqual({ ore: 7508, stone: 4872, iron: 3601 });
+    expect(l27.resources).toEqual({ ore: 7768, stone: 5056, iron: 3754 });
+    expect(l27.resources.ore).toBeGreaterThan(l26.resources.ore);
+    expect(l27.resources.stone).toBeGreaterThan(l26.resources.stone);
+    expect(l27.resources.iron).toBeGreaterThan(l26.resources.iron);
+    expect(l26.buildSeconds).toBe(38074);
+    expect(l27.buildSeconds).toBe(39691);
+    expect(l27.buildSeconds).toBeGreaterThan(l26.buildSeconds);
+  });
+
+  it('keeps space_dock population cost flat at 4 across all levels', () => {
+    const rows = CITY_ECONOMY_CONFIG.buildings.space_dock.levels;
+    expect(rows.every((row) => row.populationCost === 4)).toBe(true);
   });
 
   it('uses differentiated max levels matching runtime tables', () => {

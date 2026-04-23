@@ -1,4 +1,4 @@
-# Rail Marksman
+# Railgun Skirmisher
 
 ## 1. Résumé
 - ID technique: `rail_marksman`
@@ -21,7 +21,7 @@
 ## 3. Fiche de stats complète
 | Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Rail Marksman | rail_marksman | ground | 55 | 100 | 40 | 0 | 1144 | 1 | 23 | distance | 7 | 8 | 2 | 14 | 8 | 0 | Ranged glass-cannon damage dealer. |
+| Railgun Skirmisher | rail_marksman | ground | 55 | 100 | 40 | 0 | 1144 | 1 | 23 | distance | 7 | 8 | 2 | 14 | 8 | 0 | Ranged glass-cannon damage dealer. |
 
 ## 4. Rôle gameplay réel
 - Unité terrestre de combat.

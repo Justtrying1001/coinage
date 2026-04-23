@@ -74,7 +74,13 @@
 - aucune
 
 ## 6. Détails runtime importants
-- `canStartTroopTraining` vérifie le niveau bâtiment requis de chaque unité ground, et son `trainingSpeedPct` alimente `getCityDerivedStats`.
+- `canStartConstruction` applique les guards dans cet ordre: HQ requis, prérequis bâtiments (`refinery`, `housing_complex`, `mine`), ressources, puis population libre.
+- `startConstruction` paie le coût target-level et réserve seulement le delta de population (`targetPopulationCost - currentPopulationCost`).
+- `resolveCompletedConstruction` applique le niveau cible en fin de timer; l’occupation population bâtiment reste basée sur le **niveau courant**.
+- `canStartTroopTraining` et `startTroopTraining` passent par le lien `troop.requiredBuildingId` : les unités ground rattachées au Barracks sont bien bloquées/débloquées par le niveau Barracks.
+- `trainingSpeedPct` du Barracks est agrégé dans `getCityDerivedStats` puis consommé dans `startTroopTraining` pour réduire la durée (`trainingMultiplier` borné à 35%).
+- Cas pratique important (runtime): Barracks lvl 1 est à `634s` dans la table mais peut monter à `891s` (~14m51s) à HQ1 à cause de la normalisation HQ appliquée par `getConstructionDurationSeconds`.
+- Mapping asset UI actuel: `/assets/barracks.png` (aligné canonique; fallback global UI: `/assets/buildings/hq.webp`).
 
 ## 7. Statut d’implémentation / zones d’attention
 - Runtime construction: implémenté (canStartConstruction, startConstruction, resolveCompletedConstruction).

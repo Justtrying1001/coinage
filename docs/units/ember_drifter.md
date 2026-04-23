@@ -1,4 +1,4 @@
-# Ember Drifter
+# Ember Frigate
 
 ## 1. Résumé
 - ID technique: `ember_drifter`
@@ -21,7 +21,7 @@
 ## 3. Fiche de stats complète
 | Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Ember Drifter | ember_drifter | naval | 500 | 750 | 150 | 0 | 4000 | 8 | 0 | naval | 0 | 0 | 0 | 5 | 0 | 0 | Special defensive fire-ship role: each ship destroys one eligible enemy ship, then is destroyed. |
+| Ember Frigate | ember_drifter | naval | 500 | 750 | 150 | 0 | 4000 | 8 | 0 | naval | 0 | 0 | 0 | 5 | 0 | 0 | Special defensive fire-ship role: each ship destroys one eligible enemy ship, then is destroyed. |
 
 ## 4. Rôle gameplay réel
 - Combat naval (stat configurée; résolution absente du runtime).

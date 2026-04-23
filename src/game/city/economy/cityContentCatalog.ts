@@ -167,7 +167,7 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     phase: 'mvp',
     definitionStatus: 'fully_defined',
     gameplayImplemented: true,
-    maxLevel: 20,
+    maxLevel: 25,
     role: 'Ore passive production.',
     primarySystems: ['economy', 'claim_on_access'],
     unlock: [{ type: 'hq', targetId: 'hq', minLevel: 1 }],
@@ -211,7 +211,7 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     phase: 'mvp',
     definitionStatus: 'fully_defined',
     gameplayImplemented: true,
-    maxLevel: 20,
+    maxLevel: 25,
     role: 'Stone passive production.',
     primarySystems: ['economy', 'claim_on_access'],
     unlock: [{ type: 'hq', targetId: 'hq', minLevel: 1 }],
@@ -255,7 +255,7 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     phase: 'mvp',
     definitionStatus: 'fully_defined',
     gameplayImplemented: true,
-    maxLevel: 20,
+    maxLevel: 25,
     role: 'Iron passive production and military-economy maturity gate.',
     primarySystems: ['economy', 'military_economy_gate'],
     unlock: [
@@ -305,7 +305,7 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     phase: 'mvp',
     definitionStatus: 'fully_defined',
     gameplayImplemented: true,
-    maxLevel: 20,
+    maxLevel: 25,
     role: 'Absolute storage cap expansion.',
     primarySystems: ['economy', 'storage_caps'],
     unlock: [{ type: 'hq', targetId: 'hq', minLevel: 1 }],
@@ -342,7 +342,7 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     phase: 'mvp',
     definitionStatus: 'fully_defined',
     gameplayImplemented: true,
-    maxLevel: 20,
+    maxLevel: 25,
     role: 'Population cap growth backbone.',
     primarySystems: ['population', 'city_specialization'],
     unlock: [{ type: 'hq', targetId: 'hq', minLevel: 1 }],
@@ -386,7 +386,7 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     phase: 'v0',
     definitionStatus: 'fully_defined',
     gameplayImplemented: true,
-    maxLevel: 20,
+    maxLevel: 25,
     role: 'Base ground unit unlock and military progression entry.',
     primarySystems: ['military_unlocks', 'training'],
     unlock: [
@@ -439,7 +439,7 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     phase: 'v0',
     definitionStatus: 'fully_defined',
     gameplayImplemented: true,
-    maxLevel: 20,
+    maxLevel: 25,
     role: 'Advanced ground unit unlock branch.',
     primarySystems: ['military_unlocks', 'training'],
     unlock: [
@@ -493,7 +493,7 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     phase: 'v0',
     definitionStatus: 'fully_defined',
     gameplayImplemented: true,
-    maxLevel: 20,
+    maxLevel: 25,
     role: 'Projection/air unit unlock and siege-colonization transport branch.',
     primarySystems: ['military_unlocks', 'projection'],
     unlock: [
@@ -547,10 +547,13 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     phase: 'later',
     definitionStatus: 'partially_defined',
     gameplayImplemented: false,
-    maxLevel: 20,
-    role: 'Global city defense multiplier during local defense phase.',
+    maxLevel: 25,
+    role: 'City-defense wall bonus applied only to barracks-ground units during city defense.',
     primarySystems: ['defense', 'combat_phase_2'],
-    unlock: [{ type: 'hq', targetId: 'hq', minLevel: 4 }],
+    unlock: [
+      { type: 'hq', targetId: 'hq', minLevel: 5 },
+      { type: 'building', targetId: 'barracks', minLevel: 3 },
+    ],
     levelBandGates: [
       {
         minTargetLevel: 6,
@@ -565,7 +568,7 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
         maxTargetLevel: 15,
         prerequisites: [
           { type: 'hq', targetId: 'hq', minLevel: 12 },
-          { type: 'building', targetId: 'watch_tower', minLevel: 6 },
+          { type: 'building', targetId: 'skyshield_battery', minLevel: 6 },
         ],
       },
       {
@@ -602,18 +605,18 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     ],
   },
   {
-    id: 'watch_tower',
-    name: 'Watch Tower',
+    id: 'skyshield_battery',
+    name: 'Skyshield Battery',
     category: 'defense',
     phase: 'later',
     definitionStatus: 'partially_defined',
     gameplayImplemented: false,
     maxLevel: 20,
-    role: 'Anti-air defensive tower that reinforces city defense against flying threats.',
-    primarySystems: ['defense', 'anti_air'],
+    role: 'City-defense tower bonus applied only to space_dock air/spatial units during city defense.',
+    primarySystems: ['defense', 'anti_air_defense'],
     unlock: [
-      { type: 'hq', targetId: 'hq', minLevel: 5 },
-      { type: 'building', targetId: 'defensive_wall', minLevel: 2 },
+      { type: 'hq', targetId: 'hq', minLevel: 12 },
+      { type: 'building', targetId: 'space_dock', minLevel: 3 },
     ],
     levelBandGates: [
       {
@@ -648,10 +651,10 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
       effects: 'partially_defined',
     },
     operationalEffectsByBand: [
-      { minLevel: 1, maxLevel: 5, effects: ['City anti-air shield +3.3% per level', 'Garrison resilience +1.4% per level'] },
-      { minLevel: 6, maxLevel: 10, effects: ['Flying hostile interception +1.8% per level', 'Defensive volley stability +1.1% per level'] },
-      { minLevel: 11, maxLevel: 15, effects: ['High-altitude defense hardening +1.6% per level', 'Emergency anti-air response +1.2% per level'] },
-      { minLevel: 16, maxLevel: 20, effects: ['Air-lane denial strength +1.9% per level', 'Strike-wing attrition pressure +1.4% per level'] },
+      { minLevel: 1, maxLevel: 5, effects: ['Air wall defense +~2.2% per level', 'Air wall base defense +~3.3 per level'] },
+      { minLevel: 6, maxLevel: 10, effects: ['Space dock fleet defensive hardening progression', 'No effect in offensive context'] },
+      { minLevel: 11, maxLevel: 15, effects: ['City-defense-only bonus for air/spatial defenders', 'No impact on barracks units'] },
+      { minLevel: 16, maxLevel: 20, effects: ['High-tier anti-air defense scaling in city defense', 'No global city-defense blanket bonus'] },
     ],
     provisionalLevels: buildProvisionalLevels({
       baseCost: { ore: 145, stone: 180, iron: 95 },
@@ -671,7 +674,7 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     phase: 'later',
     definitionStatus: 'partially_defined',
     gameplayImplemented: false,
-    maxLevel: 20,
+    maxLevel: 25,
     role: 'Late military specialization and doctrine building.',
     primarySystems: ['military_specialization', 'research_bridge'],
     unlock: [
@@ -734,67 +737,32 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     id: 'armament_factory',
     name: 'Armament Factory',
     category: 'military',
-    phase: 'later',
-    definitionStatus: 'partially_defined',
-    gameplayImplemented: false,
-    maxLevel: 20,
-    role: 'Military production optimization / war-economy support building.',
-    primarySystems: ['military_economy', 'training_efficiency'],
+    phase: 'mvp',
+    definitionStatus: 'fully_defined',
+    gameplayImplemented: true,
+    maxLevel: 35,
+    role: 'Improves offensive and defensive power for ground and air units.',
+    primarySystems: ['military_stats'],
     unlock: [
-      { type: 'hq', targetId: 'hq', minLevel: 12 },
-      { type: 'building', targetId: 'space_dock', minLevel: 8 },
-      { type: 'building', targetId: 'refinery', minLevel: 10 },
-      { type: 'building', targetId: 'market', minLevel: 6 },
-    ],
-    levelBandGates: [
-      {
-        minTargetLevel: 6,
-        maxTargetLevel: 10,
-        prerequisites: [
-          { type: 'hq', targetId: 'hq', minLevel: 14 },
-          { type: 'building', targetId: 'warehouse', minLevel: 10 },
-        ],
-      },
-      {
-        minTargetLevel: 11,
-        maxTargetLevel: 15,
-        prerequisites: [
-          { type: 'hq', targetId: 'hq', minLevel: 16 },
-          { type: 'building', targetId: 'military_academy', minLevel: 8 },
-        ],
-      },
-      {
-        minTargetLevel: 16,
-        maxTargetLevel: 20,
-        prerequisites: [
-          { type: 'hq', targetId: 'hq', minLevel: 18 },
-          { type: 'building', targetId: 'market', minLevel: 12 },
-        ],
-      },
+      { type: 'hq', targetId: 'hq', minLevel: 8 },
+      { type: 'building', targetId: 'research_lab', minLevel: 10 },
+      { type: 'building', targetId: 'barracks', minLevel: 10 },
     ],
     valueCompleteness: {
-      costs: 'partially_defined',
-      buildTime: 'partially_defined',
-      population: 'partially_defined',
-      effects: 'partially_defined',
+      costs: 'fully_defined',
+      buildTime: 'fully_defined',
+      population: 'fully_defined',
+      effects: 'fully_defined',
     },
     operationalEffectsByBand: [
-      { minLevel: 1, maxLevel: 5, effects: ['Military unit iron cost -1.6% per level', 'Arsenal conversion throughput +1.5% per level'] },
-      { minLevel: 6, maxLevel: 10, effects: ['Projection/siege training time -1.9% per level', 'Heavy ammunition throughput +1.4% per level'] },
-      { minLevel: 11, maxLevel: 15, effects: ['Equipment pipeline loss reduction -1.1% per level', 'Field refit readiness +1.2% per level'] },
-      { minLevel: 16, maxLevel: 20, effects: ['Late-war mobilization prep time -1.6% per level', 'Assault convoy payload efficiency +1.3% per level'] },
+      { minLevel: 1, maxLevel: 30, effects: ['Cycle: L1 Ground ATK, L2 Ground DEF, L3 Air ATK, L4 Air DEF, L5 Ground ATK+DEF, L6 Air ATK+DEF'] },
+      { minLevel: 31, maxLevel: 34, effects: ['L31 Ground ATK, L32 Ground DEF, L33 Air ATK, L34 Air DEF'] },
+      { minLevel: 35, maxLevel: 35, effects: ['Final all-units tier: Ground ATK + Ground DEF + Air ATK + Air DEF'] },
     ],
-    provisionalLevels: buildProvisionalLevels({
-      baseCost: { ore: 340, stone: 250, iron: 190 },
-      costScale: 1.205,
-      baseSeconds: 72,
-      populationCostByLevel: (level) => populationBand(level, 2, 3, 4),
-      effectByLevel: (level) => [
-        `Military unit iron cost -${Math.round(2 + level * 0.65)}%`,
-        `Siege/projection unit training time -${Math.round(2 + level * 0.7)}%`,
-      ],
-    }),
-    notes: ['Acts as war-economy coupling between refinery throughput and advanced military lines.'],
+    notes: [
+      'No training-speed role in runtime: Barracks and Space Dock keep branch-specific training throughput.',
+      'No upkeep/training/research role: only ground and air attack-defense bonuses.',
+    ],
   },
   {
     id: 'intelligence_center',
@@ -803,12 +771,12 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     phase: 'later',
     definitionStatus: 'partially_defined',
     gameplayImplemented: false,
-    maxLevel: 20,
+    maxLevel: 25,
     role: 'Spy vault and mission unlock progression.',
     primarySystems: ['espionage', 'spy_vault', 'counter_intel'],
     unlock: [
       { type: 'hq', targetId: 'hq', minLevel: 4 },
-      { type: 'building', targetId: 'watch_tower', minLevel: 2 },
+      { type: 'building', targetId: 'skyshield_battery', minLevel: 2 },
     ],
     levelBandGates: [
       {
@@ -816,7 +784,7 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
         maxTargetLevel: 10,
         prerequisites: [
           { type: 'hq', targetId: 'hq', minLevel: 8 },
-          { type: 'building', targetId: 'watch_tower', minLevel: 4 },
+          { type: 'building', targetId: 'skyshield_battery', minLevel: 4 },
         ],
       },
       {
@@ -869,7 +837,7 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     phase: 'later',
     definitionStatus: 'partially_defined',
     gameplayImplemented: false,
-    maxLevel: 20,
+    maxLevel: 25,
     role: 'Research Capacity contribution and tech branch progression.',
     primarySystems: ['research', 'research_capacity'],
     unlock: [
@@ -933,7 +901,7 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     phase: 'later',
     definitionStatus: 'partially_defined',
     gameplayImplemented: false,
-    maxLevel: 20,
+    maxLevel: 25,
     role: 'Inter-city trading and resource logistics throughput.',
     primarySystems: ['trading', 'logistics'],
     unlock: [
@@ -997,7 +965,7 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     phase: 'later',
     definitionStatus: 'partially_defined',
     gameplayImplemented: false,
-    maxLevel: 20,
+    maxLevel: 25,
     role: 'Local governance/governor authority interface into faction governance.',
     primarySystems: ['governance', 'faction_politics'],
     unlock: [
@@ -1083,7 +1051,7 @@ export const DEFERRED_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     phase: 'later',
     definitionStatus: 'partially_defined',
     gameplayImplemented: false,
-    maxLevel: 20,
+    maxLevel: 25,
     role: 'Deferred premium shard branch (reintegrate after core balance stabilization).',
     primarySystems: ['deferred', 'premium', 'shards'],
     unlock: [{ type: 'other', targetId: 'premium_branch', note: 'Deferred from active balance scope.' }],
@@ -1099,7 +1067,7 @@ export const DEFERRED_BUILDING_CATALOG: BuildingCatalogEntry[] = [
 export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
   {
     id: 'line_infantry',
-    name: 'Line Infantry',
+    name: 'Frontline Trooper',
     category: 'ground_line',
     phase: 'v0',
     definitionStatus: 'fully_defined',
@@ -1128,7 +1096,7 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
   },
   {
     id: 'aegis_shieldguard',
-    name: 'Aegis Shieldguard',
+    name: 'Aegis Walker',
     category: 'ground_line',
     phase: 'v0',
     definitionStatus: 'fully_defined',
@@ -1157,7 +1125,7 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
   },
   {
     id: 'rail_marksman',
-    name: 'Rail Marksman',
+    name: 'Railgun Skirmisher',
     category: 'ground_line',
     phase: 'v0',
     definitionStatus: 'fully_defined',
@@ -1186,7 +1154,7 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
   },
   {
     id: 'raider_hoverbike',
-    name: 'Raider Hoverbike',
+    name: 'Raider Interceptor',
     category: 'ground_line',
     phase: 'v0',
     definitionStatus: 'fully_defined',
@@ -1215,7 +1183,7 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
   },
   {
     id: 'assault_legionnaire',
-    name: 'Assault Legionnaire',
+    name: 'Assault Ranger',
     category: 'ground_line',
     phase: 'v0',
     definitionStatus: 'fully_defined',
@@ -1244,7 +1212,7 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
   },
   {
     id: 'siege_breacher',
-    name: 'Siege Breacher',
+    name: 'Siege Artillery',
     category: 'ground_line',
     phase: 'v0',
     definitionStatus: 'fully_defined',
@@ -1273,7 +1241,7 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
   },
   {
     id: 'interceptor_sentinel',
-    name: 'Interceptor Sentinel',
+    name: 'Sentinel Interceptor',
     category: 'projection',
     phase: 'v0',
     definitionStatus: 'fully_defined',
@@ -1302,7 +1270,7 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
   },
   {
     id: 'rapid_escort',
-    name: 'Rapid Escort',
+    name: 'Vanguard Corvette',
     category: 'projection',
     phase: 'v0',
     definitionStatus: 'fully_defined',
@@ -1331,7 +1299,7 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
   },
   {
     id: 'assault_dropship',
-    name: 'Assault Dropship',
+    name: 'Strike Dropship',
     category: 'projection',
     phase: 'later',
     definitionStatus: 'partially_defined',
@@ -1398,7 +1366,7 @@ export const FULL_UNIT_CATALOG: UnitCatalogEntry[] = [
   },
   {
     id: 'colonization_arkship',
-    name: 'Colonization Arkship',
+    name: 'Colony Ark',
     category: 'colonization',
     phase: 'later',
     definitionStatus: 'partially_defined',
@@ -1445,7 +1413,7 @@ export const MVP_MICRO_STANDARD_BUILDING_IDS = [
   'barracks',
   'space_dock',
   'defensive_wall',
-  'watch_tower',
+  'skyshield_battery',
   'armament_factory',
   'intelligence_center',
   'research_lab',

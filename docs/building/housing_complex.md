@@ -83,7 +83,11 @@
 - aucune
 
 ## 6. Détails runtime importants
-- `getPopulationSnapshot` prend le cap depuis `populationCapBonus`; `activateMilitia` utilise ce niveau pour la taille de milice (cap niveau 25).
+- `getPopulationSnapshot` calcule le cap avec `baseCap + populationCapBonus` du **niveau courant** de `housing_complex`.
+- L’occupation de population bâtiment est lue au **niveau courant** (pas une somme cumulée des niveaux déjà passés).
+- Le coût population requis pour un upgrade est **incrémental** (`targetPopulationCost - currentPopulationCost`), et reste donc à `0` pour `housing_complex`.
+- `activateMilitia` exige `housing_complex >= 1` et renvoie `Requires housing_complex 1` sinon.
+- La taille de milice est dérivée de `housing_complex` avec un plafonnement de niveau à 25 (`getMilitiaMaxSize`).
 
 ## 7. Statut d’implémentation / zones d’attention
 - Runtime construction: implémenté (canStartConstruction, startConstruction, resolveCompletedConstruction).

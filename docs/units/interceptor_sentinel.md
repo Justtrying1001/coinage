@@ -1,4 +1,4 @@
-# Interceptor Sentinel
+# Sentinel Interceptor
 
 ## 1. Résumé
 - ID technique: `interceptor_sentinel`
@@ -21,7 +21,7 @@
 ## 3. Fiche de stats complète
 | Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Interceptor Sentinel | interceptor_sentinel | naval | 800 | 700 | 180 | 0 | 9900 | 8 | 24 | naval | 0 | 0 | 0 | 15 | 0 | 0 | Defensive interceptor ship. |
+| Sentinel Interceptor | interceptor_sentinel | naval | 800 | 700 | 180 | 0 | 9900 | 8 | 24 | naval | 0 | 0 | 0 | 15 | 0 | 0 | Defensive interceptor ship. |
 
 ## 4. Rôle gameplay réel
 - Combat naval (stat configurée; résolution absente du runtime).

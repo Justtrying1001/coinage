@@ -1,4 +1,4 @@
-# Swift Carrier
+# Rapid Carrier
 
 ## 1. Résumé
 - ID technique: `swift_carrier`
@@ -21,7 +21,7 @@
 ## 3. Fiche de stats complète
 | Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Swift Carrier | swift_carrier | naval | 800 | 0 | 400 | 0 | 7200 | 5 | 0 | none | 0 | 0 | 0 | 15 | 0 | 10 | Fast transport ship. |
+| Rapid Carrier | swift_carrier | naval | 800 | 0 | 400 | 0 | 7200 | 5 | 0 | none | 0 | 0 | 0 | 15 | 0 | 10 | Fast transport ship. |
 
 ## 4. Rôle gameplay réel
 - Transport logistique/naval.
