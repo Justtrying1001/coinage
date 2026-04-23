@@ -14,6 +14,8 @@ import {
   getAirDefenseStatsWithBattery,
   getGroundDefenseStatsWithWall,
   getSkyshieldBatteryAirBonuses,
+  evaluateEspionageOutcome,
+  getDefenderEffectiveSpyDefense,
   canStartResearch,
   canStartTroopTraining,
   activateMilitia,
@@ -31,6 +33,7 @@ import {
   getMilitiaMaxSize,
   getMilitiaProductionMultiplier,
   getMilitaryBuildingOrder,
+  getSpyVaultCap,
   isMilitiaActive,
   resolveMilitiaExpiration,
   resolveCompletedIntelProjects,
@@ -721,6 +724,40 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     expect(startEspionageMission(state, 'def', 1_200, 0).ok).toBe(true);
     expect(state.spyVaultSilver).toBe(1_800);
     expect(canDepositSpySilver(state, 100)).toEqual({ ok: false, reason: 'Cannot refill vault while mission is active' });
+    expect(canStartEspionageMission(state, '', 1_000)).toEqual({ ok: false, reason: 'Target city required' });
+    expect(canStartEspionageMission(state, 'atk', 1_000)).toEqual({ ok: false, reason: 'Cannot target own city' });
+  });
+
+  it('applies finite vault cap before level 10, then infinite cap at level 10', () => {
+    const state = createInitialCityEconomyState({ cityId: 'vault', owner: 'p1', nowMs: 0 });
+    state.resources.iron = 50_000;
+
+    state.levels.intelligence_center = 3;
+    expect(getSpyVaultCap(state)).toBe(3_000);
+    expect(canDepositSpySilver(state, 3_000)).toEqual({ ok: true, reason: null });
+    expect(depositSpySilver(state, 3_000)).toEqual({ ok: true, reason: null });
+    expect(canDepositSpySilver(state, 1)).toEqual({ ok: false, reason: 'Vault capacity reached' });
+
+    state.levels.intelligence_center = 10;
+    expect(getSpyVaultCap(state)).toBe(Number.POSITIVE_INFINITY);
+    expect(canDepositSpySilver(state, 10_000)).toEqual({ ok: true, reason: null });
+  });
+
+  it('uses detection+counter-intel derived stats in defender effective spy defense', () => {
+    const defender = createInitialCityEconomyState({ cityId: 'def', owner: 'p2', nowMs: 0 });
+    defender.levels.intelligence_center = 2;
+    defender.levels.research_lab = 7;
+    defender.completedResearch.push('espionage');
+    defender.spyVaultSilver = 1_000;
+
+    const effective = getDefenderEffectiveSpyDefense(defender);
+    expect(effective).toBeGreaterThan(1_000);
+
+    const outcome = evaluateEspionageOutcome(1_500, defender);
+    expect(outcome.defenderEffectiveSpyDefense).toBe(effective);
+    expect(outcome.wasSuccess).toBe(false);
+    expect(outcome.detectionPctAtResolution).toBeGreaterThan(0);
+    expect(outcome.counterIntelPctAtResolution).toBeGreaterThan(0);
   });
 
   it('exposes all military branch buildings in order helper', () => {

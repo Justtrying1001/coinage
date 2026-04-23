@@ -5,6 +5,7 @@ import type { Galaxy2DViewSnapshot } from '@/game/render/modes/Galaxy2DMode';
 import type { ModeContext, RenderModeController } from '@/game/render/modes/RenderModeController';
 import { Planet3DMode } from '@/game/render/modes/Planet3DMode';
 import { CityFoundationMode } from '@/game/render/modes/CityFoundationMode';
+import { runCityEconomyRuntimeTick } from '@/game/city/economy/cityEconomyPersistence';
 
 interface RenderModeFactory {
   createGalaxyMode: (
@@ -107,6 +108,7 @@ export class CoinageRenderApp {
     if (!this.mounted) return;
     const deltaMs = time - this.lastTime;
     this.lastTime = time;
+    runCityEconomyRuntimeTick(Date.now());
     this.activeController?.update(deltaMs);
     this.rafId = requestAnimationFrame(this.tick);
   };
