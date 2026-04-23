@@ -19,6 +19,8 @@ import {
   depositSpySilver,
   startResearch,
   startTroopTraining,
+  evaluateEspionageOutcome,
+  getCityDerivedStats,
   type CityEconomyState,
   type GuardResult,
 } from '@/game/city/economy/cityEconomySystem';
@@ -77,6 +79,8 @@ export interface CityStartTrainingResult {
 
 const fallbackMemoryStore = new Map<string, string>();
 const ESPIONAGE_TRAVEL_MS = 15 * 60 * 1000;
+const ECONOMY_RUNTIME_TICK_INTERVAL_MS = 1000;
+let lastEconomyRuntimeTickMs = 0;
 const LEGACY_RESEARCH_ID_MAP: Partial<Record<string, ResearchId>> = {
   signals_intel: 'cryptography',
 };
@@ -225,11 +229,8 @@ function fromEconomyState(context: CityPersistenceContext, state: CityEconomySta
   };
 }
 
-function hasCryptographyLikeBonus(state: CityEconomyState) {
-  return state.completedResearch.includes('cryptography');
-}
-
 function resolveGlobalEspionage(map: PersistedCityEconomyMap, nowMs: number) {
+  let changed = false;
   const states = new Map<string, CityEconomyState>();
   Object.values(map).forEach((record) => states.set(record.cityId, toEconomyState(record)));
 
@@ -244,37 +245,64 @@ function resolveGlobalEspionage(map: PersistedCityEconomyMap, nowMs: number) {
         continue;
       }
       const targetState = states.get(mission.targetCityId);
-      if (!targetState) continue;
+      if (!targetState) {
+        sourceState.espionageReports.unshift({
+          id: `rep-atk-missing-${mission.id}`,
+          createdAtMs: nowMs,
+          kind: 'mission_cancelled_target_missing',
+          sourceCityId: sourceState.cityId,
+          targetCityId: mission.targetCityId,
+          silverSent: mission.silverCommitted,
+          targetSilverAtResolution: 0,
+          defenderEffectiveSpyDefense: 0,
+          detectionPctAtResolution: 0,
+          counterIntelPctAtResolution: 0,
+          wasCryptographyApplied: false,
+          wasSuccess: false,
+          defenderSilverSpentOnDefense: 0,
+        });
+        sourceState.spyVaultSilver += mission.silverCommitted;
+        sourceState.espionageReports = sourceState.espionageReports.slice(0, 20);
+        changed = true;
+        continue;
+      }
 
-      const cryptography = hasCryptographyLikeBonus(targetState);
       const defensiveSilver = targetState.spyVaultSilver;
-      const required = cryptography ? Math.floor(defensiveSilver * 1.2) + 1 : defensiveSilver + 1;
-      const success = mission.silverCommitted >= required;
+      const outcome = evaluateEspionageOutcome(mission.silverCommitted, targetState);
+      const targetDerived = getCityDerivedStats(targetState);
 
       sourceState.espionageReports.unshift({
         id: `rep-atk-${mission.id}`,
         createdAtMs: nowMs,
-        kind: success ? 'attack_success' : 'attack_failed',
+        kind: outcome.wasSuccess ? 'attack_success' : 'attack_failed',
         sourceCityId: sourceState.cityId,
         targetCityId: mission.targetCityId,
         silverSent: mission.silverCommitted,
         targetSilverAtResolution: defensiveSilver,
-        wasCryptographyApplied: cryptography,
+        defenderEffectiveSpyDefense: outcome.defenderEffectiveSpyDefense,
+        detectionPctAtResolution: outcome.detectionPctAtResolution,
+        counterIntelPctAtResolution: outcome.counterIntelPctAtResolution,
+        wasCryptographyApplied: outcome.wasCryptographyApplied,
+        wasSuccess: outcome.wasSuccess,
+        defenderSilverSpentOnDefense: 0,
+        intelSnapshot: outcome.wasSuccess
+          ? {
+              resources: { ...targetState.resources },
+              buildingLevels: { ...targetState.levels },
+              troops: { ...targetState.troops },
+              defensiveBonuses: {
+                cityDefensePct: targetDerived.cityDefensePct,
+                antiAirDefensePct: targetDerived.antiAirDefensePct,
+                detectionPct: outcome.detectionPctAtResolution,
+                counterIntelPct: outcome.counterIntelPctAtResolution,
+              },
+            }
+          : undefined,
       });
       sourceState.espionageReports = sourceState.espionageReports.slice(0, 20);
+      changed = true;
 
-      if (success) {
-        targetState.espionageReports.unshift({
-          id: `rep-def-${mission.id}`,
-          createdAtMs: nowMs,
-          kind: 'defense_breached',
-          sourceCityId: sourceState.cityId,
-          targetCityId: mission.targetCityId,
-          silverSent: mission.silverCommitted,
-          targetSilverAtResolution: defensiveSilver,
-          wasCryptographyApplied: cryptography,
-        });
-      } else {
+      if (!outcome.wasSuccess) {
         const spent = Math.min(targetState.spyVaultSilver, mission.silverCommitted);
         targetState.spyVaultSilver -= spent;
         targetState.espionageReports.unshift({
@@ -285,8 +313,14 @@ function resolveGlobalEspionage(map: PersistedCityEconomyMap, nowMs: number) {
           targetCityId: mission.targetCityId,
           silverSent: mission.silverCommitted,
           targetSilverAtResolution: defensiveSilver,
-          wasCryptographyApplied: cryptography,
+          defenderEffectiveSpyDefense: outcome.defenderEffectiveSpyDefense,
+          detectionPctAtResolution: outcome.detectionPctAtResolution,
+          counterIntelPctAtResolution: outcome.counterIntelPctAtResolution,
+          wasCryptographyApplied: outcome.wasCryptographyApplied,
+          wasSuccess: false,
+          defenderSilverSpentOnDefense: spent,
         });
+        changed = true;
       }
       targetState.espionageReports = targetState.espionageReports.slice(0, 20);
     }
@@ -306,6 +340,7 @@ function resolveGlobalEspionage(map: PersistedCityEconomyMap, nowMs: number) {
       state,
     );
   });
+  return changed;
 }
 
 function loadOrCreateRecord(context: CityPersistenceContext, nowMs: number): PersistedCityEconomyRecord {
@@ -343,9 +378,6 @@ function buildSnapshot(record: PersistedCityEconomyRecord): PersistedCitySnapsho
 }
 
 export function loadCityEconomyState(context: CityPersistenceContext, nowMs = Date.now()): PersistedCitySnapshot {
-  const map = readMap();
-  resolveGlobalEspionage(map, nowMs);
-  writeMap(map);
   const record = loadOrCreateRecord(context, nowMs);
   const mutable = toEconomyState(record);
 
@@ -360,6 +392,17 @@ export function loadCityEconomyState(context: CityPersistenceContext, nowMs = Da
   saveRecord(persisted);
 
   return buildSnapshot(persisted);
+}
+
+export function runCityEconomyRuntimeTick(nowMs = Date.now(), options?: { force?: boolean }) {
+  const force = options?.force ?? false;
+  if (!force && nowMs - lastEconomyRuntimeTickMs < ECONOMY_RUNTIME_TICK_INTERVAL_MS) return false;
+  lastEconomyRuntimeTickMs = nowMs;
+
+  const map = readMap();
+  const changed = resolveGlobalEspionage(map, nowMs);
+  if (changed) writeMap(map);
+  return changed;
 }
 
 export function startCityBuildingUpgrade(
@@ -473,6 +516,11 @@ export function sendCityEspionageMission(
   silverToCommit: number,
   nowMs = Date.now(),
 ) {
+  const map = readMap();
+  if (!map[targetCityId]) {
+    const loaded = loadCityEconomyState(context, nowMs);
+    return { state: loaded, guard: { ok: false, reason: 'Target city not found' } };
+  }
   const loaded = loadCityEconomyState(context, nowMs);
   const mutable = cloneEconomyState(loaded.economy);
   const guard = startEspionageMission(mutable, targetCityId, silverToCommit, nowMs, ESPIONAGE_TRAVEL_MS);
@@ -482,6 +530,7 @@ export function sendCityEspionageMission(
 }
 
 export function clearCityEconomyPersistenceForTests() {
+  lastEconomyRuntimeTickMs = 0;
   const storage = getStorage();
   if (storage) {
     storage.removeItem(STORAGE_KEY);

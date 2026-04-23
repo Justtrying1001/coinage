@@ -67,4 +67,27 @@ describe('cityContentCatalog MVP MICRO scope', () => {
       { type: 'building', targetId: 'barracks', minLevel: 10 },
     ]);
   });
+
+  it('keeps intelligence_center catalog entry aligned with runtime unlock/effects status', () => {
+    const intelligence = FULL_BUILDING_CATALOG.find((entry) => entry.id === 'intelligence_center');
+    expect(intelligence).toBeDefined();
+    expect(intelligence?.phase).toBe('mvp');
+    expect(intelligence?.definitionStatus).toBe('fully_defined');
+    expect(intelligence?.gameplayImplemented).toBe(true);
+    expect(intelligence?.maxLevel).toBe(10);
+    expect(intelligence?.unlock).toEqual([
+      { type: 'hq', targetId: 'hq', minLevel: 10 },
+      { type: 'building', targetId: 'market', minLevel: 4 },
+      { type: 'building', targetId: 'warehouse', minLevel: 7 },
+    ]);
+  });
+
+  it('does not reference impossible intelligence_center levels in catalog dependencies', () => {
+    const impossibleRefs = FULL_BUILDING_CATALOG.flatMap((entry) =>
+      (entry.levelBandGates ?? []).flatMap((band) =>
+        (band.prerequisites ?? []).filter((req) => req.type === 'building' && req.targetId === 'intelligence_center' && req.minLevel > 10),
+      ),
+    );
+    expect(impossibleRefs).toEqual([]);
+  });
 });

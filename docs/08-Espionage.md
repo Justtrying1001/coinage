@@ -1,51 +1,64 @@
-# Espionage (Coinage runtime, Grepolis-equivalent logic)
+# Espionage (Coinage runtime MVP)
 
 ## Scope
-This document describes the **actual runtime espionage logic** implemented in Coinage as of this commit.
+This document describes the implemented **MVP-final espionage loop** in Coinage runtime.
 
 ## Core model
-- Espionage is funded by **silver stored in the Intelligence Center vault** (`spyVaultSilver`).
-- Silver is deposited from city **iron** and cannot be withdrawn.
-- A mission requires at least **1000 silver**.
-- One active outgoing espionage mission per city (`espionageMissions.length <= 1`).
+- Espionage is funded by silver in the city spy vault (`spyVaultSilver`).
+- Silver is deposited by converting city iron.
+- Minimum launch amount: **1000 silver**.
+- One active outgoing mission per source city.
+- While an outgoing mission is active, vault refill is blocked.
 
-## Intelligence Center and silver capacity
-- Intelligence Center level gates espionage and silver storage:
-  - level `N` stores up to `N * 1000` silver.
-  - level 10 has infinite capacity.
-- Vault refill is blocked while a mission is in transit.
-- Capacity check includes both:
-  - silver currently in vault,
-  - silver currently committed in active in-flight mission(s).
-- Skyshield Battery is intentionally **not** part of espionage math; it is reserved for defensive/anti-air role.
+## Building and prerequisites
+- Operational gate building: `intelligence_center`.
+- Runtime unlock for building progression: `HQ 10`, `market 4`, `warehouse 7`.
+- Vault capacity scales with intelligence center level:
+  - level `N`: `N * 1000`
+  - level `10`: infinite capacity.
 
-## Mission resolution
-- Mission launch consumes committed silver from the source vault immediately.
-- Travel duration is currently fixed at **15 minutes** in runtime (`ESPIONAGE_TRAVEL_MS`), because the current MVP city model does not yet expose inter-city distance for variable travel times.
-- Resolution success rule:
-  - `silver_sent > target_vault_silver`,
-  - with a cryptography-like modifier if defender has `signals_intel` completed: attacker must beat `floor(target_vault_silver * 1.2)`.
+## Mission targeting and launch
+- Launch requires:
+  - non-empty target city id,
+  - target different from source city,
+  - source city has `intelligence_center >= 1`,
+  - enough vault silver (`>= sent amount`),
+  - minimum sent silver (`>= 1000`),
+  - target city must exist in persisted map.
+- If target city does not exist, mission is rejected explicitly (`Target city not found`).
 
-## Failure / defense behavior
-- On failed espionage:
-  - attacker receives `attack_failed` report,
-  - defender receives `defense_failed_attempt` report,
-  - defender vault loses silver equal to the attempted mission silver (clamped to available silver).
-- On successful espionage:
-  - attacker receives `attack_success` report,
-  - defender receives `defense_breached` marker report (Coinage runtime visibility choice).
+## Travel and resolution
+- Mission travel is currently fixed at **15 minutes** (`ESPIONAGE_TRAVEL_MS`).
+- Global resolution is processed by the central economy runtime tick (`runCityEconomyRuntimeTick`) and no longer depends on city-load side effects.
+- `CoinageRenderApp` calls the economy runtime tick continuously, so due missions resolve even while the player is in galaxy/planet/city views.
 
-## Reports and persistence
-- Reports are persisted per city in `espionageReports` (capped to latest 20 entries).
-- Global espionage resolution runs during city-state load so cross-city outcomes apply even if only one city is opened at a time.
+### Defense formula
+- Success rule: `attackerSentSilver > defenderEffectiveSpyDefense`.
+- `defenderEffectiveSpyDefense` uses defender vault silver and derived intelligence stats:
+  - derived `detectionPct`
+  - derived `counterIntelPct`
+- Those derived stats include contributions from building/research/policy where applicable.
 
-## UI surface
-- Intelligence page now includes:
-  - vault silver KPI,
-  - “Bank 1000 silver” action,
-  - mission launch controls (`target city id`, `silver`),
-  - latest espionage report feed.
+## Outcome rules
+### Success
+- Attacker receives `attack_success` report.
+- Report includes reconnaissance snapshot:
+  - target resources,
+  - target building levels,
+  - target troops,
+  - target defensive bonuses (`cityDefensePct`, `antiAirDefensePct`, `detectionPct`, `counterIntelPct`).
+- Defender receives **no report by default** on success.
+- Defender vault silver is not consumed on success.
 
-## Known deviation vs full Grepolis
-- Oracle-like “successful spy detection only if special building exists” is not modeled as a separate building yet; defender receives a `defense_breached` report in current Coinage runtime.
-- Mission travel-time-by-distance is approximated by fixed travel time pending broader world routing integration.
+### Failure
+- Attacker receives `attack_failed` report.
+- Defender receives `defense_failed_attempt` report.
+- Defender vault silver is reduced by `min(defenderVaultSilver, attackerSentSilver)`.
+
+## Report storage
+- Reports are persisted in `espionageReports` per city.
+- Feed is capped to latest 20 reports.
+
+## Notes
+- Legacy research id `signals_intel` is mapped to `cryptography` for old saves.
+- No additional espionage resource is introduced beyond vault silver.

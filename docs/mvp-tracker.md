@@ -23,6 +23,7 @@ La branche **ÉCONOMIE / MVP** est largement resynchronisée sur le runtime actu
 | defensive_wall | Bâtiment custom Coinage | DONE | Validé (défense sol) | prérequis, progression, effets runtime ciblés | modèle orienté **défense sol**: `groundWallDefensePct`/`groundWallBaseDefense`; application en **city_defense** uniquement; ciblage unités **Barracks**; prérequis aligné `barracks >= 3` | équilibrage combat à surveiller lors du branchement combat final | `docs/building/defensive_wall.md`, `src/game/city/economy/cityContentCatalog.ts` |
 | skyshield_battery | Bâtiment custom Coinage | DONE | Validé (anti-aérien) | prérequis, progression, effets runtime ciblés | remplacement technique complet de `watch_tower`; modèle anti-aérien `airWallDefensePct`/`airWallBaseDefense`; application en **city_defense** uniquement; ciblage unités **space_dock**; aucun bonus offensif/Barracks; migration legacy save `watch_tower` | équilibrage combat à surveiller lors du branchement combat final | `docs/building/skyshield_battery.md`, `src/game/city/economy/cityContentCatalog.ts`, `src/game/city/economy/cityEconomyPersistence.ts` |
 | armament_factory | Bâtiment | PARTIAL | Rôle figé sur 4 axes combat | identité, prereqs (`HQ8`, `research_lab10`, `barracks10`), table 1..35, palier final L35 all-units, séparation vs training/research/production | runtime+catalog+docs alignés sur `groundAttackPct`/`groundDefensePct`/`airAttackPct`/`airDefensePct`, sans `trainingSpeedPct` | consommation combat finale détaillée encore partielle | `docs/building/armament_factory.md`, `src/game/city/economy/cityEconomySystem.ts`, `src/game/city/economy/cityBuildingLevelTables.ts` |
+| intelligence_center | Bâtiment | DONE | Espionnage MVP finalisé | identité/prérequis/table 1..10, vault, mission ville->ville, résolution cross-city, rapports attaquant/défenseur, snapshot succès, guards robustes | formule de défense espionnage branchée sur stats dérivées (`detectionPct` + `counterIntelPct`), cible invalide rejetée explicitement, résolution pilotée par tick runtime central (pas par load opportuniste), UI mission active détaillée, docs/tests resynchronisés | hors-scope restant: intégrations futures combat macro/galaxy avancées | `docs/building/intelligence_center.md`, `docs/08-Espionage.md`, `src/game/city/economy/cityEconomySystem.ts`, `src/game/city/economy/cityEconomyPersistence.ts`, `src/game/render/modes/CityFoundationMode.ts` |
 | barracks units | Lot unités | DONE | Gameplay/runtime propre | mapping requis, coûts/temps/population, training flow | corrections gameplay appliquées; renommage user-facing; suppression `booty`; `transportCapacity` canonique | dette visuelle (assets unités) hors gameplay | `docs/units/barracks-units.md`, `docs/units/README.md` |
 | space_dock units | Lot unités | PARTIAL | Gameplay/runtime propre, visuels incomplets | mapping research/building, coûts/temps/population, training flow | corrections research mapping; ajout modèle `navalAttack`/`navalDefense`; `transportCapacity` canonique; renommage user-facing | dette visuelle: assets dédiés manquants / non branchés UI | `docs/units/space-dock-units.md`, `docs/units/README.md` |
 | logique population bâtiment | Transversal runtime/UI | DONE | Validé | règles d’occupation, coût upgrade, garde-fous UI/runtime | occupation = coût niveau courant; coût upgrade = `target-current`; UI incrémentale alignée | rien d’ouvert sur ce scope | `src/game/city/economy/cityEconomySystem.ts`, `src/game/render/modes/CityFoundationMode.ts` |
@@ -51,7 +52,6 @@ La branche **ÉCONOMIE / MVP** est largement resynchronisée sur le runtime actu
 
 ## 5. Ce qu’il reste à auditer
 Scopes non encore traités complètement dans le flux MVP actuel (**audit runtime/config/doc uniquement**):
-- `intelligence_center`
 - `research_lab`
 - `market`
 - `council_chamber`
@@ -63,10 +63,10 @@ Points réellement ouverts après resynchronisation:
 - compléter/brancher les assets visuels du lot **barracks units**;
 - compléter/brancher les assets visuels du lot **space_dock units**;
 - clore le manque visuel du bâtiment **mine** (ou confirmer durablement la décision produit de non-livraison d’asset);
-- traiter les écarts qui sortiront des audits restants (`intelligence_center`, `research_lab`, `market`, `council_chamber`).
+- traiter les écarts qui sortiront des audits restants (`research_lab`, `market`, `council_chamber`).
 
 ## 7. Ordre de travail recommandé
-1. Auditer les scopes bâtiment restants, dans cet ordre: `intelligence_center` → `research_lab` → `market` → `council_chamber`.
+1. Auditer les scopes bâtiment restants, dans cet ordre: `research_lab` → `market` → `council_chamber`.
 2. À chaque audit, appliquer immédiatement les corrections runtime/config/UI/docs associées avant de passer au scope suivant.
 3. Fermer la dette visuelle: unités Barracks et Space Dock (assets + branchement UI), puis mine bâtiment.
 4. Faire une passe finale de validation transversale ÉCONOMIE (runtime + UI + persistence + docs) sur l’ensemble des scopes.
@@ -96,7 +96,7 @@ Points réellement ouverts après resynchronisation:
 - [ ] Système de trading / market
 
 ### Espionage
-- [ ] Système d’espionnage
+- [x] Système d’espionnage (MVP: mission ville->ville, vault silver, résolution, rapports)
 
 ### Grepolis replacement decisions
 - [ ] Mettre en place le système de généraux (remplacement temple/gods) via système dédié `war_council` / `high_command`
@@ -113,13 +113,13 @@ Points réellement ouverts après resynchronisation:
 
 ## 10. Priorités MVP restantes
 ### A. Audit / implémentation runtime existante
-1. Terminer les audits runtime/config/doc des scopes bâtiment restants (`intelligence_center`, `research_lab`, `market`, `council_chamber`).
+1. Terminer les audits runtime/config/doc des scopes bâtiment restants (`research_lab`, `market`, `council_chamber`).
 2. Corriger immédiatement les écarts trouvés pendant ces audits.
 3. Fermer la dette visuelle encore ouverte (assets unités Barracks + Space Dock, puis asset bâtiment mine).
 
 ### B. Features / product scope MVP
 1. Finaliser les fondations gameplay globales (macro + micro + guerre).
-2. Implémenter/valider les systèmes cœur (bataille atk/def, colonisation, trading/market, espionnage).
+2. Implémenter/valider les systèmes cœur restants (bataille atk/def, colonisation, trading/market).
 3. Implémenter le système dédié de généraux (`war_council`/`high_command`) puis les unités spéciales associées (future feature).
 4. Corriger les vues majeures restantes (`galaxy`, `planète`).
 5. Finaliser contenu bâtiments/unités après convergence runtime + features produit.

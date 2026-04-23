@@ -768,67 +768,32 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     id: 'intelligence_center',
     name: 'Intelligence Center',
     category: 'intelligence',
-    phase: 'later',
-    definitionStatus: 'partially_defined',
-    gameplayImplemented: false,
-    maxLevel: 25,
-    role: 'Spy vault and mission unlock progression.',
-    primarySystems: ['espionage', 'spy_vault', 'counter_intel'],
+    phase: 'mvp',
+    definitionStatus: 'fully_defined',
+    gameplayImplemented: true,
+    maxLevel: 10,
+    role: 'Provides detection/counter-intel stats, unlocks intel projects, and gates spy-vault deposit/mission actions.',
+    primarySystems: ['intelligence_readiness', 'espionage', 'spy_vault', 'counter_intel'],
     unlock: [
-      { type: 'hq', targetId: 'hq', minLevel: 4 },
-      { type: 'building', targetId: 'skyshield_battery', minLevel: 2 },
-    ],
-    levelBandGates: [
-      {
-        minTargetLevel: 6,
-        maxTargetLevel: 10,
-        prerequisites: [
-          { type: 'hq', targetId: 'hq', minLevel: 8 },
-          { type: 'building', targetId: 'skyshield_battery', minLevel: 4 },
-        ],
-      },
-      {
-        minTargetLevel: 11,
-        maxTargetLevel: 15,
-        prerequisites: [
-          { type: 'hq', targetId: 'hq', minLevel: 12 },
-          { type: 'building', targetId: 'research_lab', minLevel: 8 },
-        ],
-      },
-      {
-        minTargetLevel: 16,
-        maxTargetLevel: 20,
-        prerequisites: [
-          { type: 'hq', targetId: 'hq', minLevel: 16 },
-          { type: 'building', targetId: 'council_chamber', minLevel: 10 },
-        ],
-      },
+      { type: 'hq', targetId: 'hq', minLevel: 10 },
+      { type: 'building', targetId: 'market', minLevel: 4 },
+      { type: 'building', targetId: 'warehouse', minLevel: 7 },
     ],
     valueCompleteness: {
-      costs: 'partially_defined',
-      buildTime: 'partially_defined',
-      population: 'partially_defined',
-      effects: 'partially_defined',
+      costs: 'fully_defined',
+      buildTime: 'fully_defined',
+      population: 'fully_defined',
+      effects: 'fully_defined',
     },
     operationalEffectsByBand: [
-      { minLevel: 1, maxLevel: 5, effects: ['Spy-vault resilience +3.0% per level', 'Counter-intel sweep strength +1.8% per level'] },
-      { minLevel: 6, maxLevel: 10, effects: ['Mission detection resistance +2.0% per level', 'Mission depth unlock at levels 5/10'] },
-      { minLevel: 11, maxLevel: 15, effects: ['Sabotage operation reliability +1.5% per level', 'Intel report granularity +1.0% per level'] },
-      { minLevel: 16, maxLevel: 20, effects: ['Ghost-op stealth depth +1.7% per level', 'Counter-espionage cooldown -1.3% per level'] },
+      { minLevel: 1, maxLevel: 10, effects: ['Detection +3% per level', 'Counter-intel +4% per level'] },
+      { minLevel: 1, maxLevel: 9, effects: ['Spy vault cap = level × 1000 silver'] },
+      { minLevel: 10, maxLevel: 10, effects: ['Spy vault cap becomes unlimited (∞)'] },
     ],
-    provisionalLevels: buildProvisionalLevels({
-      baseCost: { ore: 180, stone: 165, iron: 135 },
-      costScale: 1.185,
-      baseSeconds: 54,
-      populationCostByLevel: (level) => populationBand(level, 1, 2, 3),
-      effectByLevel: (level) => {
-        const missionTiers = ['L1: Recon', 'L5: Infiltration', 'L10: Surveillance', 'L15: Sabotage', 'L20: Ghost Ops'].filter((tier) =>
-          tier.startsWith(`L${level}:`),
-        );
-        return [`Spy-vault resilience +${Math.round(8 + level * 2.1)}%`, ...missionTiers];
-      },
-    }),
-    notes: ['Mission tiers are defined in docs at levels 1/5/10/15/20 and now mapped into provisional level effects.'],
+    notes: [
+      'Runtime exposes intel projects (readiness gain), vault deposit via iron conversion, one active outgoing mission slot, and cross-city mission resolution through central economy runtime tick + persistence.',
+      'Mission success now returns attacker-side reconnaissance snapshot (resources/buildings/troops/defense bonuses).',
+    ],
   },
   {
     id: 'research_lab',
@@ -995,7 +960,7 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
         maxTargetLevel: 20,
         prerequisites: [
           { type: 'hq', targetId: 'hq', minLevel: 18 },
-          { type: 'building', targetId: 'intelligence_center', minLevel: 12 },
+          { type: 'building', targetId: 'intelligence_center', minLevel: 10 },
         ],
       },
     ],

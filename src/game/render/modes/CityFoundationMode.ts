@@ -101,7 +101,7 @@ const BUILDING_ASSETS: Partial<Record<EconomyBuildingId, string>> = {
   defensive_wall: '/assets/walls.png',
   skyshield_battery: '/assets/watchtower.png',
   armament_factory: '/assets/cg_token_slot_placeholder_64.svg',
-  intelligence_center: '/assets/spycenter.png',
+  intelligence_center: '/assets/building/spycenter.png',
   research_lab: '/assets/researchlabs.png',
   market: '/assets/market.png',
   council_chamber: '/assets/council_chamber.png',
@@ -671,13 +671,24 @@ export class CityFoundationMode implements RenderModeController {
 
     const active = document.createElement('section');
     active.className = 'city-stitch__ops-list';
-    active.innerHTML = '<h3>Active queue</h3>';
+    active.innerHTML = '<h3>Active operations</h3>';
     if (this.state.economy.intelProjects.length === 0) {
       active.append(this.createQueueLine('No active intelligence project'));
     } else {
       this.state.economy.intelProjects.forEach((entry) => {
         const projectLabel = INTEL_PROJECT_LABELS[entry.projectType];
         active.append(this.createQueueLine(`${projectLabel} · +${entry.readinessGain.toFixed(1)} readiness · ${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))}`));
+      });
+    }
+    if (this.state.economy.espionageMissions.length === 0) {
+      active.append(this.createQueueLine('No active espionage mission'));
+    } else {
+      this.state.economy.espionageMissions.forEach((mission) => {
+        active.append(
+          this.createQueueLine(
+            `Spy mission → ${mission.targetCityId} · ${Math.floor(mission.silverCommitted)} silver · ETA ${formatDuration(Math.max(0, mission.endsAtMs - Date.now()))}`,
+          ),
+        );
       });
     }
 
@@ -726,7 +737,23 @@ export class CityFoundationMode implements RenderModeController {
       reports.append(this.createQueueLine('No espionage reports yet'));
     } else {
       this.state.economy.espionageReports.slice(0, 6).forEach((entry) => {
-        reports.append(this.createQueueLine(`${entry.kind} · ${entry.sourceCityId} → ${entry.targetCityId} · silver ${entry.silverSent}`));
+        const kindLine =
+          entry.kind === 'attack_success'
+            ? `Success vs ${entry.targetCityId}`
+            : entry.kind === 'attack_failed'
+              ? `Failed vs ${entry.targetCityId}`
+              : entry.kind === 'defense_failed_attempt'
+                ? `Detected failed attempt from ${entry.sourceCityId}`
+                : `Mission cancelled (target missing)`;
+        const detail =
+          entry.kind === 'attack_success'
+            ? `Sent ${entry.silverSent} > defense ${Math.floor(entry.defenderEffectiveSpyDefense)}`
+            : entry.kind === 'attack_failed'
+              ? `Sent ${entry.silverSent} vs defense ${Math.floor(entry.defenderEffectiveSpyDefense)}`
+              : entry.kind === 'defense_failed_attempt'
+                ? `Defender spent ${entry.defenderSilverSpentOnDefense} silver`
+                : `Silver refunded ${entry.silverSent}`;
+        reports.append(this.createQueueLine(`${kindLine} · ${detail}`));
       });
     }
 

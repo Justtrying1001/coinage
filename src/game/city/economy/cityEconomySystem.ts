@@ -57,12 +57,28 @@ export interface EspionageMissionEntry {
 export interface EspionageReportEntry {
   id: string;
   createdAtMs: number;
-  kind: 'attack_success' | 'attack_failed' | 'defense_failed_attempt' | 'defense_breached';
+  kind: 'attack_success' | 'attack_failed' | 'defense_failed_attempt' | 'mission_cancelled_target_missing';
   sourceCityId: string;
   targetCityId: string;
   silverSent: number;
   targetSilverAtResolution: number;
+  defenderEffectiveSpyDefense: number;
+  detectionPctAtResolution: number;
+  counterIntelPctAtResolution: number;
   wasCryptographyApplied: boolean;
+  wasSuccess: boolean;
+  defenderSilverSpentOnDefense: number;
+  intelSnapshot?: {
+    resources: ResourceBundle;
+    buildingLevels: Record<EconomyBuildingId, number>;
+    troops: TroopCounts;
+    defensiveBonuses: {
+      cityDefensePct: number;
+      antiAirDefensePct: number;
+      detectionPct: number;
+      counterIntelPct: number;
+    };
+  };
 }
 
 export type TroopCounts = Record<TroopId, number>;
@@ -394,6 +410,25 @@ export function getCityDerivedStats(state: CityEconomyState) {
     buildSpeedPct: council?.effect.buildSpeedPct ?? 0,
     productionPct: research.productionPct + (policy?.productionPct ?? 0),
     intelReadiness: state.intelReadiness,
+  };
+}
+
+export function getDefenderEffectiveSpyDefense(state: CityEconomyState) {
+  const derived = getCityDerivedStats(state);
+  const baseSilverDefense = Math.max(0, state.spyVaultSilver);
+  const intelligenceMultiplier = 1 + Math.max(0, derived.detectionPct + derived.counterIntelPct) / 100;
+  return Math.floor(baseSilverDefense * intelligenceMultiplier);
+}
+
+export function evaluateEspionageOutcome(attackerSilverSent: number, defenderState: CityEconomyState) {
+  const derived = getCityDerivedStats(defenderState);
+  const defenderEffectiveSpyDefense = getDefenderEffectiveSpyDefense(defenderState);
+  return {
+    wasSuccess: attackerSilverSent > defenderEffectiveSpyDefense,
+    defenderEffectiveSpyDefense,
+    detectionPctAtResolution: derived.detectionPct,
+    counterIntelPctAtResolution: derived.counterIntelPct,
+    wasCryptographyApplied: defenderState.completedResearch.includes('cryptography'),
   };
 }
 
