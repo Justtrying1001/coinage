@@ -108,7 +108,7 @@ function buildingGameplayRole(buildingId) {
   if (buildingId === 'barracks') return 'Débloque l’entraînement des unités terrestres.';
   if (buildingId === 'space_dock') return 'Débloque l’entraînement des unités navales.';
   if (buildingId === 'defensive_wall') return 'Bonus défensifs de ville (défense, mitigation, résistance siège).';
-  if (buildingId === 'watch_tower') return 'Bonus défense de ville et anti-air.';
+  if (buildingId === 'skyshield_battery') return 'Bonus anti-aérien de défense de ville pour unités space_dock (city_defense uniquement).';
   if (buildingId === 'armament_factory') return 'Bonus puissance/entretien/formation des troupes.';
   if (buildingId === 'intelligence_center') return 'Détection, contre-intel, projets intel, coffre espion.';
   if (buildingId === 'research_lab') return 'Capacité de recherche et gate des recherches.';
@@ -148,7 +148,7 @@ function runtimeNotesForBuilding(buildingId) {
   if (buildingId === 'barracks') notes.push('- `canStartTroopTraining` vérifie le niveau bâtiment requis de chaque unité ground, et son `trainingSpeedPct` alimente `getCityDerivedStats`.');
   if (buildingId === 'space_dock') notes.push('- Même logique que barracks pour les unités navales; son `trainingSpeedPct` est cumulé.');
   if (buildingId === 'defensive_wall') notes.push('- Contribue à `cityDefensePct`, `damageMitigationPct`, `siegeResistancePct` via `getCityDerivedStats`.');
-  if (buildingId === 'watch_tower') notes.push('- Contribue à `cityDefensePct` et `antiAirDefensePct` via `getCityDerivedStats`.');
+  if (buildingId === 'skyshield_battery') notes.push('- Applique `airWallDefensePct`/`airWallBaseDefense` aux unités space_dock en `city_defense` via helper runtime dédié.');
   if (buildingId === 'armament_factory') notes.push('- Contribue à `trainingSpeedPct`, `troopCombatPowerPct`, `troopUpkeepEfficiencyPct` via `getCityDerivedStats`.');
   if (buildingId === 'intelligence_center') notes.push('- Garde l’accès à `canStartIntelProject`, `canDepositSpySilver`, `canStartEspionageMission`; `getSpyVaultCap` dépend du niveau.');
   if (buildingId === 'research_lab') notes.push('- `canStartResearch` exige un niveau mini par recherche; capacité calculée par `getResearchPointsCapacity` (= niveau * 4), pas via `effect.researchCapacity`.');

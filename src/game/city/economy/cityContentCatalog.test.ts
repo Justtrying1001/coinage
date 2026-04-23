@@ -21,7 +21,7 @@ describe('cityContentCatalog MVP MICRO scope', () => {
         'barracks',
         'space_dock',
         'defensive_wall',
-        'watch_tower',
+        'skyshield_battery',
         'armament_factory',
         'intelligence_center',
         'research_lab',
@@ -52,5 +52,19 @@ describe('cityContentCatalog MVP MICRO scope', () => {
     const summary = getContentCatalogCompletenessSummary();
     expect(summary.building.fullyDefined).toBeGreaterThan(0);
     expect(summary.units.fullyDefined).toBeGreaterThan(0);
+  });
+
+  it('keeps armament_factory catalog entry aligned with runtime unlock and implementation status', () => {
+    const armament = FULL_BUILDING_CATALOG.find((entry) => entry.id === 'armament_factory');
+    expect(armament).toBeDefined();
+    expect(armament?.phase).toBe('mvp');
+    expect(armament?.definitionStatus).toBe('fully_defined');
+    expect(armament?.gameplayImplemented).toBe(true);
+    expect(armament?.maxLevel).toBe(35);
+    expect(armament?.unlock).toEqual([
+      { type: 'hq', targetId: 'hq', minLevel: 8 },
+      { type: 'building', targetId: 'research_lab', minLevel: 10 },
+      { type: 'building', targetId: 'barracks', minLevel: 10 },
+    ]);
   });
 });

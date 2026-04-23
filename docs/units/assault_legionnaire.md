@@ -1,4 +1,4 @@
-# Assault Legionnaire
+# Assault Ranger
 
 ## 1. Résumé
 - ID technique: `assault_legionnaire`
@@ -21,7 +21,7 @@
 ## 3. Fiche de stats complète
 | Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Assault Legionnaire | assault_legionnaire | ground | 120 | 0 | 75 | 0 | 1087 | 1 | 8 | distance | 7 | 25 | 13 | 12 | 24 | 0 | Ranged anti-sharp / utility profile. |
+| Assault Ranger | assault_legionnaire | ground | 120 | 0 | 75 | 0 | 1087 | 1 | 8 | distance | 7 | 25 | 13 | 12 | 24 | 0 | Ranged anti-sharp / utility profile. |
 
 ## 4. Rôle gameplay réel
 - Unité terrestre de combat.

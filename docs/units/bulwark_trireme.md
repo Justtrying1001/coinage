@@ -1,4 +1,4 @@
-# Bulwark Trireme
+# Bulwark Cruiser
 
 ## 1. Résumé
 - ID technique: `bulwark_trireme`
@@ -21,7 +21,7 @@
 ## 3. Fiche de stats complète
 | Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Bulwark Trireme | bulwark_trireme | naval | 2000 | 1300 | 1300 | 0 | 14400 | 16 | 250 | naval | 0 | 0 | 0 | 15 | 0 | 0 | Heavy naval ship. |
+| Bulwark Cruiser | bulwark_trireme | naval | 2000 | 1300 | 1300 | 0 | 14400 | 16 | 250 | naval | 0 | 0 | 0 | 15 | 0 | 0 | Heavy naval ship. |
 
 ## 4. Rôle gameplay réel
 - Combat naval (stat configurée; résolution absente du runtime).

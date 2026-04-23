@@ -1,4 +1,4 @@
-# Siege Breacher
+# Siege Artillery
 
 ## 1. Résumé
 - ID technique: `siege_breacher`
@@ -21,7 +21,7 @@
 ## 3. Fiche de stats complète
 | Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Siege Breacher | siege_breacher | ground | 700 | 700 | 700 | 0 | 17662 | 15 | 100 | distance | 30 | 30 | 30 | 2 | 400 | 0 | Slow siege platform with high structure pressure. |
+| Siege Artillery | siege_breacher | ground | 700 | 700 | 700 | 0 | 17662 | 15 | 100 | distance | 30 | 30 | 30 | 2 | 400 | 0 | Slow siege platform with high structure pressure. |
 
 ## 4. Rôle gameplay réel
 - Unité terrestre de combat.

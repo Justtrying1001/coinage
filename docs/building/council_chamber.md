@@ -65,6 +65,8 @@
 
 ## 6. Détails runtime importants
 - `canSetPolicy` vérifie son niveau; `buildSpeedPct` impacte les durées de construction (plafond multiplicateur 0.4).
+- Mapping asset UI actuel: `/assets/council_chamber.png` (aligné canonique).
+- Note runtime liée aux coûts: `buildCostReductionPct` est pris en compte par le calcul de coût de construction, mais aucune source active ne l’alimente encore dans la config actuelle.
 
 ## 7. Statut d’implémentation / zones d’attention
 - Runtime construction: implémenté (canStartConstruction, startConstruction, resolveCompletedConstruction).

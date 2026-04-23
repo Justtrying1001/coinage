@@ -4,6 +4,7 @@ import {
   canSetPolicy,
   createInitialCityEconomyState,
   getBuildingConfig,
+  getStorageCaps,
   resolveCompletedConstruction,
   resolveCompletedIntelProjects,
   resolveCompletedResearch,
@@ -79,6 +80,9 @@ const ESPIONAGE_TRAVEL_MS = 15 * 60 * 1000;
 const LEGACY_RESEARCH_ID_MAP: Partial<Record<string, ResearchId>> = {
   signals_intel: 'cryptography',
 };
+const LEGACY_BUILDING_ID_MAP: Partial<Record<string, EconomyBuildingId>> = {
+  watch_tower: 'skyshield_battery',
+};
 
 function getStorage() {
   if (typeof window !== 'undefined' && window.localStorage) return window.localStorage;
@@ -139,11 +143,18 @@ function toEconomyState(record: PersistedCityEconomyRecord): CityEconomyState {
 
   const validBuildingIdSet = new Set(STANDARD_BUILDING_ORDER);
   const sanitizedLevels = { ...defaults.levels };
+  const rawLevels = (record.levels as Partial<Record<string, unknown>> | undefined) ?? {};
   STANDARD_BUILDING_ORDER.forEach((buildingId) => {
-    const raw = (record.levels as Partial<Record<EconomyBuildingId, unknown>> | undefined)?.[buildingId];
+    const raw = rawLevels[buildingId];
     if (typeof raw === 'number' && Number.isFinite(raw) && raw >= 0) {
       sanitizedLevels[buildingId] = Math.min(getBuildingConfig(buildingId).maxLevel, Math.floor(raw));
     }
+  });
+  Object.entries(LEGACY_BUILDING_ID_MAP).forEach(([legacyId, targetId]) => {
+    if (!targetId || typeof rawLevels[legacyId] !== 'number') return;
+    const raw = rawLevels[legacyId] as number;
+    if (!Number.isFinite(raw) || raw < 0) return;
+    sanitizedLevels[targetId] = Math.min(getBuildingConfig(targetId).maxLevel, Math.floor(raw));
   });
 
   const validResearchIds = new Set(Object.keys(CITY_ECONOMY_CONFIG.research) as ResearchId[]);
@@ -152,11 +163,15 @@ function toEconomyState(record: PersistedCityEconomyRecord): CityEconomyState {
     return validResearchIds.has(mapped) ? mapped : null;
   };
 
-  return {
+  const baseState: CityEconomyState = {
     cityId: record.cityId,
     owner: record.ownerId,
     levels: sanitizedLevels,
-    resources: { ...record.resources },
+    resources: {
+      ore: Number.isFinite(record.resources?.ore) ? record.resources.ore : defaults.resources.ore,
+      stone: Number.isFinite(record.resources?.stone) ? record.resources.stone : defaults.resources.stone,
+      iron: Number.isFinite(record.resources?.iron) ? record.resources.iron : defaults.resources.iron,
+    },
     queue: (record.queue ?? [])
       .filter((item) => validBuildingIdSet.has(item.buildingId))
       .map((item) => ({ ...item, costPaid: { ...item.costPaid } })),
@@ -179,6 +194,11 @@ function toEconomyState(record: PersistedCityEconomyRecord): CityEconomyState {
     espionageReports: (record.espionageReports ?? []).map((item) => ({ ...item })),
     lastUpdatedAtMs: record.lastResourceUpdateAtMs,
   };
+  const caps = getStorageCaps(baseState);
+  baseState.resources.ore = Math.min(caps.ore, Math.max(0, baseState.resources.ore));
+  baseState.resources.stone = Math.min(caps.stone, Math.max(0, baseState.resources.stone));
+  baseState.resources.iron = Math.min(caps.iron, Math.max(0, baseState.resources.iron));
+  return baseState;
 }
 
 function fromEconomyState(context: CityPersistenceContext, state: CityEconomyState): PersistedCityEconomyRecord {

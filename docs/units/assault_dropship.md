@@ -1,4 +1,4 @@
-# Assault Dropship
+# Strike Dropship
 
 ## 1. Résumé
 - ID technique: `assault_dropship`
@@ -21,7 +21,7 @@
 ## 3. Fiche de stats complète
 | Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Assault Dropship | assault_dropship | naval | 500 | 500 | 400 | 0 | 9600 | 7 | 0 | none | 0 | 0 | 0 | 8 | 0 | 26 | Standard transport ship. |
+| Strike Dropship | assault_dropship | naval | 500 | 500 | 400 | 0 | 9600 | 7 | 0 | none | 0 | 0 | 0 | 8 | 0 | 26 | Standard transport ship. |
 
 ## 4. Rôle gameplay réel
 - Transport logistique/naval.

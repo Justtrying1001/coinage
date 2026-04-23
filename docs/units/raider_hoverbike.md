@@ -1,4 +1,4 @@
-# Raider Hoverbike
+# Raider Interceptor
 
 ## 1. Résumé
 - ID technique: `raider_hoverbike`
@@ -21,7 +21,7 @@
 ## 3. Fiche de stats complète
 | Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Raider Hoverbike | raider_hoverbike | ground | 240 | 120 | 360 | 0 | 3835 | 3 | 60 | blunt | 18 | 1 | 24 | 22 | 72 | 0 | Fast raider hoverbike for burst and loot. |
+| Raider Interceptor | raider_hoverbike | ground | 240 | 120 | 360 | 0 | 3835 | 3 | 60 | blunt | 18 | 1 | 24 | 22 | 72 | 0 | Fast raider hoverbike for burst and loot. |
 
 ## 4. Rôle gameplay réel
 - Unité terrestre de combat.

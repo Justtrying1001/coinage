@@ -12,6 +12,15 @@ describe('cityViewUiHelpers', () => {
     const effectLines = formatEffectList({ orePerHour: 12, cityDefensePct: 3, detectionPct: 4 });
     expect(effectLines).toEqual(expect.arrayContaining(['Ore +12/h', 'City defense +3%', 'Detection +4%']));
 
+    const armamentLines = formatEffectList({ trainingSpeedPct: 1.2, groundAttackPct: 1.6, airDefensePct: 1.4 });
+    expect(armamentLines).toEqual(
+      expect.arrayContaining([
+        'Training speed +1.2%',
+        'Ground attack +1.6%',
+        'Air defense +1.4%',
+      ]),
+    );
+
     const policyLine = formatPolicyEffects({
       id: 'industrial_push',
       name: 'Industrial Push',

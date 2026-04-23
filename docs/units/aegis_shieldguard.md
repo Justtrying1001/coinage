@@ -1,4 +1,4 @@
-# Aegis Shieldguard
+# Aegis Walker
 
 ## 1. Résumé
 - ID technique: `aegis_shieldguard`
@@ -21,7 +21,7 @@
 ## 3. Fiche de stats complète
 | Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Aegis Shieldguard | aegis_shieldguard | ground | 200 | 440 | 320 | 0 | 4710 | 4 | 56 | sharp | 76 | 16 | 56 | 18 | 64 | 0 | Elite heavy ground unit. |
+| Aegis Walker | aegis_shieldguard | ground | 200 | 440 | 320 | 0 | 4710 | 4 | 56 | sharp | 76 | 16 | 56 | 18 | 64 | 0 | Elite heavy ground unit. |
 
 ## 4. Rôle gameplay réel
 - Unité terrestre de combat.

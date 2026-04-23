@@ -10,7 +10,7 @@ export type EconomyBuildingId =
   | 'barracks'
   | 'space_dock'
   | 'defensive_wall'
-  | 'watch_tower'
+  | 'skyshield_battery'
   | 'armament_factory'
   | 'intelligence_center'
   | 'research_lab'
@@ -92,9 +92,15 @@ export interface BuildingLevelEffect {
   buildCostReductionPct?: number;
   buildSpeedPct?: number;
   trainingSpeedPct?: number;
-  troopCombatPowerPct?: number;
-  troopUpkeepEfficiencyPct?: number;
+  groundAttackPct?: number;
+  groundDefensePct?: number;
+  airAttackPct?: number;
+  airDefensePct?: number;
   cityDefensePct?: number;
+  groundWallDefensePct?: number;
+  groundWallBaseDefense?: number;
+  airWallDefensePct?: number;
+  airWallBaseDefense?: number;
   antiAirDefensePct?: number;
   damageMitigationPct?: number;
   siegeResistancePct?: number;
@@ -148,11 +154,12 @@ export interface TroopConfig {
   populationCost: number;
   attack: number;
   attackType: TroopAttackType;
+  navalAttack?: number;
+  navalDefense?: number;
   defenseBlunt: number;
   defenseSharp: number;
   defenseDistance: number;
   speed: number;
-  booty: number;
   transportCapacity: number;
   notes?: string;
 }
@@ -166,6 +173,7 @@ export interface ResearchConfig {
   effect: {
     productionPct?: number;
     trainingSpeedPct?: number;
+    buildSpeedPct?: number;
     defensePct?: number;
     antiAirDefensePct?: number;
     marketEfficiencyPct?: number;
@@ -227,7 +235,7 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
   holdingMultiplier: 1,
   resources: {
     baseStorageCap: { ore: 300, stone: 300, iron: 300 },
-    startingStock: { ore: 520, stone: 340, iron: 180 },
+    startingStock: { ore: 300, stone: 300, iron: 180 },
   },
   population: {
     baseCap: 0,
@@ -274,15 +282,16 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       name: 'Defensive Wall',
       maxLevel: CITY_BUILDING_LEVEL_TABLES.defensive_wall.length,
       unlockAtHq: 5,
+      prerequisites: [{ buildingId: 'barracks', minLevel: 3 }],
       levels: CITY_BUILDING_LEVEL_TABLES.defensive_wall,
     },
-    watch_tower: {
-      id: 'watch_tower',
-      name: 'Skyguard Tower',
-      maxLevel: CITY_BUILDING_LEVEL_TABLES.watch_tower.length,
+    skyshield_battery: {
+      id: 'skyshield_battery',
+      name: 'Skyshield Battery',
+      maxLevel: CITY_BUILDING_LEVEL_TABLES.skyshield_battery.length,
       unlockAtHq: 12,
-      prerequisites: [{ buildingId: 'defensive_wall', minLevel: 15 }],
-      levels: CITY_BUILDING_LEVEL_TABLES.watch_tower,
+      prerequisites: [{ buildingId: 'space_dock', minLevel: 3 }],
+      levels: CITY_BUILDING_LEVEL_TABLES.skyshield_battery,
     },
     armament_factory: {
       id: 'armament_factory',
@@ -355,13 +364,12 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       defenseSharp: 8,
       defenseDistance: 4,
       speed: 0,
-      booty: 0,
       transportCapacity: 0,
       notes: 'Emergency call-up defenders; not recruitable through standard queues.',
     },
     line_infantry: {
       id: 'line_infantry',
-      name: 'Line Infantry',
+      name: 'Frontline Trooper',
       category: 'ground',
       requiredBuildingId: 'barracks',
       requiredBuildingLevel: 1,
@@ -376,13 +384,12 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       defenseSharp: 8,
       defenseDistance: 30,
       speed: 8,
-      booty: 16,
-      transportCapacity: 0,
+      transportCapacity: 16,
       notes: 'Frontline defensive line infantry anchor.',
     },
     phalanx_lanceguard: {
       id: 'phalanx_lanceguard',
-      name: 'Phalanx Lanceguard',
+      name: 'Bulwark Trooper',
       category: 'ground',
       requiredBuildingId: 'barracks',
       requiredBuildingLevel: 1,
@@ -397,18 +404,17 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       defenseSharp: 12,
       defenseDistance: 7,
       speed: 6,
-      booty: 8,
-      transportCapacity: 0,
+      transportCapacity: 8,
       notes: 'Anti-blunt spear line.',
     },
     rail_marksman: {
       id: 'rail_marksman',
-      name: 'Rail Marksman',
+      name: 'Railgun Skirmisher',
       category: 'ground',
       requiredBuildingId: 'barracks',
       requiredBuildingLevel: 1,
-      requiredResearch: 'archer',
-      cost: { ore: 55, stone: 100, iron: 40 },
+      requiredResearch: 'slinger',
+      cost: { ore: 55, stone: 0, iron: 40 },
       favorCost: 0,
       trainingSeconds: 1144,
       populationCost: 1,
@@ -418,17 +424,16 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       defenseSharp: 8,
       defenseDistance: 2,
       speed: 14,
-      booty: 8,
-      transportCapacity: 0,
+      transportCapacity: 8,
       notes: 'Ranged glass-cannon damage dealer.',
     },
     assault_legionnaire: {
       id: 'assault_legionnaire',
-      name: 'Assault Legionnaire',
+      name: 'Assault Ranger',
       category: 'ground',
       requiredBuildingId: 'barracks',
       requiredBuildingLevel: 1,
-      requiredResearch: 'city_guard',
+      requiredResearch: 'archer',
       cost: { ore: 120, stone: 0, iron: 75 },
       favorCost: 0,
       trainingSeconds: 1087,
@@ -439,17 +444,16 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       defenseSharp: 25,
       defenseDistance: 13,
       speed: 12,
-      booty: 24,
-      transportCapacity: 0,
+      transportCapacity: 24,
       notes: 'Ranged anti-sharp / utility profile.',
     },
     aegis_shieldguard: {
       id: 'aegis_shieldguard',
-      name: 'Aegis Shieldguard',
+      name: 'Aegis Walker',
       category: 'ground',
       requiredBuildingId: 'barracks',
-      requiredBuildingLevel: 15,
-      requiredResearch: 'horseman',
+      requiredBuildingLevel: 1,
+      requiredResearch: 'chariot',
       cost: { ore: 200, stone: 440, iron: 320 },
       favorCost: 0,
       trainingSeconds: 4710,
@@ -460,17 +464,16 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       defenseSharp: 16,
       defenseDistance: 56,
       speed: 18,
-      booty: 64,
-      transportCapacity: 0,
+      transportCapacity: 64,
       notes: 'Elite heavy ground unit.',
     },
     raider_hoverbike: {
       id: 'raider_hoverbike',
-      name: 'Raider Hoverbike',
+      name: 'Raider Interceptor',
       category: 'ground',
       requiredBuildingId: 'barracks',
       requiredBuildingLevel: 10,
-      requiredResearch: 'chariot',
+      requiredResearch: 'horseman',
       cost: { ore: 240, stone: 120, iron: 360 },
       favorCost: 0,
       trainingSeconds: 3835,
@@ -481,20 +484,19 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       defenseSharp: 1,
       defenseDistance: 24,
       speed: 22,
-      booty: 72,
-      transportCapacity: 0,
+      transportCapacity: 72,
       notes: 'Fast raider hoverbike for burst and loot.',
     },
     siege_breacher: {
       id: 'siege_breacher',
-      name: 'Siege Breacher',
+      name: 'Siege Artillery',
       category: 'ground',
       requiredBuildingId: 'barracks',
       requiredBuildingLevel: 5,
       requiredResearch: 'catapult',
       cost: { ore: 700, stone: 700, iron: 700 },
       favorCost: 0,
-      trainingSeconds: 17662,
+      trainingSeconds: 12600,
       populationCost: 15,
       attack: 100,
       attackType: 'distance',
@@ -502,34 +504,34 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       defenseSharp: 30,
       defenseDistance: 30,
       speed: 2,
-      booty: 400,
-      transportCapacity: 0,
+      transportCapacity: 400,
       notes: 'Slow siege platform with high structure pressure.',
     },
     assault_dropship: {
       id: 'assault_dropship',
-      name: 'Assault Dropship',
+      name: 'Strike Dropship',
       category: 'naval',
       requiredBuildingId: 'space_dock',
       requiredBuildingLevel: 1,
-      requiredResearch: 'light_transport_ships',
+      requiredResearch: null,
       cost: { ore: 500, stone: 500, iron: 400 },
       favorCost: 0,
       trainingSeconds: 9600,
       populationCost: 7,
       attack: 0,
       attackType: 'none',
+      navalAttack: 0,
+      navalDefense: 0,
       defenseBlunt: 0,
       defenseSharp: 0,
       defenseDistance: 0,
       speed: 8,
-      booty: 0,
       transportCapacity: 26,
       notes: 'Standard transport ship.',
     },
     swift_carrier: {
       id: 'swift_carrier',
-      name: 'Swift Carrier',
+      name: 'Rapid Carrier',
       category: 'naval',
       requiredBuildingId: 'space_dock',
       requiredBuildingLevel: 1,
@@ -540,17 +542,18 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       populationCost: 5,
       attack: 0,
       attackType: 'none',
+      navalAttack: 0,
+      navalDefense: 0,
       defenseBlunt: 0,
       defenseSharp: 0,
       defenseDistance: 0,
       speed: 15,
-      booty: 0,
       transportCapacity: 10,
       notes: 'Fast transport ship.',
     },
     interceptor_sentinel: {
       id: 'interceptor_sentinel',
-      name: 'Interceptor Sentinel',
+      name: 'Sentinel Interceptor',
       category: 'naval',
       requiredBuildingId: 'space_dock',
       requiredBuildingLevel: 1,
@@ -561,59 +564,62 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       populationCost: 8,
       attack: 24,
       attackType: 'naval',
+      navalAttack: 24,
+      navalDefense: 160,
       defenseBlunt: 0,
       defenseSharp: 0,
       defenseDistance: 0,
       speed: 15,
-      booty: 0,
       transportCapacity: 0,
       notes: 'Defensive interceptor ship.',
     },
     ember_drifter: {
       id: 'ember_drifter',
-      name: 'Ember Drifter',
+      name: 'Ember Frigate',
       category: 'naval',
       requiredBuildingId: 'space_dock',
       requiredBuildingLevel: 1,
-      requiredResearch: 'light_ship',
+      requiredResearch: 'fire_ship',
       cost: { ore: 500, stone: 750, iron: 150 },
       favorCost: 0,
       trainingSeconds: 4000,
       populationCost: 8,
       attack: 0,
       attackType: 'naval',
+      navalAttack: 0,
+      navalDefense: 0,
       defenseBlunt: 0,
       defenseSharp: 0,
       defenseDistance: 0,
       speed: 5,
-      booty: 0,
       transportCapacity: 0,
       notes: 'Special defensive fire-ship role: each ship destroys one eligible enemy ship, then is destroyed.',
     },
     rapid_escort: {
       id: 'rapid_escort',
-      name: 'Rapid Escort',
+      name: 'Vanguard Corvette',
       category: 'naval',
       requiredBuildingId: 'space_dock',
       requiredBuildingLevel: 1,
-      requiredResearch: 'fire_ship',
+      requiredResearch: 'light_ship',
       cost: { ore: 1300, stone: 300, iron: 800 },
       favorCost: 0,
       trainingSeconds: 14400,
       populationCost: 10,
       attack: 200,
       attackType: 'naval',
+      navalAttack: 200,
+      navalDefense: 60,
       defenseBlunt: 0,
       defenseSharp: 0,
       defenseDistance: 0,
       speed: 13,
-      booty: 60,
-      transportCapacity: 0,
+      transportCapacity: 60,
       notes: 'Offensive naval ship.',
     },
     bulwark_trireme: {
       id: 'bulwark_trireme',
-      name: 'Bulwark Trireme',
+      name: 'Bulwark Cruiser',
       category: 'naval',
       requiredBuildingId: 'space_dock',
       requiredBuildingLevel: 1,
@@ -624,17 +630,18 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       populationCost: 16,
       attack: 250,
       attackType: 'naval',
+      navalAttack: 250,
+      navalDefense: 250,
       defenseBlunt: 0,
       defenseSharp: 0,
       defenseDistance: 0,
       speed: 15,
-      booty: 0,
       transportCapacity: 0,
       notes: 'Heavy naval ship.',
     },
     colonization_arkship: {
       id: 'colonization_arkship',
-      name: 'Colonization Arkship',
+      name: 'Colony Ark',
       category: 'naval',
       requiredBuildingId: 'space_dock',
       requiredBuildingLevel: 10,
@@ -645,11 +652,12 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       populationCost: 170,
       attack: 0,
       attackType: 'none',
+      navalAttack: 0,
+      navalDefense: 300,
       defenseBlunt: 0,
       defenseSharp: 0,
       defenseDistance: 0,
       speed: 3,
-      booty: 0,
       transportCapacity: 0,
       notes: 'Colonization ship; consumed on successful city foundation/conquest and constrained by conquest travel rules.',
     },
@@ -670,7 +678,7 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
     trainer: { id: 'trainer', name: 'Trainer Corps', requiredBuildingLevel: 10, researchPointsCost: 4, cost: { ore: 800, stone: 1300, iron: 1600 }, effect: { trainingSpeedPct: 10 } },
     colony_ship: { id: 'colony_ship', name: 'Colony Convoy Doctrine', requiredBuildingLevel: 13, researchPointsCost: 0, cost: { ore: 7500, stone: 7500, iron: 9500 }, effect: {} },
     bireme: { id: 'bireme', name: 'Bireme Hulls', requiredBuildingLevel: 13, researchPointsCost: 8, cost: { ore: 2800, stone: 1300, iron: 2200 }, effect: {} },
-    crane: { id: 'crane', name: 'Crane Logistics', requiredBuildingLevel: 13, researchPointsCost: 4, cost: { ore: 3000, stone: 1800, iron: 1400 }, effect: {} },
+    crane: { id: 'crane', name: 'Crane Logistics', requiredBuildingLevel: 13, researchPointsCost: 4, cost: { ore: 3000, stone: 1800, iron: 1400 }, effect: { buildSpeedPct: 10 } },
     shipwright: { id: 'shipwright', name: 'Shipwright Training', requiredBuildingLevel: 13, researchPointsCost: 6, cost: { ore: 5000, stone: 2000, iron: 1900 }, effect: { trainingSpeedPct: 10 } },
     chariot: { id: 'chariot', name: 'Chariot Platform', requiredBuildingLevel: 16, researchPointsCost: 8, cost: { ore: 3700, stone: 1900, iron: 2800 }, effect: {} },
     light_ship: { id: 'light_ship', name: 'Light Ship Doctrine', requiredBuildingLevel: 16, researchPointsCost: 8, cost: { ore: 4400, stone: 2000, iron: 2400 }, effect: {} },
@@ -731,7 +739,7 @@ export const STANDARD_BUILDING_ORDER: EconomyBuildingId[] = [
   'barracks',
   'space_dock',
   'defensive_wall',
-  'watch_tower',
+  'skyshield_battery',
   'armament_factory',
   'intelligence_center',
   'research_lab',
@@ -742,7 +750,7 @@ export const STANDARD_BUILDING_ORDER: EconomyBuildingId[] = [
 export const BUILDING_ORDER_BY_BRANCH: Record<'economy' | 'military' | 'defense' | 'intelligence' | 'research' | 'logistics' | 'governance', EconomyBuildingId[]> = {
   economy: ['hq', 'mine', 'quarry', 'refinery', 'warehouse', 'housing_complex'],
   military: ['barracks', 'space_dock', 'armament_factory'],
-  defense: ['defensive_wall', 'watch_tower'],
+  defense: ['defensive_wall', 'skyshield_battery'],
   intelligence: ['intelligence_center'],
   research: ['research_lab'],
   logistics: ['market'],

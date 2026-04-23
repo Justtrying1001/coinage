@@ -1,4 +1,4 @@
-# Rapid Escort
+# Vanguard Corvette
 
 ## 1. Résumé
 - ID technique: `rapid_escort`
@@ -21,7 +21,7 @@
 ## 3. Fiche de stats complète
 | Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Rapid Escort | rapid_escort | naval | 1300 | 300 | 800 | 0 | 14400 | 10 | 200 | naval | 0 | 0 | 0 | 13 | 60 | 0 | Offensive naval ship. |
+| Vanguard Corvette | rapid_escort | naval | 1300 | 300 | 800 | 0 | 14400 | 10 | 200 | naval | 0 | 0 | 0 | 13 | 60 | 0 | Offensive naval ship. |
 
 ## 4. Rôle gameplay réel
 - Combat naval (stat configurée; résolution absente du runtime).

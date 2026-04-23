@@ -164,11 +164,17 @@ function getDefaultLevels(): Record<EconomyBuildingId, number> {
 }
 
 export function createInitialCityEconomyState(input: { cityId: string; owner: string; nowMs?: number }): CityEconomyState {
+  const baseCaps = CITY_ECONOMY_CONFIG.resources.baseStorageCap;
+  const clampedStartingStock = {
+    ore: Math.min(baseCaps.ore, Math.max(0, CITY_ECONOMY_CONFIG.resources.startingStock.ore)),
+    stone: Math.min(baseCaps.stone, Math.max(0, CITY_ECONOMY_CONFIG.resources.startingStock.stone)),
+    iron: Math.min(baseCaps.iron, Math.max(0, CITY_ECONOMY_CONFIG.resources.startingStock.iron)),
+  };
   return {
     cityId: input.cityId,
     owner: input.owner,
     levels: getDefaultLevels(),
-    resources: { ...CITY_ECONOMY_CONFIG.resources.startingStock },
+    resources: clampedStartingStock,
     queue: [],
     troops: { ...ZERO_TROOPS },
     trainingQueue: [],
@@ -257,6 +263,18 @@ export function getConstructionDurationSeconds(state: CityEconomyState, building
   return Math.ceil(levelCost.buildSeconds * senateMultiplier * policyMultiplier * worldMultiplier);
 }
 
+export function getConstructionCostResources(state: CityEconomyState, buildingId: EconomyBuildingId, targetLevel: number): ResourceBundle {
+  const levelCost = getUpgradeLevelCost(buildingId, targetLevel);
+  const derived = getCityDerivedStats(state);
+  const reductionPct = Math.max(0, Math.min(90, derived.buildCostReductionPct ?? 0));
+  const multiplier = 1 - reductionPct / 100;
+  return {
+    ore: Math.ceil(levelCost.resources.ore * multiplier),
+    stone: Math.ceil(levelCost.resources.stone * multiplier),
+    iron: Math.ceil(levelCost.resources.iron * multiplier),
+  };
+}
+
 export function getStorageCaps(state: CityEconomyState): ResourceBundle {
   const warehouse = getCurrentLevelRow(state, 'warehouse');
   return warehouse?.effect.storageCap ?? CITY_ECONOMY_CONFIG.resources.baseStorageCap;
@@ -264,11 +282,8 @@ export function getStorageCaps(state: CityEconomyState): ResourceBundle {
 
 function getBuildingPopulationUsage(state: CityEconomyState) {
   return STANDARD_BUILDING_ORDER.reduce((sum, buildingId) => {
-    const level = getBuildingLevel(state, buildingId);
-    if (level <= 0) return sum;
-
-    const rows = getBuildingConfig(buildingId).levels.slice(0, level);
-    return sum + rows.reduce((buildingTotal, row) => buildingTotal + row.populationCost, 0);
+    const currentRow = getCurrentLevelRow(state, buildingId);
+    return sum + (currentRow?.populationCost ?? 0);
   }, 0);
 }
 
@@ -338,8 +353,6 @@ function getPolicyEffect(state: CityEconomyState) {
 }
 
 export function getCityDerivedStats(state: CityEconomyState) {
-  const wall = getCurrentLevelRow(state, 'defensive_wall');
-  const tower = getCurrentLevelRow(state, 'watch_tower');
   const armament = getCurrentLevelRow(state, 'armament_factory');
   const market = getCurrentLevelRow(state, 'market');
   const council = getCurrentLevelRow(state, 'council_chamber');
@@ -354,25 +367,24 @@ export function getCityDerivedStats(state: CityEconomyState) {
   const trainingSpeedPct =
     (barracks?.effect.trainingSpeedPct ?? 0) +
     (dock?.effect.trainingSpeedPct ?? 0) +
-    (armament?.effect.trainingSpeedPct ?? 0) +
     research.trainingSpeedPct +
     (policy?.trainingSpeedPct ?? 0);
 
   const cityDefensePct =
-    (wall?.effect.cityDefensePct ?? 0) +
-    (tower?.effect.cityDefensePct ?? 0) +
     (council?.effect.cityDefensePct ?? 0) +
     research.defensePct +
     (policy?.defensePct ?? 0);
 
   return {
     trainingSpeedPct,
-    troopCombatPowerPct: armament?.effect.troopCombatPowerPct ?? 0,
-    troopUpkeepEfficiencyPct: armament?.effect.troopUpkeepEfficiencyPct ?? 0,
+    groundAttackPct: armament?.effect.groundAttackPct ?? 0,
+    groundDefensePct: armament?.effect.groundDefensePct ?? 0,
+    airAttackPct: armament?.effect.airAttackPct ?? 0,
+    airDefensePct: armament?.effect.airDefensePct ?? 0,
     cityDefensePct,
-    damageMitigationPct: wall?.effect.damageMitigationPct ?? 0,
-    siegeResistancePct: wall?.effect.siegeResistancePct ?? 0,
-    antiAirDefensePct: (tower?.effect.antiAirDefensePct ?? 0) + research.antiAirDefensePct,
+    damageMitigationPct: 0,
+    siegeResistancePct: 0,
+    antiAirDefensePct: research.antiAirDefensePct,
     detectionPct:
       (intelCenter?.effect.detectionPct ?? 0) + research.detectionPct + (policy?.detectionPct ?? 0),
     counterIntelPct: (intelCenter?.effect.counterIntelPct ?? 0) + research.counterIntelPct,
@@ -382,6 +394,83 @@ export function getCityDerivedStats(state: CityEconomyState) {
     buildSpeedPct: council?.effect.buildSpeedPct ?? 0,
     productionPct: research.productionPct + (policy?.productionPct ?? 0),
     intelReadiness: state.intelReadiness,
+  };
+}
+
+export function getDefensiveWallGroundBonuses(state: CityEconomyState) {
+  const wall = getCurrentLevelRow(state, 'defensive_wall');
+  return {
+    groundWallDefensePct: wall?.effect.groundWallDefensePct ?? 0,
+    groundWallBaseDefense: wall?.effect.groundWallBaseDefense ?? 0,
+  };
+}
+
+export function getGroundDefenseStatsWithWall(
+  state: CityEconomyState,
+  troopId: TroopId,
+  context: 'city_defense' | 'offense' = 'city_defense',
+) {
+  const troop = CITY_ECONOMY_CONFIG.troops[troopId];
+  if (troop.category !== 'ground') return null;
+
+  const appliesWallBonus = context === 'city_defense' && troop.requiredBuildingId === 'barracks';
+  const wallBonuses = appliesWallBonus
+    ? getDefensiveWallGroundBonuses(state)
+    : { groundWallDefensePct: 0, groundWallBaseDefense: 0 };
+
+  const multiplier = 1 + wallBonuses.groundWallDefensePct / 100;
+  const apply = (value: number) => (value + wallBonuses.groundWallBaseDefense) * multiplier;
+
+  return {
+    troopId,
+    context,
+    appliesWallBonus,
+    base: {
+      defenseBlunt: troop.defenseBlunt,
+      defenseSharp: troop.defenseSharp,
+      defenseDistance: troop.defenseDistance,
+    },
+    modified: {
+      defenseBlunt: apply(troop.defenseBlunt),
+      defenseSharp: apply(troop.defenseSharp),
+      defenseDistance: apply(troop.defenseDistance),
+    },
+    wall: wallBonuses,
+  };
+}
+
+export function getSkyshieldBatteryAirBonuses(state: CityEconomyState) {
+  const tower = getCurrentLevelRow(state, 'skyshield_battery');
+  return {
+    airWallDefensePct: tower?.effect.airWallDefensePct ?? 0,
+    airWallBaseDefense: tower?.effect.airWallBaseDefense ?? 0,
+  };
+}
+
+export function getAirDefenseStatsWithBattery(
+  state: CityEconomyState,
+  troopId: TroopId,
+  context: 'city_defense' | 'offense' = 'city_defense',
+) {
+  const troop = CITY_ECONOMY_CONFIG.troops[troopId];
+  if (troop.category !== 'naval') return null;
+
+  const appliesTowerBonus = context === 'city_defense' && troop.requiredBuildingId === 'space_dock';
+  const towerBonuses = appliesTowerBonus
+    ? getSkyshieldBatteryAirBonuses(state)
+    : { airWallDefensePct: 0, airWallBaseDefense: 0 };
+
+  const baseDefense = troop.navalDefense ?? 0;
+  const multiplier = 1 + towerBonuses.airWallDefensePct / 100;
+  const modifiedDefense = (baseDefense + towerBonuses.airWallBaseDefense) * multiplier;
+
+  return {
+    troopId,
+    context,
+    appliesTowerBonus,
+    baseAirDefense: baseDefense,
+    modifiedAirDefense: modifiedDefense,
+    tower: towerBonuses,
   };
 }
 
@@ -553,12 +642,7 @@ export function canStartConstruction(state: CityEconomyState, buildingId: Econom
   }
 
   const levelCost = getUpgradeLevelCost(buildingId, targetLevel);
-  const costMultiplier = 1;
-  const adjustedCost = {
-    ore: Math.ceil(levelCost.resources.ore * costMultiplier),
-    stone: Math.ceil(levelCost.resources.stone * costMultiplier),
-    iron: Math.ceil(levelCost.resources.iron * costMultiplier),
-  };
+  const adjustedCost = getConstructionCostResources(state, buildingId, targetLevel);
 
   const canAfford =
     state.resources.ore >= adjustedCost.ore && state.resources.stone >= adjustedCost.stone && state.resources.iron >= adjustedCost.iron;
@@ -567,8 +651,10 @@ export function canStartConstruction(state: CityEconomyState, buildingId: Econom
     return { ok: false, reason: 'Not enough resources' };
   }
 
+  const currentLevelCost = currentLevel > 0 ? getUpgradeLevelCost(buildingId, currentLevel).populationCost : 0;
+  const requiredPopulation = Math.max(0, levelCost.populationCost - currentLevelCost);
   const population = getPopulationSnapshot(state);
-  if (levelCost.populationCost > population.free) {
+  if (requiredPopulation > population.free) {
     return { ok: false, reason: 'Not enough population' };
   }
 
@@ -582,12 +668,7 @@ export function startConstruction(state: CityEconomyState, buildingId: EconomyBu
   const currentLevel = getBuildingLevel(state, buildingId);
   const targetLevel = currentLevel + 1;
   const levelCost = getUpgradeLevelCost(buildingId, targetLevel);
-  const costMultiplier = 1;
-  const adjustedCost = {
-    ore: Math.ceil(levelCost.resources.ore * costMultiplier),
-    stone: Math.ceil(levelCost.resources.stone * costMultiplier),
-    iron: Math.ceil(levelCost.resources.iron * costMultiplier),
-  };
+  const adjustedCost = getConstructionCostResources(state, buildingId, targetLevel);
 
   state.resources.ore = Math.max(0, state.resources.ore - adjustedCost.ore);
   state.resources.stone = Math.max(0, state.resources.stone - adjustedCost.stone);
@@ -601,7 +682,7 @@ export function startConstruction(state: CityEconomyState, buildingId: EconomyBu
     startedAtMs: nowMs,
     endsAtMs: nowMs + durationSeconds * 1000,
     costPaid: adjustedCost,
-    populationCostPaid: levelCost.populationCost,
+    populationCostPaid: Math.max(0, levelCost.populationCost - (currentLevel > 0 ? getUpgradeLevelCost(buildingId, currentLevel).populationCost : 0)),
   });
 
   return { ok: true, reason: null };

@@ -35,8 +35,15 @@ export function formatEffectList(effect: BuildingLevelEffect): string[] {
   if (effect.researchCapacity) lines.push(`Research capacity +${effect.researchCapacity}`);
   if (effect.marketEfficiencyPct) lines.push(`Market efficiency +${effect.marketEfficiencyPct}%`);
   if (effect.trainingSpeedPct) lines.push(`Training speed +${effect.trainingSpeedPct}%`);
-  if (effect.troopCombatPowerPct) lines.push(`Troop power +${effect.troopCombatPowerPct}%`);
+  if (effect.groundAttackPct) lines.push(`Ground attack +${effect.groundAttackPct}%`);
+  if (effect.groundDefensePct) lines.push(`Ground defense +${effect.groundDefensePct}%`);
+  if (effect.airAttackPct) lines.push(`Air attack +${effect.airAttackPct}%`);
+  if (effect.airDefensePct) lines.push(`Air defense +${effect.airDefensePct}%`);
   if (effect.cityDefensePct) lines.push(`City defense +${effect.cityDefensePct}%`);
+  if (effect.groundWallDefensePct) lines.push(`Ground wall defense +${effect.groundWallDefensePct}%`);
+  if (effect.groundWallBaseDefense) lines.push(`Ground wall base defense +${effect.groundWallBaseDefense}`);
+  if (effect.airWallDefensePct) lines.push(`Air wall defense +${effect.airWallDefensePct}%`);
+  if (effect.airWallBaseDefense) lines.push(`Air wall base defense +${effect.airWallBaseDefense}`);
   if (effect.damageMitigationPct) lines.push(`Damage mitigation +${effect.damageMitigationPct}%`);
   if (effect.antiAirDefensePct) lines.push(`Anti-air +${effect.antiAirDefensePct}%`);
   if (effect.siegeResistancePct) lines.push(`Siege resistance +${effect.siegeResistancePct}%`);
@@ -53,6 +60,11 @@ export function formatTroopProductionSite(troop: TroopConfig) {
 }
 
 export function formatTroopStats(troop: TroopConfig) {
+  if (troop.category === 'naval') {
+    const navalAttack = troop.navalAttack ?? troop.attack;
+    const navalDefense = troop.navalDefense ?? 0;
+    return `NAVAL ATK ${navalAttack} · NAVAL DEF ${navalDefense} · SPD ${troop.speed}`;
+  }
   return `ATK ${troop.attack} (${troop.attackType}) · DEF ${troop.defenseBlunt}/${troop.defenseSharp}/${troop.defenseDistance} · SPD ${troop.speed}`;
 }
 
