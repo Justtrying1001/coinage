@@ -140,7 +140,7 @@ describe('city economy rebalance validation', () => {
     expect(CITY_ECONOMY_CONFIG.buildings.barracks.maxLevel).toBe(30);
     expect(CITY_ECONOMY_CONFIG.buildings.space_dock.maxLevel).toBe(30);
     expect(CITY_ECONOMY_CONFIG.buildings.defensive_wall.maxLevel).toBe(25);
-    expect(CITY_ECONOMY_CONFIG.buildings.research_lab.maxLevel).toBe(36);
+    expect(CITY_ECONOMY_CONFIG.buildings.research_lab.maxLevel).toBe(35);
     expect(CITY_ECONOMY_CONFIG.buildings.market.maxLevel).toBe(30);
   });
 

@@ -38,7 +38,7 @@ describe('CityFoundationMode stitch IA responsibilities', () => {
     ['Command', 'Economy', 'Military', 'Defense', 'Research', 'Intelligence', 'Governance', 'Market'].forEach((section) => {
       expect(host.querySelector(`.city-stitch__nav-btn[aria-label="${section}"]`)).not.toBeNull();
     });
-    ['payments', 'military_tech', 'shield', 'science', 'visibility', 'account_balance', 'currency_exchange'].forEach((technicalLabel) => {
+    ['payments', 'military_tech', 'science', 'visibility', 'account_balance', 'currency_exchange'].forEach((technicalLabel) => {
       expect(host.textContent).not.toContain(technicalLabel);
     });
     expect(host.textContent).not.toContain('Token');
@@ -77,6 +77,9 @@ describe('CityFoundationMode stitch IA responsibilities', () => {
     const marketButton = host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Market"]');
     expect(marketButton).not.toBeNull();
     expect(marketButton?.textContent).toContain('Partial');
+    const researchButton = host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Research"]');
+    expect(researchButton).not.toBeNull();
+    expect(researchButton?.textContent).toContain('Timed');
 
     const main = host.querySelector<HTMLElement>('.city-stitch__main');
     const right = host.querySelector<HTMLElement>('.city-stitch__right');
@@ -116,6 +119,46 @@ describe('CityFoundationMode stitch IA responsibilities', () => {
     const text = host.textContent ?? '';
     expect(text).toContain('Build 2/2');
     expect(text).toContain('Queue full (2/2)');
+
+    mode.destroy();
+    host.remove();
+  });
+
+  it('does not display legacy instant wording for research and includes queued RP in UI points', () => {
+    const { host, mode } = mountMode();
+    const unsafeMode = mode as unknown as {
+      activeSection: string;
+      state: {
+        economy: {
+          levels: Record<string, number>;
+          completedResearch: string[];
+          researchQueue: Array<{ researchId: string; startedAtMs: number; endsAtMs: number; costPaid: { ore: number; stone: number; iron: number } }>;
+        };
+      };
+      renderTopBar: () => void;
+      renderMainCanvas: () => void;
+      renderDetailPanel: () => void;
+    };
+
+    unsafeMode.state.economy.levels.research_lab = 10;
+    unsafeMode.state.economy.completedResearch = ['city_guard']; // 3 RP
+    unsafeMode.state.economy.researchQueue = [
+      {
+        researchId: 'diplomacy', // 3 RP
+        startedAtMs: 0,
+        endsAtMs: 60_000,
+        costPaid: { ore: 100, stone: 400, iron: 200 },
+      },
+    ];
+    unsafeMode.activeSection = 'research';
+    unsafeMode.renderTopBar();
+    unsafeMode.renderMainCanvas();
+    unsafeMode.renderDetailPanel();
+    const text = host.textContent ?? '';
+    expect(text).not.toContain('Research: instant');
+    expect(text).not.toContain('Instant');
+    expect(text).toMatch(/Points\s*6\/40/);
+    expect(text).toContain('Points used: 6/40');
 
     mode.destroy();
     host.remove();

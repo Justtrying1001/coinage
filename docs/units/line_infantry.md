@@ -7,7 +7,7 @@
 - Niveau du bâtiment requis: 1
 - Recherche requise: aucune
 - Statut dans le code: partiel (recrutement branché; combat/déplacement/transport/conquête non implémentés dans ce runtime)
-- Rôle gameplay réel: Unité terrestre de combat.
+- Rôle gameplay réel: Transport logistique/naval.
 - Réellement recrutable / utilisable dans le runtime actuel: partiel
 
 ## 2. Déblocage et accès
@@ -19,12 +19,12 @@
 - Passe par la queue standard: oui
 
 ## 3. Fiche de stats complète
-| Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
-|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Frontline Trooper | line_infantry | ground | 95 | 0 | 85 | 0 | 1080 | 1 | 5 | blunt | 14 | 8 | 30 | 8 | 16 | 0 | Frontline defensive line infantry anchor. |
+| Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Capacité transport | Notes |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---|
+| Frontline Trooper | line_infantry | ground | 95 | 0 | 85 | 0 | 1080 | 1 | 5 | blunt | 14 | 8 | 30 | 8 | 16 | Frontline defensive line infantry anchor. |
 
 ## 4. Rôle gameplay réel
-- Unité terrestre de combat.
+- Transport logistique/naval.
 - Interprétation limitée au code: note config présente (`Frontline defensive line infantry anchor.`); pas d’extrapolation hors runtime.
 
 ## 5. Comment elle est réellement utilisée dans le code
@@ -32,7 +32,7 @@
 - `startTroopTraining` applique un multiplicateur de vitesse basé sur `trainingSpeedPct` (borné à `Math.max(0.35, 1 - pct/100)`).
 - La population est réservée pendant l’entraînement (`populationReserved`) puis consommée via le stock de troupes.
 - `transportCapacity` est en config mais pas exploité dans les systèmes runtime actuels.
-- Les stats de combat (`attack`, `attackType`, défenses) sont configurées mais aucune résolution de combat n’est branchée ici.
+- Unité de transport dans la config; aucune logique de chargement/déchargement n’est implémentée dans ce repo.
 
 ## 6. Pré requis et dépendances liées
 - Bâtiment source: `barracks`
@@ -41,7 +41,7 @@
 
 ## 7. Cas spéciaux / edge cases
 - Unité avec `attackType: blunt`.
-- Aucun edge case supplémentaire détecté au runtime.
+- Transport: capacité configurée mais aucune mécanique de transport runtime implémentée.
 - Colonisation: non concernée.
 
 ## 8. Statut d’implémentation / zones d’attention

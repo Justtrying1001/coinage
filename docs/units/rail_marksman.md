@@ -5,26 +5,26 @@
 - Catégorie: `ground`
 - Bâtiment requis: `barracks`
 - Niveau du bâtiment requis: 1
-- Recherche requise: archer
+- Recherche requise: railgun_skirmisher
 - Statut dans le code: partiel (recrutement branché; combat/déplacement/transport/conquête non implémentés dans ce runtime)
-- Rôle gameplay réel: Unité terrestre de combat.
+- Rôle gameplay réel: Transport logistique/naval.
 - Réellement recrutable / utilisable dans le runtime actuel: partiel
 
 ## 2. Déblocage et accès
 - Bâtiment requis: `barracks`
 - Niveau requis: 1
-- Recherche requise éventuelle: archer
+- Recherche requise éventuelle: railgun_skirmisher
 - Branche concernée: ground / barracks
 - Conditions spécifiques: vérification ressources + population + prereqs via canStartTroopTraining.
 - Passe par la queue standard: oui
 
 ## 3. Fiche de stats complète
-| Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
-|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Railgun Skirmisher | rail_marksman | ground | 55 | 100 | 40 | 0 | 1144 | 1 | 23 | distance | 7 | 8 | 2 | 14 | 8 | 0 | Ranged glass-cannon damage dealer. |
+| Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Capacité transport | Notes |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---|
+| Railgun Skirmisher | rail_marksman | ground | 55 | 0 | 40 | 0 | 1144 | 1 | 23 | distance | 7 | 8 | 2 | 14 | 8 | Ranged glass-cannon damage dealer. |
 
 ## 4. Rôle gameplay réel
-- Unité terrestre de combat.
+- Transport logistique/naval.
 - Interprétation limitée au code: note config présente (`Ranged glass-cannon damage dealer.`); pas d’extrapolation hors runtime.
 
 ## 5. Comment elle est réellement utilisée dans le code
@@ -32,16 +32,16 @@
 - `startTroopTraining` applique un multiplicateur de vitesse basé sur `trainingSpeedPct` (borné à `Math.max(0.35, 1 - pct/100)`).
 - La population est réservée pendant l’entraînement (`populationReserved`) puis consommée via le stock de troupes.
 - `transportCapacity` est en config mais pas exploité dans les systèmes runtime actuels.
-- Les stats de combat (`attack`, `attackType`, défenses) sont configurées mais aucune résolution de combat n’est branchée ici.
+- Unité de transport dans la config; aucune logique de chargement/déchargement n’est implémentée dans ce repo.
 
 ## 6. Pré requis et dépendances liées
 - Bâtiment source: `barracks`
-- Recherche source: archer
+- Recherche source: railgun_skirmisher
 - Interaction avec armament/barracks/space_dock/research_lab: temps d’entraînement dépend de trainingSpeedPct dérivé (barracks + space_dock + armament_factory + recherches + politique).
 
 ## 7. Cas spéciaux / edge cases
 - Unité avec `attackType: distance`.
-- Aucun edge case supplémentaire détecté au runtime.
+- Transport: capacité configurée mais aucune mécanique de transport runtime implémentée.
 - Colonisation: non concernée.
 
 ## 8. Statut d’implémentation / zones d’attention

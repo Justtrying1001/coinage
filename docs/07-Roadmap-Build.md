@@ -13,7 +13,7 @@
 1. Economy & logistics: `hq`, `mine`, `quarry`, `refinery`, `warehouse`, `housing_complex`, `market`.
 2. Military: `barracks`, `combat_forge`, `space_dock`, `military_academy`, `armament_factory`.
 3. Defense: `defensive_wall`, `skyshield_battery`.
-4. Research: `research_lab` + local city research points + instant unlock projects.
+4. Research: `research_lab` + local city research points + timed research completion.
 5. Intelligence: `intelligence_center` + local intel readiness/projects.
 6. Governance: `council_chamber` + local policy/edict choices.
 

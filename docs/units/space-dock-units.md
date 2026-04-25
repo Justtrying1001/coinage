@@ -27,12 +27,12 @@ Mapping Grepolis retenu:
 | id technique | nom affiché | équivalent Grepolis | requiredBuildingLevel | requiredResearch | coûts (ore/stone/iron) | temps | population | navalAttack | navalDefense | speed | transportCapacity | statut visuel | verdict gameplay | verdict visuel | correction appliquée / à faire |
 |---|---|---|---:|---|---|---:|---:|---:|---:|---:|---:|---|---|---|---|
 | assault_dropship | Strike Dropship | Transport Boat | 1 | none | 500/500/400 | 9600 | 7 | 0 | 0 | 8 | 26 | MISSING | OK | MISSING | research corrigée |
-| swift_carrier | Rapid Carrier | Fast Transport Ship | 1 | light_transport_ships | 800/0/400 | 7200 | 5 | 0 | 0 | 15 | 10 | MISSING | OK | MISSING | aucun |
-| interceptor_sentinel | Sentinel Interceptor | Bireme | 1 | bireme | 800/700/180 | 9900 | 8 | 24 | 160 | 15 | 0 | MISSING | OK | MISSING | navalDefense explicite corrigé |
-| ember_drifter | Ember Frigate | Fire Ship | 1 | fire_ship | 500/750/150 | 4000 | 8 | 0 | 0 | 5 | 0 | MISSING | OK | MISSING | research corrigée |
-| rapid_escort | Vanguard Corvette | Light Ship | 1 | light_ship | 1300/300/800 | 14400 | 10 | 200 | 60 | 13 | 60 | MISSING | OK | MISSING | research + navalDefense corrigés |
-| bulwark_trireme | Bulwark Cruiser | Trireme | 1 | trireme | 2000/1300/1300 | 14400 | 16 | 250 | 250 | 15 | 0 | MISSING | OK | MISSING | navalDefense explicite corrigé |
-| colonization_arkship | Colony Ark | Colony Ship | 10 | colony_ship | 10000/10000/10000 | 57535 | 170 | 0 | 300 | 3 | 0 | MISSING | OK | MISSING | navalDefense explicite corrigé |
+| swift_carrier | Rapid Carrier | Fast Transport Ship | 1 | rapid_carrier | 800/0/400 | 7200 | 5 | 0 | 0 | 15 | 10 | MISSING | OK | MISSING | aucun |
+| interceptor_sentinel | Sentinel Interceptor | Bireme | 1 | sentinel_interceptor | 800/700/180 | 9900 | 8 | 24 | 160 | 15 | 0 | MISSING | OK | MISSING | navalDefense explicite corrigé |
+| ember_drifter | Ember Frigate | Fire Ship | 1 | ember_frigate | 500/750/150 | 4000 | 8 | 0 | 0 | 5 | 0 | MISSING | OK | MISSING | research corrigée |
+| rapid_escort | Vanguard Corvette | Light Ship | 1 | vanguard_corvette | 1300/300/800 | 14400 | 10 | 200 | 60 | 13 | 60 | MISSING | OK | MISSING | research + navalDefense corrigés |
+| bulwark_trireme | Bulwark Cruiser | Trireme | 1 | bulwark_cruiser | 2000/1300/1300 | 14400 | 16 | 250 | 250 | 15 | 0 | MISSING | OK | MISSING | navalDefense explicite corrigé |
+| colonization_arkship | Colony Ark | Colony Ship | 10 | colony_ark | 10000/10000/10000 | 57535 | 170 | 0 | 300 | 3 | 0 | MISSING | OK | MISSING | navalDefense explicite corrigé |
 
 ## 3) Section détaillée unité par unité
 ### assault_dropship
@@ -43,7 +43,7 @@ Mapping Grepolis retenu:
 - Verdict final: OK.
 
 ### swift_carrier
-- Vérité code-grounded: transport rapide, unlock research `light_transport_ships`.
+- Vérité code-grounded: transport rapide, unlock research `rapid_carrier`.
 - Comparaison Grepolis: mapping Fast Transport Ship confirmé.
 - Mismatch: aucun objectif.
 - Verdict final: OK.
@@ -59,14 +59,14 @@ Mapping Grepolis retenu:
 - Vérité code-grounded: fire ship (attaque navale 0, rôle spécial).
 - Comparaison Grepolis: Fire Ship confirmé.
 - Mismatch trouvé: mapping research inversé.
-- Correction appliquée: `requiredResearch='fire_ship'`.
+- Correction appliquée: `requiredResearch='ember_frigate'`.
 - Verdict final: OK.
 
 ### rapid_escort
 - Vérité code-grounded: light ship offensif.
 - Comparaison Grepolis: Light Ship confirmé.
 - Mismatchs trouvés: research inversée + défense navale non explicite.
-- Corrections appliquées: `requiredResearch='light_ship'`, `navalDefense=60`.
+- Corrections appliquées: `requiredResearch='vanguard_corvette'`, `navalDefense=60`.
 - Verdict final: OK.
 
 ### bulwark_trireme
@@ -88,7 +88,7 @@ Mapping Grepolis retenu:
 - Unlock building level: aligné.
 - Coûts / temps: cohérents avec la base Coinage Grepolis-like (times de base Harbor + modificateurs runtime).
 - Stats navales: désormais explicites (`navalAttack`, `navalDefense`).
-- Transport capacity: champ canonique conservé (`transportCapacity`), pas de redondance `booty`.
+- Transport capacity: champ canonique conservé (`transportCapacity`), pas de redondance avec l’ancien champ de butin.
 - Runtime branché:
   - branché: guards, coûts, temps, queue, résolution, trainingSpeed,
   - non branché: simulation complète de combat naval/pillage (à ce stade du runtime).
