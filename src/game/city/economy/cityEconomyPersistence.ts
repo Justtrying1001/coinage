@@ -82,6 +82,29 @@ const ESPIONAGE_TRAVEL_MS = 15 * 60 * 1000;
 const ECONOMY_RUNTIME_TICK_INTERVAL_MS = 1000;
 let lastEconomyRuntimeTickMs = 0;
 const LEGACY_RESEARCH_ID_MAP: Partial<Record<string, ResearchId>> = {
+  slinger: 'railgun_skirmisher',
+  archer: 'assault_ranger',
+  hoplite: 'bulwark_trooper',
+  horseman: 'raider_interceptor',
+  chariot: 'aegis_walker',
+  catapult: 'siege_artillery',
+  bireme: 'sentinel_interceptor',
+  light_ship: 'vanguard_corvette',
+  fire_ship: 'ember_frigate',
+  trireme: 'bulwark_cruiser',
+  light_transport_ships: 'rapid_carrier',
+  colony_ship: 'colony_ark',
+  booty: 'market_logistics',
+  villagers_loyalty: 'workforce_loyalty',
+  phalanx: 'defense_formation',
+  breakthrough: 'offensive_tempo',
+  ram: 'fortification_breach',
+  stone_hail: 'anti_air_defense',
+  temple_looting: 'recovery_logistics',
+  divine_selection: 'command_selection',
+  battle_experience: 'veteran_training',
+  strong_wine: 'workforce_morale',
+  set_sail: 'naval_mobilization',
   signals_intel: 'cryptography',
 };
 const LEGACY_BUILDING_ID_MAP: Partial<Record<string, EconomyBuildingId>> = {

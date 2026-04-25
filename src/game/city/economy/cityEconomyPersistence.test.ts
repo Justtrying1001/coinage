@@ -79,12 +79,12 @@ describe('cityEconomyPersistence MVP MICRO flow', () => {
       [context.cityId]: {
         cityId: context.cityId, ownerId: context.ownerId, planetId: context.planetId, sectorId: context.sectorId,
         resources: { ore: 3_000, stone: 3_000, iron: 3_000 }, lastResourceUpdateAtMs: 1_000, levels: baseLevels, queue: [], troops: emptyTroops,
-        trainingQueue: [], researchQueue: [], completedResearch: [], activePolicy: null, militia: null, intelReadiness: 0, intelProjects: [], spyVaultSilver: 0, espionageMissions: [], espionageReports: [],
+        trainingQueue: [], researchQueue: [], completedResearch: ['espionage'], activePolicy: null, militia: null, intelReadiness: 0, intelProjects: [], spyVaultSilver: 0, espionageMissions: [], espionageReports: [],
       },
       [rivalContext.cityId]: {
         cityId: rivalContext.cityId, ownerId: rivalContext.ownerId, planetId: rivalContext.planetId, sectorId: rivalContext.sectorId,
         resources: { ore: 3_000, stone: 3_000, iron: 3_000 }, lastResourceUpdateAtMs: 1_000, levels: baseLevels, queue: [], troops: emptyTroops,
-        trainingQueue: [], researchQueue: [], completedResearch: [], activePolicy: null, militia: null, intelReadiness: 0, intelProjects: [], spyVaultSilver: 0, espionageMissions: [], espionageReports: [],
+        trainingQueue: [], researchQueue: [], completedResearch: ['espionage'], activePolicy: null, militia: null, intelReadiness: 0, intelProjects: [], spyVaultSilver: 0, espionageMissions: [], espionageReports: [],
       },
     }));
 
@@ -129,18 +129,18 @@ describe('cityEconomyPersistence MVP MICRO flow', () => {
       [context.cityId]: {
         cityId: context.cityId, ownerId: context.ownerId, planetId: context.planetId, sectorId: context.sectorId,
         resources: { ore: 9_000, stone: 9_000, iron: 9_000 }, lastResourceUpdateAtMs: 1_000, levels: baseLevels, queue: [], troops: emptyTroops,
-        trainingQueue: [], researchQueue: [], completedResearch: [], activePolicy: null, militia: null, intelReadiness: 0, intelProjects: [], spyVaultSilver: 0, espionageMissions: [], espionageReports: [],
+        trainingQueue: [], researchQueue: [], completedResearch: ['espionage'], activePolicy: null, militia: null, intelReadiness: 0, intelProjects: [], spyVaultSilver: 0, espionageMissions: [], espionageReports: [],
       },
       [rivalContext.cityId]: {
         cityId: rivalContext.cityId, ownerId: rivalContext.ownerId, planetId: rivalContext.planetId, sectorId: rivalContext.sectorId,
         resources: { ore: 9_000, stone: 9_000, iron: 9_000 }, lastResourceUpdateAtMs: 1_000, levels: baseLevels, queue: [], troops: emptyTroops,
-        trainingQueue: [], researchQueue: [], completedResearch: [], activePolicy: null, militia: null, intelReadiness: 0, intelProjects: [], spyVaultSilver: 0, espionageMissions: [], espionageReports: [],
+        trainingQueue: [], researchQueue: [], completedResearch: ['espionage'], activePolicy: null, militia: null, intelReadiness: 0, intelProjects: [], spyVaultSilver: 0, espionageMissions: [], espionageReports: [],
       },
     }));
 
-    depositCitySpySilver(context, 2_000, 2_000);
+    depositCitySpySilver(context, 3_000, 2_000);
     depositCitySpySilver(rivalContext, 1_000, 2_000);
-    sendCityEspionageMission(context, rivalContext.cityId, 1_800, 2_100);
+    sendCityEspionageMission(context, rivalContext.cityId, 2_500, 2_100);
 
     expect(runCityEconomyRuntimeTick(2_100 + 16 * 60 * 1000, { force: true })).toBe(true);
     const atkResolved = loadCityEconomyState(context, 2_100 + 16 * 60 * 1000);
@@ -230,7 +230,7 @@ describe('cityEconomyPersistence MVP MICRO flow', () => {
       [context.cityId]: {
         cityId: context.cityId, ownerId: context.ownerId, planetId: context.planetId, sectorId: context.sectorId,
         resources: { ore: 9_000, stone: 9_000, iron: 9_000 }, lastResourceUpdateAtMs: 1_000, levels: baseLevels, queue: [], troops: emptyTroops,
-        trainingQueue: [], researchQueue: [], completedResearch: [], activePolicy: null, militia: null, intelReadiness: 0, intelProjects: [], spyVaultSilver: 0, espionageMissions: [], espionageReports: [],
+        trainingQueue: [], researchQueue: [], completedResearch: ['espionage'], activePolicy: null, militia: null, intelReadiness: 0, intelProjects: [], spyVaultSilver: 0, espionageMissions: [], espionageReports: [],
       },
       [rivalContext.cityId]: {
         cityId: rivalContext.cityId, ownerId: rivalContext.ownerId, planetId: rivalContext.planetId, sectorId: rivalContext.sectorId,
@@ -295,7 +295,7 @@ describe('cityEconomyPersistence MVP MICRO flow', () => {
       [context.cityId]: {
         cityId: context.cityId, ownerId: context.ownerId, planetId: context.planetId, sectorId: context.sectorId,
         resources: { ore: 3_000, stone: 3_000, iron: 3_000 }, lastResourceUpdateAtMs: 1_000, levels: baseLevels, queue: [], troops: emptyTroops,
-        trainingQueue: [], researchQueue: [], completedResearch: [], activePolicy: null, militia: null, intelReadiness: 0, intelProjects: [], spyVaultSilver: 0, espionageMissions: [], espionageReports: [],
+        trainingQueue: [], researchQueue: [], completedResearch: ['espionage'], activePolicy: null, militia: null, intelReadiness: 0, intelProjects: [], spyVaultSilver: 0, espionageMissions: [], espionageReports: [],
       },
       [rivalContext.cityId]: {
         cityId: rivalContext.cityId, ownerId: rivalContext.ownerId, planetId: rivalContext.planetId, sectorId: rivalContext.sectorId,
@@ -398,6 +398,54 @@ describe('cityEconomyPersistence MVP MICRO flow', () => {
 
     const intel = startCityIntelProject(context, 'sweep', 3_000);
     expect(intel.guard.ok).toBe(false);
+  });
+
+  it('persists timed research queue and resolves completion on load', () => {
+    const loaded = loadCityEconomyState(context, 30_000);
+    const state = loaded.economy;
+    state.levels.hq = 8;
+    state.levels.housing_complex = 6;
+    state.levels.barracks = 5;
+    state.levels.research_lab = 8;
+    state.levels.warehouse = 35;
+    state.resources = { ore: 20_000, stone: 20_000, iron: 20_000 };
+    state.completedResearch = ['city_guard'];
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        [context.cityId]: {
+          cityId: context.cityId,
+          ownerId: context.ownerId,
+          planetId: context.planetId,
+          sectorId: context.sectorId,
+          resources: state.resources,
+          lastResourceUpdateAtMs: 30_000,
+          levels: state.levels,
+          queue: [],
+          troops: state.troops,
+          trainingQueue: [],
+          researchQueue: [],
+          completedResearch: state.completedResearch,
+          activePolicy: null,
+          militia: null,
+          intelReadiness: 0,
+          intelProjects: [],
+          spyVaultSilver: 0,
+          espionageMissions: [],
+          espionageReports: [],
+        },
+      }),
+    );
+
+    const started = startCityResearch(context, 'diplomacy', 31_000);
+    expect(started.guard.ok).toBe(true);
+    expect(started.state.economy.researchQueue.length).toBe(1);
+    expect(started.state.economy.completedResearch.includes('diplomacy')).toBe(false);
+
+    const endsAt = started.state.economy.researchQueue[0].endsAtMs;
+    const resolved = loadCityEconomyState(context, endsAt + 1);
+    expect(resolved.economy.researchQueue).toEqual([]);
+    expect(resolved.economy.completedResearch).toContain('diplomacy');
   });
 
 
@@ -595,5 +643,95 @@ describe('cityEconomyPersistence MVP MICRO flow', () => {
     expect(snapshot.economy.levels.armament_factory).toBe(0);
     expect((snapshot.economy.levels as Record<string, number>).combat_forge).toBeUndefined();
     expect((snapshot.economy.levels as Record<string, number>).military_academy).toBeUndefined();
+  });
+
+  it('migrates legacy research ids to canonical ids on load and deduplicates', () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        [context.cityId]: {
+          cityId: context.cityId,
+          ownerId: context.ownerId,
+          planetId: context.planetId,
+          sectorId: context.sectorId,
+          resources: { ore: 0, stone: 0, iron: 0 },
+          lastResourceUpdateAtMs: 5_000,
+          levels: {
+            hq: 12,
+            mine: 1,
+            quarry: 1,
+            refinery: 1,
+            warehouse: 1,
+            housing_complex: 1,
+            barracks: 1,
+            space_dock: 1,
+            defensive_wall: 0,
+            skyshield_battery: 0,
+            armament_factory: 0,
+            intelligence_center: 0,
+            research_lab: 10,
+            market: 0,
+            council_chamber: 0,
+          },
+          queue: [],
+          troops: {
+            citizen_militia: 0,
+            line_infantry: 0,
+            phalanx_lanceguard: 0,
+            rail_marksman: 0,
+            assault_legionnaire: 0,
+            aegis_shieldguard: 0,
+            raider_hoverbike: 0,
+            siege_breacher: 0,
+            assault_dropship: 0,
+            swift_carrier: 0,
+            interceptor_sentinel: 0,
+            ember_drifter: 0,
+            rapid_escort: 0,
+            bulwark_trireme: 0,
+            colonization_arkship: 0,
+          },
+          trainingQueue: [],
+          researchQueue: [
+            {
+              researchId: 'slinger',
+              startedAtMs: 4_000,
+              endsAtMs: 8_000,
+              costPaid: { ore: 300, stone: 500, iron: 200 },
+            },
+            {
+              researchId: 'signals_intel',
+              startedAtMs: 4_000,
+              endsAtMs: 8_000,
+              costPaid: { ore: 2500, stone: 3000, iron: 5100 },
+            },
+            {
+              researchId: 'unknown_research_id',
+              startedAtMs: 4_000,
+              endsAtMs: 8_000,
+              costPaid: { ore: 1, stone: 1, iron: 1 },
+            },
+          ],
+          completedResearch: ['booty', 'market_logistics', 'villagers_loyalty', 'slinger', 'railgun_skirmisher', 'unknown_research_id'],
+          activePolicy: null,
+          militia: null,
+          intelReadiness: 0,
+          intelProjects: [],
+          spyVaultSilver: 0,
+          espionageMissions: [],
+          espionageReports: [],
+        },
+      }),
+    );
+
+    const snapshot = loadCityEconomyState(context, 6_000);
+    expect(snapshot.economy.researchQueue.map((entry) => entry.researchId)).toEqual(['railgun_skirmisher', 'cryptography']);
+    expect(snapshot.economy.completedResearch).toContain('market_logistics');
+    expect(snapshot.economy.completedResearch).toContain('workforce_loyalty');
+    expect(snapshot.economy.completedResearch).toContain('railgun_skirmisher');
+    expect(snapshot.economy.completedResearch).not.toContain('booty');
+    expect(snapshot.economy.completedResearch).not.toContain('villagers_loyalty');
+    expect(snapshot.economy.completedResearch).not.toContain('unknown_research_id');
+    expect(snapshot.economy.completedResearch.filter((id) => id === 'railgun_skirmisher')).toHaveLength(1);
   });
 });

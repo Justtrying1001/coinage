@@ -19,9 +19,9 @@
 - Passe par la queue standard: non
 
 ## 3. Fiche de stats complète
-| Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
-|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Citizen Militia | citizen_militia | militia | 0 | 0 | 0 | 0 | 0 | 0 | 0 | none | 6 | 8 | 4 | 0 | 0 | 0 | Emergency call-up defenders; not recruitable through standard queues. |
+| Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Capacité transport | Notes |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---|
+| Citizen Militia | citizen_militia | militia | 0 | 0 | 0 | 0 | 0 | 0 | 0 | none | 6 | 8 | 4 | 0 | 0 | Emergency call-up defenders; not recruitable through standard queues. |
 
 ## 4. Rôle gameplay réel
 - Défense locale temporaire uniquement.

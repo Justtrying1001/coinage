@@ -38,46 +38,46 @@ export type TroopCategory = 'militia' | 'ground' | 'naval';
 export type TroopAttackType = 'blunt' | 'sharp' | 'distance' | 'naval' | 'none';
 
 export type ResearchId =
-  | 'slinger'
-  | 'archer'
+  | 'railgun_skirmisher'
+  | 'assault_ranger'
   | 'city_guard'
-  | 'hoplite'
+  | 'bulwark_trooper'
   | 'diplomacy'
   | 'meteorology'
   | 'espionage'
-  | 'booty'
+  | 'market_logistics'
   | 'ceramics'
-  | 'villagers_loyalty'
-  | 'horseman'
+  | 'workforce_loyalty'
+  | 'raider_interceptor'
   | 'architecture'
   | 'trainer'
-  | 'colony_ship'
-  | 'bireme'
+  | 'colony_ark'
+  | 'sentinel_interceptor'
   | 'crane'
   | 'shipwright'
-  | 'chariot'
-  | 'light_ship'
+  | 'aegis_walker'
+  | 'vanguard_corvette'
   | 'conscription'
-  | 'fire_ship'
-  | 'catapult'
+  | 'ember_frigate'
+  | 'siege_artillery'
   | 'cryptography'
   | 'democracy'
-  | 'light_transport_ships'
+  | 'rapid_carrier'
   | 'plow'
   | 'bunks'
-  | 'trireme'
-  | 'phalanx'
-  | 'breakthrough'
+  | 'bulwark_cruiser'
+  | 'defense_formation'
+  | 'offensive_tempo'
   | 'mathematics'
-  | 'ram'
+  | 'fortification_breach'
   | 'cartography'
   | 'conquest'
-  | 'stone_hail'
-  | 'temple_looting'
-  | 'divine_selection'
-  | 'battle_experience'
-  | 'strong_wine'
-  | 'set_sail';
+  | 'anti_air_defense'
+  | 'recovery_logistics'
+  | 'command_selection'
+  | 'veteran_training'
+  | 'workforce_morale'
+  | 'naval_mobilization';
 
 export type LocalPolicyId = 'industrial_push' | 'martial_law' | 'civic_watch';
 
@@ -167,7 +167,10 @@ export interface TroopConfig {
 export interface ResearchConfig {
   id: ResearchId;
   name: string;
+  description: string;
   requiredBuildingLevel: number;
+  requiredResearch: ResearchId[];
+  durationSeconds: number;
   researchPointsCost: number;
   cost: ResourceBundle;
   effect: {
@@ -221,6 +224,25 @@ export interface CityEconomyConfig {
 }
 
 import { CITY_BUILDING_LEVEL_TABLES } from './cityBuildingLevelTables';
+
+function defaultResearchDurationSeconds(requiredBuildingLevel: number, researchPointsCost: number) {
+  return 240 + requiredBuildingLevel * 90 + researchPointsCost * 60;
+}
+
+function defineResearch(
+  id: ResearchId,
+  input: Omit<ResearchConfig, 'id' | 'requiredResearch' | 'durationSeconds'> & {
+    requiredResearch?: ResearchId[];
+    durationSeconds?: number;
+  },
+): ResearchConfig {
+  return {
+    ...input,
+    id,
+    requiredResearch: input.requiredResearch ?? [],
+    durationSeconds: input.durationSeconds ?? defaultResearchDurationSeconds(input.requiredBuildingLevel, input.researchPointsCost),
+  };
+}
 
 export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
   queueSlots: 2,
@@ -393,7 +415,7 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       category: 'ground',
       requiredBuildingId: 'barracks',
       requiredBuildingLevel: 1,
-      requiredResearch: 'hoplite',
+      requiredResearch: 'bulwark_trooper',
       cost: { ore: 0, stone: 75, iron: 150 },
       favorCost: 0,
       trainingSeconds: 1316,
@@ -413,7 +435,7 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       category: 'ground',
       requiredBuildingId: 'barracks',
       requiredBuildingLevel: 1,
-      requiredResearch: 'slinger',
+      requiredResearch: 'railgun_skirmisher',
       cost: { ore: 55, stone: 0, iron: 40 },
       favorCost: 0,
       trainingSeconds: 1144,
@@ -433,7 +455,7 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       category: 'ground',
       requiredBuildingId: 'barracks',
       requiredBuildingLevel: 1,
-      requiredResearch: 'archer',
+      requiredResearch: 'assault_ranger',
       cost: { ore: 120, stone: 0, iron: 75 },
       favorCost: 0,
       trainingSeconds: 1087,
@@ -453,7 +475,7 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       category: 'ground',
       requiredBuildingId: 'barracks',
       requiredBuildingLevel: 1,
-      requiredResearch: 'chariot',
+      requiredResearch: 'aegis_walker',
       cost: { ore: 200, stone: 440, iron: 320 },
       favorCost: 0,
       trainingSeconds: 4710,
@@ -473,7 +495,7 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       category: 'ground',
       requiredBuildingId: 'barracks',
       requiredBuildingLevel: 10,
-      requiredResearch: 'horseman',
+      requiredResearch: 'raider_interceptor',
       cost: { ore: 240, stone: 120, iron: 360 },
       favorCost: 0,
       trainingSeconds: 3835,
@@ -493,7 +515,7 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       category: 'ground',
       requiredBuildingId: 'barracks',
       requiredBuildingLevel: 5,
-      requiredResearch: 'catapult',
+      requiredResearch: 'siege_artillery',
       cost: { ore: 700, stone: 700, iron: 700 },
       favorCost: 0,
       trainingSeconds: 12600,
@@ -535,7 +557,7 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       category: 'naval',
       requiredBuildingId: 'space_dock',
       requiredBuildingLevel: 1,
-      requiredResearch: 'light_transport_ships',
+      requiredResearch: 'rapid_carrier',
       cost: { ore: 800, stone: 0, iron: 400 },
       favorCost: 0,
       trainingSeconds: 7200,
@@ -557,7 +579,7 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       category: 'naval',
       requiredBuildingId: 'space_dock',
       requiredBuildingLevel: 1,
-      requiredResearch: 'bireme',
+      requiredResearch: 'sentinel_interceptor',
       cost: { ore: 800, stone: 700, iron: 180 },
       favorCost: 0,
       trainingSeconds: 9900,
@@ -579,7 +601,7 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       category: 'naval',
       requiredBuildingId: 'space_dock',
       requiredBuildingLevel: 1,
-      requiredResearch: 'fire_ship',
+      requiredResearch: 'ember_frigate',
       cost: { ore: 500, stone: 750, iron: 150 },
       favorCost: 0,
       trainingSeconds: 4000,
@@ -601,7 +623,7 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       category: 'naval',
       requiredBuildingId: 'space_dock',
       requiredBuildingLevel: 1,
-      requiredResearch: 'light_ship',
+      requiredResearch: 'vanguard_corvette',
       cost: { ore: 1300, stone: 300, iron: 800 },
       favorCost: 0,
       trainingSeconds: 14400,
@@ -623,7 +645,7 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       category: 'naval',
       requiredBuildingId: 'space_dock',
       requiredBuildingLevel: 1,
-      requiredResearch: 'trireme',
+      requiredResearch: 'bulwark_cruiser',
       cost: { ore: 2000, stone: 1300, iron: 1300 },
       favorCost: 0,
       trainingSeconds: 14400,
@@ -645,7 +667,7 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
       category: 'naval',
       requiredBuildingId: 'space_dock',
       requiredBuildingLevel: 10,
-      requiredResearch: 'colony_ship',
+      requiredResearch: 'colony_ark',
       cost: { ore: 10000, stone: 10000, iron: 10000 },
       favorCost: 0,
       trainingSeconds: 57535,
@@ -663,46 +685,46 @@ export const CITY_ECONOMY_CONFIG: CityEconomyConfig = {
     },
   },
   research: {
-    slinger: { id: 'slinger', name: 'Slinger Drill', requiredBuildingLevel: 1, researchPointsCost: 4, cost: { ore: 300, stone: 500, iron: 200 }, effect: {} },
-    archer: { id: 'archer', name: 'Archer Doctrine', requiredBuildingLevel: 1, researchPointsCost: 8, cost: { ore: 550, stone: 100, iron: 400 }, effect: {} },
-    city_guard: { id: 'city_guard', name: 'City Guard', requiredBuildingLevel: 1, researchPointsCost: 3, cost: { ore: 400, stone: 300, iron: 300 }, effect: { defensePct: 5 } },
-    hoplite: { id: 'hoplite', name: 'Hoplite Formation', requiredBuildingLevel: 4, researchPointsCost: 8, cost: { ore: 600, stone: 200, iron: 850 }, effect: {} },
-    diplomacy: { id: 'diplomacy', name: 'Diplomacy', requiredBuildingLevel: 4, researchPointsCost: 3, cost: { ore: 100, stone: 400, iron: 200 }, effect: { productionPct: 15 } },
-    meteorology: { id: 'meteorology', name: 'Meteorology', requiredBuildingLevel: 4, researchPointsCost: 4, cost: { ore: 2500, stone: 1700, iron: 6500 }, effect: { trainingSpeedPct: 10 } },
-    espionage: { id: 'espionage', name: 'Espionage', requiredBuildingLevel: 7, researchPointsCost: 3, cost: { ore: 900, stone: 900, iron: 1100 }, effect: { detectionPct: 20, counterIntelPct: 20 } },
-    booty: { id: 'booty', name: 'Booty Routing', requiredBuildingLevel: 7, researchPointsCost: 3, cost: { ore: 1200, stone: 1200, iron: 1200 }, effect: { marketEfficiencyPct: 8 } },
-    ceramics: { id: 'ceramics', name: 'Ceramics Stockpiles', requiredBuildingLevel: 7, researchPointsCost: 4, cost: { ore: 700, stone: 1500, iron: 900 }, effect: {} },
-    villagers_loyalty: { id: 'villagers_loyalty', name: "Villager's Loyalty", requiredBuildingLevel: 7, researchPointsCost: 6, cost: { ore: 1300, stone: 1300, iron: 1300 }, effect: { productionPct: 15 } },
-    horseman: { id: 'horseman', name: 'Horseman Tactics', requiredBuildingLevel: 10, researchPointsCost: 8, cost: { ore: 1400, stone: 700, iron: 1800 }, effect: {} },
-    architecture: { id: 'architecture', name: 'Architecture', requiredBuildingLevel: 10, researchPointsCost: 6, cost: { ore: 1900, stone: 2100, iron: 1300 }, effect: {} },
-    trainer: { id: 'trainer', name: 'Trainer Corps', requiredBuildingLevel: 10, researchPointsCost: 4, cost: { ore: 800, stone: 1300, iron: 1600 }, effect: { trainingSpeedPct: 10 } },
-    colony_ship: { id: 'colony_ship', name: 'Colony Convoy Doctrine', requiredBuildingLevel: 13, researchPointsCost: 0, cost: { ore: 7500, stone: 7500, iron: 9500 }, effect: {} },
-    bireme: { id: 'bireme', name: 'Bireme Hulls', requiredBuildingLevel: 13, researchPointsCost: 8, cost: { ore: 2800, stone: 1300, iron: 2200 }, effect: {} },
-    crane: { id: 'crane', name: 'Crane Logistics', requiredBuildingLevel: 13, researchPointsCost: 4, cost: { ore: 3000, stone: 1800, iron: 1400 }, effect: { buildSpeedPct: 10 } },
-    shipwright: { id: 'shipwright', name: 'Shipwright Training', requiredBuildingLevel: 13, researchPointsCost: 6, cost: { ore: 5000, stone: 2000, iron: 1900 }, effect: { trainingSpeedPct: 10 } },
-    chariot: { id: 'chariot', name: 'Chariot Platform', requiredBuildingLevel: 16, researchPointsCost: 8, cost: { ore: 3700, stone: 1900, iron: 2800 }, effect: {} },
-    light_ship: { id: 'light_ship', name: 'Light Ship Doctrine', requiredBuildingLevel: 16, researchPointsCost: 8, cost: { ore: 4400, stone: 2000, iron: 2400 }, effect: {} },
-    conscription: { id: 'conscription', name: 'Conscription', requiredBuildingLevel: 16, researchPointsCost: 4, cost: { ore: 3800, stone: 4200, iron: 6000 }, effect: {} },
-    fire_ship: { id: 'fire_ship', name: 'Fire Ship Arsenal', requiredBuildingLevel: 19, researchPointsCost: 8, cost: { ore: 5300, stone: 2600, iron: 2700 }, effect: {} },
-    catapult: { id: 'catapult', name: 'Catapult Siege', requiredBuildingLevel: 19, researchPointsCost: 8, cost: { ore: 5500, stone: 2900, iron: 3600 }, effect: {} },
-    cryptography: { id: 'cryptography', name: 'Cryptography', requiredBuildingLevel: 19, researchPointsCost: 6, cost: { ore: 2500, stone: 3000, iron: 5100 }, effect: { counterIntelPct: 10 } },
-    democracy: { id: 'democracy', name: 'Democracy', requiredBuildingLevel: 19, researchPointsCost: 6, cost: { ore: 3100, stone: 3100, iron: 4100 }, effect: { defensePct: 10 } },
-    light_transport_ships: { id: 'light_transport_ships', name: 'Light Transport Ships', requiredBuildingLevel: 22, researchPointsCost: 8, cost: { ore: 6500, stone: 2800, iron: 3200 }, effect: {} },
-    plow: { id: 'plow', name: 'Plow', requiredBuildingLevel: 22, researchPointsCost: 4, cost: { ore: 3000, stone: 3300, iron: 2100 }, effect: {} },
-    bunks: { id: 'bunks', name: 'Bunks', requiredBuildingLevel: 22, researchPointsCost: 6, cost: { ore: 8900, stone: 5200, iron: 7800 }, effect: {} },
-    trireme: { id: 'trireme', name: 'Trireme Blueprint', requiredBuildingLevel: 25, researchPointsCost: 8, cost: { ore: 6500, stone: 3800, iron: 4700 }, effect: {} },
-    phalanx: { id: 'phalanx', name: 'Phalanx', requiredBuildingLevel: 25, researchPointsCost: 9, cost: { ore: 4000, stone: 4000, iron: 15000 }, effect: { defensePct: 10 } },
-    breakthrough: { id: 'breakthrough', name: 'Breakthrough', requiredBuildingLevel: 25, researchPointsCost: 6, cost: { ore: 8000, stone: 8000, iron: 9000 }, effect: {} },
-    mathematics: { id: 'mathematics', name: 'Mathematics', requiredBuildingLevel: 25, researchPointsCost: 6, cost: { ore: 7100, stone: 4400, iron: 8600 }, effect: {} },
-    ram: { id: 'ram', name: 'Ram', requiredBuildingLevel: 28, researchPointsCost: 10, cost: { ore: 7900, stone: 9200, iron: 14000 }, effect: {} },
-    cartography: { id: 'cartography', name: 'Cartography', requiredBuildingLevel: 28, researchPointsCost: 8, cost: { ore: 10000, stone: 6700, iron: 12500 }, effect: {} },
-    conquest: { id: 'conquest', name: 'Conquest', requiredBuildingLevel: 28, researchPointsCost: 0, cost: { ore: 12000, stone: 12000, iron: 16000 }, effect: {} },
-    stone_hail: { id: 'stone_hail', name: 'Stone Hail', requiredBuildingLevel: 31, researchPointsCost: 4, cost: { ore: 8500, stone: 5900, iron: 6600 }, effect: {} },
-    temple_looting: { id: 'temple_looting', name: 'Temple Looting', requiredBuildingLevel: 31, researchPointsCost: 6, cost: { ore: 9200, stone: 5300, iron: 10000 }, effect: {} },
-    divine_selection: { id: 'divine_selection', name: 'Divine Selection', requiredBuildingLevel: 31, researchPointsCost: 10, cost: { ore: 10000, stone: 8000, iron: 12000 }, effect: {} },
-    battle_experience: { id: 'battle_experience', name: 'Battle Experience', requiredBuildingLevel: 34, researchPointsCost: 6, cost: { ore: 9800, stone: 11400, iron: 14200 }, effect: {} },
-    strong_wine: { id: 'strong_wine', name: 'Strong Wine', requiredBuildingLevel: 34, researchPointsCost: 4, cost: { ore: 8000, stone: 6500, iron: 11000 }, effect: {} },
-    set_sail: { id: 'set_sail', name: 'Set Sail', requiredBuildingLevel: 34, researchPointsCost: 8, cost: { ore: 13000, stone: 9700, iron: 15500 }, effect: {} },
+    railgun_skirmisher: defineResearch('railgun_skirmisher', { name: 'Railgun Skirmisher', description: 'Unit unlock research.', requiredBuildingLevel: 1, researchPointsCost: 4, cost: { ore: 300, stone: 500, iron: 200 }, effect: {} }),
+    assault_ranger: defineResearch('assault_ranger', { name: 'Assault Ranger', description: 'Unit unlock research.', requiredBuildingLevel: 1, researchPointsCost: 8, cost: { ore: 550, stone: 100, iron: 400 }, effect: {} }),
+    city_guard: defineResearch('city_guard', { name: 'City Guard', description: 'Direct bonus research.', requiredBuildingLevel: 1, researchPointsCost: 3, cost: { ore: 400, stone: 300, iron: 300 }, effect: { defensePct: 5 } }),
+    bulwark_trooper: defineResearch('bulwark_trooper', { name: 'Bulwark Trooper', description: 'Unit unlock research.', requiredBuildingLevel: 4, researchPointsCost: 8, requiredResearch: ['railgun_skirmisher'], cost: { ore: 600, stone: 200, iron: 850 }, effect: {} }),
+    diplomacy: defineResearch('diplomacy', { name: 'Diplomacy', description: 'Direct bonus research.', requiredBuildingLevel: 4, researchPointsCost: 3, requiredResearch: ['city_guard'], cost: { ore: 100, stone: 400, iron: 200 }, effect: { productionPct: 10 } }),
+    meteorology: defineResearch('meteorology', { name: 'Meteorology', description: 'Direct bonus research.', requiredBuildingLevel: 4, researchPointsCost: 4, requiredResearch: ['assault_ranger'], cost: { ore: 2500, stone: 1700, iron: 6500 }, effect: { trainingSpeedPct: 5 } }),
+    espionage: defineResearch('espionage', { name: 'Espionage', description: 'Feature unlock research.', requiredBuildingLevel: 7, researchPointsCost: 3, requiredResearch: ['diplomacy'], cost: { ore: 900, stone: 900, iron: 1100 }, effect: { detectionPct: 10, counterIntelPct: 10 } }),
+    market_logistics: defineResearch('market_logistics', { name: 'Market Logistics', description: 'Direct bonus research.', requiredBuildingLevel: 7, researchPointsCost: 3, requiredResearch: ['diplomacy'], cost: { ore: 1200, stone: 1200, iron: 1200 }, effect: { marketEfficiencyPct: 6 } }),
+    ceramics: defineResearch('ceramics', { name: 'Ceramics', description: 'Direct bonus research.', requiredBuildingLevel: 7, researchPointsCost: 4, requiredResearch: ['city_guard'], cost: { ore: 700, stone: 1500, iron: 900 }, effect: { marketEfficiencyPct: 4 } }),
+    workforce_loyalty: defineResearch('workforce_loyalty', { name: 'Workforce Loyalty', description: 'Direct bonus research.', requiredBuildingLevel: 7, researchPointsCost: 6, requiredResearch: ['ceramics'], cost: { ore: 1300, stone: 1300, iron: 1300 }, effect: { productionPct: 12 } }),
+    raider_interceptor: defineResearch('raider_interceptor', { name: 'Raider Interceptor', description: 'Unit unlock research.', requiredBuildingLevel: 10, researchPointsCost: 8, requiredResearch: ['bulwark_trooper'], cost: { ore: 1400, stone: 700, iron: 1800 }, effect: {} }),
+    architecture: defineResearch('architecture', { name: 'Architecture', description: 'Direct bonus research.', requiredBuildingLevel: 10, researchPointsCost: 6, requiredResearch: ['city_guard'], cost: { ore: 1900, stone: 2100, iron: 1300 }, effect: { buildSpeedPct: 6 } }),
+    trainer: defineResearch('trainer', { name: 'Trainer', description: 'Direct bonus research.', requiredBuildingLevel: 10, researchPointsCost: 4, requiredResearch: ['meteorology'], cost: { ore: 800, stone: 1300, iron: 1600 }, effect: { trainingSpeedPct: 8 } }),
+    colony_ark: defineResearch('colony_ark', { name: 'Colony Ark', description: 'Unit unlock research.', requiredBuildingLevel: 13, researchPointsCost: 0, requiredResearch: ['architecture'], durationSeconds: 3600, cost: { ore: 7500, stone: 7500, iron: 9500 }, effect: {} }),
+    sentinel_interceptor: defineResearch('sentinel_interceptor', { name: 'Sentinel Interceptor', description: 'Unit unlock research.', requiredBuildingLevel: 13, researchPointsCost: 8, requiredResearch: ['trainer'], cost: { ore: 2800, stone: 1300, iron: 2200 }, effect: {} }),
+    crane: defineResearch('crane', { name: 'Crane', description: 'Direct bonus research.', requiredBuildingLevel: 13, researchPointsCost: 4, requiredResearch: ['architecture'], cost: { ore: 3000, stone: 1800, iron: 1400 }, effect: { buildSpeedPct: 8 } }),
+    shipwright: defineResearch('shipwright', { name: 'Shipwright', description: 'Direct bonus research.', requiredBuildingLevel: 13, researchPointsCost: 6, requiredResearch: ['trainer'], cost: { ore: 5000, stone: 2000, iron: 1900 }, effect: { trainingSpeedPct: 10 } }),
+    aegis_walker: defineResearch('aegis_walker', { name: 'Aegis Walker', description: 'Unit unlock research.', requiredBuildingLevel: 16, researchPointsCost: 8, requiredResearch: ['raider_interceptor'], cost: { ore: 3700, stone: 1900, iron: 2800 }, effect: {} }),
+    vanguard_corvette: defineResearch('vanguard_corvette', { name: 'Vanguard Corvette', description: 'Unit unlock research.', requiredBuildingLevel: 16, researchPointsCost: 8, requiredResearch: ['sentinel_interceptor'], cost: { ore: 4400, stone: 2000, iron: 2400 }, effect: {} }),
+    conscription: defineResearch('conscription', { name: 'Conscription', description: 'Direct bonus research.', requiredBuildingLevel: 16, researchPointsCost: 4, requiredResearch: ['trainer'], cost: { ore: 3800, stone: 4200, iron: 6000 }, effect: { trainingSpeedPct: 6, defensePct: 4 } }),
+    ember_frigate: defineResearch('ember_frigate', { name: 'Ember Frigate', description: 'Unit unlock research.', requiredBuildingLevel: 19, researchPointsCost: 8, requiredResearch: ['vanguard_corvette'], cost: { ore: 5300, stone: 2600, iron: 2700 }, effect: {} }),
+    siege_artillery: defineResearch('siege_artillery', { name: 'Siege Artillery', description: 'Unit unlock research.', requiredBuildingLevel: 19, researchPointsCost: 8, requiredResearch: ['architecture'], cost: { ore: 5500, stone: 2900, iron: 3600 }, effect: {} }),
+    cryptography: defineResearch('cryptography', { name: 'Cryptography', description: 'Feature unlock research.', requiredBuildingLevel: 19, researchPointsCost: 6, requiredResearch: ['espionage'], cost: { ore: 2500, stone: 3000, iron: 5100 }, effect: { counterIntelPct: 12 } }),
+    democracy: defineResearch('democracy', { name: 'Democracy', description: 'Direct bonus research.', requiredBuildingLevel: 19, researchPointsCost: 6, requiredResearch: ['workforce_loyalty'], cost: { ore: 3100, stone: 3100, iron: 4100 }, effect: { defensePct: 8 } }),
+    rapid_carrier: defineResearch('rapid_carrier', { name: 'Rapid Carrier', description: 'Unit unlock research.', requiredBuildingLevel: 22, researchPointsCost: 8, requiredResearch: ['sentinel_interceptor'], cost: { ore: 6500, stone: 2800, iron: 3200 }, effect: {} }),
+    plow: defineResearch('plow', { name: 'Plow', description: 'Direct bonus research.', requiredBuildingLevel: 22, researchPointsCost: 4, requiredResearch: ['ceramics'], cost: { ore: 3000, stone: 3300, iron: 2100 }, effect: { productionPct: 10 } }),
+    bunks: defineResearch('bunks', { name: 'Bunks', description: 'Direct bonus research.', requiredBuildingLevel: 22, researchPointsCost: 6, requiredResearch: ['rapid_carrier'], cost: { ore: 8900, stone: 5200, iron: 7800 }, effect: { defensePct: 6 } }),
+    bulwark_cruiser: defineResearch('bulwark_cruiser', { name: 'Bulwark Cruiser', description: 'Unit unlock research.', requiredBuildingLevel: 25, researchPointsCost: 8, requiredResearch: ['sentinel_interceptor', 'vanguard_corvette'], cost: { ore: 6500, stone: 3800, iron: 4700 }, effect: {} }),
+    defense_formation: defineResearch('defense_formation', { name: 'Defense Formation', description: 'Direct bonus research.', requiredBuildingLevel: 25, researchPointsCost: 9, requiredResearch: ['city_guard', 'bulwark_trooper'], cost: { ore: 4000, stone: 4000, iron: 15000 }, effect: { defensePct: 10 } }),
+    offensive_tempo: defineResearch('offensive_tempo', { name: 'Offensive Tempo', description: 'Direct bonus research.', requiredBuildingLevel: 25, researchPointsCost: 6, requiredResearch: ['siege_artillery'], cost: { ore: 8000, stone: 8000, iron: 9000 }, effect: { trainingSpeedPct: 6 } }),
+    mathematics: defineResearch('mathematics', { name: 'Mathematics', description: 'Direct bonus research.', requiredBuildingLevel: 25, researchPointsCost: 6, requiredResearch: ['architecture'], cost: { ore: 7100, stone: 4400, iron: 8600 }, effect: { buildSpeedPct: 6 } }),
+    fortification_breach: defineResearch('fortification_breach', { name: 'Fortification Breach', description: 'Direct bonus research.', requiredBuildingLevel: 28, researchPointsCost: 10, requiredResearch: ['siege_artillery'], cost: { ore: 7900, stone: 9200, iron: 14000 }, effect: { defensePct: 4 } }),
+    cartography: defineResearch('cartography', { name: 'Cartography', description: 'Feature unlock research.', requiredBuildingLevel: 28, researchPointsCost: 8, requiredResearch: ['rapid_carrier'], cost: { ore: 10000, stone: 6700, iron: 12500 }, effect: { marketEfficiencyPct: 4 } }),
+    conquest: defineResearch('conquest', { name: 'Conquest', description: 'System gate research.', requiredBuildingLevel: 28, researchPointsCost: 0, requiredResearch: ['colony_ark', 'cartography'], durationSeconds: 4200, cost: { ore: 12000, stone: 12000, iron: 16000 }, effect: {} }),
+    anti_air_defense: defineResearch('anti_air_defense', { name: 'Anti-Air Defense', description: 'Direct bonus research.', requiredBuildingLevel: 31, researchPointsCost: 4, requiredResearch: ['siege_artillery'], cost: { ore: 8500, stone: 5900, iron: 6600 }, effect: { antiAirDefensePct: 8 } }),
+    recovery_logistics: defineResearch('recovery_logistics', { name: 'Recovery Logistics', description: 'Direct bonus research.', requiredBuildingLevel: 31, researchPointsCost: 6, requiredResearch: ['conquest'], cost: { ore: 9200, stone: 5300, iron: 10000 }, effect: { marketEfficiencyPct: 5 } }),
+    command_selection: defineResearch('command_selection', { name: 'Command Selection', description: 'Direct bonus research.', requiredBuildingLevel: 31, researchPointsCost: 10, requiredResearch: ['democracy'], cost: { ore: 10000, stone: 8000, iron: 12000 }, effect: { buildSpeedPct: 4, defensePct: 4 } }),
+    veteran_training: defineResearch('veteran_training', { name: 'Veteran Training', description: 'Direct bonus research.', requiredBuildingLevel: 34, researchPointsCost: 6, requiredResearch: ['defense_formation'], cost: { ore: 9800, stone: 11400, iron: 14200 }, effect: { trainingSpeedPct: 6, defensePct: 6 } }),
+    workforce_morale: defineResearch('workforce_morale', { name: 'Workforce Morale', description: 'Direct bonus research.', requiredBuildingLevel: 34, researchPointsCost: 4, requiredResearch: ['workforce_loyalty'], cost: { ore: 8000, stone: 6500, iron: 11000 }, effect: { productionPct: 6 } }),
+    naval_mobilization: defineResearch('naval_mobilization', { name: 'Naval Mobilization', description: 'Direct bonus research.', requiredBuildingLevel: 34, researchPointsCost: 8, requiredResearch: ['bulwark_cruiser', 'cartography'], cost: { ore: 13000, stone: 9700, iron: 15500 }, effect: { trainingSpeedPct: 4 } }),
   },
   policies: {
     industrial_push: {

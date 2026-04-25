@@ -17,6 +17,7 @@ import {
   evaluateEspionageOutcome,
   getDefenderEffectiveSpyDefense,
   canStartResearch,
+  canStartIntelProject,
   canStartTroopTraining,
   activateMilitia,
   applyClaimOnAccess,
@@ -625,7 +626,7 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     base.resources = { ore: 9_999, stone: 9_999, iron: 9_999 };
     base.levels.housing_complex = 20;
     base.levels.space_dock = 1;
-    base.completedResearch.push('light_transport_ships');
+    base.completedResearch.push('rapid_carrier');
 
     expect(startTroopTraining(base, 'assault_dropship', 1, 0).ok).toBe(true);
     const durationAtD1 = base.trainingQueue[0].endsAtMs;
@@ -634,7 +635,7 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     boosted.resources = { ore: 9_999, stone: 9_999, iron: 9_999 };
     boosted.levels.housing_complex = 20;
     boosted.levels.space_dock = 2;
-    boosted.completedResearch.push('light_transport_ships');
+    boosted.completedResearch.push('rapid_carrier');
 
     expect(startTroopTraining(boosted, 'assault_dropship', 1, 0).ok).toBe(true);
     const durationAtD2 = boosted.trainingQueue[0].endsAtMs;
@@ -653,21 +654,39 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     expect(canStartTroopTraining(state, 'phalanx_lanceguard', 1).ok).toBe(false);
   });
 
-  it('researches instantly and spends academy research points', () => {
+  it('runs timed research queue, then resolves completion and spends academy research points', () => {
     const state = createInitialCityEconomyState({ cityId: 'c-1', owner: 'p1', nowMs: 0 });
     state.resources = { ore: 9999, stone: 9999, iron: 9999 };
     state.levels.hq = 4;
     state.levels.warehouse = 4;
     state.levels.research_lab = 7;
+    state.completedResearch.push('city_guard');
 
     expect(canStartResearch(state, 'diplomacy').ok).toBe(true);
     expect(startResearch(state, 'diplomacy', 0).ok).toBe(true);
+    expect(state.completedResearch).not.toContain('diplomacy');
+    expect(state.researchQueue.length).toBe(1);
+    expect(resolveCompletedResearch(state, state.researchQueue[0].endsAtMs)).toBe(true);
     expect(state.completedResearch).toContain('diplomacy');
     expect(state.researchQueue).toEqual([]);
 
     const stats = getCityDerivedStats(state);
     expect(stats.productionPct).toBeGreaterThan(0);
     expect(resolveCompletedResearch(state, 0)).toBe(false);
+  });
+
+  it('enforces research prerequisites and single active research queue slot', () => {
+    const state = createInitialCityEconomyState({ cityId: 'c-rq', owner: 'p1', nowMs: 0 });
+    state.resources = { ore: 999_999, stone: 999_999, iron: 999_999 };
+    state.levels.research_lab = 20;
+
+    expect(canStartResearch(state, 'cryptography')).toEqual({ ok: false, reason: 'Requires research espionage' });
+    state.completedResearch.push('city_guard', 'diplomacy', 'espionage');
+    expect(startResearch(state, 'cryptography', 5_000).ok).toBe(true);
+    expect(canStartResearch(state, 'democracy')).toEqual({ ok: false, reason: 'Research queue busy' });
+    expect(resolveCompletedResearch(state, 5_001)).toBe(false);
+    expect(resolveCompletedResearch(state, state.researchQueue[0].endsAtMs)).toBe(true);
+    expect(state.completedResearch).toContain('cryptography');
   });
 
   it('supports governance policy persistence and bonuses', () => {
@@ -714,6 +733,7 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     const state = createInitialCityEconomyState({ cityId: 'atk', owner: 'p1', nowMs: 0 });
     state.resources.iron = 15_000;
     state.levels.intelligence_center = 3;
+    state.completedResearch.push('espionage');
 
     expect(canDepositSpySilver(state, 3_000).ok).toBe(true);
     expect(depositSpySilver(state, 3_000).ok).toBe(true);
@@ -726,6 +746,22 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     expect(canDepositSpySilver(state, 100)).toEqual({ ok: false, reason: 'Cannot refill vault while mission is active' });
     expect(canStartEspionageMission(state, '', 1_000)).toEqual({ ok: false, reason: 'Target city required' });
     expect(canStartEspionageMission(state, 'atk', 1_000)).toEqual({ ok: false, reason: 'Cannot target own city' });
+  });
+
+  it('gates advanced intelligence actions behind research progression', () => {
+    const state = createInitialCityEconomyState({ cityId: 'intel-gate', owner: 'p1', nowMs: 0 });
+    state.levels.intelligence_center = 5;
+    state.resources.iron = 20_000;
+    expect(canStartIntelProject(state, 'network')).toEqual({ ok: false, reason: 'Requires research espionage' });
+    expect(canStartIntelProject(state, 'cipher')).toEqual({ ok: false, reason: 'Requires research cryptography' });
+    expect(canStartEspionageMission(state, 'target-city', 1_000)).toEqual({ ok: false, reason: 'Requires research espionage' });
+
+    state.completedResearch.push('espionage');
+    expect(canStartIntelProject(state, 'network').ok).toBe(true);
+    expect(canStartEspionageMission(state, 'target-city', 1_000)).toEqual({ ok: false, reason: 'Not enough vault silver' });
+
+    state.completedResearch.push('cryptography');
+    expect(canStartIntelProject(state, 'cipher').ok).toBe(true);
   });
 
   it('applies finite vault cap before level 10, then infinite cap at level 10', () => {
@@ -755,7 +791,7 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
 
     const outcome = evaluateEspionageOutcome(1_500, defender);
     expect(outcome.defenderEffectiveSpyDefense).toBe(effective);
-    expect(outcome.wasSuccess).toBe(false);
+    expect(outcome.wasSuccess).toBe(1_500 > effective);
     expect(outcome.detectionPctAtResolution).toBeGreaterThan(0);
     expect(outcome.counterIntelPctAtResolution).toBeGreaterThan(0);
   });
@@ -944,26 +980,26 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     state.resources = { ore: 1_000, stone: 1_000, iron: 1_000 };
     state.levels.barracks = 1;
     state.levels.housing_complex = 45;
-    state.completedResearch.push('slinger');
+    state.completedResearch.push('railgun_skirmisher');
 
     expect(startTroopTraining(state, 'rail_marksman', 1, 0).ok).toBe(true);
     expect(state.trainingQueue[0].costPaid).toEqual({ ore: 55, stone: 0, iron: 40 });
     expect(state.resources).toEqual({ ore: 945, stone: 1_000, iron: 960 });
   });
 
-  it('uses corrected aegis_shieldguard barracks guard (level 1) with chariot research', () => {
+  it('uses corrected aegis_shieldguard barracks guard (level 1) with aegis_walker research', () => {
     const blocked = createInitialCityEconomyState({ cityId: 'c-aegis-guard-blocked', owner: 'p1', nowMs: 0 });
     blocked.resources = { ore: 9_999, stone: 9_999, iron: 9_999 };
     blocked.levels.barracks = 0;
     blocked.levels.housing_complex = 45;
-    blocked.completedResearch.push('chariot');
+    blocked.completedResearch.push('aegis_walker');
     expect(canStartTroopTraining(blocked, 'aegis_shieldguard', 1)).toEqual({ ok: false, reason: 'Requires barracks 1' });
 
     const ready = createInitialCityEconomyState({ cityId: 'c-aegis-guard-ready', owner: 'p1', nowMs: 0 });
     ready.resources = { ore: 9_999, stone: 9_999, iron: 9_999 };
     ready.levels.barracks = 1;
     ready.levels.housing_complex = 45;
-    ready.completedResearch.push('chariot');
+    ready.completedResearch.push('aegis_walker');
     expect(canStartTroopTraining(ready, 'aegis_shieldguard', 1).ok).toBe(true);
   });
 
@@ -972,7 +1008,7 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     state.resources = { ore: 9_999, stone: 9_999, iron: 9_999 };
     state.levels.barracks = 5;
     state.levels.housing_complex = 45;
-    state.completedResearch.push('catapult');
+    state.completedResearch.push('siege_artillery');
 
     expect(CITY_ECONOMY_CONFIG.troops.siege_breacher.trainingSeconds).toBe(12_600);
     expect(startTroopTraining(state, 'siege_breacher', 1, 0).ok).toBe(true);
@@ -982,12 +1018,12 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
   it('queues, costs, resolves, and applies barracks training speed for barracks units', () => {
     const unitCases = [
       { troopId: 'line_infantry', withResearch: [] },
-      { troopId: 'phalanx_lanceguard', withResearch: ['hoplite'] },
-      { troopId: 'rail_marksman', withResearch: ['slinger'] },
-      { troopId: 'assault_legionnaire', withResearch: ['archer'] },
-      { troopId: 'aegis_shieldguard', withResearch: ['chariot'] },
-      { troopId: 'raider_hoverbike', withResearch: ['horseman'] },
-      { troopId: 'siege_breacher', withResearch: ['catapult'] },
+      { troopId: 'phalanx_lanceguard', withResearch: ['bulwark_trooper'] },
+      { troopId: 'rail_marksman', withResearch: ['railgun_skirmisher'] },
+      { troopId: 'assault_legionnaire', withResearch: ['assault_ranger'] },
+      { troopId: 'aegis_shieldguard', withResearch: ['aegis_walker'] },
+      { troopId: 'raider_hoverbike', withResearch: ['raider_interceptor'] },
+      { troopId: 'siege_breacher', withResearch: ['siege_artillery'] },
     ] as const;
 
     unitCases.forEach(({ troopId, withResearch }) => {
@@ -1024,7 +1060,7 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
 
 
 
-  it('uses transportCapacity as canonical carry stat (booty removed)', () => {
+  it('uses transportCapacity as canonical carry stat (market_logistics removed)', () => {
     const expectedTransportCapacity = {
       line_infantry: 16,
       phalanx_lanceguard: 8,
@@ -1038,18 +1074,18 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     (Object.keys(expectedTransportCapacity) as Array<keyof typeof expectedTransportCapacity>).forEach((troopId) => {
       const troop = CITY_ECONOMY_CONFIG.troops[troopId];
       expect(troop.transportCapacity).toBe(expectedTransportCapacity[troopId]);
-      expect('booty' in troop).toBe(false);
+      expect('market_logistics' in troop).toBe(false);
     });
   });
 
   it('keeps barracks unit research mapping aligned with intended Grepolis equivalents', () => {
     expect(CITY_ECONOMY_CONFIG.troops.line_infantry.requiredResearch).toBeNull();
-    expect(CITY_ECONOMY_CONFIG.troops.phalanx_lanceguard.requiredResearch).toBe('hoplite');
-    expect(CITY_ECONOMY_CONFIG.troops.rail_marksman.requiredResearch).toBe('slinger');
-    expect(CITY_ECONOMY_CONFIG.troops.assault_legionnaire.requiredResearch).toBe('archer');
-    expect(CITY_ECONOMY_CONFIG.troops.aegis_shieldguard.requiredResearch).toBe('chariot');
-    expect(CITY_ECONOMY_CONFIG.troops.raider_hoverbike.requiredResearch).toBe('horseman');
-    expect(CITY_ECONOMY_CONFIG.troops.siege_breacher.requiredResearch).toBe('catapult');
+    expect(CITY_ECONOMY_CONFIG.troops.phalanx_lanceguard.requiredResearch).toBe('bulwark_trooper');
+    expect(CITY_ECONOMY_CONFIG.troops.rail_marksman.requiredResearch).toBe('railgun_skirmisher');
+    expect(CITY_ECONOMY_CONFIG.troops.assault_legionnaire.requiredResearch).toBe('assault_ranger');
+    expect(CITY_ECONOMY_CONFIG.troops.aegis_shieldguard.requiredResearch).toBe('aegis_walker');
+    expect(CITY_ECONOMY_CONFIG.troops.raider_hoverbike.requiredResearch).toBe('raider_interceptor');
+    expect(CITY_ECONOMY_CONFIG.troops.siege_breacher.requiredResearch).toBe('siege_artillery');
 
     const barracksResearchIds = new Set(
       (Object.keys(CITY_ECONOMY_CONFIG.troops) as Array<keyof typeof CITY_ECONOMY_CONFIG.troops>)
@@ -1059,7 +1095,7 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     );
 
     expect(barracksResearchIds.has('city_guard')).toBe(false);
-    expect(barracksResearchIds.has('slinger')).toBe(true);
+    expect(barracksResearchIds.has('railgun_skirmisher')).toBe(true);
   });
 
   it('keeps troop category and production-building wiring coherent', () => {
@@ -1112,12 +1148,12 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     expect(runtimeSpaceDockTroops).toEqual(expectedSpaceDockTroops);
 
     expect(CITY_ECONOMY_CONFIG.troops.assault_dropship.requiredResearch).toBeNull();
-    expect(CITY_ECONOMY_CONFIG.troops.swift_carrier.requiredResearch).toBe('light_transport_ships');
-    expect(CITY_ECONOMY_CONFIG.troops.interceptor_sentinel.requiredResearch).toBe('bireme');
-    expect(CITY_ECONOMY_CONFIG.troops.ember_drifter.requiredResearch).toBe('fire_ship');
-    expect(CITY_ECONOMY_CONFIG.troops.rapid_escort.requiredResearch).toBe('light_ship');
-    expect(CITY_ECONOMY_CONFIG.troops.bulwark_trireme.requiredResearch).toBe('trireme');
-    expect(CITY_ECONOMY_CONFIG.troops.colonization_arkship.requiredResearch).toBe('colony_ship');
+    expect(CITY_ECONOMY_CONFIG.troops.swift_carrier.requiredResearch).toBe('rapid_carrier');
+    expect(CITY_ECONOMY_CONFIG.troops.interceptor_sentinel.requiredResearch).toBe('sentinel_interceptor');
+    expect(CITY_ECONOMY_CONFIG.troops.ember_drifter.requiredResearch).toBe('ember_frigate');
+    expect(CITY_ECONOMY_CONFIG.troops.rapid_escort.requiredResearch).toBe('vanguard_corvette');
+    expect(CITY_ECONOMY_CONFIG.troops.bulwark_trireme.requiredResearch).toBe('bulwark_cruiser');
+    expect(CITY_ECONOMY_CONFIG.troops.colonization_arkship.requiredResearch).toBe('colony_ark');
 
     expect(CITY_ECONOMY_CONFIG.troops.interceptor_sentinel.navalDefense).toBe(160);
     expect(CITY_ECONOMY_CONFIG.troops.rapid_escort.navalDefense).toBe(60);
@@ -1130,12 +1166,12 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
   it('enforces space_dock guards and training runtime loop for every naval unit', () => {
     const navalCases = [
       { troopId: 'assault_dropship', buildingLevel: 1, research: null as null | keyof typeof CITY_ECONOMY_CONFIG.research },
-      { troopId: 'swift_carrier', buildingLevel: 1, research: 'light_transport_ships' as const },
-      { troopId: 'interceptor_sentinel', buildingLevel: 1, research: 'bireme' as const },
-      { troopId: 'ember_drifter', buildingLevel: 1, research: 'fire_ship' as const },
-      { troopId: 'rapid_escort', buildingLevel: 1, research: 'light_ship' as const },
-      { troopId: 'bulwark_trireme', buildingLevel: 1, research: 'trireme' as const },
-      { troopId: 'colonization_arkship', buildingLevel: 10, research: 'colony_ship' as const },
+      { troopId: 'swift_carrier', buildingLevel: 1, research: 'rapid_carrier' as const },
+      { troopId: 'interceptor_sentinel', buildingLevel: 1, research: 'sentinel_interceptor' as const },
+      { troopId: 'ember_drifter', buildingLevel: 1, research: 'ember_frigate' as const },
+      { troopId: 'rapid_escort', buildingLevel: 1, research: 'vanguard_corvette' as const },
+      { troopId: 'bulwark_trireme', buildingLevel: 1, research: 'bulwark_cruiser' as const },
+      { troopId: 'colonization_arkship', buildingLevel: 10, research: 'colony_ark' as const },
     ] as const;
 
     navalCases.forEach(({ troopId, buildingLevel, research }) => {
@@ -1185,7 +1221,7 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     });
   });
 
-  it('uses transportCapacity as canonical naval carry stat (no legacy booty field)', () => {
+  it('uses transportCapacity as canonical naval carry stat (no legacy market_logistics field)', () => {
     const navalTroops = [
       'assault_dropship',
       'swift_carrier',
@@ -1202,7 +1238,7 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
       expect(typeof troop.navalAttack).toBe('number');
       expect(typeof troop.navalDefense).toBe('number');
       expect(troop.defenseDistance).toBe(0);
-      expect('booty' in troop).toBe(false);
+      expect('market_logistics' in troop).toBe(false);
     });
   });
 

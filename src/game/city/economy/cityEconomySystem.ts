@@ -348,9 +348,19 @@ function getResearchEffectTotals(state: CityEconomyState) {
       acc.marketEfficiencyPct += effect.marketEfficiencyPct ?? 0;
       acc.detectionPct += effect.detectionPct ?? 0;
       acc.counterIntelPct += effect.counterIntelPct ?? 0;
+      acc.buildSpeedPct += effect.buildSpeedPct ?? 0;
       return acc;
     },
-    { productionPct: 0, trainingSpeedPct: 0, defensePct: 0, antiAirDefensePct: 0, marketEfficiencyPct: 0, detectionPct: 0, counterIntelPct: 0 },
+    {
+      productionPct: 0,
+      trainingSpeedPct: 0,
+      defensePct: 0,
+      antiAirDefensePct: 0,
+      marketEfficiencyPct: 0,
+      detectionPct: 0,
+      counterIntelPct: 0,
+      buildSpeedPct: 0,
+    },
   );
 }
 
@@ -360,7 +370,9 @@ function getResearchPointsCapacity(state: CityEconomyState) {
 }
 
 function getResearchPointsSpent(state: CityEconomyState) {
-  return state.completedResearch.reduce((sum, researchId) => sum + CITY_ECONOMY_CONFIG.research[researchId].researchPointsCost, 0);
+  const completed = state.completedResearch.reduce((sum, researchId) => sum + CITY_ECONOMY_CONFIG.research[researchId].researchPointsCost, 0);
+  const queued = state.researchQueue.reduce((sum, entry) => sum + CITY_ECONOMY_CONFIG.research[entry.researchId].researchPointsCost, 0);
+  return completed + queued;
 }
 
 function getPolicyEffect(state: CityEconomyState) {
@@ -407,7 +419,7 @@ export function getCityDerivedStats(state: CityEconomyState) {
     researchCapacity: lab?.effect.researchCapacity ?? 0,
     marketEfficiencyPct: (market?.effect.marketEfficiencyPct ?? 0) + research.marketEfficiencyPct,
     buildCostReductionPct: 0,
-    buildSpeedPct: council?.effect.buildSpeedPct ?? 0,
+    buildSpeedPct: (council?.effect.buildSpeedPct ?? 0) + research.buildSpeedPct,
     productionPct: research.productionPct + (policy?.productionPct ?? 0),
     intelReadiness: state.intelReadiness,
   };
@@ -830,9 +842,12 @@ export function resolveCompletedTraining(state: CityEconomyState, nowMs = Date.n
 
 export function canStartResearch(state: CityEconomyState, researchId: ResearchId): GuardResult {
   if (state.completedResearch.includes(researchId)) return { ok: false, reason: 'Already researched' };
+  if (state.researchQueue.length > 0) return { ok: false, reason: 'Research queue busy' };
   if (getBuildingLevel(state, 'research_lab') < CITY_ECONOMY_CONFIG.research[researchId].requiredBuildingLevel) {
     return { ok: false, reason: `Requires research_lab ${CITY_ECONOMY_CONFIG.research[researchId].requiredBuildingLevel}` };
   }
+  const missingPrerequisite = CITY_ECONOMY_CONFIG.research[researchId].requiredResearch.find((requiredId) => !state.completedResearch.includes(requiredId));
+  if (missingPrerequisite) return { ok: false, reason: `Requires research ${missingPrerequisite}` };
   const capacity = getResearchPointsCapacity(state);
   const spent = getResearchPointsSpent(state);
   const nextCost = CITY_ECONOMY_CONFIG.research[researchId].researchPointsCost;
@@ -845,21 +860,36 @@ export function canStartResearch(state: CityEconomyState, researchId: ResearchId
 }
 
 export function startResearch(state: CityEconomyState, researchId: ResearchId, nowMs = Date.now()): GuardResult {
-  void nowMs;
   const guard = canStartResearch(state, researchId);
   if (!guard.ok) return guard;
   const cfg = CITY_ECONOMY_CONFIG.research[researchId];
   state.resources.ore -= cfg.cost.ore;
   state.resources.stone -= cfg.cost.stone;
   state.resources.iron -= cfg.cost.iron;
-  state.completedResearch.push(researchId);
+  state.researchQueue.push({
+    researchId,
+    startedAtMs: nowMs,
+    endsAtMs: nowMs + cfg.durationSeconds * 1000,
+    costPaid: { ...cfg.cost },
+  });
   return { ok: true, reason: null };
 }
 
 export function resolveCompletedResearch(state: CityEconomyState, nowMs = Date.now()) {
-  void state;
-  void nowMs;
-  return false;
+  let changed = false;
+  const nextQueue: ResearchQueueEntry[] = [];
+  state.researchQueue.forEach((entry) => {
+    if (entry.endsAtMs > nowMs) {
+      nextQueue.push(entry);
+      return;
+    }
+    if (!state.completedResearch.includes(entry.researchId)) {
+      state.completedResearch.push(entry.researchId);
+      changed = true;
+    }
+  });
+  state.researchQueue = nextQueue;
+  return changed;
 }
 
 export function canSetPolicy(state: CityEconomyState, policyId: LocalPolicyId): GuardResult {
@@ -878,9 +908,19 @@ export function setActivePolicy(state: CityEconomyState, policyId: LocalPolicyId
   return { ok: true, reason: null };
 }
 
-export function canStartIntelProject(state: CityEconomyState): GuardResult {
+function requiredResearchForIntelProject(projectType: IntelProjectEntry['projectType']): ResearchId | null {
+  if (projectType === 'network') return 'espionage';
+  if (projectType === 'cipher') return 'cryptography';
+  return null;
+}
+
+export function canStartIntelProject(state: CityEconomyState, projectType: IntelProjectEntry['projectType'] = 'sweep'): GuardResult {
   if (getBuildingLevel(state, 'intelligence_center') <= 0) return { ok: false, reason: 'Requires intelligence_center 1' };
   if (state.intelProjects.length >= 1) return { ok: false, reason: 'Intel project busy' };
+  const requiredResearch = requiredResearchForIntelProject(projectType);
+  if (requiredResearch && !state.completedResearch.includes(requiredResearch)) {
+    return { ok: false, reason: `Requires research ${requiredResearch}` };
+  }
   return { ok: true, reason: null };
 }
 
@@ -925,6 +965,7 @@ export function canStartEspionageMission(
   if (!targetCityId) return { ok: false, reason: 'Target city required' };
   if (targetCityId === state.cityId) return { ok: false, reason: 'Cannot target own city' };
   if (getBuildingLevel(state, 'intelligence_center') <= 0) return { ok: false, reason: 'Requires intelligence_center 1' };
+  if (!state.completedResearch.includes('espionage')) return { ok: false, reason: 'Requires research espionage' };
   if (state.espionageMissions.length > 0) return { ok: false, reason: 'Spy is already on mission' };
   if (!Number.isFinite(silverToCommit) || silverToCommit < MIN_SPY_SILVER) return { ok: false, reason: 'Minimum 1000 silver required' };
   if (state.spyVaultSilver < silverToCommit) return { ok: false, reason: 'Not enough vault silver' };
@@ -957,7 +998,7 @@ export function startIntelProject(
   projectType: IntelProjectEntry['projectType'],
   nowMs = Date.now(),
 ): GuardResult {
-  const guard = canStartIntelProject(state);
+  const guard = canStartIntelProject(state, projectType);
   if (!guard.ok) return guard;
 
   const durationSeconds = projectType === 'sweep' ? 70 : projectType === 'network' ? 120 : 160;

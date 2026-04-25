@@ -5,7 +5,7 @@
 - Catégorie: `naval`
 - Bâtiment requis: `space_dock`
 - Niveau du bâtiment requis: 1
-- Recherche requise: trireme
+- Recherche requise: bulwark_cruiser
 - Statut dans le code: partiel (recrutement branché; combat/déplacement/transport/conquête non implémentés dans ce runtime)
 - Rôle gameplay réel: Combat naval (stat configurée; résolution absente du runtime).
 - Réellement recrutable / utilisable dans le runtime actuel: partiel
@@ -13,15 +13,15 @@
 ## 2. Déblocage et accès
 - Bâtiment requis: `space_dock`
 - Niveau requis: 1
-- Recherche requise éventuelle: trireme
+- Recherche requise éventuelle: bulwark_cruiser
 - Branche concernée: naval / space_dock
 - Conditions spécifiques: vérification ressources + population + prereqs via canStartTroopTraining.
 - Passe par la queue standard: oui
 
 ## 3. Fiche de stats complète
-| Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
-|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Bulwark Cruiser | bulwark_trireme | naval | 2000 | 1300 | 1300 | 0 | 14400 | 16 | 250 | naval | 0 | 0 | 0 | 15 | 0 | 0 | Heavy naval ship. |
+| Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Capacité transport | Notes |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---|
+| Bulwark Cruiser | bulwark_trireme | naval | 2000 | 1300 | 1300 | 0 | 14400 | 16 | 250 | naval | 0 | 0 | 0 | 15 | 0 | Heavy naval ship. |
 
 ## 4. Rôle gameplay réel
 - Combat naval (stat configurée; résolution absente du runtime).
@@ -32,11 +32,10 @@
 - `startTroopTraining` applique un multiplicateur de vitesse basé sur `trainingSpeedPct` (borné à `Math.max(0.35, 1 - pct/100)`).
 - La population est réservée pendant l’entraînement (`populationReserved`) puis consommée via le stock de troupes.
 - `transportCapacity` est en config mais pas exploité dans les systèmes runtime actuels.
-- Les stats de combat (`attack`, `attackType`, défenses) sont configurées mais aucune résolution de combat n’est branchée ici.
 
 ## 6. Pré requis et dépendances liées
 - Bâtiment source: `space_dock`
-- Recherche source: trireme
+- Recherche source: bulwark_cruiser
 - Interaction avec armament/barracks/space_dock/research_lab: temps d’entraînement dépend de trainingSpeedPct dérivé (barracks + space_dock + armament_factory + recherches + politique).
 
 ## 7. Cas spéciaux / edge cases

@@ -5,26 +5,26 @@
 - Catégorie: `naval`
 - Bâtiment requis: `space_dock`
 - Niveau du bâtiment requis: 1
-- Recherche requise: fire_ship
+- Recherche requise: vanguard_corvette
 - Statut dans le code: partiel (recrutement branché; combat/déplacement/transport/conquête non implémentés dans ce runtime)
-- Rôle gameplay réel: Combat naval (stat configurée; résolution absente du runtime).
+- Rôle gameplay réel: Transport logistique/naval.
 - Réellement recrutable / utilisable dans le runtime actuel: partiel
 
 ## 2. Déblocage et accès
 - Bâtiment requis: `space_dock`
 - Niveau requis: 1
-- Recherche requise éventuelle: fire_ship
+- Recherche requise éventuelle: vanguard_corvette
 - Branche concernée: naval / space_dock
 - Conditions spécifiques: vérification ressources + population + prereqs via canStartTroopTraining.
 - Passe par la queue standard: oui
 
 ## 3. Fiche de stats complète
-| Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Booty | Capacité transport | Notes |
-|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---|
-| Vanguard Corvette | rapid_escort | naval | 1300 | 300 | 800 | 0 | 14400 | 10 | 200 | naval | 0 | 0 | 0 | 13 | 60 | 0 | Offensive naval ship. |
+| Nom | ID | Catégorie | Ore | Stone | Iron | Favor cost | Temps d’entraînement | Population | Attaque | Type d’attaque | Défense blunt | Défense sharp | Défense distance | Vitesse | Capacité transport | Notes |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---|
+| Vanguard Corvette | rapid_escort | naval | 1300 | 300 | 800 | 0 | 14400 | 10 | 200 | naval | 0 | 0 | 0 | 13 | 60 | Offensive naval ship. |
 
 ## 4. Rôle gameplay réel
-- Combat naval (stat configurée; résolution absente du runtime).
+- Transport logistique/naval.
 - Interprétation limitée au code: note config présente (`Offensive naval ship.`); pas d’extrapolation hors runtime.
 
 ## 5. Comment elle est réellement utilisée dans le code
@@ -32,16 +32,16 @@
 - `startTroopTraining` applique un multiplicateur de vitesse basé sur `trainingSpeedPct` (borné à `Math.max(0.35, 1 - pct/100)`).
 - La population est réservée pendant l’entraînement (`populationReserved`) puis consommée via le stock de troupes.
 - `transportCapacity` est en config mais pas exploité dans les systèmes runtime actuels.
-- Les stats de combat (`attack`, `attackType`, défenses) sont configurées mais aucune résolution de combat n’est branchée ici.
+- Unité de transport dans la config; aucune logique de chargement/déchargement n’est implémentée dans ce repo.
 
 ## 6. Pré requis et dépendances liées
 - Bâtiment source: `space_dock`
-- Recherche source: fire_ship
+- Recherche source: vanguard_corvette
 - Interaction avec armament/barracks/space_dock/research_lab: temps d’entraînement dépend de trainingSpeedPct dérivé (barracks + space_dock + armament_factory + recherches + politique).
 
 ## 7. Cas spéciaux / edge cases
 - Unité avec `attackType: naval`.
-- Aucun edge case supplémentaire détecté au runtime.
+- Transport: capacité configurée mais aucune mécanique de transport runtime implémentée.
 - Colonisation: non concernée.
 
 ## 8. Statut d’implémentation / zones d’attention

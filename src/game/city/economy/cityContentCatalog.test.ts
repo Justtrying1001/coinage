@@ -82,6 +82,21 @@ describe('cityContentCatalog MVP MICRO scope', () => {
     ]);
   });
 
+  it('keeps research_lab catalog entry aligned with runtime unlock/effects status', () => {
+    const researchLab = FULL_BUILDING_CATALOG.find((entry) => entry.id === 'research_lab');
+    expect(researchLab).toBeDefined();
+    expect(researchLab?.phase).toBe('mvp');
+    expect(researchLab?.definitionStatus).toBe('fully_defined');
+    expect(researchLab?.gameplayImplemented).toBe(true);
+    expect(researchLab?.maxLevel).toBe(35);
+    expect(researchLab?.unlock).toEqual([
+      { type: 'hq', targetId: 'hq', minLevel: 8 },
+      { type: 'building', targetId: 'housing_complex', minLevel: 6 },
+      { type: 'building', targetId: 'barracks', minLevel: 5 },
+    ]);
+    expect(researchLab?.levelBandGates ?? []).toEqual([]);
+  });
+
   it('does not reference impossible intelligence_center levels in catalog dependencies', () => {
     const impossibleRefs = FULL_BUILDING_CATALOG.flatMap((entry) =>
       (entry.levelBandGates ?? []).flatMap((band) =>

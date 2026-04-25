@@ -3,8 +3,8 @@
 ## 1. Vue d’ensemble
 La branche **ÉCONOMIE / MVP** est largement resynchronisée sur le runtime actuel pour les scopes déjà traités.
 
-- **Audits traités et intégrés**: `hq`, `mine`, `quarry`, `refinery`, `warehouse`, `housing_complex`, `barracks`, `space_dock`, `defensive_wall`, `skyshield_battery`, `armament_factory`, plus les lots `barracks units` et `space_dock units`.
-- **Correctifs transverses déjà en place dans le code**: logique population (occupation niveau courant + coût upgrade en delta), suppression `booty`, canon `transportCapacity`, ajout `navalAttack/navalDefense` pour les unités Space Dock, renommages user-facing et renommage technique `watch_tower` → `skyshield_battery` avec compat legacy persistence.
+- **Audits traités et intégrés**: `hq`, `mine`, `quarry`, `refinery`, `warehouse`, `housing_complex`, `barracks`, `space_dock`, `defensive_wall`, `skyshield_battery`, `armament_factory`, `research_lab`, plus les lots `barracks units` et `space_dock units`.
+- **Correctifs transverses déjà en place dans le code**: logique population (occupation niveau courant + coût upgrade en delta), suppression de l’ancien champ de butin des unités, canon `transportCapacity`, ajout `navalAttack/navalDefense` pour les unités Space Dock, renommages user-facing et renommage technique `watch_tower` → `skyshield_battery` avec compat legacy persistence.
 - **Statut global**: runtime/config/docs des scopes traités = majoritairement stabilisés; la dette ouverte se divise désormais en deux blocs distincts: **(A) audit/implémentation runtime restante** (audits bâtiment + assets), et **(B) features produit MVP majeures** encore à implémenter/vérifier/finaliser (guerre, macro/micro, colonisation, bataille, espionnage, vues UI principales).
 
 - **Note produit figée (anti-doublon)**: `research_lab` = unlock tree / accès systèmes; `armament_factory` = amélioration attaque/défense des unités terrestres et aériennes, sans rôle de research ni production; remplacement `temple/gods` = futur système dédié de généraux (`war_council`/`high_command`) non implémenté à ce jour.
@@ -23,8 +23,9 @@ La branche **ÉCONOMIE / MVP** est largement resynchronisée sur le runtime actu
 | defensive_wall | Bâtiment custom Coinage | DONE | Validé (défense sol) | prérequis, progression, effets runtime ciblés | modèle orienté **défense sol**: `groundWallDefensePct`/`groundWallBaseDefense`; application en **city_defense** uniquement; ciblage unités **Barracks**; prérequis aligné `barracks >= 3` | équilibrage combat à surveiller lors du branchement combat final | `docs/building/defensive_wall.md`, `src/game/city/economy/cityContentCatalog.ts` |
 | skyshield_battery | Bâtiment custom Coinage | DONE | Validé (anti-aérien) | prérequis, progression, effets runtime ciblés | remplacement technique complet de `watch_tower`; modèle anti-aérien `airWallDefensePct`/`airWallBaseDefense`; application en **city_defense** uniquement; ciblage unités **space_dock**; aucun bonus offensif/Barracks; migration legacy save `watch_tower` | équilibrage combat à surveiller lors du branchement combat final | `docs/building/skyshield_battery.md`, `src/game/city/economy/cityContentCatalog.ts`, `src/game/city/economy/cityEconomyPersistence.ts` |
 | armament_factory | Bâtiment | PARTIAL | Rôle figé sur 4 axes combat | identité, prereqs (`HQ8`, `research_lab10`, `barracks10`), table 1..35, palier final L35 all-units, séparation vs training/research/production | runtime+catalog+docs alignés sur `groundAttackPct`/`groundDefensePct`/`airAttackPct`/`airDefensePct`, sans `trainingSpeedPct` | consommation combat finale détaillée encore partielle | `docs/building/armament_factory.md`, `src/game/city/economy/cityEconomySystem.ts`, `src/game/city/economy/cityBuildingLevelTables.ts` |
+| research_lab | Bâtiment | DONE | Scope verrouillé runtime+catalog+docs | identité (`HQ8`, `housing_complex6`, `barracks5`), max level 35, effet unique `researchCapacity=4/level`, système research temporisé (1 slot actif), prérequis de recherches + guards RP/ressources | matrice research resynchronisée sur les sources runtime (`CITY_ECONOMY_CONFIG.research`, `troops.requiredResearch`, guards intel), docs strictes sans extrapolation, tests resynchronisés | dette ouverte hors-scope: équilibrage macro final (guerre/colonisation) | `docs/building/research_lab.md`, `docs/research/research_matrix.md`, `src/game/city/economy/cityEconomySystem.ts`, `src/game/city/economy/cityEconomyConfig.ts`, `src/game/city/economy/cityEconomySystem.test.ts` |
 | intelligence_center | Bâtiment | DONE | Espionnage MVP finalisé | identité/prérequis/table 1..10, vault, mission ville->ville, résolution cross-city, rapports attaquant/défenseur, snapshot succès, guards robustes | formule de défense espionnage branchée sur stats dérivées (`detectionPct` + `counterIntelPct`), cible invalide rejetée explicitement, résolution pilotée par tick runtime central (pas par load opportuniste), UI mission active détaillée, docs/tests resynchronisés | hors-scope restant: intégrations futures combat macro/galaxy avancées | `docs/building/intelligence_center.md`, `docs/08-Espionage.md`, `src/game/city/economy/cityEconomySystem.ts`, `src/game/city/economy/cityEconomyPersistence.ts`, `src/game/render/modes/CityFoundationMode.ts` |
-| barracks units | Lot unités | DONE | Gameplay/runtime propre | mapping requis, coûts/temps/population, training flow | corrections gameplay appliquées; renommage user-facing; suppression `booty`; `transportCapacity` canonique | dette visuelle (assets unités) hors gameplay | `docs/units/barracks-units.md`, `docs/units/README.md` |
+| barracks units | Lot unités | DONE | Gameplay/runtime propre | mapping requis, coûts/temps/population, training flow | corrections gameplay appliquées; renommage user-facing; suppression du champ legacy de butin; `transportCapacity` canonique | dette visuelle (assets unités) hors gameplay | `docs/units/barracks-units.md`, `docs/units/README.md` |
 | space_dock units | Lot unités | PARTIAL | Gameplay/runtime propre, visuels incomplets | mapping research/building, coûts/temps/population, training flow | corrections research mapping; ajout modèle `navalAttack`/`navalDefense`; `transportCapacity` canonique; renommage user-facing | dette visuelle: assets dédiés manquants / non branchés UI | `docs/units/space-dock-units.md`, `docs/units/README.md` |
 | logique population bâtiment | Transversal runtime/UI | DONE | Validé | règles d’occupation, coût upgrade, garde-fous UI/runtime | occupation = coût niveau courant; coût upgrade = `target-current`; UI incrémentale alignée | rien d’ouvert sur ce scope | `src/game/city/economy/cityEconomySystem.ts`, `src/game/render/modes/CityFoundationMode.ts` |
 | renommage technique `watch_tower` → `skyshield_battery` | Transversal config/persistence | DONE | Validé | suppression usage actif `watch_tower`, cohérence catalog/persistence | id runtime remplacé; migration lecture legacy saves vers `skyshield_battery` | aucun scope actif `watch_tower` restant | `src/game/city/economy/cityContentCatalog.ts`, `src/game/city/economy/cityEconomyPersistence.ts`, `docs/building/README.md` |
@@ -36,11 +37,16 @@ La branche **ÉCONOMIE / MVP** est largement resynchronisée sur le runtime actu
 - **Space Dock progression**: corrections de progression aux paliers **L7** et **L27**.
 - **Barracks units gameplay**: correctifs gameplay appliqués (cohérence gates/coûts/temps selon lot audité).
 - **Space Dock units gameplay**: correctifs de mapping research appliqués.
-- **Modèle unités transport/pillage**: suppression du champ legacy `booty`; `transportCapacity` est la stat canonique.
+- **Modèle unités transport/pillage**: suppression du champ legacy de butin; `transportCapacity` est la stat canonique.
 - **Modèle unités Space Dock**: ajout/usage de `navalAttack` et `navalDefense`.
 - **Renommages user-facing**: lots Barracks et Space Dock harmonisés.
 - **Renommage technique bâtiment**: `watch_tower` retiré du scope actif; `skyshield_battery` utilisé et migré côté persistence legacy.
 - **Armament anti-doublon**: `armament_factory` ne contribue plus à `trainingSpeedPct`; ce rôle reste à `barracks`/`space_dock` (+ research/policies).
+- **Research refactor runtime**: passage d’un modèle instantané à un modèle temporisé (`researchQueue` active), ajout de prérequis de recherches, et guards runtime explicites.
+- **Documentation research (strict)**: `docs/research/research_matrix.md` alignée sur les sources runtime uniquement.
+- **Naming research**: labels de recherches d’unlock unités alignés sur les unités effectivement gateées par `requiredResearch`.
+- **UI research wording**: statuts player-facing alignés sur la réalité runtime timed queue (plus d’état "instant").
+- **Research effects clarity**: effets `defensePct` / `antiAirDefensePct` / `marketEfficiencyPct` documentés comme agrégés/partiels selon la consommation runtime réellement active.
 
 ## 4. Assets visuels manquants
 | Scope | Catégorie | Status | Détail factuel | Impact |
@@ -52,7 +58,6 @@ La branche **ÉCONOMIE / MVP** est largement resynchronisée sur le runtime actu
 
 ## 5. Ce qu’il reste à auditer
 Scopes non encore traités complètement dans le flux MVP actuel (**audit runtime/config/doc uniquement**):
-- `research_lab`
 - `market`
 - `council_chamber`
 
@@ -63,10 +68,10 @@ Points réellement ouverts après resynchronisation:
 - compléter/brancher les assets visuels du lot **barracks units**;
 - compléter/brancher les assets visuels du lot **space_dock units**;
 - clore le manque visuel du bâtiment **mine** (ou confirmer durablement la décision produit de non-livraison d’asset);
-- traiter les écarts qui sortiront des audits restants (`research_lab`, `market`, `council_chamber`).
+- traiter les écarts qui sortiront des audits restants (`market`, `council_chamber`).
 
 ## 7. Ordre de travail recommandé
-1. Auditer les scopes bâtiment restants, dans cet ordre: `research_lab` → `market` → `council_chamber`.
+1. Auditer les scopes bâtiment restants, dans cet ordre: `market` → `council_chamber`.
 2. À chaque audit, appliquer immédiatement les corrections runtime/config/UI/docs associées avant de passer au scope suivant.
 3. Fermer la dette visuelle: unités Barracks et Space Dock (assets + branchement UI), puis mine bâtiment.
 4. Faire une passe finale de validation transversale ÉCONOMIE (runtime + UI + persistence + docs) sur l’ensemble des scopes.
@@ -113,7 +118,7 @@ Points réellement ouverts après resynchronisation:
 
 ## 10. Priorités MVP restantes
 ### A. Audit / implémentation runtime existante
-1. Terminer les audits runtime/config/doc des scopes bâtiment restants (`research_lab`, `market`, `council_chamber`).
+1. Terminer les audits runtime/config/doc des scopes bâtiment restants (`market`, `council_chamber`).
 2. Corriger immédiatement les écarts trouvés pendant ces audits.
 3. Fermer la dette visuelle encore ouverte (assets unités Barracks + Space Dock, puis asset bâtiment mine).
 
@@ -123,3 +128,11 @@ Points réellement ouverts après resynchronisation:
 3. Implémenter le système dédié de généraux (`war_council`/`high_command`) puis les unités spéciales associées (future feature).
 4. Corriger les vues majeures restantes (`galaxy`, `planète`).
 5. Finaliser contenu bâtiments/unités après convergence runtime + features produit.
+
+## 11. Research feature truth snapshot (runtime-grounded)
+- **Implemented and stable**: timed queue, research guards (lab/prereq/RP/resources/queue), completion flow, persistence + legacy migration, research UI statuses/timers/RP display.
+- **Fully wired families**: unit unlock gates, production bonuses, training speed bonuses, build speed bonuses, espionage/intel gates (`espionage`, `cryptography`).
+- **Partially wired families**: `defensePct`, `antiAirDefensePct`, `marketEfficiencyPct` effects are mostly aggregated/surfaced; not all have complete gameplay subsystem consumers in the audited runtime scope.
+- **Not implemented (feature-parent dependency)**: `conquest` research is declared but conquest/colonization mother feature is not runtime-live in this scope.
+- **Ambiguous mapping to clarify**: `cartography`, `recovery_logistics` (current runtime bucket leans market/logistics aggregation; intended navigation/conquest linkage requires product clarification).
+- **Audit references**: `docs/research/research_feature_audit.md`, `docs/research/research_gap_report.md`, `docs/research/README.md`.

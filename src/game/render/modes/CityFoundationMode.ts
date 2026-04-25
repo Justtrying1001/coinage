@@ -580,15 +580,21 @@ export class CityFoundationMode implements RenderModeController {
     const page = document.createElement('section');
     page.append(this.createViewHeader('Research', 'Unlock research using resources and RP capacity.'));
     const researchCapacity = getBuildingLevel(this.state.economy, 'research_lab') * 4;
-    const researchSpent = this.state.economy.completedResearch.reduce(
-      (sum, researchId) => sum + CITY_ECONOMY_CONFIG.research[researchId].researchPointsCost,
-      0,
-    );
+    const researchSpent =
+      this.state.economy.completedResearch.reduce(
+        (sum, researchId) => sum + CITY_ECONOMY_CONFIG.research[researchId].researchPointsCost,
+        0,
+      ) +
+      this.state.economy.researchQueue.reduce(
+        (sum, entry) => sum + CITY_ECONOMY_CONFIG.research[entry.researchId].researchPointsCost,
+        0,
+      );
     page.append(
       this.createBranchKpis([
         { label: 'Completed', value: `${this.state.economy.completedResearch.length}` },
         { label: 'Points', value: `${researchSpent}/${researchCapacity}` },
         { label: 'Lab level', value: `LVL ${getBuildingLevel(this.state.economy, 'research_lab')}` },
+        { label: 'Active', value: `${this.state.economy.researchQueue.length}` },
       ]),
     );
 
@@ -601,14 +607,17 @@ export class CityFoundationMode implements RenderModeController {
       const cfg = CITY_ECONOMY_CONFIG.research[researchId];
       const guard = canStartResearch(this.state.economy, researchId);
       const completed = this.state.economy.completedResearch.includes(researchId);
+      const queued = this.state.economy.researchQueue.find((entry) => entry.researchId === researchId);
       const node = document.createElement('article');
       node.className = `city-stitch__node-card${completed ? ' is-complete' : ''}${this.selectedResearchId === researchId ? ' is-active' : ''}`;
-      node.innerHTML = `<p class="city-stitch__unit-head">${completed ? 'COMPLETED' : guard.ok ? 'AVAILABLE' : 'LOCKED'}</p>
+      node.innerHTML = `<p class="city-stitch__unit-head">${completed ? 'COMPLETED' : queued ? 'IN PROGRESS' : guard.ok ? 'AVAILABLE' : 'LOCKED'}</p>
         <h4>${cfg.name}</h4>
+        <p class="city-stitch__unit-meta">${cfg.description}</p>
         <p class="city-stitch__unit-meta">Lab lvl ${cfg.requiredBuildingLevel} · ${cfg.researchPointsCost} RP</p>
-        <p class="city-stitch__unit-meta">Cost ${formatBundle(cfg.cost)}</p>
+        <p class="city-stitch__unit-meta">Cost ${formatBundle(cfg.cost)} · ${formatDuration(cfg.durationSeconds * 1000)}</p>
+        <p class="city-stitch__unit-meta">${cfg.requiredResearch.length > 0 ? `Prereq ${cfg.requiredResearch.join(', ')}` : 'Prereq none'}</p>
         <p class="city-stitch__unit-meta">${formatResearchEffect(cfg.effect)}</p>
-        <p class="city-stitch__unit-meta">${guard.ok ? 'Ready to start' : guard.reason ?? 'Unavailable'}</p>`;
+        <p class="city-stitch__unit-meta">${completed ? 'Research completed' : queued ? `Finishes in ${formatDuration(Math.max(0, queued.endsAtMs - Date.now()))}` : guard.ok ? 'Ready to start' : guard.reason ?? 'Unavailable'}</p>`;
       node.addEventListener('click', () => {
         this.selectedResearchId = researchId;
         this.renderDetailPanel();
@@ -622,14 +631,24 @@ export class CityFoundationMode implements RenderModeController {
       nodeGrid.append(node);
     });
     list.append(nodeGrid);
+    const queue = document.createElement('section');
+    queue.className = 'city-stitch__ops-list';
+    queue.innerHTML = '<h3>Research queue</h3>';
+    if (this.state.economy.researchQueue.length === 0) {
+      queue.append(this.createQueueLine('No active research'));
+    } else {
+      this.state.economy.researchQueue.forEach((entry) => {
+        const cfg = CITY_ECONOMY_CONFIG.research[entry.researchId];
+        queue.append(this.createQueueLine(`${cfg.name} · ${formatDuration(Math.max(0, entry.endsAtMs - Date.now()))} remaining`));
+      });
+    }
 
-    page.append(list);
+    page.append(list, queue);
     return page;
   }
 
   private renderIntelligencePage() {
     const page = document.createElement('section');
-    const guard = canStartIntelProject(this.state.economy);
     page.append(this.createViewHeader('Intelligence', 'Run intel projects, vault silver, and espionage missions.'));
     page.append(
       this.createBranchKpis([
@@ -647,6 +666,7 @@ export class CityFoundationMode implements RenderModeController {
     board.className = 'city-stitch__intel-grid';
 
     (['sweep', 'network', 'cipher'] as const).forEach((projectType) => {
+      const guard = canStartIntelProject(this.state.economy, projectType);
       const card = document.createElement('article');
       const runtimeDurationSeconds = projectType === 'sweep' ? 70 : projectType === 'network' ? 120 : 160;
       const runtimeReadinessGain = projectType === 'sweep' ? 8 : projectType === 'network' ? 14 : 20;
@@ -1055,18 +1075,26 @@ export class CityFoundationMode implements RenderModeController {
     const panel = document.createElement('section');
     panel.className = 'city-stitch__detail-block';
     const researchCapacity = getBuildingLevel(this.state.economy, 'research_lab') * 4;
-    const researchSpent = this.state.economy.completedResearch.reduce(
-      (sum, researchId) => sum + CITY_ECONOMY_CONFIG.research[researchId].researchPointsCost,
-      0,
-    );
+    const researchSpent =
+      this.state.economy.completedResearch.reduce(
+        (sum, researchId) => sum + CITY_ECONOMY_CONFIG.research[researchId].researchPointsCost,
+        0,
+      ) +
+      this.state.economy.researchQueue.reduce(
+        (sum, entry) => sum + CITY_ECONOMY_CONFIG.research[entry.researchId].researchPointsCost,
+        0,
+      );
     if (this.selectedResearchId) {
       const cfg = CITY_ECONOMY_CONFIG.research[this.selectedResearchId];
       const guard = canStartResearch(this.state.economy, this.selectedResearchId);
+      const queued = this.state.economy.researchQueue.find((entry) => entry.researchId === this.selectedResearchId);
       panel.innerHTML = `<h3>${cfg.name}</h3>
+        <p>${cfg.description}</p>
         <p>Effect: ${formatResearchEffect(cfg.effect)}</p>
-        <p>Cost: ${formatBundle(cfg.cost)} · RP ${cfg.researchPointsCost}</p>
+        <p>Cost: ${formatBundle(cfg.cost)} · RP ${cfg.researchPointsCost} · ${formatDuration(cfg.durationSeconds * 1000)}</p>
         <p>Requires research lab ${cfg.requiredBuildingLevel}</p>
-        <p>Status: ${this.state.economy.completedResearch.includes(this.selectedResearchId) ? 'Completed' : guard.ok ? 'Available' : `Blocked (${guard.reason ?? 'Unavailable'})`}</p>
+        <p>Research prerequisites: ${cfg.requiredResearch.length > 0 ? cfg.requiredResearch.join(', ') : 'none'}</p>
+        <p>Status: ${this.state.economy.completedResearch.includes(this.selectedResearchId) ? 'Completed' : queued ? `In progress (${formatDuration(Math.max(0, queued.endsAtMs - Date.now()))})` : guard.ok ? 'Available' : `Blocked (${guard.reason ?? 'Unavailable'})`}</p>
         <p>Points used: ${researchSpent}/${researchCapacity}</p>`;
       return panel;
     }
@@ -1164,7 +1192,7 @@ export class CityFoundationMode implements RenderModeController {
 
   private getSectionStatusBadge(section: LocalCitySection) {
     if (section === 'market') return 'Partial';
-    if (section === 'research') return 'Instant';
+    if (section === 'research') return 'Timed';
     return 'Runtime';
   }
 
@@ -1182,7 +1210,7 @@ export class CityFoundationMode implements RenderModeController {
     ops.className = 'city-stitch__queue';
     ops.innerHTML = `<p class="city-stitch__queue-title">Operations</p>
       <p class="city-stitch__queue-line">Training: ${this.state.economy.trainingQueue.length}</p>
-      <p class="city-stitch__queue-line">Research: instant (${this.state.economy.completedResearch.length} completed)</p>
+      <p class="city-stitch__queue-line">Research: timed queue (${this.state.economy.researchQueue.length} active · ${this.state.economy.completedResearch.length} completed)</p>
       <p class="city-stitch__queue-line">Intel: ${this.state.economy.intelProjects.length}</p>
       <p class="city-stitch__queue-line">Militia: ${isMilitiaActive(this.state.economy) ? `ACTIVE (${this.state.economy.militia.currentMilitia})` : 'Inactive'}</p>`;
     return ops;
