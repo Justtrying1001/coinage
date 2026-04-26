@@ -17,7 +17,7 @@ Documentation générée automatiquement depuis la config runtime et la logique 
 | armament_factory | Armament Factory | military | Bonus cycliques ground/air ATK/DEF (sans rôle training/research). | [voir](./armament_factory.md) |
 | intelligence_center | Intelligence Center | intelligence | Détection, contre-intel, projets intel, coffre espion. | [voir](./intelligence_center.md) |
 | research_lab | Research Lab | research | Capacité de recherche et gate des recherches. | [voir](./research_lab.md) |
-| market | Market | logistics | Efficacité de marché. | [voir](./market.md) |
+| market | Market | logistics | Capacité d’envoi/transfert de ressources. | [voir](./market.md) |
 | council_chamber | Council Chamber | governance | Bonus build speed + city defense, déblocage politiques locales. | [voir](./council_chamber.md) |
 
 ## Régénération

@@ -3,7 +3,7 @@
 ## 1. Vue d’ensemble
 La branche **ÉCONOMIE / MVP** est largement resynchronisée sur le runtime actuel pour les scopes déjà traités.
 
-- **Audits traités et intégrés**: `hq`, `mine`, `quarry`, `refinery`, `warehouse`, `housing_complex`, `barracks`, `space_dock`, `defensive_wall`, `skyshield_battery`, `armament_factory`, `research_lab`, plus les lots `barracks units` et `space_dock units`.
+- **Audits traités et intégrés**: `hq`, `mine`, `quarry`, `refinery`, `warehouse`, `housing_complex`, `barracks`, `space_dock`, `defensive_wall`, `skyshield_battery`, `armament_factory`, `research_lab`, `market`, plus les lots `barracks units` et `space_dock units`.
 - **Correctifs transverses déjà en place dans le code**: logique population (occupation niveau courant + coût upgrade en delta), suppression de l’ancien champ de butin des unités, canon `transportCapacity`, ajout `navalAttack/navalDefense` pour les unités Space Dock, renommages user-facing et renommage technique `watch_tower` → `skyshield_battery` avec compat legacy persistence.
 - **Statut global**: runtime/config/docs des scopes traités = majoritairement stabilisés; la dette ouverte se divise désormais en deux blocs distincts: **(A) audit/implémentation runtime restante** (audits bâtiment + assets), et **(B) features produit MVP majeures** encore à implémenter/vérifier/finaliser (guerre, macro/micro, colonisation, bataille, espionnage, vues UI principales).
 
@@ -24,6 +24,7 @@ La branche **ÉCONOMIE / MVP** est largement resynchronisée sur le runtime actu
 | skyshield_battery | Bâtiment custom Coinage | DONE | Validé (anti-aérien) | prérequis, progression, effets runtime ciblés | remplacement technique complet de `watch_tower`; modèle anti-aérien `airWallDefensePct`/`airWallBaseDefense`; application en **city_defense** uniquement; ciblage unités **space_dock**; aucun bonus offensif/Barracks; migration legacy save `watch_tower` | équilibrage combat à surveiller lors du branchement combat final | `docs/building/skyshield_battery.md`, `src/game/city/economy/cityContentCatalog.ts`, `src/game/city/economy/cityEconomyPersistence.ts` |
 | armament_factory | Bâtiment | PARTIAL | Rôle figé sur 4 axes combat | identité, prereqs (`HQ8`, `research_lab10`, `barracks10`), table 1..35, palier final L35 all-units, séparation vs training/research/production | runtime+catalog+docs alignés sur `groundAttackPct`/`groundDefensePct`/`airAttackPct`/`airDefensePct`, sans `trainingSpeedPct` | consommation combat finale détaillée encore partielle | `docs/building/armament_factory.md`, `src/game/city/economy/cityEconomySystem.ts`, `src/game/city/economy/cityBuildingLevelTables.ts` |
 | research_lab | Bâtiment | DONE | Scope verrouillé runtime+catalog+docs | identité (`HQ8`, `housing_complex6`, `barracks5`), max level 35, effet unique `researchCapacity=4/level`, système research temporisé (1 slot actif), prérequis de recherches + guards RP/ressources | matrice research resynchronisée sur les sources runtime (`CITY_ECONOMY_CONFIG.research`, `troops.requiredResearch`, guards intel), docs strictes sans extrapolation, tests resynchronisés | dette ouverte hors-scope: équilibrage macro final (guerre/colonisation) | `docs/building/research_lab.md`, `docs/research/research_matrix.md`, `src/game/city/economy/cityEconomySystem.ts`, `src/game/city/economy/cityEconomyConfig.ts`, `src/game/city/economy/cityEconomySystem.test.ts` |
+| market | Bâtiment | PARTIAL | Rôle principal réaligné sur transfert ressources | identité (`HQ3`, `warehouse5`), max level 30, table 1..30, effet principal `shipmentCapacity`, UI market alignée capacité/guards | runtime ajouté (`getMarketShipmentCapacity`, `canSendResourceTransfer`, `sendResourceTransfer`), catalog + tests + docs resynchronisés | livraison inter-ville/settlement complet encore non implémenté (TODO MVP trading global) | `docs/building/market.md`, `src/game/city/economy/cityEconomySystem.ts`, `src/game/city/economy/cityBuildingLevelTables.ts`, `src/game/render/modes/CityFoundationMode.ts`, `src/game/city/economy/cityContentCatalog.ts` |
 | intelligence_center | Bâtiment | DONE | Espionnage MVP finalisé | identité/prérequis/table 1..10, vault, mission ville->ville, résolution cross-city, rapports attaquant/défenseur, snapshot succès, guards robustes | formule de défense espionnage branchée sur stats dérivées (`detectionPct` + `counterIntelPct`), cible invalide rejetée explicitement, résolution pilotée par tick runtime central (pas par load opportuniste), UI mission active détaillée, docs/tests resynchronisés | hors-scope restant: intégrations futures combat macro/galaxy avancées | `docs/building/intelligence_center.md`, `docs/08-Espionage.md`, `src/game/city/economy/cityEconomySystem.ts`, `src/game/city/economy/cityEconomyPersistence.ts`, `src/game/render/modes/CityFoundationMode.ts` |
 | barracks units | Lot unités | DONE | Gameplay/runtime propre | mapping requis, coûts/temps/population, training flow | corrections gameplay appliquées; renommage user-facing; suppression du champ legacy de butin; `transportCapacity` canonique | dette visuelle (assets unités) hors gameplay | `docs/units/barracks-units.md`, `docs/units/README.md` |
 | space_dock units | Lot unités | PARTIAL | Gameplay/runtime propre, visuels incomplets | mapping research/building, coûts/temps/population, training flow | corrections research mapping; ajout modèle `navalAttack`/`navalDefense`; `transportCapacity` canonique; renommage user-facing | dette visuelle: assets dédiés manquants / non branchés UI | `docs/units/space-dock-units.md`, `docs/units/README.md` |
@@ -58,7 +59,6 @@ La branche **ÉCONOMIE / MVP** est largement resynchronisée sur le runtime actu
 
 ## 5. Ce qu’il reste à auditer
 Scopes non encore traités complètement dans le flux MVP actuel (**audit runtime/config/doc uniquement**):
-- `market`
 - `council_chamber`
 
 Aucun autre scope bâtiment MVP supplémentaire n’est ajouté ici en dehors de la liste runtime de référence déjà présente dans la branche.
@@ -68,10 +68,10 @@ Points réellement ouverts après resynchronisation:
 - compléter/brancher les assets visuels du lot **barracks units**;
 - compléter/brancher les assets visuels du lot **space_dock units**;
 - clore le manque visuel du bâtiment **mine** (ou confirmer durablement la décision produit de non-livraison d’asset);
-- traiter les écarts qui sortiront des audits restants (`market`, `council_chamber`).
+- traiter les écarts qui sortiront de l’audit restant (`council_chamber`).
 
 ## 7. Ordre de travail recommandé
-1. Auditer les scopes bâtiment restants, dans cet ordre: `market` → `council_chamber`.
+1. Auditer le scope bâtiment restant: `council_chamber`.
 2. À chaque audit, appliquer immédiatement les corrections runtime/config/UI/docs associées avant de passer au scope suivant.
 3. Fermer la dette visuelle: unités Barracks et Space Dock (assets + branchement UI), puis mine bâtiment.
 4. Faire une passe finale de validation transversale ÉCONOMIE (runtime + UI + persistence + docs) sur l’ensemble des scopes.
@@ -118,7 +118,7 @@ Points réellement ouverts après resynchronisation:
 
 ## 10. Priorités MVP restantes
 ### A. Audit / implémentation runtime existante
-1. Terminer les audits runtime/config/doc des scopes bâtiment restants (`market`, `council_chamber`).
+1. Terminer l’audit runtime/config/doc du scope bâtiment restant (`council_chamber`).
 2. Corriger immédiatement les écarts trouvés pendant ces audits.
 3. Fermer la dette visuelle encore ouverte (assets unités Barracks + Space Dock, puis asset bâtiment mine).
 

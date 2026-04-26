@@ -77,6 +77,7 @@ describe('city economy rebalance validation', () => {
       resources: { ore: 50, stone: 20, iron: 5 },
       buildSeconds: 25,
       populationCost: 2,
+      effect: { shipmentCapacity: 500 },
     });
     expect(CITY_ECONOMY_CONFIG.buildings.intelligence_center.levels[0]).toMatchObject({
       resources: { ore: 200, stone: 400, iron: 700 },
@@ -142,6 +143,15 @@ describe('city economy rebalance validation', () => {
     expect(CITY_ECONOMY_CONFIG.buildings.defensive_wall.maxLevel).toBe(25);
     expect(CITY_ECONOMY_CONFIG.buildings.research_lab.maxLevel).toBe(35);
     expect(CITY_ECONOMY_CONFIG.buildings.market.maxLevel).toBe(30);
+  });
+
+  it('keeps market shipment capacity progression monotonic and anchored', () => {
+    const rows = CITY_ECONOMY_CONFIG.buildings.market.levels;
+    expect(rows[0].effect.shipmentCapacity).toBe(500);
+    expect(rows[29].effect.shipmentCapacity).toBe(15_000);
+    for (let i = 1; i < rows.length; i += 1) {
+      expect(Number(rows[i].effect.shipmentCapacity ?? 0)).toBeGreaterThan(Number(rows[i - 1].effect.shipmentCapacity ?? 0));
+    }
   });
 
   it('keeps resource production defined on all economic production rows', () => {

@@ -65,7 +65,7 @@ describe('CityFoundationMode stitch IA responsibilities', () => {
     expect(host.textContent).toContain('Research nodes');
 
     host.querySelector<HTMLButtonElement>('.city-stitch__nav-btn[aria-label="Market"]')?.click();
-    expect(host.textContent).toContain('Trade execution');
+    expect(host.textContent).toContain('Transfer capacity');
 
     mode.destroy();
     host.remove();
