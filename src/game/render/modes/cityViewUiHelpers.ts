@@ -34,6 +34,7 @@ export function formatEffectList(effect: BuildingLevelEffect): string[] {
   if (effect.populationCapBonus) lines.push(`Population +${effect.populationCapBonus}`);
   if (effect.researchCapacity) lines.push(`Research capacity +${effect.researchCapacity}`);
   if (effect.marketEfficiencyPct) lines.push(`Market efficiency +${effect.marketEfficiencyPct}%`);
+  if (effect.shipmentCapacity) lines.push(`Shipment capacity +${effect.shipmentCapacity}`);
   if (effect.trainingSpeedPct) lines.push(`Training speed +${effect.trainingSpeedPct}%`);
   if (effect.groundAttackPct) lines.push(`Ground attack +${effect.groundAttackPct}%`);
   if (effect.groundDefensePct) lines.push(`Ground defense +${effect.groundDefensePct}%`);

@@ -108,6 +108,7 @@ export interface BuildingLevelEffect {
   counterIntelPct?: number;
   researchCapacity?: number;
   marketEfficiencyPct?: number;
+  shipmentCapacity?: number;
   unlocks?: EconomyBuildingId[];
 }
 

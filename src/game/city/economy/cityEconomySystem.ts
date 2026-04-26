@@ -118,6 +118,15 @@ export interface GuardResult {
   reason: string | null;
 }
 
+export interface CityResourceTransfer {
+  sourceCityId: string;
+  targetCityId: string;
+  resources: ResourceBundle;
+  totalAmount: number;
+  shipmentCapacityAtDispatch: number;
+  dispatchedAtMs: number;
+}
+
 const ZERO_TROOPS: TroopCounts = {
   citizen_militia: 0,
   line_infantry: 0,
@@ -382,7 +391,6 @@ function getPolicyEffect(state: CityEconomyState) {
 
 export function getCityDerivedStats(state: CityEconomyState) {
   const armament = getCurrentLevelRow(state, 'armament_factory');
-  const market = getCurrentLevelRow(state, 'market');
   const council = getCurrentLevelRow(state, 'council_chamber');
   const barracks = getCurrentLevelRow(state, 'barracks');
   const dock = getCurrentLevelRow(state, 'space_dock');
@@ -417,11 +425,63 @@ export function getCityDerivedStats(state: CityEconomyState) {
       (intelCenter?.effect.detectionPct ?? 0) + research.detectionPct + (policy?.detectionPct ?? 0),
     counterIntelPct: (intelCenter?.effect.counterIntelPct ?? 0) + research.counterIntelPct,
     researchCapacity: lab?.effect.researchCapacity ?? 0,
-    marketEfficiencyPct: (market?.effect.marketEfficiencyPct ?? 0) + research.marketEfficiencyPct,
+    marketEfficiencyPct: research.marketEfficiencyPct,
     buildCostReductionPct: 0,
     buildSpeedPct: (council?.effect.buildSpeedPct ?? 0) + research.buildSpeedPct,
     productionPct: research.productionPct + (policy?.productionPct ?? 0),
     intelReadiness: state.intelReadiness,
+  };
+}
+
+export function getMarketShipmentCapacity(state: CityEconomyState) {
+  const market = getCurrentLevelRow(state, 'market');
+  return Math.max(0, market?.effect.shipmentCapacity ?? 0);
+}
+
+function getTransferTotal(resources: ResourceBundle) {
+  return Math.max(0, resources.ore) + Math.max(0, resources.stone) + Math.max(0, resources.iron);
+}
+
+export function canSendResourceTransfer(state: CityEconomyState, targetCityId: string, resources: ResourceBundle): GuardResult {
+  if (getBuildingLevel(state, 'market') <= 0) return { ok: false, reason: 'Requires market 1' };
+  if (!targetCityId.trim()) return { ok: false, reason: 'Target city required' };
+  if (targetCityId === state.cityId) return { ok: false, reason: 'Cannot target own city' };
+
+  const total = getTransferTotal(resources);
+  if (total <= 0) return { ok: false, reason: 'Transfer amount must be greater than 0' };
+
+  const shipmentCapacity = getMarketShipmentCapacity(state);
+  if (total > shipmentCapacity) return { ok: false, reason: `Transfer exceeds shipment capacity (${shipmentCapacity})` };
+
+  if (resources.ore > state.resources.ore || resources.stone > state.resources.stone || resources.iron > state.resources.iron) {
+    return { ok: false, reason: 'Not enough resources' };
+  }
+  return { ok: true, reason: null };
+}
+
+export function sendResourceTransfer(
+  state: CityEconomyState,
+  targetCityId: string,
+  resources: ResourceBundle,
+  nowMs = Date.now(),
+): { ok: true; transfer: CityResourceTransfer } | { ok: false; reason: string } {
+  const guard = canSendResourceTransfer(state, targetCityId, resources);
+  if (!guard.ok) return { ok: false, reason: guard.reason ?? 'Transfer blocked' };
+
+  state.resources.ore -= resources.ore;
+  state.resources.stone -= resources.stone;
+  state.resources.iron -= resources.iron;
+
+  return {
+    ok: true,
+    transfer: {
+      sourceCityId: state.cityId,
+      targetCityId,
+      resources: { ...resources },
+      totalAmount: getTransferTotal(resources),
+      shipmentCapacityAtDispatch: getMarketShipmentCapacity(state),
+      dispatchedAtMs: nowMs,
+    },
   };
 }
 

@@ -97,6 +97,23 @@ describe('cityContentCatalog MVP MICRO scope', () => {
     expect(researchLab?.levelBandGates ?? []).toEqual([]);
   });
 
+  it('keeps market catalog entry aligned with runtime building truth and shipment-capacity role', () => {
+    const market = FULL_BUILDING_CATALOG.find((entry) => entry.id === 'market');
+    expect(market).toBeDefined();
+    expect(market?.phase).toBe('mvp');
+    expect(market?.definitionStatus).toBe('fully_defined');
+    expect(market?.gameplayImplemented).toBe(true);
+    expect(market?.maxLevel).toBe(30);
+    expect(market?.unlock).toEqual([
+      { type: 'hq', targetId: 'hq', minLevel: 3 },
+      { type: 'building', targetId: 'warehouse', minLevel: 5 },
+    ]);
+    expect(market?.levelBandGates ?? []).toEqual([]);
+    expect(market?.notes ?? []).toContain(
+      'Local dispatch guard + resource deduction are implemented; full cross-city delivery settlement is pending.',
+    );
+  });
+
   it('does not reference impossible intelligence_center levels in catalog dependencies', () => {
     const impossibleRefs = FULL_BUILDING_CATALOG.flatMap((entry) =>
       (entry.levelBandGates ?? []).flatMap((band) =>

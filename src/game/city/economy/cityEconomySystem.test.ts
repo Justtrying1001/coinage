@@ -16,7 +16,9 @@ import {
   getSkyshieldBatteryAirBonuses,
   evaluateEspionageOutcome,
   getDefenderEffectiveSpyDefense,
+  getMarketShipmentCapacity,
   canStartResearch,
+  canSendResourceTransfer,
   canStartIntelProject,
   canStartTroopTraining,
   activateMilitia,
@@ -47,6 +49,7 @@ import {
   startTroopTraining,
   startConstruction,
   resolveCompletedConstruction,
+  sendResourceTransfer,
 } from '@/game/city/economy/cityEconomySystem';
 
 describe('cityEconomySystem MVP MICRO full standard building loop', () => {
@@ -433,6 +436,80 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     expect(canStartConstruction(state, 'armament_factory')).toEqual({ ok: false, reason: 'Requires barracks 10' });
     state.levels.barracks = 10;
     expect(canStartConstruction(state, 'armament_factory').ok).toBe(true);
+  });
+
+  it('enforces market prerequisites and uses incremental population for market upgrades', () => {
+    const state = createInitialCityEconomyState({ cityId: 'c-market-guard', owner: 'p1', nowMs: 0 });
+    state.resources = { ore: 9_999_999, stone: 9_999_999, iron: 9_999_999 };
+
+    expect(canStartConstruction(state, 'market')).toEqual({ ok: false, reason: 'Requires HQ 3' });
+    state.levels.hq = 3;
+    expect(canStartConstruction(state, 'market')).toEqual({ ok: false, reason: 'Requires warehouse 5' });
+    state.levels.warehouse = 5;
+    expect(canStartConstruction(state, 'market').ok).toBe(true);
+
+    state.levels = {
+      ...state.levels,
+      housing_complex: 45,
+      market: 1,
+    };
+
+    const usedAtL1 = getPopulationSnapshot(state).breakdown.buildingUsed;
+    state.levels.market = 2;
+    const usedAtL2 = getPopulationSnapshot(state).breakdown.buildingUsed;
+    expect(usedAtL2 - usedAtL1).toBe(2); // 4 - 2
+  });
+
+  it('uses market level as shipment-capacity source of truth', () => {
+    const state = createInitialCityEconomyState({ cityId: 'c-market-derived', owner: 'p1', nowMs: 0 });
+    state.levels.market = 4;
+    expect(getMarketShipmentCapacity(state)).toBe(2000);
+    state.levels.market = 10;
+    expect(getMarketShipmentCapacity(state)).toBe(5000);
+  });
+
+  it('keeps marketEfficiencyPct as research-only aggregate (market building no longer primary source)', () => {
+    const state = createInitialCityEconomyState({ cityId: 'c-market-eff-research', owner: 'p1', nowMs: 0 });
+    state.levels.market = 4;
+    state.completedResearch.push('market_logistics', 'ceramics', 'cartography'); // +6 +4 +4
+
+    const stats = getCityDerivedStats(state);
+    expect(stats.marketEfficiencyPct).toBeCloseTo(14, 6);
+  });
+
+  it('enforces shipment capacity and resource checks on resource transfer dispatch', () => {
+    const state = createInitialCityEconomyState({ cityId: 'c-market-transfer', owner: 'p1', nowMs: 0 });
+    state.levels.hq = 3;
+    state.levels.warehouse = 5;
+    state.levels.market = 1; // cap 500
+    state.resources = { ore: 2_000, stone: 2_000, iron: 2_000 };
+
+    expect(canSendResourceTransfer(state, '', { ore: 100, stone: 0, iron: 0 })).toEqual({ ok: false, reason: 'Target city required' });
+    expect(canSendResourceTransfer(state, 'c-market-transfer', { ore: 100, stone: 0, iron: 0 })).toEqual({
+      ok: false,
+      reason: 'Cannot target own city',
+    });
+    expect(canSendResourceTransfer(state, 'target-city', { ore: 0, stone: 0, iron: 0 })).toEqual({
+      ok: false,
+      reason: 'Transfer amount must be greater than 0',
+    });
+    expect(canSendResourceTransfer(state, 'target-city', { ore: 600, stone: 0, iron: 0 })).toEqual({
+      ok: false,
+      reason: 'Transfer exceeds shipment capacity (500)',
+    });
+
+    expect(sendResourceTransfer(state, 'target-city', { ore: 400, stone: 50, iron: 50 }, 1234)).toEqual({
+      ok: true,
+      transfer: {
+        sourceCityId: 'c-market-transfer',
+        targetCityId: 'target-city',
+        resources: { ore: 400, stone: 50, iron: 50 },
+        totalAmount: 500,
+        shipmentCapacityAtDispatch: 500,
+        dispatchedAtMs: 1234,
+      },
+    });
+    expect(state.resources).toEqual({ ore: 1_600, stone: 1_950, iron: 1_950 });
   });
 
   it('uses current-level population occupancy and incremental upgrade requirement for armament_factory', () => {

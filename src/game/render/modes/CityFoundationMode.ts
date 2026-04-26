@@ -5,6 +5,7 @@ import {
   canStartEspionageMission,
   canDepositSpySilver,
   canStartResearch,
+  canSendResourceTransfer,
   canStartTroopTraining,
   getBuildingConfig,
   getConstructionCostResources,
@@ -17,6 +18,7 @@ import {
   getMilitiaMaxSize,
   getMilitiaFarmEquivalentLevel,
   getMilitiaProductionMultiplier,
+  getMarketShipmentCapacity,
   isMilitiaActive,
   getProductionPerHour,
   getStorageCaps,
@@ -836,33 +838,44 @@ export class CityFoundationMode implements RenderModeController {
   private renderMarketPage() {
     const page = document.createElement('section');
     const derived = getCityDerivedStats(this.state.economy);
-    page.append(this.createViewHeader('Market', 'Market efficiency status and runtime availability.'));
+    const shipmentCapacity = getMarketShipmentCapacity(this.state.economy);
+    const totalStock = Math.floor(this.state.economy.resources.ore + this.state.economy.resources.stone + this.state.economy.resources.iron);
+    const transferableNow = Math.min(shipmentCapacity, totalStock);
+    const probeTransfer = canSendResourceTransfer(this.state.economy, 'target-city', {
+      ore: transferableNow,
+      stone: 0,
+      iron: 0,
+    });
+
+    page.append(this.createViewHeader('Market', 'Resource transfer capacity and runtime availability.'));
     page.append(
       this.createBranchKpis([
-        { label: 'Efficiency', value: `+${derived.marketEfficiencyPct.toFixed(1)}%` },
+        { label: 'Shipment cap', value: `${shipmentCapacity}` },
+        { label: 'Transfer now', value: `${transferableNow}` },
         { label: 'Market lvl', value: `LVL ${getBuildingLevel(this.state.economy, 'market')}` },
-        { label: 'Storage hub', value: `LVL ${getBuildingLevel(this.state.economy, 'warehouse')}` },
+        { label: 'Efficiency', value: `+${derived.marketEfficiencyPct.toFixed(1)}%` },
       ]),
     );
 
     const marketPanel = document.createElement('section');
     marketPanel.className = 'city-stitch__ops-list';
     marketPanel.innerHTML = `<h3>Exchange runtime status</h3>
-      <div class="city-stitch__ops-row"><p>Trade execution</p><p>Not implemented</p><p>No buy/sell action in system</p></div>
-      <div class="city-stitch__ops-row"><p>Efficiency stat</p><p>+${derived.marketEfficiencyPct.toFixed(1)}%</p><p>Calculated from Market + research</p></div>
-      <div class="city-stitch__ops-row"><p>Current value to player</p><p>Building progression</p><p>Unlocks intel/governance prereqs</p></div>`;
+      <div class="city-stitch__ops-row"><p>Transfer capacity</p><p>${shipmentCapacity}</p><p>Per-dispatch max from Market level</p></div>
+      <div class="city-stitch__ops-row"><p>Dispatch guard</p><p>${probeTransfer.ok ? 'Ready' : 'Blocked'}</p><p>${probeTransfer.reason ?? 'Capacity/resource checks pass'}</p></div>
+      <div class="city-stitch__ops-row"><p>Transfer execution</p><p>Local dispatch live</p><p>Cross-city delivery settlement still pending</p></div>
+      <div class="city-stitch__ops-row"><p>Secondary stat</p><p>+${derived.marketEfficiencyPct.toFixed(1)}%</p><p>From research effects</p></div>`;
 
     const disabled = document.createElement('div');
     disabled.className = 'city-stitch__ops-row';
-    disabled.innerHTML = '<p>Trade controls</p><p>Disabled</p><p>UI intentionally disabled until runtime trade flow exists</p>';
-    disabled.append(this.makeActionButton('Trade action unavailable (not implemented)', true, () => {}));
+    disabled.innerHTML = '<p>Trade controls</p><p>Partial</p><p>Dispatch capacity checks are live; full exchange UI flow is pending</p>';
+    disabled.append(this.makeActionButton('Full exchange flow pending', true, () => {}));
     marketPanel.append(disabled);
 
     const presets = document.createElement('section');
     presets.className = 'city-stitch__ops-list';
     presets.innerHTML = `<h3>Why this section is partial</h3>
-      <div class="city-stitch__ops-row"><p>What exists</p><p>Market efficiency stat</p><p>Affects derived city stats only</p></div>
-      <div class="city-stitch__ops-row"><p>What does not exist</p><p>Exchange transaction runtime</p><p>No source/target conversion API</p></div>
+      <div class="city-stitch__ops-row"><p>What exists</p><p>Shipment capacity + dispatch guards</p><p>Capacity and resource constraints enforced</p></div>
+      <div class="city-stitch__ops-row"><p>What does not exist</p><p>Delivery settlement between cities</p><p>No transit queue/persistence for completed arrivals yet</p></div>
       <div class="city-stitch__ops-row"><p>UI behavior</p><p>Informational</p><p>No fake interactive controls</p></div>`;
 
     const buildings = document.createElement('section');
@@ -1274,7 +1287,7 @@ export class CityFoundationMode implements RenderModeController {
     if (section === 'research') return `${this.state.economy.completedResearch.length} completed`;
     if (section === 'intelligence') return `${this.state.economy.intelProjects.length} ops`;
     if (section === 'governance') return this.state.economy.activePolicy ? 'policy active' : 'policy idle';
-    return `+${getCityDerivedStats(this.state.economy).marketEfficiencyPct.toFixed(0)}%`;
+    return `cap ${getMarketShipmentCapacity(this.state.economy)}`;
   }
 
   private getBuildingEffectText(buildingId: EconomyBuildingId, currentLevel: number) {
@@ -1299,6 +1312,7 @@ export class CityFoundationMode implements RenderModeController {
       return `Defense +${effect.cityDefensePct ?? 0}% / Ground wall +${effect.groundWallDefensePct ?? 0}% (+${effect.groundWallBaseDefense ?? 0}) / Air wall +${effect.airWallDefensePct ?? 0}% (+${effect.airWallBaseDefense ?? 0}) / Anti-air +${effect.antiAirDefensePct ?? 0}% / Mitigation +${effect.damageMitigationPct ?? 0}%`;
     }
     if (effect.researchCapacity) return `Research capacity +${effect.researchCapacity}`;
+    if (effect.shipmentCapacity) return `Shipment capacity ${effect.shipmentCapacity}`;
     if (effect.marketEfficiencyPct) return `Market efficiency +${effect.marketEfficiencyPct}%`;
     if (effect.detectionPct || effect.counterIntelPct) return `Detection +${effect.detectionPct ?? 0}% / Counter-intel +${effect.counterIntelPct ?? 0}%`;
     if (effect.trainingSpeedPct) return `Training speed +${effect.trainingSpeedPct}%`;
