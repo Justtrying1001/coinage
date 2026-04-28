@@ -1141,7 +1141,7 @@ export class CityFoundationMode implements RenderModeController {
       panel.innerHTML = `<h3>${policy.name}</h3>
         <p>${policy.description}</p>
         <p>Effects: ${formatPolicyEffects(policy)}</p>
-        <p>Requires council chamber ${policy.requiredCouncilLevel}</p>
+        <p>${policy.requiredCouncilLevel > 0 ? `Requires council chamber ${policy.requiredCouncilLevel}` : 'No council gate (transitional policy system)'}</p>
         <p>Status: ${this.state.economy.activePolicy === this.selectedPolicyId ? 'Active' : guard.ok ? 'Available' : `Blocked (${guard.reason ?? 'Unavailable'})`}</p>`;
       return panel;
     }

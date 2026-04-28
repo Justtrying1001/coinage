@@ -391,7 +391,6 @@ function getPolicyEffect(state: CityEconomyState) {
 
 export function getCityDerivedStats(state: CityEconomyState) {
   const armament = getCurrentLevelRow(state, 'armament_factory');
-  const council = getCurrentLevelRow(state, 'council_chamber');
   const barracks = getCurrentLevelRow(state, 'barracks');
   const dock = getCurrentLevelRow(state, 'space_dock');
   const intelCenter = getCurrentLevelRow(state, 'intelligence_center');
@@ -407,9 +406,7 @@ export function getCityDerivedStats(state: CityEconomyState) {
     (policy?.trainingSpeedPct ?? 0);
 
   const cityDefensePct =
-    (council?.effect.cityDefensePct ?? 0) +
-    research.defensePct +
-    (policy?.defensePct ?? 0);
+    research.defensePct + (policy?.defensePct ?? 0);
 
   return {
     trainingSpeedPct,
@@ -427,7 +424,7 @@ export function getCityDerivedStats(state: CityEconomyState) {
     researchCapacity: lab?.effect.researchCapacity ?? 0,
     marketEfficiencyPct: research.marketEfficiencyPct,
     buildCostReductionPct: 0,
-    buildSpeedPct: (council?.effect.buildSpeedPct ?? 0) + research.buildSpeedPct,
+    buildSpeedPct: research.buildSpeedPct,
     productionPct: research.productionPct + (policy?.productionPct ?? 0),
     intelReadiness: state.intelReadiness,
   };

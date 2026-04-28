@@ -59,23 +59,22 @@ La branche **ÉCONOMIE / MVP** est largement resynchronisée sur le runtime actu
 
 ## 5. Ce qu’il reste à auditer
 Scopes non encore traités complètement dans le flux MVP actuel (**audit runtime/config/doc uniquement**):
-- `council_chamber`
+- aucun scope bâtiment runtime restant.
 
-Aucun autre scope bâtiment MVP supplémentaire n’est ajouté ici en dehors de la liste runtime de référence déjà présente dans la branche.
+Le scope `council_chamber` est audité et corrigé côté runtime/catalog/docs/tests (suppression des anciens bonus locaux),
+mais son design/fonctionnalité diplomatie macro reste **ouverte** (pas de statut DONE produit final).
 
 ## 6. Ce qu’il reste à corriger
 Points réellement ouverts après resynchronisation:
 - compléter/brancher les assets visuels du lot **barracks units**;
 - compléter/brancher les assets visuels du lot **space_dock units**;
 - clore le manque visuel du bâtiment **mine** (ou confirmer durablement la décision produit de non-livraison d’asset);
-- traiter les écarts qui sortiront de l’audit restant (`council_chamber`).
+- finaliser le design/runtime macro du `council_chamber` (diplomatie/faction/token participation), aujourd’hui en **DESIGN_PENDING / DIPLOMACY_GATE_ONLY**.
 
 ## 7. Ordre de travail recommandé
-1. Auditer le scope bâtiment restant: `council_chamber`.
-2. À chaque audit, appliquer immédiatement les corrections runtime/config/UI/docs associées avant de passer au scope suivant.
-3. Fermer la dette visuelle: unités Barracks et Space Dock (assets + branchement UI), puis mine bâtiment.
-4. Faire une passe finale de validation transversale ÉCONOMIE (runtime + UI + persistence + docs) sur l’ensemble des scopes.
-5. Passer les scopes en `DONE` uniquement après fermeture des ouverts réels.
+1. Fermer la dette visuelle: unités Barracks et Space Dock (assets + branchement UI), puis mine bâtiment.
+2. Faire une passe finale de validation transversale ÉCONOMIE (runtime + UI + persistence + docs) sur l’ensemble des scopes.
+3. Passer les scopes en `DONE` uniquement après fermeture des ouverts réels.
 
 ## 8. Règles de lecture du tracker
 - **DONE**: scope audité et validé sur le périmètre annoncé, sans ouvert bloquant restant dans ce scope.
@@ -118,9 +117,9 @@ Points réellement ouverts après resynchronisation:
 
 ## 10. Priorités MVP restantes
 ### A. Audit / implémentation runtime existante
-1. Terminer l’audit runtime/config/doc du scope bâtiment restant (`council_chamber`).
-2. Corriger immédiatement les écarts trouvés pendant ces audits.
-3. Fermer la dette visuelle encore ouverte (assets unités Barracks + Space Dock, puis asset bâtiment mine).
+1. Fermer la dette visuelle encore ouverte (assets unités Barracks + Space Dock, puis asset bâtiment mine).
+2. Maintenir la synchro runtime/config/docs/tests sur les scopes déjà audités.
+3. Council chamber: garder l’absence de bonus locaux; implémenter ensuite le consumer macro diplomatie quand spécification produit validée.
 
 ### B. Features / product scope MVP
 1. Finaliser les fondations gameplay globales (macro + micro + guerre).

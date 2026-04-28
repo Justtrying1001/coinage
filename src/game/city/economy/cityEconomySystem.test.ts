@@ -468,6 +468,39 @@ describe('cityEconomySystem MVP MICRO full standard building loop', () => {
     expect(getMarketShipmentCapacity(state)).toBe(5000);
   });
 
+  it('enforces council_chamber construction prerequisites/max level and keeps policies ungated by council in transitional runtime', () => {
+    const state = createInitialCityEconomyState({ cityId: 'c-council-guard', owner: 'p1', nowMs: 0 });
+    state.resources = { ore: 9_999_999, stone: 9_999_999, iron: 9_999_999 };
+
+    expect(canStartConstruction(state, 'council_chamber')).toEqual({ ok: false, reason: 'Requires HQ 15' });
+    state.levels.hq = 15;
+    expect(canStartConstruction(state, 'council_chamber')).toEqual({ ok: false, reason: 'Requires market 10' });
+    state.levels.market = 10;
+    expect(canStartConstruction(state, 'council_chamber')).toEqual({ ok: false, reason: 'Requires research_lab 15' });
+    state.levels.research_lab = 15;
+    expect(canStartConstruction(state, 'council_chamber').ok).toBe(true);
+
+    state.levels.council_chamber = 25;
+    expect(canStartConstruction(state, 'council_chamber')).toEqual({ ok: false, reason: 'Max level' });
+
+    state.levels.council_chamber = 0;
+    expect(canSetPolicy(state, 'martial_law').ok).toBe(true);
+  });
+
+  it('removes all council_chamber local passive contributions from derived stats and construction duration', () => {
+    const low = createInitialCityEconomyState({ cityId: 'c-council-none-1', owner: 'p1', nowMs: 0 });
+    const high = createInitialCityEconomyState({ cityId: 'c-council-none-2', owner: 'p1', nowMs: 0 });
+    low.levels.council_chamber = 0;
+    high.levels.council_chamber = 25;
+
+    const lowStats = getCityDerivedStats(low);
+    const highStats = getCityDerivedStats(high);
+    expect(highStats.buildSpeedPct - lowStats.buildSpeedPct).toBeCloseTo(0, 6);
+    expect(highStats.cityDefensePct - lowStats.cityDefensePct).toBeCloseTo(0, 6);
+
+    expect(getConstructionDurationSeconds(low, 'warehouse', 2)).toBe(getConstructionDurationSeconds(high, 'warehouse', 2));
+  });
+
   it('keeps marketEfficiencyPct as research-only aggregate (market building no longer primary source)', () => {
     const state = createInitialCityEconomyState({ cityId: 'c-market-eff-research', owner: 'p1', nowMs: 0 });
     state.levels.market = 4;

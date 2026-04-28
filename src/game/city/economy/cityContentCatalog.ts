@@ -856,66 +856,30 @@ export const FULL_BUILDING_CATALOG: BuildingCatalogEntry[] = [
     id: 'council_chamber',
     name: 'Council Chamber',
     category: 'governance',
-    phase: 'later',
-    definitionStatus: 'partially_defined',
-    gameplayImplemented: false,
+    phase: 'mvp',
+    definitionStatus: 'fully_defined',
+    gameplayImplemented: true,
     maxLevel: 25,
-    role: 'Local governance/governor authority interface into faction governance.',
-    primarySystems: ['governance', 'faction_politics'],
+    role: 'Diplomacy gate for faction/token macro participation (local passive effects removed).',
+    primarySystems: ['diplomacy', 'macro_gating', 'governance'],
     unlock: [
-      { type: 'hq', targetId: 'hq', minLevel: 8 },
-      { type: 'building', targetId: 'research_lab', minLevel: 5 },
-      { type: 'building', targetId: 'market', minLevel: 4 },
-    ],
-    levelBandGates: [
-      {
-        minTargetLevel: 6,
-        maxTargetLevel: 10,
-        prerequisites: [
-          { type: 'hq', targetId: 'hq', minLevel: 11 },
-          { type: 'building', targetId: 'research_lab', minLevel: 5 },
-        ],
-      },
-      {
-        minTargetLevel: 11,
-        maxTargetLevel: 15,
-        prerequisites: [
-          { type: 'hq', targetId: 'hq', minLevel: 14 },
-          { type: 'building', targetId: 'market', minLevel: 8 },
-        ],
-      },
-      {
-        minTargetLevel: 16,
-        maxTargetLevel: 20,
-        prerequisites: [
-          { type: 'hq', targetId: 'hq', minLevel: 18 },
-          { type: 'building', targetId: 'intelligence_center', minLevel: 10 },
-        ],
-      },
+      { type: 'hq', targetId: 'hq', minLevel: 15 },
+      { type: 'building', targetId: 'market', minLevel: 10 },
+      { type: 'building', targetId: 'research_lab', minLevel: 15 },
     ],
     valueCompleteness: {
-      costs: 'partially_defined',
-      buildTime: 'partially_defined',
-      population: 'partially_defined',
-      effects: 'partially_defined',
+      costs: 'fully_defined',
+      buildTime: 'fully_defined',
+      population: 'fully_defined',
+      effects: 'fully_defined',
     },
     operationalEffectsByBand: [
-      { minLevel: 1, maxLevel: 5, effects: ['Local governance influence +2.2% per level', 'City policy duration +1.0% per level'] },
-      { minLevel: 6, maxLevel: 10, effects: ['Council vote-weight +1.8% per level', 'Policy slot +1 at levels 7 and 10'] },
-      { minLevel: 11, maxLevel: 15, effects: ['Collective mobilization prep-time -1.4% per level', 'Alliance aid request throughput +1.3% per level'] },
-      { minLevel: 16, maxLevel: 20, effects: ['Late-war governance coordination +1.9% per level', 'Emergency decree cooldown -1.5% per level'] },
+      { minLevel: 1, maxLevel: 25, effects: ['No local passive effect; reserved for future diplomacy/macro feature gating'] },
     ],
-    provisionalLevels: buildProvisionalLevels({
-      baseCost: { ore: 235, stone: 220, iron: 145 },
-      costScale: 1.195,
-      baseSeconds: 60,
-      populationCostByLevel: (level) => populationBand(level, 1, 2, 3),
-      effectByLevel: (level) => [
-        `Faction governance vote weight +${Math.round(level * 1.1)}%`,
-        `Collective mobilization prep time -${Math.round(1 + level * 0.5)}%`,
-      ],
-    }),
-    notes: ['Governance effects are provisional and require macro-system product arbitration.'],
+    notes: [
+      'All former local passive effects (build speed, city defense) were removed from runtime and level tables.',
+      'Macro diplomacy/faction participation loop is design-pending; building currently acts as a declared diplomacy gate only.',
+    ],
   },
 ];
 

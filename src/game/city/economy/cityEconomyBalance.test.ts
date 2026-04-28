@@ -143,6 +143,20 @@ describe('city economy rebalance validation', () => {
     expect(CITY_ECONOMY_CONFIG.buildings.defensive_wall.maxLevel).toBe(25);
     expect(CITY_ECONOMY_CONFIG.buildings.research_lab.maxLevel).toBe(35);
     expect(CITY_ECONOMY_CONFIG.buildings.market.maxLevel).toBe(30);
+    expect(CITY_ECONOMY_CONFIG.buildings.council_chamber.maxLevel).toBe(25);
+  });
+
+  it('keeps council_chamber levels free of local passive effects', () => {
+    const rows = CITY_ECONOMY_CONFIG.buildings.council_chamber.levels;
+    expect(rows.length).toBe(25);
+    expect(
+      rows.every((row) =>
+        row.effect.buildSpeedPct == null &&
+        row.effect.cityDefensePct == null &&
+        row.effect.productionPct == null &&
+        row.effect.trainingSpeedPct == null,
+      ),
+    ).toBe(true);
   });
 
   it('keeps market shipment capacity progression monotonic and anchored', () => {
