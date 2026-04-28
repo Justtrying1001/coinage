@@ -122,4 +122,22 @@ describe('cityContentCatalog MVP MICRO scope', () => {
     );
     expect(impossibleRefs).toEqual([]);
   });
+
+  it('keeps council_chamber catalog entry aligned with runtime unlock and local governance consumers', () => {
+    const council = FULL_BUILDING_CATALOG.find((entry) => entry.id === 'council_chamber');
+    expect(council).toBeDefined();
+    expect(council?.phase).toBe('mvp');
+    expect(council?.definitionStatus).toBe('fully_defined');
+    expect(council?.gameplayImplemented).toBe(true);
+    expect(council?.maxLevel).toBe(25);
+    expect(council?.unlock).toEqual([
+      { type: 'hq', targetId: 'hq', minLevel: 15 },
+      { type: 'building', targetId: 'market', minLevel: 10 },
+      { type: 'building', targetId: 'research_lab', minLevel: 15 },
+    ]);
+    expect(council?.levelBandGates ?? []).toEqual([]);
+    expect(council?.notes ?? []).toContain(
+      'Macro diplomacy/faction participation loop is design-pending; building currently acts as a declared diplomacy gate only.',
+    );
+  });
 });
