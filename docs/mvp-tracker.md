@@ -135,3 +135,17 @@ Points réellement ouverts après resynchronisation:
 - **Not implemented (feature-parent dependency)**: `conquest` research is declared but conquest/colonization mother feature is not runtime-live in this scope.
 - **Ambiguous mapping to clarify**: `cartography`, `recovery_logistics` (current runtime bucket leans market/logistics aggregation; intended navigation/conquest linkage requires product clarification).
 - **Audit references**: `docs/research/research_feature_audit.md`, `docs/research/research_gap_report.md`, `docs/research/README.md`.
+
+## 12. Inventory & NFT Items
+- **Status**: `Planned / Documentation Ready`
+- **Scope**: système d'inventaire + items bonus inspiré Grepolis, adapté Coinage, avec trajectoire NFT progressive.
+- **Implémentation runtime**: **non démarrée** (documentation uniquement à ce stade).
+- **Référence doc**: `docs/features/inventory-items/`
+- **Dépendances MVP**:
+  - système inventaire off-chain (templates/instances/usage)
+  - validations serveur anti-abus (combat windows, locks, caps)
+  - base marketplace lock semantics
+- **Dépendances post-MVP**:
+  - mint/burn/transfer NFT
+  - marketplace full integration
+  - gouvernance saison/serveur des items puissants
