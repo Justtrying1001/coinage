@@ -1,21 +1,8 @@
 # Governance
 
-**Status:** To complete
+## Runtime status
+Partially implemented.
 
-## What this page covers
-English mirror page.
+Local policy system exists in city economy config/runtime (`policies`) and council-related progression exists. Macro governance systems are mostly documented/planned.
 
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+Source: `cityEconomyConfig.ts`, `cityEconomySystem.ts`.

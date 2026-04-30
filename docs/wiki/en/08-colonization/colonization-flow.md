@@ -1,21 +1,6 @@
 # Colonization Flow
 
-**Status:** To complete
+## Runtime status
+Planned / partial.
 
-## What this page covers
-English mirror page.
-
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+Current runtime supports prerequisite-style progression pieces, but not a fully documented colony founding pipeline end-to-end.

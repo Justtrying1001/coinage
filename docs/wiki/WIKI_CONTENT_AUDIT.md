@@ -1,70 +1,73 @@
-# Wiki Content Audit — Coinage (phase 1)
+# Wiki Content Audit (Global, runtime-backed)
 
-## Commandes exécutées
-- `pwd`
-- `git rev-parse --show-toplevel`
-- `git branch --show-current`
-- `git status --short`
-- `find docs -maxdepth 5 -type f | sort`
-- `find app -maxdepth 6 -type f | sort`
-- `find src -maxdepth 7 -type f | sort`
-- `rg -n "mine|quarry|refinery|warehouse|resource|production|storage|building|queue|training|troop|unit|research|galaxy|planet|city|combat|attack|defense|colonization|espionage|intel|policy|governance|market|shards|high command|council|space dock|research lab|armament" docs src .`
+## 1) World / navigation
+- Sources: `src/lib/wikiNav.ts`, `src/app/wiki/[[...slug]]/page.tsx`, `src/game/world/*`, `src/game/planet/*`.
+- Status: **Partially implemented**.
+- Wiki scope: routing, wiki categories, galaxy/planet generation concepts; avoid claiming full meta-world gameplay loops.
 
-## Fichiers sources lus (preuve)
-- Runtime économie: `src/game/city/economy/cityEconomyConfig.ts`, `src/game/city/economy/cityEconomySystem.ts`, `src/game/city/economy/cityBuildingLevelTables.ts`
-- Navigation wiki/UI: `src/lib/wikiNav.ts`, `src/lib/wiki.ts`, `src/app/wiki/[[...slug]]/page.tsx`, `src/components/wiki/WikiComponents.tsx`, `src/styles/globals.css`
-- Monde/runtime visuel: `src/components/game/GameShell.tsx`, `src/game/world/galaxyGenerator.ts`, `src/game/render/modes/*`
-- Docs design/gameplay: `docs/03-Gameplay-Micro.md`, `docs/04-Gameplay-Macro.md`, `docs/research/research_feature_audit.md`, `docs/units/*.md`, `docs/building/*.md`
+## 2) Resources
+- Sources: `cityEconomyConfig.ts`, `cityEconomySystem.ts`, `CityFoundationMode.ts`, docs in `docs/01-Lexique-Ressources.md`.
+- Data: ore/stone/iron + population meta.
+- Status: **Runtime implemented**.
 
-## Bâtiments réellement présents
-IDs runtime (config typée):
-- `hq`, `mine`, `quarry`, `refinery`, `warehouse`, `housing_complex`, `barracks`, `space_dock`, `defensive_wall`, `skyshield_battery`, `armament_factory`, `intelligence_center`, `research_lab`, `market`, `council_chamber`.
+## 3) Production
+- Sources: `cityEconomySystem.ts`, building effects tables.
+- Data: per-hour production from mine/quarry/refinery + claim-on-access.
+- Status: **Runtime implemented**.
 
-## Ressources réellement présentes
-- Ressources stockées/produites runtime: `ore`, `stone`, `iron`.
-- Capacité de base: `300/300/300`.
-- Stock initial: `300/300/180`.
-- Système shards: flag `shardsEnabled: false` (non activé runtime).
+## 4) Storage
+- Sources: warehouse levels in `cityBuildingLevelTables.ts`, storage cap helpers in `cityEconomySystem.ts`.
+- Status: **Runtime implemented**.
 
-## Unités réellement présentes
-IDs runtime:
-- `citizen_militia`, `line_infantry`, `phalanx_lanceguard`, `rail_marksman`, `assault_legionnaire`, `aegis_shieldguard`, `raider_hoverbike`, `siege_breacher`, `assault_dropship`, `swift_carrier`, `interceptor_sentinel`, `ember_drifter`, `rapid_escort`, `bulwark_trireme`, `colonization_arkship`.
+## 5) Buildings
+- Sources: `CITY_ECONOMY_CONFIG.buildings`, `CITY_BUILDING_LEVEL_TABLES`, `cityContentCatalog.ts`.
+- Status: **Runtime implemented** (some UI surfaces partial).
 
-## Recherches réellement présentes
-40 entrées runtime dans `ResearchId`, incluant notamment:
-- Éco/prod: `market_logistics`, `ceramics`, `workforce_loyalty`, `plow`, `workforce_morale`
-- Militaire: `railgun_skirmisher`, `city_guard`, `defense_formation`, `offensive_tempo`, `anti_air_defense`
-- Naval/colonisation: `shipwright`, `colony_ark`, `naval_mobilization`
-- Intel/gouvernance: `espionage`, `cryptography`, `diplomacy`, `democracy`, `command_selection`
+## 6) Units
+- Sources: `CITY_ECONOMY_CONFIG.troops`, training queue in runtime.
+- Status: **Runtime implemented** for unit config + training loop, **partial** for full macro combat ecosystem.
 
-## Systèmes runtime implémentés
-- Production passive + claim-on-access basé timestamp (`lastUpdatedAtMs`, `applyClaimOnAccess`).
-- Stockage par capacité warehouse + clamp.
-- Construction avec file (`queueSlots: 2`) et coûts/temps dynamiques.
-- Entraînement unités avec prérequis bâtiments/recherche + file dédiée.
-- Recherche avec coûts/prérequis/durée + file recherche.
-- Politiques locales (`industrial_push`, `martial_law`, `civic_watch`).
-- Intel/espionnage: readiness, projets intel, missions, reports snapshot.
-- Vue monde: navigation Galaxy/Planet/City côté shell/render.
+## 7) Research
+- Sources: `CITY_ECONOMY_CONFIG.research`, research queue/runtime checks.
+- Status: **Runtime implemented**.
 
-## Systèmes partiels
-- Combat global: stats et bonus existent, mais pas de resolver bataille macro complet prouvé.
-- Market: efficacité (`marketEfficiencyPct`) et capacités existent, trade live limité/partiel.
-- Colonisation: unité/recherches présentes, boucle complète de fondation inter-planètes partielle.
+## 8) Queues / timers
+- Sources: `cityEconomyState.ts`, `cityEconomySystem.ts`.
+- Data: construction queue, training queue, research queue, queue caps, timestamps.
+- Status: **Runtime implemented**.
 
-## Systèmes seulement documentés
-- Systèmes token avancés (holder boosts, locking, token servers) majoritairement design/docs.
-- Certaines mécaniques alliance/gouvernance étendue: docs plus riches que runtime branché.
+## 9) Combat
+- Sources: troop stats/config + derived modifiers in economy runtime and tests.
+- Status: **Partially implemented** (modifiers/guards exist; full battle engine docs incomplete).
 
-## Systèmes absents (code+docs runtime)
-- Aucune preuve d’un moteur PvP complet synchronisé serveur avec résolution bataille multi-villes en temps réel.
-- Aucune preuve d’un marché global fully transactional branché end-to-end.
+## 10) Colonization
+- Sources: colonization troop + research entries, wiki/docs pages.
+- Status: **Partially implemented / planned**.
 
-## Pages wiki prioritaires à remplir avec preuve source
-- Getting started: overview, beginner-guide, core-loop (preuve: game shell + city economy system).
-- Economy: resources, production, storage (preuve: config ressources/caps + system claim-on-access).
-- Buildings: index + mine/quarry/refinery/warehouse (preuve: building config + level tables).
-- Units overview (preuve: `TroopId`, coûts, prérequis).
-- Research overview (preuve: `ResearchId`, research queue, effects).
-- Combat overview (preuve: stats/bonuses présents, resolver global non prouvé).
-- Colonization overview (preuve: `colonization_arkship`, `colony_ark`, limites runtime).
+## 11) Espionage / intel
+- Sources: intelligence center levels/effects, research modifiers, intel project loop in runtime.
+- Status: **Partially implemented**.
+
+## 12) Governance / policies
+- Sources: `CITY_ECONOMY_CONFIG.policies`, council chamber progression.
+- Status: **Partially implemented** (local policy layer runtime; alliance governance mostly docs/planned).
+
+## 13) Market
+- Sources: market building + shipment capacity + dispatch guards.
+- Status: **Partially implemented** (core capacity guards runtime, full trade UX incomplete).
+
+## 14) Shards / premium economy
+- Sources: feature flags in economy config (`shardsEnabled`, premium flags).
+- Status: **Planned / disabled**.
+
+## 15) Token systems / factions / servers
+- Sources: wiki docs + config flags (`holdingMultiplierEnabled` false).
+- Status: **Documented only / planned**.
+
+## Pages corrected in this pass
+- Buildings: index + detailed runtime pages.
+- Resources/Economy: market/shards clarified.
+- Units: overview + category pages with runtime/partial status.
+- Research: overview + branch pages statusized.
+- Combat/Colonization/Governance/Token: placeholders replaced by explicit runtime truth labels.
+- Reference formulas updated for queue/timer runtime behavior.

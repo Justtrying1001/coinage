@@ -1,21 +1,8 @@
 # Travel Time
 
-**Status:** To complete
+## Runtime status
+Documented only in wiki for now.
 
-## What this page covers
-English mirror page.
+The city-economy subsystem does not expose a full strategic map travel-time resolver for all combat flows.
 
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+Source: `cityEconomySystem.ts`, map/render docs.

@@ -1,21 +1,15 @@
-# Infantry
+# Military Units (Ground)
 
-**Status:** To complete
+## Runtime status
+Runtime implemented.
 
-## What this page covers
-English mirror page.
+Ground units are defined in `CITY_ECONOMY_CONFIG.troops` with cost, training seconds, combat stats, speed, and guards.
 
-## How it works
-Design in progress / value to confirm.
+## Core runtime rules
+- Requires `barracks` level gates per unit.
+- Optional research prerequisite per unit.
+- Uses training queue with resource payment and timer completion.
 
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Data source
+- `src/game/city/economy/cityEconomyConfig.ts`
+- `src/game/city/economy/cityEconomySystem.ts`

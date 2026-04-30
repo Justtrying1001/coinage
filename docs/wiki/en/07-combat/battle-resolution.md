@@ -1,21 +1,6 @@
 # Battle Resolution
 
-**Status:** To complete
+## Runtime status
+Partially implemented / not complete end-to-end.
 
-## What this page covers
-English mirror page.
-
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+Economy runtime provides prerequisites and derived modifiers used by combat contexts, but no complete canonical battle engine page-level API is exposed in wiki-facing runtime docs.

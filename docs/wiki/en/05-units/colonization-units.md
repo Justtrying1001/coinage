@@ -1,21 +1,13 @@
 # Colonization Units
 
-**Status:** To complete
+## Runtime status
+Partially implemented.
 
-## What this page covers
-English mirror page.
+`colonization_arkship` exists in troop config and can be trained with building/research prerequisites.
 
-## How it works
-Design in progress / value to confirm.
+## Limits
+- Full colony founding and planet-slot claiming flow is not fully implemented in the city runtime loop.
 
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Source notes
+- `src/game/city/economy/cityEconomyConfig.ts`
+- `src/game/city/economy/cityEconomySystem.ts`
