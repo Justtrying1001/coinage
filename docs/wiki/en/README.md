@@ -14,6 +14,6 @@ Welcome to the player-facing Coinage wiki.
 - [Combat](./07-combat/overview.md)
 - [Colonization](./08-colonization/overview.md)
 - [Alliances & Governance](./09-alliances-governance/alliances.md)
-- [Token systems](./10-token-systems/token-servers.md)
+- [Token systems](./10-token-systems/overview.md)
 - [Guides](./11-guides/first-hour-guide.md)
 - [Reference](./12-reference/faq.md)
