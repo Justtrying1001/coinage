@@ -16,7 +16,7 @@ Bienvenue dans le wiki joueur de **Coinage**.
 7. [Combat](./07-combat/overview.md)
 8. [Colonization](./08-colonization/overview.md)
 9. [Alliances & Governance](./09-alliances-governance/alliances.md)
-10. [Token systems](./10-token-systems/token-servers.md)
+10. [Token systems](./10-token-systems/overview.md)
 11. [Guides](./11-guides/first-hour-guide.md)
 12. [Reference](./12-reference/faq.md)
 

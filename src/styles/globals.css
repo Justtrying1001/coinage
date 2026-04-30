@@ -2869,3 +2869,14 @@ canvas {
   .city-stitch__ops-grid--double,
   .city-stitch__tile-grid { grid-template-columns: 1fr; }
 }
+
+.wiki{max-width:1100px;margin:0 auto;padding:24px;color:#e2e8f0}
+.wiki h1,.wiki h2,.wiki h3{color:#f8fafc}
+.wiki .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.wiki .card{background:#0f172a;border:1px solid #334155;border-radius:12px;padding:12px;display:block}
+.wiki .layout{display:grid;grid-template-columns:260px 1fr;gap:20px}
+.wiki aside{display:flex;flex-direction:column;gap:8px;position:sticky;top:16px;height:fit-content}
+.wiki aside a{color:#cbd5e1;text-decoration:none}
+.wiki article pre{white-space:pre-wrap;background:#020617;border:1px solid #1e293b;padding:16px;border-radius:10px;line-height:1.5}
+.wiki .badge{display:inline-block;padding:4px 10px;border-radius:999px;color:#020617;font-weight:700;margin-bottom:12px}
+@media (max-width: 900px){.wiki .layout{grid-template-columns:1fr}.wiki aside{position:static;overflow:auto;white-space:nowrap;flex-direction:row}}
