@@ -1,73 +1,91 @@
-# Wiki Content Audit (Global, runtime-backed)
+# WIKI CONTENT AUDIT — source of truth (2026-04-30)
 
-## 1) World / navigation
-- Sources: `src/lib/wikiNav.ts`, `src/app/wiki/[[...slug]]/page.tsx`, `src/game/world/*`, `src/game/planet/*`.
-- Status: **Partially implemented**.
-- Wiki scope: routing, wiki categories, galaxy/planet generation concepts; avoid claiming full meta-world gameplay loops.
+## Scope and method
+Mandatory repo scans were executed over `docs/`, `src/`, and the root (no `app/` directory exists in this repo). Runtime authority is in `src/game/city/economy/*`; docs authority is in `docs/building`, `docs/units`, `docs/research`.
 
-## 2) Resources
-- Sources: `cityEconomyConfig.ts`, `cityEconomySystem.ts`, `CityFoundationMode.ts`, docs in `docs/01-Lexique-Ressources.md`.
-- Data: ore/stone/iron + population meta.
-- Status: **Runtime implemented**.
+## System audit matrix
 
-## 3) Production
-- Sources: `cityEconomySystem.ts`, building effects tables.
-- Data: per-hour production from mine/quarry/refinery + claim-on-access.
-- Status: **Runtime implemented**.
+### Buildings
+- Sources read:
+  - `src/game/city/economy/cityEconomyConfig.ts`
+  - `src/game/city/economy/cityBuildingLevelTables.ts`
+  - `src/game/city/economy/cityContentCatalog.ts`
+  - `docs/building/*.md`
+- Data found: canonical IDs, unlock gates, prerequisites, level effects, costs, construction times.
+- Real status: **Runtime implemented**.
+- Wiki pages: `docs/wiki/04-buildings/*` (+ `en/04-buildings/*`).
+- To transcribe: complete level tables for all runtime buildings (mine, quarry, refinery, warehouse, hq, barracks, space_dock, research_lab, armament_factory, council_chamber, intelligence_center, market, defensive_wall, skyshield_battery, housing_complex).
+- Missing fields: none for core building runtime data.
 
-## 4) Storage
-- Sources: warehouse levels in `cityBuildingLevelTables.ts`, storage cap helpers in `cityEconomySystem.ts`.
-- Status: **Runtime implemented**.
+### Resources
+- Sources read: `cityEconomyConfig.ts`, `cityEconomySystem.ts`, `docs/01-Lexique-Ressources.md`.
+- Data found: ore/stone/iron production and storage, population and soft economy fields.
+- Real status: **Runtime implemented**.
+- Wiki pages: `docs/wiki/03-resources-economy/resources.md`, `production.md`, `storage.md`.
+- Missing fields: premium shard live loop is absent in runtime.
 
-## 5) Buildings
-- Sources: `CITY_ECONOMY_CONFIG.buildings`, `CITY_BUILDING_LEVEL_TABLES`, `cityContentCatalog.ts`.
-- Status: **Runtime implemented** (some UI surfaces partial).
+### Units
+- Sources read: `cityEconomyConfig.ts` troops section, runtime guards in `cityEconomySystem.ts`, `docs/units/*.md`.
+- Data found: unit costs, durations, stat blocks, building/research gates.
+- Real status: **Runtime implemented** for training/config; **Partially implemented** for broader battle usage.
+- Wiki pages: `docs/wiki/05-units/*`.
 
-## 6) Units
-- Sources: `CITY_ECONOMY_CONFIG.troops`, training queue in runtime.
-- Status: **Runtime implemented** for unit config + training loop, **partial** for full macro combat ecosystem.
+### Research
+- Sources read: `cityEconomyConfig.ts`, `cityEconomySystem.ts`, `docs/research/research_matrix.md`, `docs/research/items/*.md`.
+- Data found: full research node table, RP costs, durations, prerequisites, effects, unlock links.
+- Real status: **Runtime implemented**.
+- Wiki pages: `docs/wiki/06-research/*`.
 
-## 7) Research
-- Sources: `CITY_ECONOMY_CONFIG.research`, research queue/runtime checks.
-- Status: **Runtime implemented**.
+### Queues & timers
+- Sources read: `cityEconomySystem.ts`, state types/tests, `CityFoundationMode.ts`.
+- Data found: build queue, training queue, research queue, timestamp completion, claim-on-access resource accrual.
+- Real status: **Runtime implemented**.
+- Wiki pages: `docs/wiki/12-reference/formulas.md`, `tables.md`, combat/colonization where timing is referenced.
 
-## 8) Queues / timers
-- Sources: `cityEconomyState.ts`, `cityEconomySystem.ts`.
-- Data: construction queue, training queue, research queue, queue caps, timestamps.
-- Status: **Runtime implemented**.
+### Combat
+- Sources read: troop stats + derived combat modifiers in economy layer and city UI helpers.
+- Data found: modifiers and readiness values, no dedicated battle resolver module in this runtime slice.
+- Real status: **Partially implemented**.
+- Wiki pages: `docs/wiki/07-combat/*`.
 
-## 9) Combat
-- Sources: troop stats/config + derived modifiers in economy runtime and tests.
-- Status: **Partially implemented** (modifiers/guards exist; full battle engine docs incomplete).
+### Colonization
+- Sources read: troop/research gates (`colonization_arkship`, `colony_ark`, `conquest`) + docs.
+- Data found: prerequisite and unlock information, limited end-to-end colonization runtime flow.
+- Real status: **Partially implemented / Documented only for macro loop**.
+- Wiki pages: `docs/wiki/08-colonization/*`.
 
-## 10) Colonization
-- Sources: colonization troop + research entries, wiki/docs pages.
-- Status: **Partially implemented / planned**.
+### Espionage
+- Sources read: intelligence center effects, intel projects, cryptography/espionage research, mission guards.
+- Data found: local intel readiness/project loop and vault interactions.
+- Real status: **Partially implemented**.
+- Wiki pages: `docs/wiki/07-combat/scouting-and-espionage.md`, `docs/wiki/06-research/espionage-research.md`.
 
-## 11) Espionage / intel
-- Sources: intelligence center levels/effects, research modifiers, intel project loop in runtime.
-- Status: **Partially implemented**.
+### Governance
+- Sources read: policies in economy config, council progression, governance docs.
+- Data found: local city policy application is runtime; alliance governance is doc-level.
+- Real status: **Partially implemented**.
+- Wiki pages: `docs/wiki/09-alliances-governance/*`.
 
-## 12) Governance / policies
-- Sources: `CITY_ECONOMY_CONFIG.policies`, council chamber progression.
-- Status: **Partially implemented** (local policy layer runtime; alliance governance mostly docs/planned).
+### Market
+- Sources read: market building effects, shipment capacity/guard code, docs/audits.
+- Data found: capacity/efficiency stats and guard rails; no full orderbook/live trade runtime.
+- Real status: **Partially implemented**.
+- Wiki pages: `docs/wiki/03-resources-economy/market.md`, `docs/wiki/04-buildings/market.md`.
 
-## 13) Market
-- Sources: market building + shipment capacity + dispatch guards.
-- Status: **Partially implemented** (core capacity guards runtime, full trade UX incomplete).
+### Token systems
+- Sources read: token wiki docs + flags in runtime config.
+- Data found: feature flags and design intent only.
+- Real status: **Documented only / Planned**.
+- Wiki pages: `docs/wiki/10-token-systems/*`, `docs/wiki/02-world/token-factions.md`.
 
-## 14) Shards / premium economy
-- Sources: feature flags in economy config (`shardsEnabled`, premium flags).
-- Status: **Planned / disabled**.
+## Global blocker list for wiki completion
+1. A large set of wiki pages still contains `To complete` / `À compléter` placeholder content.
+2. Many FR and EN mirrors are divergent in completeness.
+3. Some building pages still present sample-style summaries instead of complete tables.
+4. Several macro systems (alliances, token systems, full combat resolution) remain doc-first and not runtime-backed.
 
-## 15) Token systems / factions / servers
-- Sources: wiki docs + config flags (`holdingMultiplierEnabled` false).
-- Status: **Documented only / planned**.
-
-## Pages corrected in this pass
-- Buildings: index + detailed runtime pages.
-- Resources/Economy: market/shards clarified.
-- Units: overview + category pages with runtime/partial status.
-- Research: overview + branch pages statusized.
-- Combat/Colonization/Governance/Token: placeholders replaced by explicit runtime truth labels.
-- Reference formulas updated for queue/timer runtime behavior.
+## Required next actions (content phase before UI phase)
+- Replace all placeholder wiki pages with runtime/doc-backed sections per page standard.
+- Generate complete per-level tables from runtime building level tables.
+- Use research/unit source catalogs to produce exhaustive tables (no samples).
+- Only after full content parity, proceed with premium UI overhaul.
