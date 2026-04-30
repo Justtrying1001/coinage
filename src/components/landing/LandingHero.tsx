@@ -14,6 +14,9 @@ export function LandingHero() {
         <Link className="landing-cta" href="/game">
           Start Coinage
         </Link>
+        <Link className="landing-cta" href="/wiki">
+          Open Wiki
+        </Link>
       </section>
     </main>
   );
