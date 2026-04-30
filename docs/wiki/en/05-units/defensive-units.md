@@ -1,21 +1,14 @@
 # Defensive Units
 
-**Status:** To complete
+## Runtime status
+Partially implemented.
 
-## What this page covers
-English mirror page.
+There is no separate standalone defensive-unit config group; defense behavior is derived from unit stats plus building/research/policy modifiers.
 
-## How it works
-Design in progress / value to confirm.
+## What is runtime-backed
+- Unit defense stats (`defenseBlunt`, `defenseSharp`, `defenseDistance`, naval defense where present).
+- City-defense-only modifiers from `defensive_wall` and `skyshield_battery`.
 
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Source notes
+- `src/game/city/economy/cityEconomyConfig.ts`
+- `src/game/city/economy/cityEconomySystem.ts`

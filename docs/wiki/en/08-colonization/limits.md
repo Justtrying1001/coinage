@@ -1,21 +1,6 @@
-# Limits
+# Colonization Limits
 
-**Status:** To complete
+## Runtime status
+Not fully defined in active city runtime wiki sources.
 
-## What this page covers
-English mirror page.
-
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+Where limits are not encoded in config/state, treat as design-level constraints pending implementation.

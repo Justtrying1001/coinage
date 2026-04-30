@@ -1,21 +1,8 @@
 # Holder Boosts
 
-**Status:** To complete
+## Runtime status
+Planned.
 
-## What this page covers
-English mirror page.
+`holdingMultiplierEnabled` exists but is disabled in runtime config.
 
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+Source: `cityEconomyConfig.ts`.

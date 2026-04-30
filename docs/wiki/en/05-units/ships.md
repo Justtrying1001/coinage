@@ -1,21 +1,14 @@
-# Ships
+# Ships / Naval-Projection Units
 
-**Status:** To complete
+## Runtime status
+Runtime implemented.
 
-## What this page covers
-English mirror page.
+Naval/air-projection units are configured in `CITY_ECONOMY_CONFIG.troops` and gated by `space_dock` + research where required.
 
-## How it works
-Design in progress / value to confirm.
+## Runtime rules
+- Uses same queue/timer flow as other troops.
+- Requires required building level and research prerequisite.
 
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Source notes
+- `src/game/city/economy/cityEconomyConfig.ts`
+- `src/game/city/economy/cityEconomySystem.ts`

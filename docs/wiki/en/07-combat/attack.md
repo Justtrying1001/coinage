@@ -1,21 +1,8 @@
 # Attack
 
-**Status:** To complete
+## Runtime status
+Partially implemented.
 
-## What this page covers
-English mirror page.
+City economy runtime computes attack/defense modifiers and training; full battle-resolution simulation between armies is not fully implemented in this layer.
 
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+Source: `cityEconomySystem.ts`, `cityEconomyConfig.ts`.

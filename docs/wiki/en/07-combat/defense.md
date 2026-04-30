@@ -1,21 +1,8 @@
 # Defense
 
-**Status:** To complete
+## Runtime status
+Partially implemented.
 
-## What this page covers
-English mirror page.
+Runtime includes unit defense stats and city-defense context modifiers (`defensive_wall`, `skyshield_battery`, research/policy modifiers).
 
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+Source: `cityEconomySystem.ts`, `cityEconomyConfig.ts`.

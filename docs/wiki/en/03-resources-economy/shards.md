@@ -1,21 +1,14 @@
 # Shards
 
-**Status:** To complete
+## Runtime status
+Planned / not implemented in active economy loop.
 
-## What this page covers
-English mirror page.
+## What exists
+- Global feature flag exists: `shardsEnabled: false`.
+- No active shard production/spend loop in city runtime.
 
-## How it works
-Design in progress / value to confirm.
+## Wiki scope
+- Treat shards as design-level economy placeholder until feature flag and spend sources are enabled in runtime.
 
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Source notes
+- `src/game/city/economy/cityEconomyConfig.ts`

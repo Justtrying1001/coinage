@@ -1,21 +1,11 @@
 # Formulas
 
-**Status:** To complete
+## Queues and timers formulas (runtime-backed)
+- Construction duration uses per-level base `buildSeconds` plus world-speed reference transform in economy runtime.
+- Production claim uses elapsed time since last update/claim and per-hour production, then clamps by storage cap.
+- Training/research complete when queue item `endsAtMs <= nowMs`.
 
-## What this page covers
-English mirror page.
-
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Source notes
+- `src/game/city/economy/cityEconomySystem.ts`
+- `src/game/city/economy/cityEconomyState.ts`
+- `src/game/city/economy/cityBuildingLevelTables.ts`

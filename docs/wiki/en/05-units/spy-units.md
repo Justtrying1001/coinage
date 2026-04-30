@@ -1,21 +1,11 @@
-# Spy Units
+# Spy / Intel Units
 
-**Status:** To complete
+## Runtime status
+Not found as standalone troop class.
 
-## What this page covers
-English mirror page.
+No dedicated spy troop entries exist in `CITY_ECONOMY_CONFIG.troops`.
+Espionage is handled through intelligence projects/stats, not troop cards.
 
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Source notes
+- `src/game/city/economy/cityEconomyConfig.ts`
+- `src/game/city/economy/cityEconomySystem.ts`
