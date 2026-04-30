@@ -1,21 +1,11 @@
-# Overview
+# Combat Overview
 
-**Status:** To complete
+Combat is currently a mix of runtime systems and documented design intent.
 
-## What this page covers
-English mirror page.
+## Runtime evidence
+- Unit stat data exists (attack, typed defenses, speed, costs).
+- Derived bonuses from buildings/research/policies are computed.
+- Intel/espionage reports include defensive snapshots.
 
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Current limitation
+A complete macro battle resolver loop (inter-city attack/defense outcome flow) is not fully proven in this repository.

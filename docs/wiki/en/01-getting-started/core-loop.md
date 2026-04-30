@@ -1,21 +1,23 @@
 # Core Loop
 
-**Status:** To complete
+Coinage is built around five connected loops.
 
-## What this page covers
-English mirror page.
+## Economy loop
+- Resources generate passively and are credited on state update (claim-on-access pattern).
+- Storage caps limit effective yield.
 
-## How it works
-Design in progress / value to confirm.
+## Construction loop
+- Each upgrade consumes resources, time, and population.
+- HQ and prerequisite gates define build order.
 
-## Requirements
-À compléter.
+## Training loop
+- Units consume resources and population.
+- Some units are locked behind research.
 
-## Related systems
-À compléter.
+## Research loop
+- Research runs through a queue with costs, duration, and prerequisites.
+- Effects modify production, training speed, defense, anti-air, and intel stats.
 
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## World loop
+- Galaxy/Planet provide expansion context.
+- City remains the operational core in current runtime.

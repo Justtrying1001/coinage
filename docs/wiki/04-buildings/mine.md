@@ -1,21 +1,11 @@
 # Mine
 
-**Status:** To complete
+Mine est le bâtiment primaire d’extraction de **ore**.
 
-## What this page covers
-Player-facing documentation page.
+## Rôle
+- Fournit le flux ore pour les upgrades précoces et intermédiaires.
+- Sert de prérequis pour plusieurs branches (dont Refinery et structures avancées).
 
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Synergies
+- Coupler avec Warehouse pour éviter la saturation.
+- Coupler avec Quarry pour équilibrer la file de construction.

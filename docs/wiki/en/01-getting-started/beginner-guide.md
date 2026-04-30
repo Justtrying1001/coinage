@@ -1,21 +1,22 @@
 # Beginner Guide
 
-**Status:** To complete
+This page gives you a practical first-session path based on the current runtime.
 
-## What this page covers
-English mirror page.
+## 1) First check: economy
+- Confirm starting stocks (`ore`, `stone`, `iron`).
+- Watch storage cap early; overflowing means wasted production.
 
-## How it works
-Design in progress / value to confirm.
+## 2) Early building priorities
+- **Mine** and **Quarry** to stabilize construction pace.
+- **Refinery** to unlock stronger mid-game `iron` flow.
+- **Warehouse** to prevent waste and bank for upgrades.
 
-## Requirements
-À compléter.
+## 3) Queue management
+- Construction queue: limited slots (configured at 2).
+- Training queue: separate troop queue.
+- Research queue: separate research queue.
 
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## 4) Unlock military progression
+- Raise `barracks` for ground units.
+- Prepare `research_lab` for production/training/defense boosts.
+- Check research prerequisites before training advanced units.

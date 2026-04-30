@@ -1,21 +1,12 @@
 # Storage
 
-**Status:** To complete
+## Warehouse et capacité
+Le Warehouse fixe le plafond de stockage effectif des ressources. Sans upgrade, les caps de base sont faibles.
 
-## What this page covers
-Player-facing documentation page.
+## Effet économique concret
+- Réduit la perte de production en période offline.
+- Permet d’accumuler pour des upgrades/recherches coûteux.
+- Stabilise le cycle build queue + training queue.
 
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Bon ordre de priorité
+Si tu touches souvent le cap, monter Warehouse est généralement plus rentable que forcer seulement la production brute.

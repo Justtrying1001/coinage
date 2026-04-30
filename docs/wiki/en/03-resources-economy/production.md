@@ -1,21 +1,14 @@
 # Production
 
-**Status:** To complete
+## Runtime behavior
+Production is passive and timestamp-driven: gains accumulate over time and are applied when state updates (claim-on-access).
 
-## What this page covers
-English mirror page.
+## Producer buildings
+- **Mine** → ore
+- **Quarry** → stone
+- **Refinery** → iron
 
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Runtime modifiers
+- Research effects (`productionPct`)
+- Local policy effects
+- Temporary penalties in specific local states

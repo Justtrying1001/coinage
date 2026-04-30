@@ -1,21 +1,17 @@
 # Production
 
-**Status:** To complete
+## Comment ça fonctionne
+La production est **passive et timestampée**: les gains sont appliqués au fil du temps puis crédités lors de l’accès/refresh d’état (pattern claim-on-access).
 
-## What this page covers
-Player-facing documentation page.
+## Bâtiments producteurs
+- **Mine**: production ore.
+- **Quarry**: production stone.
+- **Refinery**: production iron.
 
-## How it works
-Design in progress / value to confirm.
+## Modificateurs runtime
+- Recherches `productionPct`.
+- Policies locales orientées production.
+- Pénalités temporaires (ex. certains états de milice selon système local).
 
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Point d’attention
+Le rendement réel dépend aussi de la capacité: si tu capes, la production excédentaire est perdue.

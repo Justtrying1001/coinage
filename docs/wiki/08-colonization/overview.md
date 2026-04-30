@@ -1,21 +1,14 @@
-# Colonisation (vue d’ensemble)
+# Colonization Overview
 
-**Status:** Design in progress
+La colonisation est **présente en base** mais **partielle** en gameplay bout-en-bout.
 
-## What this page covers
-La colonisation est une direction produit centrale; implémentation globale à confirmer.
+## Éléments existants
+- Unité dédiée: `colonization_arkship`.
+- Recherche liée: `colony_ark`.
+- Contexte monde Galaxy/Planet dans l’interface de navigation.
 
-## How it works
-Design in progress / value to confirm.
+## Limites actuelles
+- La boucle complète de fondation/gestion multi-colonies n’est pas entièrement démontrée comme système finalisé runtime.
 
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Recommandation
+Prépare la colonisation via économie + recherche + montée tech, puis traite les docs colonisation comme roadmap fonctionnelle en cours.

@@ -1,21 +1,18 @@
-# Bâtiments (index)
+# Buildings Overview
 
-**Status:** Partially implemented
+Cette section décrit les bâtiments avec leur état réel runtime.
 
-## What this page covers
-Index des bâtiments économiques, militaires, défensifs et de commandement. Voir pages dédiées.
+## Économie (implémenté)
+- [Mine](/wiki/buildings/mine)
+- [Quarry](/wiki/buildings/quarry)
+- [Refinery](/wiki/buildings/refinery)
+- [Warehouse](/wiki/buildings/warehouse)
 
-## How it works
-Design in progress / value to confirm.
+## Progression militaire (implémenté/partiel)
+- Barracks, Defensive Wall, Space Dock, Armament Factory.
 
-## Requirements
-À compléter.
+## Tech/intel/gouvernance (implémenté/partiel)
+- Research Lab, Intelligence Center, Market, Council Chamber.
 
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Note de statut
+Le statut affiché côté UI vient du registre `wikiNav`. Le contenu markdown évite désormais les badges textuels contradictoires.

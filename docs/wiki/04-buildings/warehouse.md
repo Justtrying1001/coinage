@@ -1,21 +1,10 @@
 # Warehouse
 
-**Status:** To complete
+Warehouse augmente les plafonds de stockage des ressources.
 
-## What this page covers
-Player-facing documentation page.
+## Impact direct
+- Plus de temps offline sans pertes.
+- Préparation de gros investissements (recherche, unités, upgrades hauts niveaux).
 
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Bon usage
+- Monter Warehouse avant un palier coûteux évite les cycles “je produis mais je perds”.

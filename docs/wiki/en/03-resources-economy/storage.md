@@ -1,21 +1,9 @@
 # Storage
 
-**Status:** To complete
+## Warehouse and capacity
+Warehouse determines effective storage ceilings for resources.
 
-## What this page covers
-English mirror page.
-
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Practical impact
+- Reduces offline production loss.
+- Lets you save for expensive upgrades/research.
+- Stabilizes construction and training queue planning.

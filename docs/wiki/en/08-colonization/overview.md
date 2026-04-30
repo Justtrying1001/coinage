@@ -1,21 +1,11 @@
-# Overview
+# Colonization Overview
 
-**Status:** To complete
+Colonization is present in foundations but still partial as a full end-to-end gameplay loop.
 
-## What this page covers
-English mirror page.
+## Existing pieces
+- Dedicated unit: `colonization_arkship`
+- Related research: `colony_ark`
+- Galaxy/Planet context in navigation runtime
 
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Limitation
+A complete multi-colony foundation/management loop is not fully demonstrated as finalized runtime behavior.

@@ -1,21 +1,11 @@
 # Quarry
 
-**Status:** To complete
+Quarry est la source principale de **stone**.
 
-## What this page covers
-Player-facing documentation page.
+## Rôle
+- Ressource centrale pour la progression structurelle de la ville.
+- Soutient le rythme de montée HQ + bâtiments utilitaires.
 
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Synergies
+- Mine + Quarry: duo d’ouverture pour stabiliser les coûts de build.
+- Warehouse: indispensable si tu joues en sessions espacées.

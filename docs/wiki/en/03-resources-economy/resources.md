@@ -1,21 +1,16 @@
 # Resources
 
-**Status:** To complete
+The Coinage runtime currently uses 3 core resources:
 
-## What this page covers
-English mirror page.
+- **Ore**
+- **Stone**
+- **Iron**
 
-## How it works
-Design in progress / value to confirm.
+## Starting stock and base caps
+- Starting stock: `ore 300`, `stone 300`, `iron 180`.
+- Base cap: `300` per resource, increased by Warehouse.
 
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Gameplay role
+- Construction costs.
+- Unit training costs.
+- Research costs.

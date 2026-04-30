@@ -1,21 +1,14 @@
-# Recherche (index)
+# Research Overview
 
-**Status:** Partially implemented
+La recherche est un système runtime avec file dédiée, coût, durée, prérequis et effets appliqués aux stats dérivées.
 
-## What this page covers
-Le système de recherche temporisé est actif avec prérequis, coûts et chaînes d’unlocks.
+## Ce que la recherche modifie
+- Production
+- Vitesse d’entraînement
+- Défense / anti-air
+- Détection / contre-intel
+- Efficacité marché (stat)
 
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## État réel
+- **Implémenté**: arbre de recherche (40 nodes), guards, coûts et timers.
+- **Partiel**: certaines branches pilotent des systèmes pas encore pleinement gameplay (ex: marché global live).
