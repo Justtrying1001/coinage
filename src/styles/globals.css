@@ -84,7 +84,8 @@ body {
   height: 100%;
   background: radial-gradient(circle at 30% 20%, #0d1d31 0%, var(--bg-deep) 55%);
   color: var(--text-main);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 a {
@@ -96,7 +97,8 @@ a {
   display: grid;
   place-items: center;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: linear-gradient(180deg, #04060b 0%, #060c16 55%, #04070f 100%);
 }
 
@@ -171,7 +173,8 @@ a {
   display: flex;
   flex-direction: column;
   background: #04070d;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .game-shared-hud {
@@ -197,14 +200,16 @@ a {
   flex: 1;
   min-height: 0;
   border-top: 1px solid rgba(70, 129, 165, 0.15);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .render-root {
   width: 100%;
   height: 100%;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .render-surface {
@@ -687,7 +692,8 @@ canvas {
   border: 1px solid rgba(106, 147, 173, 0.24);
   border-radius: 7px;
   background: linear-gradient(145deg, rgba(5, 13, 21, 0.96), rgba(3, 8, 14, 0.98));
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 10px;
 }
 
@@ -960,7 +966,8 @@ canvas {
   position: absolute;
   width: 1px;
   height: 1px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
@@ -1179,7 +1186,8 @@ canvas {
   height: 5px;
   border-radius: 999px;
   background: rgba(54, 81, 102, 0.58);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .city-management__progress-fill {
@@ -1498,7 +1506,8 @@ canvas {
   min-height: 100%;
   border-radius: 11px;
   border: 1px solid rgba(113, 157, 184, 0.26);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: grid;
   grid-template-rows: 110px minmax(0, 1fr) 44px;
   background:
@@ -1962,7 +1971,8 @@ canvas {
   background: linear-gradient(180deg, var(--cg-bg-mid), var(--cg-bg-deep));
   color: var(--cg-text-2);
   font-family: var(--cg-font-ui);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   font-variant-numeric: tabular-nums;
 }
 .city-stitch__top {
@@ -2124,7 +2134,8 @@ canvas {
   height: 3px;
   border-radius: var(--cg-r-pill);
   background: rgba(56, 84, 108, 0.45);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .city-stitch__resource-fill span {
   display: block;
@@ -2816,7 +2827,8 @@ canvas {
   height: 4px;
   border-radius: var(--cg-r-pill);
   background: rgba(56, 84, 108, 0.52);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .city-stitch__queue-progress span {
   display: block;
