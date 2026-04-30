@@ -1,21 +1,21 @@
-# Ressources
+# Resources
 
-**Status:** Implemented
+Le runtime Coinage repose sur 3 ressources principales:
 
-## What this page covers
-Ressources cœur identifiées: Ore, Stone, Iron, Shards, Population.
+## Ressources actives
+- **Ore**: base de nombreux upgrades.
+- **Stone**: ressource structurelle pour la construction.
+- **Iron**: ressource avancée pour paliers élevés et unités.
 
-## How it works
-Design in progress / value to confirm.
+## Stock de départ et capacité
+- Stock initial configuré: `ore 300`, `stone 300`, `iron 180`.
+- Capacité de base: `300` par ressource, augmentée par Warehouse.
 
-## Requirements
-À compléter.
+## Rôle gameplay
+- Construction: coûts en ressources sur chaque niveau bâtiment.
+- Entraînement: coûts unités par lot.
+- Recherche: coûts spécifiques selon node.
 
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Liens
+- [Production](/wiki/resources-economy/production)
+- [Storage](/wiki/resources-economy/storage)

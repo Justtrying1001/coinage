@@ -1,21 +1,13 @@
-# Unités (index)
+# Units Overview
 
-**Status:** Partially implemented
+Le runtime expose des unités terrestres, navales et de colonisation avec coûts, temps d’entraînement, population et prérequis.
 
-## What this page covers
-Les unités sont séparées entre terrestres (barracks) et spatiales/aériennes (space dock), avec unlocks via recherche.
+## Familles présentes
+- Militia locale: `citizen_militia`
+- Terrestres: line/phalanx/marksman/assault/aegis/raider/siege
+- Navales/aéronavales: dropship/carrier/interceptor/drifter/escort/trireme
+- Expansion: `colonization_arkship`
 
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## État réel
+- **Implémenté**: configuration unités + training queue + guards prérequis.
+- **Partiel**: résolution de combat globale non totalement démontrée.

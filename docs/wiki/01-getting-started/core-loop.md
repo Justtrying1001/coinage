@@ -1,21 +1,23 @@
-# Boucle de jeu (Core Loop)
+# Core Loop
 
-**Status:** Partially implemented
+Le cœur de Coinage est une boucle à 5 sous-boucles connectées.
 
-## What this page covers
-Boucle actuelle: produire → construire → rechercher → entraîner → explorer/espionner → combattre/coloniser.
+## Boucle économique
+- Les ressources sont générées passivement puis créditées à la mise à jour runtime (claim-on-access).
+- La capacité de stockage limite le rendement réel.
 
-## How it works
-Design in progress / value to confirm.
+## Boucle construction
+- Chaque upgrade consomme ressources + temps + population.
+- Les prérequis HQ/bâtiments déterminent l’ordre de développement.
 
-## Requirements
-À compléter.
+## Boucle entraînement
+- Les unités consomment ressources + population.
+- Certaines unités demandent des recherches spécifiques.
 
-## Related systems
-À compléter.
+## Boucle recherche
+- Les recherches utilisent une file avec coûts, durée et prérequis.
+- Les effets influencent production, vitesse d’entraînement, défense, anti-air, intel.
 
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Boucle monde
+- Galaxy/Planet apportent contexte et expansion future.
+- City reste le centre de décision runtime actuel.

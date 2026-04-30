@@ -1,21 +1,14 @@
-# Combat (vue d’ensemble)
+# Combat Overview
 
-**Status:** Design in progress
+Le combat dans Coinage est aujourd’hui un mix entre **runtime partiel** et **design documenté**.
 
-## What this page covers
-Le socle de stats/défenses existe; la résolution complète des batailles monde est encore en finalisation.
+## Ce qui existe côté runtime
+- Stats unités (attaque, défenses typées, vitesse, coûts).
+- Bonus dérivés via bâtiments/recherches/policies (defensePct, antiAir, etc.).
+- Données intel/espionnage et snapshots défensifs.
 
-## How it works
-Design in progress / value to confirm.
+## Ce qui n’est pas prouvé complet
+- Résolveur bataille macro unifié (attaque/défense inter-villes) non démontré comme boucle complète dans ce repo.
 
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Conséquence joueur
+Le wiki doit être lu comme une référence de préparation (éco, composition, prérequis) plus qu’un manuel de simulation combat final.

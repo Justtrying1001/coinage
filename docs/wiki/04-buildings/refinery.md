@@ -1,21 +1,10 @@
 # Refinery
 
-**Status:** To complete
+Refinery produit **iron**, ressource clé des paliers avancés.
 
-## What this page covers
-Player-facing documentation page.
+## Rôle
+- Débloque la progression vers branches militaires/tech plus coûteuses.
+- Conditionne le passage mid-game quand les coûts iron montent.
 
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+## Prérequis
+- Le runtime impose un prérequis minimal sur Mine pour l’ouverture initiale de Refinery.

@@ -1,21 +1,6 @@
 # Quarry
 
-**Status:** To complete
+Quarry is the primary **stone** production building.
 
-## What this page covers
-English mirror page.
-
-## How it works
-Design in progress / value to confirm.
-
-## Requirements
-À compléter.
-
-## Related systems
-À compléter.
-
-## Implementation notes
-Based on current docs/code audit; may evolve during balancing.
-
-## Open questions / To complete
-- À compléter
+- Supports structural progression and steady HQ/building upgrades.
+- Works best combined with Warehouse to avoid cap overflow.
