@@ -5,7 +5,7 @@ import { pageByPath, wikiCategories, wikiPages, type WikiLang, type WikiPage } f
 const ROOT = path.join(process.cwd(), 'docs', 'wiki');
 
 export async function loadDoc(page: WikiPage, lang: WikiLang) {
-  const tryPaths = [path.join(ROOT, lang === 'en' ? 'en' : '', page.internalPath), path.join(ROOT, page.internalPath)];
+  const tryPaths = [path.join(ROOT, lang === 'en' ? 'en' : '', page.filePath), path.join(ROOT, page.filePath)];
   for (const p of tryPaths) {
     try {
       const content = await fs.readFile(p, 'utf8');
@@ -36,6 +36,18 @@ export const parseRoute = (slug?: string[]) => {
   return { lang: 'en' as WikiLang, page: slug };
 };
 
-export function toToc(markdown: string) {
-  return markdown.split('\n').filter((l) => l.startsWith('## ')).map((l) => l.slice(3).trim());
+export function cleanWikiMarkdown(markdown: string) {
+  return markdown
+    .split('\n')
+    .filter((line) => !/^\*\*Status:\*\*/i.test(line.trim()))
+    .join('\n');
 }
+
+export function toToc(markdown: string) {
+  return markdown
+    .split('\n')
+    .filter((l) => /^(##|###)\s/.test(l))
+    .map((l) => ({ depth: l.startsWith('###') ? 3 : 2, label: l.replace(/^###?\s+/, '').trim() }));
+}
+
+export const slugifyHeading = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
